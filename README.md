@@ -9,7 +9,7 @@
 | | 能力 | 状态 |
 |---|---|---|
 | ✋ 双手 | 图像生成 / 视频生成 / 语音合成 | M1–M2 已交付 |
-| 👁 眼睛 | 视觉路由（自持 qwen-vl 为主、全局模型降级为辅） | M3 规划中（M1 已有画图后视觉自述雏形） |
+| 👁 眼睛 | 视觉路由：显式工具（look/relook），自持 qwen-vl 为主、全局模型降级为辅 | M3 已交付 |
 | 🫧 门面 | 常驻泡泡工作台（前身 public/ 前端的化身） | M4 规划中 |
 
 ## 架构原则
@@ -26,6 +26,8 @@
 | `iris_generate_video` | 三种模式：文生视频 / 图生视频（首帧 = iris 图片 attachment id 或本地绝对路径）/ **s2v 数字人**（wan2.2-s2v：首帧+语音 <20s，本地图音自动上传百炼临时存储 oss://）；长渲染自动转后台，`iris_task_status` 查询 |
 | `iris_speak_text` | qwen-tts 同步合成，wav 落盘 |
 | `iris_task_status` | 查询任务状态/进度/错误/产物路径（单条或最近列表） |
+| `iris_look_at_image` | 👁 看图问答：本地图片 → 存附件 → qwen-vl 流式回答（自持栈为主，全局视觉模型降级为辅） |
+| `iris_relook_attachment` | 对本会话已出现过的图片（上传/工具产物/iris 生成）换问题重看像素 |
 
 产物统一落在 `$DSH_HOME/iris/v1/outputs/`；图片额外转存为 DSH 持久 attachment 进入对话。
 
@@ -54,7 +56,7 @@ GET /iris/media/:taskId/:token/:name
 
 - [x] **M1** 工具（画图/语音）+ 配置自持 + 工作台导入
 - [x] **M2** 任务盯守框架（后台化/重启恢复/历史元数据）+ 视频生成
-- [ ] **M3** 视觉路由子系统（移植前身 visionStream，qwen-vl 走自持栈）
+- [x] **M3** 眼睛：`iris_look_at_image` / `iris_relook_attachment`（visionStream 移植，qwen-vl 走自持栈；与 vision-mix 分工——它是隐式模型路由，我们是显式工具）
 - [ ] **M4** 🫧 泡泡工作台（settings.section slot + 历史面板 + 进度显示）
 - Backlog：CosyVoice WebSocket 流式 TTS、批量队列并发、视频多帧参考/音效（承自 ai-paint 三期 Roadmap）
 

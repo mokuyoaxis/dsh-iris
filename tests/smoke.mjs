@@ -123,6 +123,26 @@ assert(tasks.get(t9.id).status === 'succeeded' && racePolls > 3, '场景9 竞态
 
 /* ================= 媒体路由 ================= */
 
+/* ---- 视觉适配器：visionStream 的 SSE 解析（本地假服务器） ---- */
+const adapters = await import('../lib/adapters.js');
+const http = await import('node:http');
+const srv = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+  res.write('data: {"choices":[{"delta":{"content":"你好"}}]}\n\n');
+  res.write('data: {"choices":[{"delta":{"content":"，世界"}}]}\n\n');
+  res.write(': keep-alive 注释行\n\n');
+  res.write('data: [DONE]\n\n');
+  res.end();
+});
+await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+const ssePort = srv.address().port;
+const ans = await adapters.visionStream({
+  key: 'k', baseUrl: `http://127.0.0.1:${ssePort}/compatible-mode/v1`,
+  prompt: 'q', imageDataUrl: 'data:image/png;base64,AAAA'
+});
+srv.close();
+assert(ans === '你好，世界', 'visionStream SSE 拼接: ' + JSON.stringify(ans));
+
 // 准备一个真实产物文件
 fs.mkdirSync(tasks.outputsDir(), { recursive: true });
 const mp4 = path.join(tasks.outputsDir(), 'clip.mp4');
