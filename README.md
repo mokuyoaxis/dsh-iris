@@ -23,7 +23,7 @@
 | 工具 | 说明 |
 |---|---|
 | `iris_draw_image` | 文生图：DashScope wan* 异步（提交→盯守→转存 attachment）或 OpenAI Images 兼容同步；附视觉自述 |
-| `iris_generate_video` | 文生视频 / 图生视频（首帧 = iris 图片 attachment id 或本地绝对路径）；长渲染自动转后台，`iris_task_status` 查询 |
+| `iris_generate_video` | 三种模式：文生视频 / 图生视频（首帧 = iris 图片 attachment id 或本地绝对路径）/ **s2v 数字人**（wan2.2-s2v：首帧+语音 <20s，本地图音自动上传百炼临时存储 oss://）；长渲染自动转后台，`iris_task_status` 查询 |
 | `iris_speak_text` | qwen-tts 同步合成，wav 落盘 |
 | `iris_task_status` | 查询任务状态/进度/错误/产物路径（单条或最近列表） |
 
