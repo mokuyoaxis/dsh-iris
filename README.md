@@ -29,6 +29,19 @@
 
 产物统一落在 `$DSH_HOME/iris/v1/outputs/`；图片额外转存为 DSH 持久 attachment 进入对话。
 
+## 媒体通道（对话流内点播）
+
+DSH 附件服务只收图片，视频/音频走宿内授权路由：
+
+```
+GET /iris/media/:taskId/:token/:name
+```
+
+- 生成完成即自动登记，工具结果与 `iris_task_status` 都会给出可点击的播放链接
+- **安全边界**：token 为 crypto 随机 128bit 能力凭证（只存任务记录）；文件定位只信任务记录、URL 文件名段不参与路径解析（防穿越）；未命中一律 404；仅 GET/HEAD
+- 反代/远程部署用 `DSH_WEB_BASE` 覆盖默认基址 `http://127.0.0.1:3080`
+- 插件停用即撤路由；任务元数据裁剪（200 条）后旧链接自然失效
+
 ## 任务框架（继承 ai-paint，宿内化）
 
 - 元数据：`$DSH_HOME/iris/v1/tasks.json`（只存元数据与 attachment 索引，最多 200 条）
