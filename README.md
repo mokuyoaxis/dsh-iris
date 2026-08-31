@@ -41,6 +41,7 @@ GET /iris/media/:taskId/:token/:name
 
 - 生成完成即自动登记，工具结果与 `iris_task_status` 都会给出可点击的播放链接
 - **安全边界**：token 为 crypto 随机 128bit 能力凭证（只存任务记录）；文件定位只信任务记录、URL 文件名段不参与路径解析（防穿越）；未命中一律 404；仅 GET/HEAD
+- **M4 泡泡工作台数据通道**：`GET /iris/api/state`（同源 JSON，5s 轮询）——供应商状态只给 Key hint、历史面板按 running/recent 分组、产物给授权播放链接；接口只回标量，apiKey/文件绝对路径永不明文
 - 反代/远程部署用 `DSH_WEB_BASE` 覆盖默认基址 `http://127.0.0.1:3080`
 - 插件停用即撤路由；任务元数据裁剪（200 条）后旧链接自然失效
 
@@ -57,7 +58,7 @@ GET /iris/media/:taskId/:token/:name
 - [x] **M1** 工具（画图/语音）+ 配置自持 + 工作台导入
 - [x] **M2** 任务盯守框架（后台化/重启恢复/历史元数据）+ 视频生成
 - [x] **M3** 眼睛：`iris_look_at_image` / `iris_relook_attachment`（visionStream 移植，qwen-vl 走自持栈；与 vision-mix 分工——它是隐式模型路由，我们是显式工具）
-- [ ] **M4** 🫧 泡泡工作台（settings.section slot + 历史面板 + 进度显示）
+- [x] **M4** 🫧 泡泡工作台（settings.section 常驻工作台页 + conversation.input.dock 常驻进度条；host 侧 /iris/api/state JSON 数据通道，Key 只出 hint）
 - Backlog：CosyVoice WebSocket 流式 TTS、批量队列并发、视频多帧参考/音效（承自 ai-paint 三期 Roadmap）
 
 ## License
