@@ -122,5 +122,41 @@ try {
   assert(err.name === 'ProviderError' && err.category === 'network', '网络错误分类 network', JSON.stringify(err));
 }
 
-for (const s of [rateLimit.srv, auth.srv, okSrv.srv, emptySrv.srv]) s.close();
-console.log('ALL OK —— 视觉后端链 7 组断言全部通过（顺序/429降级/401鉴权/取消/双失败/空串/网络分类）');
+/* ---------- ⑧ 视觉能力测试（capability test，固定红色图 + 超时 + 取消） ---------- */
+const { testVisionCapability, RED_TEST_IMAGE } = await import('../lib/vision.js');
+
+const redSrv = await listen((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+  res.write('data: {"choices":[{"delta":{"content":"红色"}}]}\n\n');
+  res.write('data: [DONE]\n\n');
+  res.end();
+});
+const blueSrv = await listen((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+  res.write('data: {"choices":[{"delta":{"content":"蓝色"}}]}\n\n');
+  res.write('data: [DONE]\n\n');
+  res.end();
+});
+const hangSrv = await listen((req, res) => { /* 永不响应，测超时 */ });
+
+const redBackend = new SelfStackVisionBackend({ provider: pA(`http://127.0.0.1:${redSrv.port}/v1`) });
+const blueBackend = new SelfStackVisionBackend({ provider: pA(`http://127.0.0.1:${blueSrv.port}/v1`) });
+const hangBackend = new SelfStackVisionBackend({ provider: pA(`http://127.0.0.1:${hangSrv.port}/v1`) });
+
+const ctOk = await testVisionCapability(redBackend, { timeoutMs: 3000 });
+assert(ctOk.ok === true && ctOk.answer === '红色', '红色回答判定具备视觉能力', JSON.stringify(ctOk));
+const ctBad = await testVisionCapability(blueBackend, { timeoutMs: 3000 });
+assert(ctBad.ok === false && ctBad.answer === '蓝色', '非红色回答判定不具备', JSON.stringify(ctBad));
+const ctTimeout = await testVisionCapability(hangBackend, { timeoutMs: 500 });
+assert(ctTimeout.ok === false && ctTimeout.timedOut === true, '超时判定失败', JSON.stringify(ctTimeout));
+const ac2 = new AbortController();
+ac2.abort();
+const ctCancel = await testVisionCapability(redBackend, { timeoutMs: 3000, signal: ac2.signal });
+assert(ctCancel.ok === false && ctCancel.error !== undefined, '取消信号中止能力测试', JSON.stringify(ctCancel));
+assert(/^data:image\/png;base64,/.test(RED_TEST_IMAGE), '固定红色测试图为合法 data URL');
+
+for (const s of [rateLimit.srv, auth.srv, okSrv.srv, emptySrv.srv, redSrv.srv, blueSrv.srv, hangSrv.srv]) {
+  s.close();
+  if (s.closeAllConnections) s.closeAllConnections(); // 挂起连接（超时测试）也要关
+}
+console.log('ALL OK —— 视觉后端链 8 组断言全部通过（顺序/429降级/401鉴权/取消/双失败/空串/网络分类/能力测试）');
