@@ -130,3 +130,21 @@
 - `tests/mount.mjs` 扩展为 9 工具断言；lint 新增阶段 3A 守卫
 
 > 注：iris_locate 需重新加载插件（toggle iris 或重启）后才会注册进宿主。
+
+### 阶段 4：任务详情抽屉
+
+#### 新增
+
+- **`/iris/api/task/:id` 详情端点**（`lib/api.js`）：返回完整任务详情（含完整
+  prompt/error/remoteTaskId/attachments），按需拉取
+- **`TaskDetailDrawer` 组件**（`lib/client.js`）：点击工作台任务卡片行展开详情
+  - 展示：完整提示词、错误信息、元数据（ID/能力/状态/模型/供应商/模式/远端任务/
+    发起时间/完成时间/耗时）、产物文件、媒体播放链接、附件列表
+  - 点击已选中的任务收起；媒体链接点击不触发展开/收起（stopPropagation）
+  - 选中状态高亮（`selected` CSS 类 + brand 色边框）
+
+#### 测试
+
+- `tests/api.mjs` 新增 `/iris/api/task/:id` 端点 6 项断言（404/405/基础字段/
+  完整字段/媒体链接/无明文 key）
+- `tests/client.mjs` 通过（形态不变）；lint 新增阶段 4 守卫
