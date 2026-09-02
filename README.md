@@ -10,7 +10,7 @@
 |---|---|---|
 | ✋ 双手 | 图像生成 / 视频生成 / 语音合成 | M1–M2 已交付 |
 | 👁 眼睛 | 视觉路由：显式工具（look/relook），自持 qwen-vl 为主、全局模型降级为辅 | M3 已交付 |
-| 🫧 门面 | 常驻泡泡工作台（前身 public/ 前端的化身） | M4 规划中 |
+| 🫧 门面 | 常驻泡泡工作台（前身 public/ 前端的化身） | M4 已交付 |
 
 ## 架构原则
 
@@ -58,7 +58,7 @@ GET /iris/media/:taskId/:token/:name
 - [x] **M1** 工具（画图/语音）+ 配置自持 + 工作台导入
 - [x] **M2** 任务盯守框架（后台化/重启恢复/历史元数据）+ 视频生成
 - [x] **M3** 眼睛：`iris_look_at_image` / `iris_relook_attachment`（visionStream 移植，qwen-vl 走自持栈；与 vision-mix 分工——它是隐式模型路由，我们是显式工具）
-- [x] **M4** 🫧 泡泡工作台（settings.section 常驻工作台页 + conversation.input.dock 常驻进度条；host 侧 /iris/api/state JSON 数据通道，Key 只出 hint）
+- [x] **M4** 🫧 泡泡工作台（settings.section 常驻工作台页 + conversation.input.dock 任务进度条 + shell.overlay 主界面悬浮泡泡——可拖动、未配置 API 时暗淡、配置就绪发亮、运行中带数字角标、点击展开工作台浮层；host 侧 /iris/api/state JSON 数据通道，Key 只出 hint）
 - Backlog：CosyVoice WebSocket 流式 TTS、批量队列并发、视频多帧参考/音效（承自 ai-paint 三期 Roadmap）
 
 ## License

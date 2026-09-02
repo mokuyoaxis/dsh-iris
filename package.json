@@ -10,7 +10,8 @@
       "types": "./lib/client.d.ts",
       "default": "./lib/client.js"
     },
-    "./cordis.patch.yml": "./cordis.patch.yml"
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
   },
   "files": [
     "lib",
@@ -40,5 +41,23 @@
     "dashscope",
     "tts"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "test": "for f in tests/*.mjs; do node \"$f\" || exit 1; done",
+    "lint": "node tests/lint.mjs"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-client-runtime": "*",
+    "@deepseek-ai/dsh-client-locale": "*",
+    "@deepseek-ai/dsh-client-ui-slots": "*",
+    "@deepseek-ai/dsh-client-ui-conversation": "*",
+    "@deepseek-ai/dsh-client-ui-settings": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-client-runtime": { "optional": true },
+    "@deepseek-ai/dsh-client-locale": { "optional": true },
+    "@deepseek-ai/dsh-client-ui-slots": { "optional": true },
+    "@deepseek-ai/dsh-client-ui-conversation": { "optional": true },
+    "@deepseek-ai/dsh-client-ui-settings": { "optional": true }
+  }
 }
