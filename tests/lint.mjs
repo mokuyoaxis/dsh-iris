@@ -77,6 +77,9 @@ if (/required:\s*true/.test(index)) {
 if (!/name: 'iris_crop'/.test(index) || !/name: 'iris_pixel_diff'/.test(index)) {
   failures.push('lib/index.js 缺少阶段 2 工具注册（iris_crop / iris_pixel_diff）');
 }
+if (!/name: 'iris_locate'/.test(index)) {
+  failures.push('lib/index.js 缺少阶段 3A 工具注册（iris_locate）');
+}
 
 // 阶段 2：像素后端必须存在且不引入 TypeScript/打包器特性
 let pixels = '';
@@ -94,10 +97,26 @@ if (pixels) {
   }
 }
 
+// 阶段 3A：定位模块必须存在且契约完整
+let locate = '';
+try {
+  locate = read('lib/locate.js');
+} catch (_) {
+  failures.push('缺少 lib/locate.js（阶段 3A 定位后端）');
+}
+if (locate) {
+  if (!/export async function locateObject/.test(locate) || !/export function extractBboxJson/.test(locate)) {
+    failures.push('lib/locate.js 必须导出 locateObject 与 extractBboxJson');
+  }
+  if (/x1<x2/.test(locate) === false) {
+    failures.push('lib/locate.js 必须校验 x1<x2 且 y1<y2（原像素 bbox 契约）');
+  }
+}
+
 /* ---------- 汇总 ---------- */
 if (failures.length) {
   console.error(`lint 失败（${failures.length} 项）：`);
   for (const f of failures) console.error(' - ' + f.replace(/\n/g, '\n   '));
   process.exit(1);
 }
-console.log(`lint OK —— ${files.length} 个文件语法通过 + 结构契约 7 项守卫通过`);
+console.log(`lint OK —— ${files.length} 个文件语法通过 + 结构契约 8 项守卫通过`);
