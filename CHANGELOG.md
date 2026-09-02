@@ -108,3 +108,25 @@
 - 新增 `tests/pixels.mjs`：crop 越界/尺寸/diff ratio/局部差异/尺寸归一化/alpha
   忽略/大图缩放/热力图
 - `tests/mount.mjs` 扩展为 8 工具注册断言；lint 新增阶段 2 结构守卫
+
+### 阶段 3A：模型驱动定位
+
+#### 新增
+
+- **`lib/locate.js`**：`locateObject` 定位后端
+  - 复用阶段 1 VisionBackend 链（`askWithBackends`）识图
+  - 提示词强制模型只回严格 JSON bbox；`extractBboxJson` 提取第一个平衡 JSON
+  - 契约校验：字段必须是数字、x1<x2 且 y1<y2、轻微越界 clamp 到图片边界、
+    完全越界报错、`found:false` 明确返回
+  - 返回**原像素 bbox**（对齐 RESEARCH 4.2a，与 `iris_crop` 无缝接力）
+- **新工具 `iris_locate`**（`lib/index.js`）：输入支持本地路径或 attachment_id，
+  返回 bbox + 可直接执行的 iris_crop 指令
+- `lib/pixels.js` 新增 `imageDimensions` helper
+
+#### 测试
+
+- 新增 `tests/locate.mjs`：JSON 提取/有效 bbox/found=false/越界钳制/完全越界/
+  字段非法/非数字/SSE 后端集成
+- `tests/mount.mjs` 扩展为 9 工具断言；lint 新增阶段 3A 守卫
+
+> 注：iris_locate 需重新加载插件（toggle iris 或重启）后才会注册进宿主。
