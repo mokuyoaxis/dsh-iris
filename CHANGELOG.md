@@ -82,3 +82,29 @@
 - 新增 `tests/vision-backend.mjs`：后端顺序、429 降级、401 鉴权、取消、双失败、
   空串继续降级、网络错误分类
 - `tests/vision.mjs` 夹具如实声明 vision 能力（对齐严格选择语义）
+
+### 阶段 2：确定性像素工具
+
+#### 新增
+
+- **`lib/pixels.js`**：基于 sharp 的像素后端
+  - `cropImage`：裁剪区域（left/top/width/height），区域必须为正且不越界，
+    输出 PNG + 实际尺寸
+  - `pixelDiff`：尺寸不一致以较小者强制归一化（fit=fill）、上限 1024 防爆内存、
+    alpha 通道不参与差异计算、RGB 通道差阈值判差异，输出 diff ratio + 8×8 最差
+    区域 + 灰度热力图 PNG
+  - `PixelError` 结构化边界错误
+- **新工具 `iris_crop` / `iris_pixel_diff`**（`lib/index.js`）
+  - 输入支持本地绝对路径或本会话 attachment_id（复用 `resolveImageInput`）
+  - 输出保存为 DSH 持久 attachment，返回 attachment id + 尺寸 / diff 摘要
+
+#### 依赖
+
+- 新增生产依赖 **sharp 0.35.4**（Apache-2.0，用户已确认）。本机 aarch64 proot
+  Debian 实证可用；裸 Termux(bionic/musl) 无预编译为已知局限（lovell/sharp#4324）。
+
+#### 测试
+
+- 新增 `tests/pixels.mjs`：crop 越界/尺寸/diff ratio/局部差异/尺寸归一化/alpha
+  忽略/大图缩放/热力图
+- `tests/mount.mjs` 扩展为 8 工具注册断言；lint 新增阶段 2 结构守卫

@@ -74,6 +74,25 @@ const index = read('lib/index.js');
 if (/required:\s*true/.test(index)) {
   failures.push('lib/index.js 工具参数属性内不得出现 required: true（JSON Schema 属性级 required 必须是字符串数组）');
 }
+if (!/name: 'iris_crop'/.test(index) || !/name: 'iris_pixel_diff'/.test(index)) {
+  failures.push('lib/index.js 缺少阶段 2 工具注册（iris_crop / iris_pixel_diff）');
+}
+
+// 阶段 2：像素后端必须存在且不引入 TypeScript/打包器特性
+let pixels = '';
+try {
+  pixels = read('lib/pixels.js');
+} catch (_) {
+  failures.push('缺少 lib/pixels.js（阶段 2 像素后端）');
+}
+if (pixels) {
+  if (!/export async function cropImage/.test(pixels) || !/export async function pixelDiff/.test(pixels)) {
+    failures.push('lib/pixels.js 必须导出 cropImage 与 pixelDiff');
+  }
+  if (/PixelError/.test(pixels) === false) {
+    failures.push('lib/pixels.js 缺少 PixelError（边界错误要有类型）');
+  }
+}
 
 /* ---------- 汇总 ---------- */
 if (failures.length) {
@@ -81,4 +100,4 @@ if (failures.length) {
   for (const f of failures) console.error(' - ' + f.replace(/\n/g, '\n   '));
   process.exit(1);
 }
-console.log(`lint OK —— ${files.length} 个文件语法通过 + 结构契约 6 项守卫通过`);
+console.log(`lint OK —— ${files.length} 个文件语法通过 + 结构契约 7 项守卫通过`);

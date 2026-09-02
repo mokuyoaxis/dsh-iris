@@ -3,3 +3,6 @@ node_modules/
 
 # 内部维护者文件：路线图、疑问清单等，永不入仓
 .internal/
+
+# 测试临时目录
+tmp/
