@@ -102,4 +102,33 @@ assert(r0 && typeof r0.id === 'string' && typeof r0.cap === 'string' && typeof r
   && typeof r0.progress === 'string' && typeof r0.model === 'string' && typeof r0.prompt === 'string'
   && Array.isArray(r0.media), 'running 任务最小标量字段（media 恒为数组）');
 
-console.log('ALL OK —— /iris/api/state 数据层 5 项断言全部通过（掩码/分组/播放链接/标量/最小透出）');
+/* ---------- ⑥ /iris/api/task/:id 详情端点（阶段 4 抽屉数据源） ---------- */
+const { serveApi } = await import('../lib/api.js');
+const tasks = await import('../lib/tasks.js');
+tasks.resetCache(); // 让任务注册表重新读盘（fixture 里写好的任务）
+
+function fakeRes() {
+  return { headersSent: false, status: 0, headers: null, body: null, wrote: false,
+    writeHead(status, headers) { this.status = status; this.headers = headers; this.headersSent = true; },
+    end(data) { this.wrote = true; if (data !== undefined) this.body = data; } };
+}
+function hitApi(url, method = 'GET') {
+  const res = fakeRes();
+  serveApi({ method, url, headers: {} }, res);
+  return res;
+}
+
+const r404 = hitApi('/iris/api/task/nonexist');
+assert(r404.status === 404, '不存在任务 → 404', r404.status);
+const r405 = hitApi('/iris/api/task/t_done_1', 'POST');
+assert(r405.status === 405, '非 GET/HEAD → 405', r405.status);
+const detail = hitApi('/iris/api/task/t_done_1');
+assert(detail.status === 200, '详情端点 200', detail.status);
+const d = JSON.parse(detail.body);
+assert(d.id === 't_done_1' && d.cap === 'image' && d.status === 'succeeded', '详情基础字段');
+assert(typeof d.prompt === 'string' && Array.isArray(d.media) && Array.isArray(d.files), '详情完整字段');
+assert(d.media[0] && d.media[0].url && d.media[0].url.includes('/iris/media/t_done_1/'), '详情媒体链接');
+assert(typeof d.remoteTaskId === 'string' && Array.isArray(d.attachments), '详情 remoteTaskId/attachments');
+assert(!JSON.stringify(d).includes('must-never-leak'), '详情不含明文 key');
+
+console.log('ALL OK —— /iris/api/state 数据层 5 项断言 + /iris/api/task/:id 详情端点 6 项断言全部通过');

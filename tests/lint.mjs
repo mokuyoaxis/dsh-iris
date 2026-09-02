@@ -46,6 +46,9 @@ const api = read('lib/api.js');
 if (/iris\.home\b/.test(api)) {
   failures.push('lib/api.js buildState 仍泄露 iris.home 绝对路径');
 }
+if (!/serveTaskDetail/.test(api) || !/\/iris\/api\/task\//.test(api)) {
+  failures.push('lib/api.js 缺少 /iris/api/task/:id 详情端点（阶段 4 抽屉）');
+}
 
 const media = read('lib/media.js');
 if (!/'Accept-Ranges'/.test(media) || !/createReadStream/.test(media) || !/parseRange/.test(media)) {
