@@ -51,3 +51,34 @@
 #### 修复
 
 - **`iris_relook_attachment` 参数 schema 修复**（`lib/index.js`）：`question` 参数属性内写了 `required: true`（布尔值），违反 JSON Schema 规范——`required` 在属性层级必须是字符串数组（`["question"]`），不是布尔值。DSH 的 schema 校验器 `assertSupportedJsonSchema` 因此拒绝该 schema，报 `"parameters.properties.question.required is not supported"`。移除属性内的 `required: true`，顶层 `required: ['attachment_id', 'question']` 已正确覆盖必填约束。lint 新增对应守卫防回归。
+
+### 阶段 1：Provider / Capability 基座
+
+#### 新增
+
+- **`lib/capability.js`**：Provider 能力系统
+  - 能力常量：`image-gen` / `video-gen` / `tts` / `vision`
+  - 严格选择：不具备某能力的 Provider 不再被兜底选中（`pickFor` 无匹配返回 null）
+  - 有序 failover：`providersWith` 按声明顺序返回、`tryOrdered` 依次尝试并累计失败现场
+  - 旧配置迁移 `capabilitiesOf`：显式声明权威 → 按模型字段推断 → DashScope 裸账号兜底全能力
+- **`lib/vision.js`**：VisionBackend 抽象（对齐 RESEARCH 4.1b）
+  - `SelfStackVisionBackend`：自持栈（OpenAI 兼容 /chat/completions，qwen-vl）
+  - `GlobalLlmVisionBackend`：DSH 全局视觉模型（ctx.llm.stream()）
+  - `buildVisionBackends` 按序组装、`askWithBackends` 依次降级并保留每个后端失败现场
+
+#### 变更
+
+- **`lib/adapters.js`**：`ProviderError` 结构化错误（category: auth / rate_limit / quota /
+  invalid_parameter / server / network / unknown，保留 status + rootCause）；`visionStream`
+  fetch 网络失败归类 network
+- **`lib/config.js`**：`pickFor` 改为严格能力选择；新增 `pickAllFor` / `capabilitiesOf`
+- **`lib/index.js`**：工具按能力常量选择 Provider；`askVision` 改走 `lib/vision.js` 后端链
+  （返回结构兼容，`via`/`model` 不变）
+- **`lib/api.js`**：`providerPublic` 暴露迁移后的能力列表 + `capabilityInferred` 标记
+
+#### 测试
+
+- 新增 `tests/capability.mjs`：常量/迁移/严格选择/有序 failover
+- 新增 `tests/vision-backend.mjs`：后端顺序、429 降级、401 鉴权、取消、双失败、
+  空串继续降级、网络错误分类
+- `tests/vision.mjs` 夹具如实声明 vision 能力（对齐严格选择语义）
