@@ -108,10 +108,21 @@ config.resetCache();
 const listed4 = await runAction(stubCtx, 'providers_list', {});
 assert(listed4.providers.length === 1, 'remove 后剩 1 个', listed4.providers.length);
 
-// ⑥ 动作清单包含管理动作
+// ⑥ 动作清单包含管理动作 + 阶段 7.2 转写动作
 const names = listActions();
-for (const act of ['providers_list', 'providers_upsert', 'providers_remove', 'providers_set_models', 'providers_test_vision']) {
+for (const act of ['providers_list', 'providers_upsert', 'providers_remove', 'providers_set_models', 'providers_test_vision', 'transcribe']) {
   assert(names.includes(act), '动作清单含 ' + act);
 }
 
-console.log('ALL OK —— 动作路由 + 供应商管理断言全部通过（POST status/不存在/GET 405/空body + providers 6 项）');
+// ⑦ 转写动作入参校验（无真实音频，测错误路径）
+let terr1 = null;
+try { await runAction(stubCtx, 'transcribe', {}); } catch (e) { terr1 = e; }
+assert(terr1 && /audio_path/.test(terr1.message), 'transcribe 缺 audio_path 报错', terr1 && terr1.message);
+let terr2 = null;
+try { await runAction(stubCtx, 'transcribe', { audio_path: 'relative.wav' }); } catch (e) { terr2 = e; }
+assert(terr2 && /绝对路径/.test(terr2.message), 'transcribe 相对路径报错', terr2 && terr2.message);
+let terr3 = null;
+try { await runAction(stubCtx, 'transcribe', { audio_path: '/nonexistent/audio.wav' }); } catch (e) { terr3 = e; }
+assert(terr3 && /不存在/.test(terr3.message), 'transcribe 文件不存在报错', terr3 && terr3.message);
+
+console.log('ALL OK —— 动作路由 + 供应商管理 + 转写校验断言全部通过（POST status/不存在/GET 405/空body + providers 6 项 + transcribe 3 项）');

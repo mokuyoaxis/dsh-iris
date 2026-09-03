@@ -92,6 +92,9 @@ if (!/name: 'iris_long_ocr'/.test(index)) {
 if (!/serveAction/.test(api) && !/handleAction/.test(api) && !/runAction/.test(index)) {
   failures.push('lib/index.js / api.js 缺少阶段 5 actions 路由（runAction / handleAction）');
 }
+if (!/name: 'iris_transcribe_audio'/.test(index)) {
+  failures.push('lib/index.js 缺少阶段 7.2 工具注册（iris_transcribe_audio）');
+}
 
 // 阶段 3B：OCR 后端必须存在且复用视觉后端链
 let ocr = '';
