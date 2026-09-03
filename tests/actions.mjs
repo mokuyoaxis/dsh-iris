@@ -248,4 +248,43 @@ for (const act of ['tasks_delete', 'tasks_clear', 'tasks_orphans', 'tasks_purge_
   assert(listActions().includes(act), '动作清单含 ' + act);
 }
 
-console.log('ALL OK —— 动作路由 + 供应商管理 + 转写/抽帧/摘要 + 能力有序分配 + 任务清理断言全部通过（POST 4 + providers 6 + transcribe 3 + video_frames 3 + media_summarize 3 + 分配 8 + 清理 6）');
+/* ---------- ⑫ 模型池逐模型管理（阶段 9 P3，离线：CRUD + verified 存储） ---------- */
+config.resetCache();
+// ⑫a 手动添加模型（能力缺省按规则推断）
+await runAction(stubCtx, 'providers_add_model', { id: 'p_old', model_id: 'wan2.7-image' });
+config.resetCache();
+let plP3 = (await runAction(stubCtx, 'providers_list', {})).providers.find((x) => x.id === 'p_old');
+let addedP3 = plP3.models.find((m) => m.id === 'wan2.7-image');
+assert(addedP3 && addedP3.capabilities.includes('image-gen'), '⑫a 手动添加按规则推能力', addedP3);
+assert(addedP3.source === 'manual', '⑫a source=manual', addedP3.source);
+// ⑫b 纠正能力标签
+await runAction(stubCtx, 'providers_set_model_caps', { id: 'p_old', model_id: 'wan2.7-image', capabilities: ['vision'] });
+config.resetCache();
+plP3 = (await runAction(stubCtx, 'providers_list', {})).providers.find((x) => x.id === 'p_old');
+assert(plP3.models.find((m) => m.id === 'wan2.7-image').capabilities.join(',') === 'vision', '⑫b 能力标签可纠正');
+// ⑫c verified 存储（config 级，探针本身走网络不在此测）
+config.setModelVerified('p_old', 'wan2.7-image', 'vision', { ok: true, note: '认出红色测试图' });
+config.resetCache();
+plP3 = (await runAction(stubCtx, 'providers_list', {})).providers.find((x) => x.id === 'p_old');
+const vmP3 = plP3.models.find((m) => m.id === 'wan2.7-image').verified;
+assert(vmP3 && vmP3.vision && vmP3.vision.ok === true && vmP3.vision.at, '⑫c verified 落池并透出（含时间戳）', vmP3);
+// ⑫d 重新发现不丢 verified（setProviderModels 保留同名 verified）
+config.setProviderModels('p_old', [{ id: 'wan2.7-image', capabilities: ['vision'] }]);
+config.resetCache();
+plP3 = (await runAction(stubCtx, 'providers_list', {})).providers.find((x) => x.id === 'p_old');
+assert(plP3.models.find((m) => m.id === 'wan2.7-image').verified?.vision?.ok === true, '⑫d 覆盖池保留同名 verified');
+// ⑫e 移除模型
+await runAction(stubCtx, 'providers_remove_model', { id: 'p_old', model_id: 'wan2.7-image' });
+config.resetCache();
+plP3 = (await runAction(stubCtx, 'providers_list', {})).providers.find((x) => x.id === 'p_old');
+assert(!plP3.models.find((m) => m.id === 'wan2.7-image'), '⑫e 移除模型');
+// ⑫f 空 model_id 拒绝
+let aerr2 = null;
+try { await runAction(stubCtx, 'providers_add_model', { id: 'p_old', model_id: '' }); } catch (e) { aerr2 = e; }
+assert(aerr2 && /model_id/.test(aerr2.message), '⑫f 空 model_id 拒绝');
+// 动作清单含四个模型管理动作
+for (const act of ['providers_add_model', 'providers_remove_model', 'providers_set_model_caps', 'providers_test_model']) {
+  assert(listActions().includes(act), '动作清单含 ' + act);
+}
+
+console.log('ALL OK —— 动作路由 + 供应商管理 + 转写/抽帧/摘要 + 能力有序分配 + 任务清理 + 模型池管理 断言全部通过（POST 4 + providers 6 + transcribe 3 + video_frames 3 + media_summarize 3 + 分配 8 + 清理 6 + 模型 6）');

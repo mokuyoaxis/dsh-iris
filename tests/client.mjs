@@ -83,4 +83,13 @@ assert(src.includes('改分配 → 上方「能力分配'), '卡片缺少只读�
 // 唯一写入口：CapabilityAssigner 用 model_ids 数组
 assert((src.match(/model_ids:/g) || []).length >= 1, 'CapabilityAssigner 应通过 model_ids 数组写分配');
 
-console.log('ALL OK —— 客户端形态 3 座位 + 组件群 + 14 卡片注册表 + 能力分配 UI + 泡泡瘦身 + 分配唯一入口 断言全部通过');
+/* ⑧ 阶段 9 P4：模型池 UI（发现/手动 + verified 标记 + 逐模型测试/移除 + 手动添加） */
+assert(new RegExp('function\\s+ModelPool\\s*\\(').test(src), '缺少 ModelPool 组件');
+assert(src.includes('iris-pm-mrow'), '模型池缺少行渲染');
+assert(src.includes('providers_test_model'), '缺少逐模型实测调用');
+assert(src.includes('providers_remove_model'), '缺少逐模型移除调用');
+assert(src.includes('providers_add_model'), '缺少手动添加模型调用');
+assert(src.includes('providers_discover'), '缺少发现模型调用');
+assert(/verBadge|verified/.test(src), '模型池缺少 verified 状态标记');
+
+console.log('ALL OK —— 客户端形态 3 座位 + 组件群 + 14 卡片注册表 + 能力分配 UI + 泡泡瘦身 + 分配唯一入口 + 模型池 UI 断言全部通过');

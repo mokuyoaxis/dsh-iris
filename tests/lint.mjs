@@ -385,6 +385,28 @@ if (tasksLib) {
   }
 }
 
+// P3 模型池逐模型管理：config CRUD + verified + 动作注册
+{
+  const configSrc = read('lib/config.js');
+  for (const fn of ['addProviderModel', 'removeProviderModel', 'setModelCapabilities', 'setModelVerified']) {
+    if (!configSrc.includes('export function ' + fn)) failures.push('lib/config.js 缺少 ' + fn);
+  }
+  if (!/entry\.verified\[capability\]/.test(configSrc)) {
+    failures.push('lib/config.js setModelVerified 必须按能力存 verified');
+  }
+  const actionsSrc = read('lib/actions.js');
+  for (const act of ['providers_add_model', 'providers_remove_model', 'providers_set_model_caps', 'providers_test_model']) {
+    if (!actionsSrc.includes("register('" + act + "'")) failures.push('lib/actions.js 缺少模型管理动作 ' + act);
+  }
+  if (!/async function probeModel/.test(actionsSrc)) {
+    failures.push('lib/actions.js 缺少 probeModel（按能力逐模型实测探针）');
+  }
+  const clientSrc = read('lib/client.js');
+  if (!/function\s+ModelPool/.test(clientSrc) || !/providers_test_model/.test(clientSrc) || !/providers_add_model/.test(clientSrc)) {
+    failures.push('lib/client.js 模型池 UI 缺 ModelPool/逐模型测试/手动添加');
+  }
+}
+
 /* ---------- 汇总 ---------- */
 if (failures.length) {
   console.error(`lint 失败（${failures.length} 项）：`);

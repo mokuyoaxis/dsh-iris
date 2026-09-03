@@ -605,3 +605,35 @@
 - `tests/adapters-timeout.mjs` ⑦：listModels 本地服务器解析+去重
 - lint 守卫：listModels 存在、providers_discover 注册、扩规则覆盖真实族、发现按钮存在
 - 全量 20 组测试通过
+
+### 模型池成熟化 P3+P4：分类权威（verified + 逐模型实测 + 手动管理）
+
+> 学 vision-router 的核心——**名字规则只初筛，实测才是权威**；同时补上用户要的
+> "自定义模型名 + 测试单个模型"（此前动作层有、UI 缺，且只有 vision 能测）。
+
+#### P3 数据 + 动作（`lib/config.js` / `lib/actions.js` / `lib/models.js`）
+
+- config：模型条目新增 `verified`（按能力存 `{ok, at, note}`）与 `source`（manual/auto）；
+  `setProviderModels` 覆盖池时**保留同名模型的 verified**（重新发现不丢实测结果）；
+  新增 `addProviderModel` / `removeProviderModel` / `setModelCapabilities` / `setModelVerified`。
+- models：`providerModels` 透传 verified/source 到池条目。
+- actions：`providers_add_model`（能力缺省按规则推断）/ `providers_remove_model` /
+  `providers_set_model_caps`（纠正误判）/ `providers_test_model`（逐能力实测存 verified）；
+  `probeModel` 按能力探针——vision 红图、tts "你好"合成、image 最小生成轮询到终态、
+  video 仅提交受理（渲染太慢太贵）；`providers_list` 透出 verified/source。
+- **成本纪律**：探针一律用户逐模型手动触发，发现时绝不自动跑（自动跑=偷偷花钱）。
+
+#### P4 模型池 UI（`lib/client.js`）
+
+- `ModelPool` 组件替换旧只读 chips：每模型一行 `id · 能力verified标记(图✓/音?/…) · [测] [✕]`，
+  `manual` 来源带标签；底部"手动添加模型名"输入 + `+ 添加`；卡片操作区保留"发现模型"。
+- verified 徽章：`✓` 实测通过（绿）/ `✗` 未通过（红）/ `?` 未测（灰），title 显示实测详情。
+- 逐模型"测"按钮串行测该模型所有已声明能力，结果落 verified 并刷新。
+
+#### 测试
+
+- `tests/actions.mjs` ⑫ 六项：手动添加按规则推能力+source=manual、纠正能力、verified 落池透出、
+  覆盖池保留同名 verified、移除、空 model_id 拒绝 + 四动作注册
+- `tests/client.mjs` ⑧：ModelPool/逐模型测试/移除/手动添加/发现/verified 标记结构断言
+- lint 守卫：config 四函数、probeModel、四动作注册、ModelPool UI 要素
+- 全量 20 组测试通过
