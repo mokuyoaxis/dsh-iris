@@ -76,4 +76,11 @@ for (const act of ['tasks_clear', 'tasks_orphans', 'tasks_purge_orphans']) {
 assert(src.includes('window.confirm'), '破坏性清理缺少二次确认');
 assert(new RegExp('function\\s+taskRowMini\\s*\\(').test(src), '缺少紧凑任务行 taskRowMini');
 
-console.log('ALL OK —— 客户端形态 3 座位 + 组件群 + 14 卡片注册表 + 能力分配 UI + 泡泡瘦身（标签/历史/选择器/清理）断言全部通过');
+/* ⑦ P1：分配唯一入口——ActionCard 不再写 assignments（消除互相覆盖） */
+assert(!/capability:\s*capability,\s*model_id:/.test(src), 'ActionCard 仍在写单值 model_id 分配（应移除，唯一入口是 CapabilityAssigner）');
+assert(!/function\s+assignModel/.test(src), '残留 assignModel（旧下拉写入口）');
+assert(src.includes('改分配 → 上方「能力分配'), '卡片缺少只读模型提示（引导去唯一入口）');
+// 唯一写入口：CapabilityAssigner 用 model_ids 数组
+assert((src.match(/model_ids:/g) || []).length >= 1, 'CapabilityAssigner 应通过 model_ids 数组写分配');
+
+console.log('ALL OK —— 客户端形态 3 座位 + 组件群 + 14 卡片注册表 + 能力分配 UI + 泡泡瘦身 + 分配唯一入口 断言全部通过');

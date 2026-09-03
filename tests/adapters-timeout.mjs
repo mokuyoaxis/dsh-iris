@@ -79,5 +79,15 @@ fs.rmSync(outPath, { force: true });
 /* ⑥ 档位常量存在（盯守/提交/下载分层） */
 assert(adapters.T_POLL === 15000 && adapters.T_SUBMIT === 30000 && adapters.T_DOWNLOAD === 120000, '⑥ 超时档位常量导出');
 
+/* ⑦ listModels（P2 发现）：OpenAI 兼容 {data:[{id}]} 解析 + 去重 */
+const modelsSrv = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ object: 'list', data: [{ id: 'wan2.7-image' }, { id: 'qwen3-tts-flash' }, { id: 'wan2.7-image' }, { id: 'text-embedding-v3' }] }));
+});
+await new Promise((r) => modelsSrv.listen(0, '127.0.0.1', r));
+const mids = await adapters.listModels({ key: 'k', baseUrl: `http://127.0.0.1:${modelsSrv.address().port}/v1` });
+assert(JSON.stringify(mids) === JSON.stringify(['wan2.7-image', 'qwen3-tts-flash', 'text-embedding-v3']), '⑦ listModels 解析+去重', mids);
+modelsSrv.close();
+
 hole.close(); trickle.close(); good.close();
-console.log('ALL OK —— 网络超时（生成/视觉/取消传播）+ 原子落盘 6 组断言全部通过');
+console.log('ALL OK —— 网络超时（生成/视觉/取消传播）+ 原子落盘 + listModels 7 组断言全部通过');

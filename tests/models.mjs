@@ -27,6 +27,23 @@ assert(models.capabilitiesOfModel('dall-e-3').includes(CAPABILITIES.IMAGE), 'dal
 assert(models.capabilitiesOfModel('gemini-2.0-flash').includes(CAPABILITIES.VISION), 'gemini → vision');
 assert(models.capabilitiesOfModel('unknown-model').length === 0, '未知模型 → 空');
 
+/* ---------- ①b 真实命名族（P2 扩规则，来自 GET /models 实测样本）---------- */
+assert(models.capabilitiesOfModel('wan2.7-image').includes(CAPABILITIES.IMAGE), 'wan2.7-image → image');
+assert(models.capabilitiesOfModel('wan2.7-image-pro').includes(CAPABILITIES.IMAGE), 'wan2.7-image-pro → image');
+assert(models.capabilitiesOfModel('wan2.2-t2i-flash').includes(CAPABILITIES.IMAGE), 'wan2.2-t2i → image（旧命名仍覆盖）');
+assert(models.capabilitiesOfModel('wan2.5-i2v-preview').includes(CAPABILITIES.VIDEO), 'wan2.5-i2v → video');
+assert(models.capabilitiesOfModel('wan2.2-t2v-flash').includes(CAPABILITIES.VIDEO), 'wan2.2-t2v → video');
+assert(!models.capabilitiesOfModel('wan2.7-image').includes(CAPABILITIES.VIDEO), 'wan2.7-image 不误标 video');
+assert(models.capabilitiesOfModel('qwen-image-3.0-pro').includes(CAPABILITIES.IMAGE), 'qwen-image → image');
+assert(models.capabilitiesOfModel('qwen-image-edit-max').includes(CAPABILITIES.IMAGE), 'qwen-image-edit → image');
+assert(models.capabilitiesOfModel('z-image-turbo').includes(CAPABILITIES.IMAGE), 'z-image → image');
+assert(models.capabilitiesOfModel('qwen3-tts-flash').includes(CAPABILITIES.TTS), 'qwen3-tts → tts');
+assert(models.capabilitiesOfModel('qwen-tts-latest').includes(CAPABILITIES.TTS), 'qwen-tts → tts（旧命名）');
+assert(models.capabilitiesOfModel('cosyvoice-v2').includes(CAPABILITIES.TTS), 'cosyvoice → tts');
+assert(models.capabilitiesOfModel('qwen-vl-max').includes(CAPABILITIES.VISION), 'qwen-vl-max → vision');
+assert(models.capabilitiesOfModel('qwen3-vl-235b-a22b-thinking').includes(CAPABILITIES.VISION), 'qwen3-vl → vision');
+assert(models.capabilitiesOfModel('paraformer-v2').length === 0, 'paraformer（ASR）不属四能力 → 空');
+
 /* ---------- ② providerModels ---------- */
 // 显式 models 数组
 const pExplicit = { id: 'p1', models: [{ id: 'wan2.2-t2i-flash', capabilities: ['image-gen'] }, 'qwen-vl-plus'] };

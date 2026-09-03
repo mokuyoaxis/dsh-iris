@@ -315,8 +315,8 @@ if (tasksLib) {
     failures.push('lib/actions.js assignments_get 必须返回归一化 order');
   }
   const modelsSrc = read('lib/models.js');
-  if (!/qwen3\?-vl/.test(modelsSrc) || !/qwen3-vl-235b-a22b-thinking/.test(modelsSrc)) {
-    failures.push('lib/models.js 必须收录 qwen3-vl 强视觉模型（VERIFY 2026-09-03 实证）');
+  if (!/qwen\\d\?-vl/.test(modelsSrc) || !/qwen3-vl-235b-a22b-thinking/.test(modelsSrc)) {
+    failures.push('lib/models.js 必须含 qwen?-vl 规则且收录 qwen3-vl 强视觉模型（VERIFY 2026-09-03 实证）');
   }
 }
 
@@ -362,6 +362,26 @@ if (tasksLib) {
   }
   if (!/function\s+BubblePanel/.test(clientSrc) || !/iris-bubble-cards/.test(clientSrc)) {
     failures.push('lib/client.js 泡泡必须是标签页 BubblePanel + 常用卡片 localStorage');
+  }
+}
+
+// P2 模型发现：listModels 适配器 + providers_discover 动作 + 扩规则 + UI 按钮
+{
+  const adaptersSrc = read('lib/adapters.js');
+  if (!/export async function listModels/.test(adaptersSrc) || !/\/models`/.test(adaptersSrc)) {
+    failures.push('lib/adapters.js 必须有 listModels（GET /models 模型发现）');
+  }
+  const actionsSrc = read('lib/actions.js');
+  if (!/register\('providers_discover'/.test(actionsSrc)) {
+    failures.push('lib/actions.js 缺少 providers_discover 动作');
+  }
+  const modelsSrc = read('lib/models.js');
+  if (!/qwen-image|cosyvoice|z-image/.test(modelsSrc)) {
+    failures.push('lib/models.js MODEL_CAP_RULES 未覆盖真实命名族（qwen-image/cosyvoice/z-image…）');
+  }
+  const clientSrc = read('lib/client.js');
+  if (!/providers_discover/.test(clientSrc) || !/发现模型/.test(clientSrc)) {
+    failures.push('lib/client.js ProviderManager 缺少「发现模型」按钮');
   }
 }
 

@@ -567,3 +567,41 @@
 - `tests/api.mjs` recentTotal 计数；`tests/client.mjs` ⑥ 注册表/标签/历史分组/勾选器/localStorage key/二次确认
 - lint 守卫：MAX_TASKS 500、remove/prune/all 导出、prune 跳过 running、四清理动作、recentTotal、CARD_DEFS 注册表、BubblePanel + localStorage
 - 全量 20 组测试通过
+
+### 模型池成熟化 P1+P2：分配唯一入口 + 真实模型发现
+
+> 用户三连问：① 为什么两套配能力的 UI？② 百炼池远不止写死的 6 个？③ 用户自定义模型名 + 逐模型测试在哪？
+> 调研 dsh-vision-router（见 RESEARCH §1）定调：**名字规则只初筛，实测才是权威**；探针证实 `GET /models`
+> 免费可用（真实账号返回 249 模型）。据此分四期，本轮 P1+P2。
+
+#### P1 修 ①（分配唯一入口，消除互相覆盖）
+
+- 旧状：`CapabilityAssigner`（有序）与每张带 capability 的 ActionCard「模型分配」下拉（单值）**同时写
+  `assignments[cap]`**——`vision` 被 5 张卡 + Assigner 共 6 个入口写，互相覆盖；且卡片 `loadModels`
+  会把 `vals.model` 自动填成池首项，**GUI 每次运行显式传 model 绕过分配**。
+- `lib/client.js`：删除 ActionCard 的模型下拉与 `assignModel`；改只读提示「模型：X · 改分配→能力分配」；
+  `loadModels` 不再自动填 `vals.model`（留空=用分配解析结果）。`assignments[cap]` 唯一写入口 = CapabilityAssigner。
+- `tests/client.mjs` ⑦ 锁死：不得再有 `model_id:` 单值写、不得残留 `assignModel`、只读提示存在。
+
+#### P2 发现（替换写死池，优雅降级）
+
+- `lib/adapters.js`：新增 `listModels({key,baseUrl,timeoutMs})` → `GET {baseUrl}/models`（OpenAI 标准，
+  DashScope compatible-mode 实测支持），解析 `{data:[{id}]}` 去重；带超时档位。
+- `lib/models.js`：`MODEL_CAP_RULES` 按真实命名族扩写——`wan*-t2v/s2v/i2v/video`→video、
+  `wan*-t2i/wan*image/qwen-image/z-image`→image、`qwen?-vl`→vision、`qwen?-tts/cosyvoice`→tts；
+  视频规则先于图像避免 `wan*video` 被图像吞。写死 `DASHSCOPE_KNOWN` 降为**未发现时的兜底**。
+- `lib/actions.js`：新增 `providers_discover {id}`——拉全量→按规则过滤媒体模型→写入显式池（带能力标注）；
+  拉不到则保留现有池并报人话（降级）。
+- `lib/client.js`：ProviderManager 卡片加「发现模型」按钮。
+
+#### 端到端实证（真实百炼账号）
+
+- `GET /models` → 249 模型；`capabilitiesOfModel` 过滤 → **47 媒体模型**（image-gen 19 / tts 17 / vision 11），
+  对比旧写死池 6 个。video 该账号未列（数据现实，兜底池 + 手动添加可补）。
+
+#### 测试
+
+- `tests/models.mjs` ①b：15 条真实命名族断言（wan2.7-image/qwen-image/qwen3-tts/cosyvoice/qwen-vl-max/paraformer…）
+- `tests/adapters-timeout.mjs` ⑦：listModels 本地服务器解析+去重
+- lint 守卫：listModels 存在、providers_discover 注册、扩规则覆盖真实族、发现按钮存在
+- 全量 20 组测试通过
