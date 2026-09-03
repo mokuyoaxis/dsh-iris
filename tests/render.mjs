@@ -45,6 +45,15 @@ const get = (p) => new Promise((resolve) => {
 
 let r = await get('/iris/render/abc123/index.html');
 assert(r.status === 200 && r.body === '<h1>hello render</h1>', '渲染文件 200 + 内容', r.status);
+// .html 必须 text/html（Chromium 在 nosniff 下拒绝 octet-stream → ERR_ABORTED）
+const ct = await new Promise((resolve) => {
+  const req = http.request(`http://127.0.0.1:${port}/iris/render/abc123/index.html`, (res) => {
+    res.resume();
+    res.on('end', () => resolve(res.headers['content-type'] || ''));
+  });
+  req.end();
+});
+assert(ct && ct.startsWith('text/html'), '渲染 HTML 的 Content-Type: text/html', ct);
 r = await get('/iris/render/abc123/../index.html');
 assert(r.status === 404, '路径穿越 404', r.status);
 r = await get('/iris/render/../abc123/index.html');
