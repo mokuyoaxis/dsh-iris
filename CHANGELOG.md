@@ -665,3 +665,40 @@
   端口敏感、guarded 包装器
 - lint 守卫更新：不再要求 DSH_WEB_BASE/Host 白名单，改校验"非 POST 放行 + POST 挡 cross-site"
 - 全量 20 组测试通过
+
+### 阶段 10（L1+L2）：文件选择器——让用户"看见并选文件"，不手填路径
+
+> 用户核心痛点：卡片里的路径文本框对普通用户不可用。调研坐实（QUESTIONS D10）：客户端
+> `ctx.sessions.list.getSnapshot().current` 拿当前会话 id（8 个已装插件实测在用），宿主
+> `sessionQuery.readSession` 枚举会话附件（iris 现有 sessionAttachmentRef 已在用）。
+
+#### L1 附件选择器（零新攻击面）
+
+- `lib/actions.js`：`attachments_list {session_id}`——readSession 深度遍历收集会话 image 附件
+  （`collectImageAttachments`）+ iris 自有产物兜底（无会话也能列）；
+  `attachment_export {session_id, attachment_id}`——把附件导出为宿主可读路径：iris 产物直接返回
+  outputs 路径，会话附件 readImage 读字节存 uploads/（按 attachmentId 哈希缓存，不重复落盘）。
+
+#### L2 原生选择器上传（唯一新面，用户已确认接受）
+
+- `lib/api.js`：`POST /iris/api/upload?name=`——读原始字节（独立 64MB 上限，区别于 actions 的 1MB
+  JSON 上限）、文件名安全化（去路径分隔/穿越）、存 `uploads/`（0600）、返回绝对路径。
+  受同源 CSRF 守卫保护（guarded 已覆盖 /iris/api 前缀）。
+- 关键约束落地：浏览器原生选择器只给文件名+字节、藏绝对路径，故走"上传存副本"而非"传路径"。
+
+#### 统一 FileField 组件（`lib/client.js`）
+
+- 替换卡片里所有路径文本框（10 处 `type:'file'`）：三来源一控件——💻本地文件（原生选择器→上传）、
+  📎附件（attachments_list 下拉→选中即 attachment_export→路径）、⌨️路径（高级手输兜底）；
+  统一产出一个宿主路径，**工具/动作侧零改动**。
+- apply() 读 `ctx.sessions.list`（getSnapshot + subscribe）跟踪当前会话 id，供 L1 使用；
+  拿不到会话时 L1 优雅退化为只列 iris 产物。
+
+#### 测试
+
+- `tests/actions.mjs` ⑬ 四项：attachments_list 含 iris 产物、attachment_export 返回真实路径、
+  未知附件报错、空 id 拒绝
+- `tests/api.mjs` 8 三项：upload 存盘返回真实路径 + 内容一致 + 文件名保留、空上传 400
+- `tests/client.mjs` ⑨：FileField/上传调用/附件枚举/导出/会话读取/三来源按钮/≥8 处 type:file
+- lint 守卫：attachments_list/attachment_export/handleUpload+MAX_UPLOAD_BYTES/FileField/ctx.sessions
+- 全量 20 组测试通过

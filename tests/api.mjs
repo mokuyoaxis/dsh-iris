@@ -193,5 +193,22 @@ config.removeProvider('sse_test');
 sse2.close();
 closeAllSse();
 
+// 8. 文件选择器 L2：POST /iris/api/upload 存 uploads/ 返回路径（阶段 10，服务器仍开）
+const upl = await new Promise((resolve) => {
+  const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/iris/api/upload?name=cat%20photo.png' }, (res) => {
+    let d = ''; res.on('data', (c) => (d += c)); res.on('end', () => resolve({ status: res.statusCode, json: JSON.parse(d || '{}') }));
+  });
+  req.on('error', () => resolve({ status: 0, json: {} }));
+  req.end(Buffer.from('HELLO-IRIS-UPLOAD'));
+});
+assert(upl.status === 200 && upl.json.ok && upl.json.path && fs.existsSync(upl.json.path), 'upload 存盘返回真实路径', upl.json);
+assert(fs.readFileSync(upl.json.path).toString() === 'HELLO-IRIS-UPLOAD' && /photo/.test(upl.json.path), 'upload 内容一致 + 文件名保留', upl.json.path);
+const uplEmpty = await new Promise((resolve) => {
+  const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/iris/api/upload?name=x.png' }, (res) => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+  req.on('error', () => resolve(0)); req.end();
+});
+assert(uplEmpty === 400, '空上传 400', uplEmpty);
+if (upl.json.path) fs.rmSync(upl.json.path, { force: true });
+
 srv.close();
-console.log('ALL OK —— /iris/api/state 数据层 5 项断言 + /iris/api/task/:id 详情端点 6 项断言 + SSE 7 项断言全部通过');
+console.log('ALL OK —— /iris/api/state 数据层 5 项 + /iris/api/task/:id 6 项 + SSE 7 项 + 上传路由 3 项断言全部通过');

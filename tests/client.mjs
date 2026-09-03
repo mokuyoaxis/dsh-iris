@@ -92,4 +92,13 @@ assert(src.includes('providers_add_model'), '缺少手动添加模型调用');
 assert(src.includes('providers_discover'), '缺少发现模型调用');
 assert(/verBadge|verified/.test(src), '模型池缺少 verified 状态标记');
 
-console.log('ALL OK —— 客户端形态 3 座位 + 组件群 + 14 卡片注册表 + 能力分配 UI + 泡泡瘦身 + 分配唯一入口 + 模型池 UI 断言全部通过');
+/* ⑨ 阶段 10：文件选择器 FileField（看见并选文件，不手填路径） */
+assert(new RegExp('function\\s+FileField\\s*\\(').test(src), '缺少 FileField 组件');
+assert(src.includes('/iris/api/upload'), 'FileField 缺少上传端点调用');
+assert(src.includes('attachments_list'), 'FileField 缺少附件枚举调用');
+assert(src.includes('attachment_export'), 'FileField 缺少附件导出调用');
+assert(src.includes('ctx.sessions') || src.includes('sessions.list'), '客户端缺少当前会话 id 读取（ctx.sessions）');
+assert(src.includes("'💻 本地文件'") && src.includes("'📎 附件'") && src.includes("'⌨️ 路径'"), 'FileField 缺少三来源按钮');
+assert((src.match(/type: 'file'/g) || []).length >= 8, '卡片路径字段未转 FileField（应 ≥8 处 type:file）');
+
+console.log('ALL OK —— 客户端形态 3 座位 + 组件群 + 14 卡片注册表 + 能力分配 UI + 泡泡瘦身 + 分配唯一入口 + 模型池 UI + 文件选择器 断言全部通过');

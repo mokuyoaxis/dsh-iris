@@ -287,4 +287,26 @@ for (const act of ['providers_add_model', 'providers_remove_model', 'providers_s
   assert(listActions().includes(act), '动作清单含 ' + act);
 }
 
-console.log('ALL OK —— 动作路由 + 供应商管理 + 转写/抽帧/摘要 + 能力有序分配 + 任务清理 + 模型池管理 断言全部通过（POST 4 + providers 6 + transcribe 3 + video_frames 3 + media_summarize 3 + 分配 8 + 清理 6 + 模型 6）');
+/* ---------- ⑬ 文件选择器 L1（附件枚举 + 导出，阶段 10） ---------- */
+// 造一条 iris 产物任务（attachments 指向 outputs 里真实文件）
+const outDir2 = tasksMod.outputsDir();
+fs.mkdirSync(outDir2, { recursive: true });
+fs.writeFileSync(path.join(outDir2, 'gen.png'), 'PNGDATA');
+const tAtt = tasksMod.create({ cap: 'image', providerId: 'p1', model: 'm', prompt: 'gen' });
+tasksMod.update(tAtt.id, { status: 'succeeded', files: ['gen.png'], attachments: [{ attachmentId: 'sha256:abc123', file: 'gen.png', mediaType: 'image/png' }] });
+// ⑬a attachments_list（无 session → 至少含 iris 产物）
+const al = await runAction(stubCtx, 'attachments_list', {});
+assert(al.ok && al.attachments.some((a) => a.attachmentId === 'sha256:abc123' && a.source === 'iris'), '⑬a attachments_list 含 iris 产物', al.attachments);
+// ⑬b attachment_export（iris 产物 → 直接返回其 outputs 路径）
+const ex = await runAction(stubCtx, 'attachment_export', { attachment_id: 'sha256:abc123' });
+assert(ex.ok && ex.path && fs.existsSync(ex.path) && /gen\.png$/.test(ex.path), '⑬b attachment_export 返回真实路径', ex);
+// ⑬c 未知附件（无 session/无上下文）→ 报错
+let aer = null;
+try { await runAction(stubCtx, 'attachment_export', { attachment_id: 'sha256:zzz' }); } catch (e) { aer = e; }
+assert(aer && /不可导出|不在本会话/.test(aer.message), '⑬c 未知附件导出报错', aer && aer.message);
+// ⑬d 空 attachment_id 拒绝
+let aer2 = null;
+try { await runAction(stubCtx, 'attachment_export', {}); } catch (e) { aer2 = e; }
+assert(aer2 && /attachment_id/.test(aer2.message), '⑬d 空 attachment_id 拒绝');
+
+console.log('ALL OK —— 动作路由 + 供应商管理 + 转写/抽帧/摘要 + 能力有序分配 + 任务清理 + 模型池管理 + 文件选择器L1 断言全部通过（POST 4 + providers 6 + transcribe 3 + video_frames 3 + media_summarize 3 + 分配 8 + 清理 6 + 模型 6 + 附件 4）');

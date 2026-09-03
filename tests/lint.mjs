@@ -407,6 +407,22 @@ if (tasksLib) {
   }
 }
 
+// 阶段 10：文件选择器（L1 附件枚举/导出 + L2 上传 + FileField）
+{
+  const actionsSrc = read('lib/actions.js');
+  if (!/register\('attachments_list'/.test(actionsSrc) || !/register\('attachment_export'/.test(actionsSrc)) {
+    failures.push('lib/actions.js 缺少文件选择器动作 attachments_list/attachment_export');
+  }
+  const apiSrc = read('lib/api.js');
+  if (!/\/iris\/api\/upload/.test(apiSrc) || !/function handleUpload/.test(apiSrc) || !/MAX_UPLOAD_BYTES/.test(apiSrc)) {
+    failures.push('lib/api.js 缺少上传路由 handleUpload（独立大 body 上限）');
+  }
+  const clientSrc = read('lib/client.js');
+  if (!/function\s+FileField/.test(clientSrc) || !/\/iris\/api\/upload/.test(clientSrc) || !/ctx\.sessions|sessions\.list/.test(clientSrc)) {
+    failures.push('lib/client.js 缺 FileField/上传调用/当前会话读取');
+  }
+}
+
 /* ---------- 汇总 ---------- */
 if (failures.length) {
   console.error(`lint 失败（${failures.length} 项）：`);
