@@ -241,3 +241,24 @@
 - 全量 16 组测试通过
 
 > 注：阶段 6 条目 4（per-capability 分配 UI）未做（◐）；当前多模型通过 `pickAllFor` failover 顺序支持。
+
+### 阶段 7.2：音频转写（qwen-audio-turbo）
+
+#### 新增
+
+- **`lib/adapters.js`**：`submitTranscription`（异步任务提交，复用 `uploadTempFile` 上传到
+  oss:// 临时存储）+ `pollTranscriptionTask`（从 results 提取 `transcription_text`/`text`）
+- **动作 `transcribe`**（`lib/actions.js`）：audio_path 校验 → 上传 → 提交 → 复用盯守框架
+- **工具 `iris_transcribe_audio`**（`lib/index.js`）：转写音频 → 返回全文
+- **GUI 卡片「🎙️ 音频转写」**（`lib/client.js`）
+
+#### 要点
+
+- **零新依赖**：复用 TTS 供应商栈（百炼 key）
+- 复用现有任务盯守框架（异步提交 → 轮询 → 落 text 字段）
+
+#### 测试
+
+- `tests/actions.mjs` 增 transcribe 3 项入参校验（缺路径/相对路径/文件不存在）
+- `tests/mount.mjs` 增工具断言；lint 增阶段 7.2 守卫
+- 全量 16 组测试通过
