@@ -262,3 +262,41 @@
 - `tests/actions.mjs` 增 transcribe 3 项入参校验（缺路径/相对路径/文件不存在）
 - `tests/mount.mjs` 增工具断言；lint 增阶段 7.2 守卫
 - 全量 16 组测试通过
+
+### 阶段 7.1：视频抽帧（ffmpeg 可选系统条件）
+
+> 环境更新：本机已装静态 ffmpeg 7.0.2（johnvansickle），RESEARCH §9.1「ffmpeg 未安装」
+> 结论过期；抽帧路径可实机验证。
+
+#### 新增
+
+- **`lib/media-probe.js`**：视频分析后端（零 npm 依赖，纯系统 ffmpeg/ffprobe）
+  - `ffmpegAvailable`：`which ffmpeg/ffprobe` 启动探测（缺失时抽帧工具报人话错误，其余功能不受影响）
+  - `probeVideo`：ffprobe 读时长/尺寸/编码（`-show_entries format:stream` + JSON 解析）
+  - `normalizeFramesOptions`：参数校验 + clamp（maxFrames 1–20、targetWidth 16–4096、
+    quality 1–100、format 仅 jpeg/png）
+  - `scaledDimensions`：目标宽 = min(targetWidth, 源宽)，高按比例取偶数（不放大）
+  - `extractFrames`：fps 滤镜时间均匀采样（fps = n/duration 分数形式，短视频也能取整 N 帧）、
+    异步 spawn（不阻塞宿主事件循环）+ AbortSignal 取消、JPEG -q:v 质量、PNG 无损、
+    返回帧 buffer + atSec 时间戳（i*duration/n）+ 实际缩放尺寸，临时目录用完即删
+- **工具 `iris_video_frames`**（`lib/index.js`）：本地视频 → N 帧 → 每帧转存 DSH image
+  attachment 并返回 image blocks（对话流内直接可见，可 relook/裁剪接力）
+- **动作 `video_frames`**（`lib/actions.js`）：GUI 直连抽帧，返回帧摘要 + 首帧 base64 预览
+- **GUI 卡片「🎞️ 视频抽帧」**（`lib/client.js`）
+
+#### 要点
+
+- **零 npm 依赖**：ffmpeg/ffprobe 是可选系统可执行文件，不是 peerDependency；缺失时
+  工具/动作在执行时报清晰人话错误，不影响 iris 其余工具
+- 帧数/分辨率/字节数三重限制对齐 RESEARCH §9.2（20 帧上限、4096 宽上限、JPEG 质量 85
+  默认 → 单帧几十 KB）
+
+#### 测试
+
+- 新增 `tests/media-probe.mjs`：9 组断言（参数校验/clamp、缩放偶数取整、probeVideo、
+  帧数 = 请求数、JPEG/PNG 魔数、atSec 递增、短视频整帧、取消信号、文件不存在/非视频
+  错误路径、临时目录清理）；无 ffmpeg 环境自动降级为错误路径断言
+- `tests/mount.mjs` 增 `iris_video_frames` 工具断言（13 工具）
+- `tests/client.mjs` 增 `video_frames` 卡片断言（13 卡片）
+- `tests/actions.mjs` 增 video_frames 3 项入参校验 + 动作清单断言
+- lint 增阶段 7.1 守卫（media-probe 导出契约 + MAX_FRAMES=20 + 工具/动作注册）

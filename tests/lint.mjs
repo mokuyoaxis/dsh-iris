@@ -95,6 +95,34 @@ if (!/serveAction/.test(api) && !/handleAction/.test(api) && !/runAction/.test(i
 if (!/name: 'iris_transcribe_audio'/.test(index)) {
   failures.push('lib/index.js 缺少阶段 7.2 工具注册（iris_transcribe_audio）');
 }
+if (!/name: 'iris_video_frames'/.test(index)) {
+  failures.push('lib/index.js 缺少阶段 7.1 工具注册（iris_video_frames）');
+}
+
+// 阶段 7.1：视频抽帧后端必须存在且可离线测试
+let mediaProbe = '';
+try {
+  mediaProbe = read('lib/media-probe.js');
+} catch (_) {
+  failures.push('缺少 lib/media-probe.js（阶段 7.1 视频抽帧后端）');
+}
+if (mediaProbe) {
+  if (!/export function ffmpegAvailable/.test(mediaProbe) || !/export function probeVideo/.test(mediaProbe) || !/export async function extractFrames/.test(mediaProbe)) {
+    failures.push('lib/media-probe.js 必须导出 ffmpegAvailable / probeVideo / extractFrames');
+  }
+  if (!/MAX_FRAMES\s*=\s*20/.test(mediaProbe)) {
+    failures.push('lib/media-probe.js 必须有帧数上限（MAX_FRAMES=20，对齐 RESEARCH §9.2）');
+  }
+  if (!/normalizeFramesOptions/.test(mediaProbe)) {
+    failures.push('lib/media-probe.js 必须有参数校验/clamp（normalizeFramesOptions）');
+  }
+  if (!/scaledDimensions/.test(mediaProbe)) {
+    failures.push('lib/media-probe.js 必须有缩放尺寸计算（scaledDimensions）');
+  }
+}
+if (!/register\('video_frames'/.test(read('lib/actions.js'))) {
+  failures.push('lib/actions.js 缺少阶段 7.1 动作（video_frames）');
+}
 
 // 阶段 3B：OCR 后端必须存在且复用视觉后端链
 let ocr = '';
@@ -167,4 +195,4 @@ if (failures.length) {
   for (const f of failures) console.error(' - ' + f.replace(/\n/g, '\n   '));
   process.exit(1);
 }
-console.log(`lint OK —— ${files.length} 个文件语法通过 + 结构契约 8 项守卫通过`);
+console.log(`lint OK —— ${files.length} 个文件语法通过 + 结构契约守卫通过`);

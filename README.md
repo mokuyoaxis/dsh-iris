@@ -28,6 +28,13 @@
 | `iris_task_status` | 查询任务状态/进度/错误/产物路径（单条或最近列表） |
 | `iris_look_at_image` | 👁 看图问答：本地图片 → 存附件 → qwen-vl 流式回答（自持栈为主，全局视觉模型降级为辅） |
 | `iris_relook_attachment` | 对本会话已出现过的图片（上传/工具产物/iris 生成）换问题重看像素 |
+| `iris_crop` | ✂️ 裁剪图片区域，返回 PNG 附件 |
+| `iris_pixel_diff` | 📷 两图像素差异分析（diff ratio + 8×8 最差区域 + 热力图附件） |
+| `iris_locate` | 📍 模型驱动定位目标，返回原像素 bbox（与 iris_crop 无缝接力） |
+| `iris_html_screenshot` | 🖼️ 渲染 HTML 字符串为截图（依赖 dsh-builtin-browser 插件） |
+| `iris_long_ocr` | 📄 长截图分块 OCR（视觉模型，默认 1200px 块 + 120px 重叠） |
+| `iris_transcribe_audio` | 🎙️ 音频转写（qwen-audio-turbo，复用供应商栈） |
+| `iris_video_frames` | 🎞️ 视频抽帧（ffmpeg 可选系统条件：时间均匀采样 N 帧，缩放后返回 DSH image attachments） |
 
 产物统一落在 `$DSH_HOME/iris/v1/outputs/`；图片额外转存为 DSH 持久 attachment 进入对话。
 
@@ -59,7 +66,16 @@ GET /iris/media/:taskId/:token/:name
 - [x] **M2** 任务盯守框架（后台化/重启恢复/历史元数据）+ 视频生成
 - [x] **M3** 眼睛：`iris_look_at_image` / `iris_relook_attachment`（visionStream 移植，qwen-vl 走自持栈；与 vision-mix 分工——它是隐式模型路由，我们是显式工具）
 - [x] **M4** 🫧 泡泡工作台（settings.section 常驻工作台页 + conversation.input.dock 任务进度条 + shell.overlay 主界面悬浮泡泡——可拖动、未配置 API 时暗淡、配置就绪发亮、运行中带数字角标、点击展开工作台浮层；host 侧 /iris/api/state JSON 数据通道，Key 只出 hint）
-- Backlog：CosyVoice WebSocket 流式 TTS、批量队列并发、视频多帧参考/音效（承自 ai-paint 三期 Roadmap）
+- [x] **阶段 0** M4 收口与可靠性（泡泡交互收口/共享状态源/媒体 Range/持久化加固/真实 lint）
+- [x] **阶段 1** Provider / Capability 基座（VisionBackend 抽象、严格能力选择、结构化错误分类）
+- [x] **阶段 2** 确定性像素工具（iris_crop / iris_pixel_diff，基于 sharp）
+- [x] **阶段 3** 模型驱动视觉工具（iris_locate / iris_html_screenshot / iris_long_ocr）
+- [x] **阶段 4** 任务详情抽屉（/iris/api/task/:id + TaskDetailDrawer 组件）
+- [x] **阶段 5** 前端操作面板（GUI 直连：11 工具可折叠操作卡片组 + POST /iris/api/actions/:name）
+- [x] **阶段 6** 供应商模型池与能力调度（多 key 鸡尾酒：模型发现规则、能力分配、供应商管理 GUI）
+- [x] **阶段 7.2** 音频转写（qwen-audio-turbo，复用供应商栈）
+- [x] **阶段 7.1** 视频抽帧（ffmpeg 可选系统条件，`iris_video_frames` 工具 + GUI 卡片）
+- Backlog：阶段 7.3 多模态上下文摘要、阶段 6 条目 4 能力分配 UI 细化、CosyVoice WebSocket 流式 TTS、批量队列并发
 
 ## License
 

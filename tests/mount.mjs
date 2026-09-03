@@ -71,7 +71,7 @@ const ctx1 = stubCtx({});
 await applyIris(ctx1);
 assert(errs.length === 0, '正常装载不应有错误日志: ' + errs.join(' | '));
 const names = ctx1._registered.map((d) => d.name);
-for (const want of ['iris_draw_image', 'iris_generate_video', 'iris_speak_text', 'iris_transcribe_audio', 'iris_look_at_image', 'iris_relook_attachment', 'iris_task_status', 'iris_crop', 'iris_pixel_diff', 'iris_locate', 'iris_html_screenshot', 'iris_long_ocr']) {
+for (const want of ['iris_draw_image', 'iris_generate_video', 'iris_speak_text', 'iris_transcribe_audio', 'iris_look_at_image', 'iris_relook_attachment', 'iris_task_status', 'iris_crop', 'iris_pixel_diff', 'iris_locate', 'iris_html_screenshot', 'iris_long_ocr', 'iris_video_frames']) {
   assert(names.includes(want), '缺少工具: ' + want + '（实际: ' + names.join(', ') + '）');
 }
 

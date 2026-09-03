@@ -125,4 +125,17 @@ let terr3 = null;
 try { await runAction(stubCtx, 'transcribe', { audio_path: '/nonexistent/audio.wav' }); } catch (e) { terr3 = e; }
 assert(terr3 && /不存在/.test(terr3.message), 'transcribe 文件不存在报错', terr3 && terr3.message);
 
-console.log('ALL OK —— 动作路由 + 供应商管理 + 转写校验断言全部通过（POST status/不存在/GET 405/空body + providers 6 项 + transcribe 3 项）');
+// ⑧ 视频抽帧动作入参校验（阶段 7.1）
+let verr1 = null;
+try { await runAction(stubCtx, 'video_frames', {}); } catch (e) { verr1 = e; }
+assert(verr1 && /video_path/.test(verr1.message), 'video_frames 缺 video_path 报错', verr1 && verr1.message);
+let verr2 = null;
+try { await runAction(stubCtx, 'video_frames', { video_path: 'relative.mp4' }); } catch (e) { verr2 = e; }
+assert(verr2 && /绝对路径/.test(verr2.message), 'video_frames 相对路径报错', verr2 && verr2.message);
+let verr3 = null;
+try { await runAction(stubCtx, 'video_frames', { video_path: '/nonexistent/video.mp4' }); } catch (e) { verr3 = e; }
+assert(verr3 && /不存在/.test(verr3.message), 'video_frames 文件不存在报错', verr3 && verr3.message);
+// 动作清单包含 7.1 抽帧动作
+assert(names.includes('video_frames'), '动作清单含 video_frames');
+
+console.log('ALL OK —— 动作路由 + 供应商管理 + 转写/抽帧校验断言全部通过（POST status/不存在/GET 405/空body + providers 6 项 + transcribe 3 项 + video_frames 3 项）');
