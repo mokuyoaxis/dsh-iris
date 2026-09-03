@@ -216,3 +216,28 @@
 - 新增 `tests/models.mjs`（5 组：能力推断/显式 models/旧字段迁移/裸 DashScope/全局池挑选）
 - `tests/vision.mjs` 夹具补 `visionModel`（模型池需要模型名，仅声明能力不够）
 - lint 新增阶段 6 守卫；全量 16 组测试通过
+
+### 阶段 6（条目 3-5）：供应商管理 GUI + 模型池 + 能力测试
+
+#### 新增（host）
+
+- `config.js`：`allProviders` / `removeProvider` / `setProviderModels`；**修复 upsert bug**——
+  `provider.id` 显式 `undefined` 会覆盖生成 id（拆解 id 再合并）
+- `actions.js`：`providers_list`（含模型池 + apiKey hint）/ `providers_upsert`（转发
+  imageModel 等四字段 + models）/ `providers_remove` / `providers_set_models` /
+  `providers_test_vision`（红色测试图实测，复用 `testVisionCapability`）
+
+#### 新增（client）
+
+- **`ProviderManager` 组件**（`lib/client.js`）：供应商列表（名称/启用态/能力/模型池 chips/
+  管理按钮）替换 WorkbenchPanel 只读列表
+  - 「+ 添加供应商」表单（名称/baseUrl/apiKey）
+  - 展开卡片：启停 / 测试视觉 / 删除 / 模型池展示（带能力标签）
+  - `providers_test_vision` 调用后显示实测结果
+
+#### 测试
+
+- `tests/actions.mjs` 增 providers 6 项断言（列出/upsert/模型池覆盖/test_vision 跳过/删除/动作清单）
+- 全量 16 组测试通过
+
+> 注：阶段 6 条目 4（per-capability 分配 UI）未做（◐）；当前多模型通过 `pickAllFor` failover 顺序支持。
