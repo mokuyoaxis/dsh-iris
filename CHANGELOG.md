@@ -155,8 +155,24 @@
 
 #### 注意
 
-> 所有新工具（iris_crop, iris_pixel_diff, iris_locate, iris_html_screenshot）需重新加载插件
+> 所有新工具（iris_crop, iris_pixel_diff, iris_locate, iris_html_screenshot, iris_long_ocr）需重新加载插件
 > 后才会注册进宿主。已知缺点见 PLAN.md 3C 条目。
+
+### 阶段 3B：长截图 OCR
+
+#### 新增
+
+- **`lib/ocr.js`**：`longOcr` 分块 OCR 后端
+  - sharp 分块：默认 1200px 高 + 120px 重叠（避免切断文本行），宽度超 2048 等比缩放
+  - 逐块复用阶段 1 VisionBackend 链（`askWithBackends`）识图，按 y 序拼接全文
+  - 单块失败只标记 `error`，不影响其他块
+  - 调研结论（RESEARCH.md §7）：tesseract.js 中文准确率不达标，未引入
+- **新工具 `iris_long_ocr`**（`lib/index.js`）：输入路径或 attachment_id，返回全文 + 块数
+
+#### 测试
+
+- 新增 `tests/ocr.mjs`：单块/多块重叠/y 步进/失败隔离/无后端报错/宽图缩放 6 组
+- `tests/mount.mjs` 扩展为 11 工具断言；lint 新增阶段 3B 守卫
 
 ### 阶段 4：任务详情抽屉
 
