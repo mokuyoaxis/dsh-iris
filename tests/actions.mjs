@@ -58,4 +58,60 @@ serveApi(fakeReq('POST', '/iris/api/actions/status', ''), r4, stubCtx);
 await new Promise((r) => setTimeout(r, 50));
 assert(r4.status === 200 && r4.body && r4.body.ok, '空 body 也接受', r4.body);
 
-console.log('ALL OK —— 动作路由 4 组断言全部通过（POST status/不存在/GET 405/空body）');
+/* ---------- ⑤ 供应商管理动作（阶段 6） ---------- */
+process.env.DSH_HOME = '/tmp/iris-actions-home-' + Date.now();
+const fsMod = await import('node:fs');
+const fs = fsMod.default;
+const pathMod = await import('node:path');
+const path = pathMod.default;
+const irisV1 = path.join(process.env.DSH_HOME, 'iris', 'v1');
+fs.mkdirSync(path.join(irisV1, 'outputs'), { recursive: true });
+// 预置一个旧字段 provider（迁移为模型池）
+fs.writeFileSync(path.join(irisV1, 'providers.json'), JSON.stringify({
+  version: 1,
+  providers: [{ id: 'p_old', name: '旧供应商', type: 'openai', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: 'sk-old-key', enabled: true, visionModel: 'qwen-vl-plus' }]
+}, null, 2));
+
+const config = await import('../lib/config.js');
+const { runAction, listActions } = await import('../lib/actions.js');
+config.resetCache();
+
+// ① 列出：预置 provider 的模型池含 qwen-vl-plus（vision）
+const listed = await runAction(stubCtx, 'providers_list', {});
+assert(listed.ok && listed.providers.length === 1, 'providers_list 列出 1 个');
+const pl = listed.providers[0];
+assert(pl.apiKeyHint === 'sk-****key' || pl.apiKeyHint.includes('****'), 'apiKey 只给 hint', pl.apiKeyHint);
+assert(pl.models.some((m) => m.id === 'qwen-vl-plus' && m.capabilities.includes('vision')), '模型池含 qwen-vl-plus/vision', pl.models);
+
+// ② upsert 新增一个多模型 provider
+await runAction(stubCtx, 'providers_upsert', { name: '新供应商', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: 'sk-new-key', imageModel: 'wan2.2-t2i-flash', videoModel: 'wan2.2-t2v-flash' });
+config.resetCache();
+const listed2 = await runAction(stubCtx, 'providers_list', {});
+assert(listed2.providers.length === 2, 'upsert 新增后 2 个', listed2.providers.length);
+const np = listed2.providers.find((p) => p.name === '新供应商');
+assert(np && np.models.length === 2, '新 provider 模型池 2 条（image+video）', np && np.models);
+
+// ③ set_models 覆盖模型池
+await runAction(stubCtx, 'providers_set_models', { id: np.id, models: [{ id: 'gpt-image-1', capabilities: ['image-gen'] }] });
+config.resetCache();
+const listed3 = await runAction(stubCtx, 'providers_list', {});
+const np2 = listed3.providers.find((p) => p.id === np.id);
+assert(np2 && np2.models.length === 1 && np2.models[0].id === 'gpt-image-1', 'set_models 覆盖模型池', np2 && np2.models);
+
+// ④ test_vision：无 vision 模型的 provider → 跳过提示
+const tv = await runAction(stubCtx, 'providers_test_vision', { id: np.id });
+assert(tv.ok && tv.tested === false && /未配置 vision/.test(tv.text), 'test_vision 无 vision 跳过', tv.text);
+
+// ⑤ remove 删除
+await runAction(stubCtx, 'providers_remove', { id: np.id });
+config.resetCache();
+const listed4 = await runAction(stubCtx, 'providers_list', {});
+assert(listed4.providers.length === 1, 'remove 后剩 1 个', listed4.providers.length);
+
+// ⑥ 动作清单包含管理动作
+const names = listActions();
+for (const act of ['providers_list', 'providers_upsert', 'providers_remove', 'providers_set_models', 'providers_test_vision']) {
+  assert(names.includes(act), '动作清单含 ' + act);
+}
+
+console.log('ALL OK —— 动作路由 + 供应商管理断言全部通过（POST status/不存在/GET 405/空body + providers 6 项）');
