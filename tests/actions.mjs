@@ -172,4 +172,80 @@ try { await runAction(stubCtx, 'media_summarize', { video_path: '/nonexistent/vi
 assert(merr3 && /不存在/.test(merr3.message), 'media_summarize 文件不存在报错', merr3 && merr3.message);
 assert(names.includes('media_summarize'), '动作清单含 media_summarize');
 
-console.log('ALL OK —— 动作路由 + 供应商管理 + 转写/抽帧/摘要校验断言全部通过（POST status/不存在/GET 405/空body + providers 6 项 + transcribe 3 项 + video_frames 3 项 + media_summarize 3 项）');
+/* ---------- ⑩ 能力有序分配（阶段 6 条目 4） ---------- */
+// 给 p_old 显式池：两个 vision 模型（测 failover 顺序）
+await runAction(stubCtx, 'providers_set_models', { id: 'p_old', models: [
+  { id: 'qwen-vl-plus', capabilities: ['vision'] },
+  { id: 'qwen3-vl-235b-a22b-thinking', capabilities: ['vision'] },
+  { id: 'wan2.2-t2i-flash', capabilities: ['image-gen'] }
+] });
+config.resetCache();
+// ⑩a 设置有序 failover 列表
+const setR = await runAction(stubCtx, 'assignments_set', { capability: 'vision', model_ids: ['qwen3-vl-235b-a22b-thinking', 'qwen-vl-plus'] });
+assert(setR.ok && JSON.stringify(setR.model_ids) === JSON.stringify(['qwen3-vl-235b-a22b-thinking', 'qwen-vl-plus']), 'assignments_set 有序列表', setR);
+// ⑩b get 返回归一化 order
+const getR = await runAction(stubCtx, 'assignments_get', {});
+assert(JSON.stringify(getR.order.vision) === JSON.stringify(['qwen3-vl-235b-a22b-thinking', 'qwen-vl-plus']), 'assignments_get order 归一化', getR.order);
+// ⑩c pickFor 取分配序首位
+assert(config.pickFor('vision').visionModel === 'qwen3-vl-235b-a22b-thinking', 'pickFor 取分配首位', config.pickFor('vision').visionModel);
+// ⑩d pickAllFor 尊重分配序（failover 顺序）
+const allVis = config.pickAllFor('vision');
+assert(allVis.length === 2 && allVis[0].visionModel === 'qwen3-vl-235b-a22b-thinking' && allVis[1].visionModel === 'qwen-vl-plus',
+  'pickAllFor 分配序优先', allVis.map((x) => x.visionModel));
+// ⑩e 非法分配（模型不具备该能力）→ 拒绝
+let aerr = null;
+try { await runAction(stubCtx, 'assignments_set', { capability: 'vision', model_ids: ['wan2.2-t2i-flash'] }); } catch (e) { aerr = e; }
+assert(aerr && /不具备该能力|不在全局池/.test(aerr.message), '给 vision 分配 image 模型被拒', aerr && aerr.message);
+// ⑩f 空数组清除 → 回退池顺序
+await runAction(stubCtx, 'assignments_set', { capability: 'vision', model_ids: [] });
+const getR2 = await runAction(stubCtx, 'assignments_get', {});
+assert(!getR2.order.vision || getR2.order.vision.length === 0, '空数组清除分配', getR2.order);
+assert(config.pickFor('vision').visionModel === 'qwen-vl-plus', '清除后回退池顺序', config.pickFor('vision').visionModel);
+// ⑩g 旧单字符串向后兼容
+config.setAssignment('vision', 'qwen3-vl-235b-a22b-thinking');
+assert(JSON.stringify(config.assignmentOrder('vision')) === JSON.stringify(['qwen3-vl-235b-a22b-thinking']), '单字符串归一化为列表', config.assignmentOrder('vision'));
+// ⑩h 重复 id 自动去重
+await runAction(stubCtx, 'assignments_set', { capability: 'vision', model_ids: ['qwen-vl-plus', 'qwen-vl-plus', 'qwen3-vl-235b-a22b-thinking'] });
+const getR3 = await runAction(stubCtx, 'assignments_get', {});
+assert(JSON.stringify(getR3.order.vision) === JSON.stringify(['qwen-vl-plus', 'qwen3-vl-235b-a22b-thinking']), '重复 id 去重', getR3.order.vision);
+
+/* ---------- ⑪ 任务清理动作（阶段 4 续） ---------- */
+const tasksMod = await import('../lib/tasks.js');
+tasksMod.resetCache();
+const outDir = tasksMod.outputsDir();
+fs.mkdirSync(outDir, { recursive: true });
+// 造两条终态记录 + 一条 running + 各自产物文件 + 一个孤儿文件
+const tc1 = tasksMod.create({ cap: 'image', providerId: 'p1', model: 'm', prompt: 'c1' });
+tasksMod.update(tc1.id, { status: 'succeeded', files: ['c1.png'] });
+const tc2 = tasksMod.create({ cap: 'tts', providerId: 'p1', model: 'm', prompt: 'c2' });
+tasksMod.update(tc2.id, { status: 'failed' });
+const tcRun = tasksMod.create({ cap: 'video', providerId: 'p1', model: 'm', prompt: 'running' });
+fs.writeFileSync(path.join(outDir, 'c1.png'), 'x');
+fs.writeFileSync(path.join(outDir, 'orphan.png'), 'yy');
+// ⑪a 孤儿扫描：orphan.png 无引用，c1.png 被 tc1 引用
+const orph = await runAction(stubCtx, 'tasks_orphans', {});
+assert(orph.ok && orph.count === 1 && /orphan\.png/.test(orph.text), 'tasks_orphans 只报无引用文件', orph.text);
+// ⑪b 删单条终态
+const del = await runAction(stubCtx, 'tasks_delete', { task_id: tc2.id });
+assert(del.ok && del.removed === 1 && !tasksMod.get(tc2.id), 'tasks_delete 删终态');
+// ⑪c 删 running 被拒
+let derr = null;
+try { await runAction(stubCtx, 'tasks_delete', { task_id: tcRun.id }); } catch (e) { derr = e; }
+assert(derr && /取消/.test(derr.message), 'tasks_delete 拒删 running', derr && derr.message);
+// ⑪d 清空已完成（删 tc1，running 幸存）
+const clr = await runAction(stubCtx, 'tasks_clear', { scope: 'completed' });
+assert(clr.ok && !tasksMod.get(tc1.id) && tasksMod.get(tcRun.id), 'tasks_clear 删终态留 running');
+// ⑪e purge 孤儿：删文件不动记录；c1.png 已随记录删除变孤儿，故两个都清
+fs.writeFileSync(path.join(outDir, 'c1.png'), 'x'); // tc1 记录已删，重新确认 orphan.png 仍在
+const purge = await runAction(stubCtx, 'tasks_purge_orphans', {});
+assert(purge.ok && purge.deleted >= 1 && !fs.existsSync(path.join(outDir, 'orphan.png')), 'tasks_purge_orphans 删孤儿文件', purge.deleted);
+// ⑪f 非法 scope 拒绝
+let serr = null;
+try { await runAction(stubCtx, 'tasks_clear', { scope: 'bogus' }); } catch (e) { serr = e; }
+assert(serr && /scope/.test(serr.message), 'tasks_clear 非法 scope 拒绝');
+// 动作清单含四个清理动作
+for (const act of ['tasks_delete', 'tasks_clear', 'tasks_orphans', 'tasks_purge_orphans']) {
+  assert(listActions().includes(act), '动作清单含 ' + act);
+}
+
+console.log('ALL OK —— 动作路由 + 供应商管理 + 转写/抽帧/摘要 + 能力有序分配 + 任务清理断言全部通过（POST 4 + providers 6 + transcribe 3 + video_frames 3 + media_summarize 3 + 分配 8 + 清理 6）');

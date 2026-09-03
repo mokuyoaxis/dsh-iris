@@ -19,6 +19,8 @@ assert(models.capabilitiesOfModel('wan2.2-t2i-flash').includes(CAPABILITIES.IMAG
 assert(models.capabilitiesOfModel('wan2.2-t2v-flash').includes(CAPABILITIES.VIDEO), 'wan2.2-t2v → video-gen');
 assert(!models.capabilitiesOfModel('wan2.2-t2v-flash').includes(CAPABILITIES.IMAGE), 'wan2.2-t2v 不含 image-gen');
 assert(models.capabilitiesOfModel('qwen-vl-plus').includes(CAPABILITIES.VISION), 'qwen-vl-plus → vision');
+assert(models.capabilitiesOfModel('qwen3-vl-235b-a22b-thinking').includes(CAPABILITIES.VISION), 'qwen3-vl → vision（VERIFY 实证强模型）');
+assert(!models.capabilitiesOfModel('qwen3-vl-235b-a22b-thinking').includes(CAPABILITIES.TTS), 'qwen3-vl 不误标 tts');
 assert(models.capabilitiesOfModel('qwen-tts-latest').includes(CAPABILITIES.TTS), 'qwen-tts → tts');
 assert(models.capabilitiesOfModel('gpt-image-1').includes(CAPABILITIES.IMAGE), 'gpt-image-1 → image-gen');
 assert(models.capabilitiesOfModel('dall-e-3').includes(CAPABILITIES.IMAGE), 'dall-e-3 → image-gen');
@@ -46,6 +48,7 @@ const mDash = models.providerModels(pDash);
 assert(mDash.length >= 3, '裸 DashScope 至少 3 个已知模型', mDash.length);
 assert(mDash.some((m) => m.id === 'wan2.2-t2i-flash' && m.capabilities.includes('image-gen')), 'DashScope 含 wan t2i');
 assert(mDash.some((m) => m.id === 'qwen-vl-plus' && m.capabilities.includes('vision')), 'DashScope 含 qwen-vl');
+assert(mDash.some((m) => m.id === 'qwen3-vl-235b-a22b-thinking' && m.capabilities.includes('vision')), 'DashScope 池含 qwen3-vl 强视觉模型');
 
 // 空（无字段、非 DashScope）
 const pEmpty = { id: 'p4', baseUrl: 'https://other.com/v1' };

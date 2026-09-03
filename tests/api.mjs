@@ -78,6 +78,7 @@ assert(!JSON.stringify(state).includes('must-never-leak'), '序列化后不得�
 /* ② 分组：running 1 条，recent 2 条（succeeded+failed） */
 assert(state.tasks.running.length === 1 && state.tasks.running[0].id === 't_running_1', 'running 分组', state.tasks.running.map((t) => t.id));
 assert(state.tasks.recent.length === 2, 'recent 分组（排除 running）', state.tasks.recent.map((t) => t.id));
+assert(state.tasks.recentTotal === 2, 'recentTotal 计数终态总数（泡泡查看全部用）', state.tasks.recentTotal);
 
 /* ③ 媒体链接：授权 URL 形态，且不含绝对路径 */
 const done = state.tasks.recent.find((t) => t.id === 't_done_1');

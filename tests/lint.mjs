@@ -295,6 +295,76 @@ if (tasksLib) {
   }
 }
 
+// 阶段 6 条目 4：能力有序分配（数据层 + 动作 + UI）
+{
+  const configSrc = read('lib/config.js');
+  if (!/export function assignmentOrder/.test(configSrc) || !/export function setAssignmentOrder/.test(configSrc)) {
+    failures.push('lib/config.js 必须导出 assignmentOrder / setAssignmentOrder（有序 failover 分配）');
+  }
+  if (!/for \(const id of assignmentOrder\(capability\)\)/.test(configSrc)) {
+    failures.push('lib/config.js pickFor 必须按分配顺序取首个可用（不再只认单值）');
+  }
+  if (!/assignmentOrder\(capability\)[\s\S]{0,200}for \(const m of pool\) if \(m\.capabilities\.includes/.test(configSrc)) {
+    failures.push('lib/config.js pickAllFor 必须分配序优先、池序补齐（failover 顺序生效）');
+  }
+  const actionsSrc = read('lib/actions.js');
+  if (!/Array\.isArray\(args\.model_ids\)/.test(actionsSrc) || !/store\.setAssignmentOrder/.test(actionsSrc)) {
+    failures.push('lib/actions.js assignments_set 必须支持 model_ids 有序数组（兼容单值旧写法）');
+  }
+  if (!/order\[c\] = store\.assignmentOrder\(c\)/.test(actionsSrc)) {
+    failures.push('lib/actions.js assignments_get 必须返回归一化 order');
+  }
+  const modelsSrc = read('lib/models.js');
+  if (!/qwen3\?-vl/.test(modelsSrc) || !/qwen3-vl-235b-a22b-thinking/.test(modelsSrc)) {
+    failures.push('lib/models.js 必须收录 qwen3-vl 强视觉模型（VERIFY 2026-09-03 实证）');
+  }
+}
+
+// O2 授权边界：三条 /iris 路由必须全部包守卫
+{
+  if (!/from '\.\/guard\.js'/.test(index) || (index.match(/guarded\(/g) || []).length < 3) {
+    failures.push('lib/index.js 三条 /iris 前缀路由必须全部包 guarded()（Host/Origin 授权边界）');
+  }
+  let guardSrc = '';
+  try {
+    guardSrc = read('lib/guard.js');
+  } catch (_) {
+    failures.push('缺少 lib/guard.js（O2 请求守卫）');
+  }
+  if (guardSrc && (!/export function checkRequest/.test(guardSrc) || !/DSH_WEB_BASE/.test(guardSrc) || !/cross-site/.test(guardSrc))) {
+    failures.push('lib/guard.js 必须含 checkRequest/DSH_WEB_BASE 白名单/cross-site 拒绝');
+  }
+}
+
+// 阶段 4 续：任务清理 + 泡泡瘦身
+{
+  const tasksSrc = read('lib/tasks.js');
+  if (!/const MAX_TASKS = 500/.test(tasksSrc)) {
+    failures.push('lib/tasks.js MAX_TASKS 应为 500（后台保存更多历史）');
+  }
+  if (!/export function remove/.test(tasksSrc) || !/export function prune/.test(tasksSrc) || !/export function all/.test(tasksSrc)) {
+    failures.push('lib/tasks.js 必须导出 remove/prune/all（清理原语，running 强制保护）');
+  }
+  if (!/t\.status !== 'running' && pred\(t\)/.test(tasksSrc)) {
+    failures.push('lib/tasks.js prune 必须强制跳过 running（永不批量删除运行中任务）');
+  }
+  const actionsSrc = read('lib/actions.js');
+  for (const act of ['tasks_delete', 'tasks_clear', 'tasks_orphans', 'tasks_purge_orphans']) {
+    if (!actionsSrc.includes("register('" + act + "'")) failures.push('lib/actions.js 缺少清理动作 ' + act);
+  }
+  const apiSrc = read('lib/api.js');
+  if (!/recentTotal: terminal\.length/.test(apiSrc)) {
+    failures.push('lib/api.js buildState 必须返回 recentTotal（泡泡查看全部计数不受截断）');
+  }
+  const clientSrc = read('lib/client.js');
+  if (!/var\s+CARD_DEFS\s*=/.test(clientSrc) || !/CARD_DEFS\.map\(renderCard\)/.test(clientSrc)) {
+    failures.push('lib/client.js 操作卡片必须走 CARD_DEFS 注册表（单一来源：设置全量/泡泡子集/选择器）');
+  }
+  if (!/function\s+BubblePanel/.test(clientSrc) || !/iris-bubble-cards/.test(clientSrc)) {
+    failures.push('lib/client.js 泡泡必须是标签页 BubblePanel + 常用卡片 localStorage');
+  }
+}
+
 /* ---------- 汇总 ---------- */
 if (failures.length) {
   console.error(`lint 失败（${failures.length} 项）：`);

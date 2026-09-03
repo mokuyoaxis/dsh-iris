@@ -467,3 +467,103 @@
 - 媒体链接随任务裁剪失效：token 存任务记录内（非独立内存表），无泄漏 ✅
 - client.js EventSource/兜底轮询：最后座位卸载时 close + clearInterval ✅
 - render.js / media-probe.js 临时目录：均有 try/finally 清理 ✅
+
+### 阶段 6 条目 4：能力有序分配 UI（failover 列表）
+
+> 主线最后一个 ◐。原状：`assignments[cap]` 只认单模型、`pickAllFor` 完全无视分配按池序——
+> 多 key 场景无法表达「这个能力先试 A 再试 B」。GUI 也只有 ActionCard 里的单值下拉。
+
+#### 变更
+
+- **`lib/config.js`**：`assignments[cap]` 升级为有序数组（向后兼容旧单字符串）；
+  新增 `assignmentOrder(cap)`（归一化）与 `setAssignmentOrder(cap, ids)`（校验每个
+  模型在池且具备该能力、去重、空数组=清除）；`pickFor` 取分配序首位可用；
+  `pickAllFor` 分配序优先 + 池序补齐去重——failover 顺序真正生效。
+- **`lib/actions.js`**：`assignments_get` 返回归一化 `order`；`assignments_set` 接受
+  `model_ids` 数组（空数组清除），保留 `model_id` 单值兼容路径。
+- **`lib/client.js`**：WorkbenchPanel 新增「能力分配（failover 顺序）」区——
+  `CapabilityAssigner` 组件：四能力行（🎨🎬🔊），每行有序 chips（序号 + ↑↓ 移序 + ✕ 移出）、
+  「+ 加入 failover」下拉（池内未加入者）、「恢复自动」清除；保存后一律重载（失败显示
+  实际落盘序，不骗 UI）。ActionCard 单值下拉改读 `order` 首项。
+- **`lib/models.js`**：VERIFY 2026-09-03 实证收编——`qwen3-vl-*` 命名规则 +
+  `qwen3-vl-235b-a22b-thinking` 入裸 DashScope 已知池（locate grounding 零偏差的强模型
+  现在可直接在能力分配 UI 里选给 👁）。
+
+#### 测试
+
+- `tests/actions.mjs` ⑩ 八项：有序设置/归一化 get/pickFor 取首位/pickAllFor 分配序/
+  非法能力拒绝/空数组清除回退/单字符串兼容/重复去重
+- `tests/models.mjs` qwen3-vl 规则与入池断言；`tests/client.mjs` ⑤ CapabilityAssigner 结构
+- lint 守卫：assignmentOrder/setAssignmentOrder 导出、pickFor/pickAllFor 顺序逻辑、
+  model_ids 数组、order 归一化、qwen3-vl 收编
+
+### O2 授权边界：/iris/* 请求守卫（Host 白名单 + 跨站拒绝）
+
+> 调研结论（2026-09-03，读宿主 dsh-host-webserver 源码）：宿主路由分发**无任何鉴权**，
+> 安全模型 = 「绑定 127.0.0.1，loopback 即信任」。同源不等于授权——实机取证两条攻击面：
+> ① 恶意 Host 头（DNS 重绑定形态）可完整读取 /iris/api/state（key hint/提示词/历史）；
+> ② 跨站 Origin POST /iris/api/actions/* 被直接执行（恶意网页可驱动真实付费生成）。
+
+#### 新增
+
+- **`lib/guard.js`** 纯函数裁决 + `guarded()` 包装器：
+  - 所有方法：Host 主机名 ∈ {127.0.0.1, localhost, ::1} ∪ `DSH_WEB_BASE` 声明主机
+    ——DNS 重绑定时 Host 是攻击者域名，此关直接斩断（含 IPv6 带括号带端口解析）
+  - POST：`Sec-Fetch-Site` 存在时只放行 same-origin/none（same-site 也拒——回环上
+    不同端口页面的跨端口发起被覆盖）；`Origin` 存在时主机必须在白名单
+  - 无 Origin 的非浏览器客户端（本机 curl/CLI）在 Host 关约束下放行——本机进程本就在
+    信任域内，这是宿主 loopback 模型的既有语义
+  - 未授权统一 403 人话 JSON，不进业务 handler；已死连接静默跳过
+- **`lib/index.js`**：三条 /iris 前缀路由（media/api/render）注册时全部包 `guarded()`
+
+#### 边界说明
+
+- 本机任意进程仍可直连（宿主 loopback 信任模型未被本守卫改变，也无力改变——那需要
+  宿主级会话鉴权）；本守卫消灭的是**浏览器可达性**（远程网页经 CSRF 或重绑定）。
+- 反代/远程部署：`DSH_WEB_BASE` 同时是媒体链接基址与 Host 白名单来源，一处声明两用。
+
+#### 测试
+
+- 新增 `tests/guard.mjs` 4 组 19 断言：Host 白名单/重绑定拒绝/IPv6/CSRF 三态/
+  DSH_WEB_BASE 扩白与还原/guarded 包装器（403 不进 handler、透传、死连接防御）
+- lint 守卫：三条路由必须包 guarded、guard.js 关键要素存在
+- 全量 20 组测试通过
+
+### 阶段 4 续：任务压缩/清理 + 泡泡瘦身（信息架构升级）
+
+> 用户反馈两点：① 最近任务太长、需要压缩与清理；② 泡泡浮层把整张工作台硬塞进去、内容太多。
+> 二者同源——泡泡 = 完整 WorkbenchPanel。本轮把"一眼 + 顺手"还给泡泡，把"完整浏览 + 管理 + 清理"
+> 归位到设置页。产物文件删除语义：删记录默认只删元数据（媒体链接随 token 消失而失效，文件留盘）。
+
+#### 数据层（`lib/tasks.js`）
+
+- `MAX_TASKS` 200 → **500**（后台保存更多历史供浏览）。
+- 新增清理原语：`remove(id)`（仅终态，running 拒绝并提示先取消）、`prune(pred)`（批量删终态，
+  **强制跳过 running**——批量清理永不误删运行中任务）、`all()`（全量不截断，供清理/孤儿扫描）。
+
+#### 动作层（`lib/actions.js` + `lib/api.js`）
+
+- 四个清理动作：`tasks_delete`（单条）、`tasks_clear`（scope=completed/older_than/all，
+  older_than 带 days）、`tasks_orphans`（只读报告无任务引用的产物 + 占用）、
+  `tasks_purge_orphans`（删孤儿文件，不可逆）。
+- `buildState` 新增 `recentTotal`（终态总数，不受 recent 截断）；recent 截断 30 → 100。
+
+#### 客户端（`lib/client.js`）
+
+- **卡片注册表 `CARD_DEFS`**：14 张操作卡片定义收敛为单一数组，`ActionGroups`（设置全量）、
+  泡泡「常用」子集、`BubbleCardPicker`（勾选器）三处共用——消灭重复。
+- **泡泡瘦身**：浮层从"整张工作台"改为 `BubblePanel` 两标签——
+  「📋 任务」（运行中 + 最近 6 条 `taskRowMini` 单行摘要 + "共 N 条·完整历史见设置页"提示）
+  +「⚡ 常用」（仅渲染用户勾选的卡片，空则提示去设置页勾选）。角标/明暗/拖动/进度条不动。
+- **常用卡片可配置**：设置页 `BubbleCardPicker` 多项勾选 → 存 localStorage `iris-bubble-cards`
+  （`useBubbleCards` 跨座位响应 + `storage` 事件跨标签页同步）；勾选即出现在悬浮窗，泡泡默认干净。
+- **设置页历史浏览器**：`HistoryBrowser` 按 今天/昨天/更早 分组折叠（组头计数 + ▼/▶）；
+  `CleanupBar` 提供 清空已完成 / 清理 7 天前 / 扫描孤儿产物 / 删除孤儿产物，破坏性操作 `window.confirm` 二次确认。
+
+#### 测试
+
+- `tests/smoke.mjs` 场景 13：remove 删终态/拒 running、prune 按标记精准删且跳过 running、all 全量
+- `tests/actions.mjs` ⑪ 六项：孤儿扫描只报无引用、删单条、拒删 running、清空留 running、purge 删文件、非法 scope 拒绝 + 动作清单
+- `tests/api.mjs` recentTotal 计数；`tests/client.mjs` ⑥ 注册表/标签/历史分组/勾选器/localStorage key/二次确认
+- lint 守卫：MAX_TASKS 500、remove/prune/all 导出、prune 跳过 running、四清理动作、recentTotal、CARD_DEFS 注册表、BubblePanel + localStorage
+- 全量 20 组测试通过

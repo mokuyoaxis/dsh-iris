@@ -142,6 +142,24 @@ assert(!resumed11.includes(t11.id) && tasks.get(t11.id).status === 'failed' && /
 // 场景 12：盯守成功后 progress 收尾为数值（轮询期的 "RUNNING" 文本不残留）
 assert(tasks.get(f1.id).progress === '100%', '场景12 成功任务 progress=100%（场景1 复用断言）');
 
+// 场景 13：remove/prune/all——任务清理原语（运行中强制保护）
+const tDel = tasks.create({ cap: 'image', providerId: 'p1', model: 'm', prompt: 'del' });
+tasks.update(tDel.id, { status: 'succeeded' });
+assert(tasks.remove(tDel.id).ok === true && !tasks.get(tDel.id), '场景13a remove 删终态记录');
+const tRun = tasks.create({ cap: 'image', providerId: 'prune-marker', model: 'm', prompt: 'run' });
+const rmRun = tasks.remove(tRun.id);
+assert(rmRun.ok === false && /取消/.test(rmRun.reason) && tasks.get(tRun.id), '场景13b running 拒绝删除');
+// prune 按标记精准删终态、永不碰 running（不用 () => true 以免误删其他场景依赖的记录）
+const tMark1 = tasks.create({ cap: 'image', providerId: 'prune-marker', model: 'm', prompt: 'm1' });
+tasks.update(tMark1.id, { status: 'succeeded' });
+const tMark2 = tasks.create({ cap: 'image', providerId: 'prune-marker', model: 'm', prompt: 'm2' });
+tasks.update(tMark2.id, { status: 'failed' });
+const pruned = tasks.prune((t) => t.providerId === 'prune-marker');
+assert(pruned.includes(tMark1.id) && pruned.includes(tMark2.id) && !pruned.includes(tRun.id), '场景13c prune 删终态跳过 running');
+assert(!tasks.get(tMark1.id) && !tasks.get(tMark2.id) && tasks.get(tRun.id), '场景13d prune 后终态消失 running 幸存');
+assert(tasks.all().some((t) => t.id === tRun.id && t.status === 'running'), '场景13e all() 含 running');
+tasks.cancel(tRun.id, '收尾');
+
 /* ================= 媒体路由 ================= */
 
 /* ---- 视觉适配器：visionStream 的 SSE 解析（本地假服务器） ---- */
@@ -202,7 +220,7 @@ const again = media.registerMedia(f1.id, mp4);
 const count = tasks.get(f1.id).media.length;
 assert(again.token === reg.token && count === 1, '重复登记幂等');
 
-console.log(`ALL OK —— 任务框架 12 场景（含孤儿守卫/恢复清理/progress 收尾）+ 媒体通道 ${links.length ? 6 : 0} 断言全部通过`);
+console.log(`ALL OK —— 任务框架 13 场景（含孤儿守卫/恢复清理/progress 收尾/删除裁剪原语）+ 媒体通道 ${links.length ? 6 : 0} 断言全部通过`);
 
 /* ---- 占位：serveMedia handler 的集成验证随插件装载进行 ---- */
 function mediaRouteHandler() { /* 见 index.js；离线仅验授权内核 */ }

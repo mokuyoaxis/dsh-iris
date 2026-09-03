@@ -48,7 +48,10 @@ GET /iris/media/:taskId/:token/:name
 ```
 
 - 生成完成即自动登记，工具结果与 `iris_task_status` 都会给出可点击的播放链接
-- **安全边界**：token 为 crypto 随机 128bit 能力凭证（只存任务记录）；文件定位只信任务记录、URL 文件名段不参与路径解析（防穿越）；未命中一律 404；仅 GET/HEAD
+- **安全边界（O2，2026-09-03）**：宿主 webServer 无鉴权（loopback 即信任），iris 路由自带纵深防御守卫（`lib/guard.js`）——
+  所有请求 Host 必须在回环白名单（127.0.0.1/localhost/::1 ∪ `DSH_WEB_BASE` 声明主机），斩断 DNS 重绑定；
+  POST 另查 Origin/Sec-Fetch-Site 拒跨站，挡住恶意网页驱动付费生成；本机 CLI（无 Origin）在 Host 关约束下放行。
+  媒体通道另有：token 为 crypto 随机 128bit 能力凭证（只存任务记录）；文件定位只信任务记录、URL 文件名段不参与路径解析（防穿越）；未命中一律 404；仅 GET/HEAD
 - **M4 泡泡工作台数据通道**：`GET /iris/api/state`（同源 JSON，兜底轮询 30s）+ **SSE 实时推送**
   `GET /iris/api/state/events`（EventSource，状态变化即推，延迟 ≤400ms，替代原 5s 轮询）；
   供应商状态只给 Key hint、历史面板按 running/recent 分组、产物给授权播放链接；接口只回标量，
@@ -72,6 +75,7 @@ GET /iris/media/:taskId/:token/:name
 - [x] **M2** 任务盯守框架（后台化/重启恢复/历史元数据）+ 视频生成
 - [x] **M3** 眼睛：`iris_look_at_image` / `iris_relook_attachment`（visionStream 移植，qwen-vl 走自持栈；与 vision-mix 分工——它是隐式模型路由，我们是显式工具）
 - [x] **M4** 🫧 泡泡工作台（settings.section 常驻工作台页 + conversation.input.dock 任务进度条 + shell.overlay 主界面悬浮泡泡——可拖动、未配置 API 时暗淡、配置就绪发亮、运行中带数字角标、点击展开工作台浮层；host 侧 /iris/api/state JSON 数据通道，Key 只出 hint）
+- [x] **阶段 4 续** 泡泡瘦身 + 任务清理（浮层改「📋任务/⚡常用」双标签，常用卡片由用户在设置页勾选、默认干净；设置页历史按今天/昨天/更早分组 + 清空已完成/清理 N 天前/扫描并删除孤儿产物，删记录默认只删元数据产物留盘；后台历史上限 200→500）
 - [x] **阶段 0** M4 收口与可靠性（泡泡交互收口/共享状态源/媒体 Range/持久化加固/真实 lint）
 - [x] **阶段 1** Provider / Capability 基座（VisionBackend 抽象、严格能力选择、结构化错误分类）
 - [x] **阶段 2** 确定性像素工具（iris_crop / iris_pixel_diff，基于 sharp）
@@ -79,10 +83,13 @@ GET /iris/media/:taskId/:token/:name
 - [x] **阶段 4** 任务详情抽屉（/iris/api/task/:id + TaskDetailDrawer 组件）
 - [x] **阶段 5** 前端操作面板（GUI 直连：11 工具可折叠操作卡片组 + POST /iris/api/actions/:name）
 - [x] **阶段 6** 供应商模型池与能力调度（多 key 鸡尾酒：模型发现规则、能力分配、供应商管理 GUI）
+- [x] **阶段 6 条目 4** 能力有序分配 UI（每能力一个 failover 列表：加入/↑↓排序/移出/恢复自动；qwen3-vl 强视觉模型入池——VERIFY 实证 grounding 零偏差）
+- [x] **O2 授权边界** 请求守卫 `lib/guard.js`（Host 回环白名单斩 DNS 重绑定 + POST Origin/Sec-Fetch-Site 拒跨站 CSRF；本机 CLI 放行）
+- [x] **可靠性两轮** 孤儿任务防线（submitGuard+接管兜底+progress 收尾）/ 网络超时分层 / 转写重启接管 / body 按字节限长 / 流与总线生命周期
 - [x] **阶段 7.2** 音频转写（qwen-audio-turbo，复用供应商栈）
 - [x] **阶段 7.1** 视频抽帧（ffmpeg 可选系统条件，`iris_video_frames` 工具 + GUI 卡片）
 - [x] **阶段 7.3** 多模态上下文摘要（`iris_media_summarize`：联系表 + 自动转写 → 视觉摘要）
-- Backlog：阶段 6 条目 4 能力分配 UI 细化、CosyVoice WebSocket 流式 TTS、批量队列并发
+- Backlog：CosyVoice WebSocket 流式 TTS、批量队列并发、阶段 8 Skills 沉淀
 
 ## License
 
