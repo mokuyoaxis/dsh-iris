@@ -108,9 +108,9 @@ config.resetCache();
 const listed4 = await runAction(stubCtx, 'providers_list', {});
 assert(listed4.providers.length === 1, 'remove 后剩 1 个', listed4.providers.length);
 
-// ⑥ 动作清单包含管理动作 + 阶段 7.2 转写动作
+// ⑥ 动作清单包含管理动作 + 阶段 7.2 转写 + 阶段 7.1 抽帧 + 阶段 7.3 摘要
 const names = listActions();
-for (const act of ['providers_list', 'providers_upsert', 'providers_remove', 'providers_set_models', 'providers_test_vision', 'transcribe']) {
+for (const act of ['providers_list', 'providers_upsert', 'providers_remove', 'providers_set_models', 'providers_test_vision', 'transcribe', 'video_frames', 'media_summarize']) {
   assert(names.includes(act), '动作清单含 ' + act);
 }
 
@@ -138,4 +138,16 @@ assert(verr3 && /不存在/.test(verr3.message), 'video_frames 文件不存在�
 // 动作清单包含 7.1 抽帧动作
 assert(names.includes('video_frames'), '动作清单含 video_frames');
 
-console.log('ALL OK —— 动作路由 + 供应商管理 + 转写/抽帧校验断言全部通过（POST status/不存在/GET 405/空body + providers 6 项 + transcribe 3 项 + video_frames 3 项）');
+// ⑨ 多模态摘要动作入参校验（阶段 7.3）
+let merr1 = null;
+try { await runAction(stubCtx, 'media_summarize', {}); } catch (e) { merr1 = e; }
+assert(merr1 && /video_path/.test(merr1.message), 'media_summarize 缺 video_path 报错', merr1 && merr1.message);
+let merr2 = null;
+try { await runAction(stubCtx, 'media_summarize', { video_path: 'relative.mp4' }); } catch (e) { merr2 = e; }
+assert(merr2 && /绝对路径/.test(merr2.message), 'media_summarize 相对路径报错', merr2 && merr2.message);
+let merr3 = null;
+try { await runAction(stubCtx, 'media_summarize', { video_path: '/nonexistent/video.mp4' }); } catch (e) { merr3 = e; }
+assert(merr3 && /不存在/.test(merr3.message), 'media_summarize 文件不存在报错', merr3 && merr3.message);
+assert(names.includes('media_summarize'), '动作清单含 media_summarize');
+
+console.log('ALL OK —— 动作路由 + 供应商管理 + 转写/抽帧/摘要校验断言全部通过（POST status/不存在/GET 405/空body + providers 6 项 + transcribe 3 项 + video_frames 3 项 + media_summarize 3 项）');

@@ -300,3 +300,44 @@
 - `tests/client.mjs` 增 `video_frames` 卡片断言（13 卡片）
 - `tests/actions.mjs` 增 video_frames 3 项入参校验 + 动作清单断言
 - lint 增阶段 7.1 守卫（media-probe 导出契约 + MAX_FRAMES=20 + 工具/动作注册）
+
+### 阶段 7.3：多模态上下文摘要（视频 → 联系表 + 转写 → 视觉摘要）
+
+> 阶段 7 收尾：7.1 视频抽帧 + 7.2 音频转写 → 组合成「一张图看全片 + 一段话听全声」的压缩摘要。
+
+#### 新增
+
+- **`lib/media-probe.js` 扩展**：
+  - `probeVideo` 增加 `hasAudio` / `audioCodec`（探测视频是否含音轨，7.3 决定是否转写）
+  - `extractAudioTrack`：ffmpeg 提取音轨为 mp3（libmp3lame，静态版内置），返回临时
+    文件 + 目录（调用方 finally 清理），AbortSignal 取消
+- **`lib/summarize.js`**：多模态摘要后端（纯 sharp + 视觉链，可离线测试）
+  - `buildContactSheet`：把 N 帧缩略图按时间序拼成网格 + 每帧盖时间戳标签的 PNG 联系表
+    （一次视觉调用看全片——VisionBackend 单图契约下的上下文压缩）
+  - `buildSummaryPrompt`：画面指令 + （可选）转写文本嵌入（截断 6000 字）
+  - `summarizeMedia`：联系表 dataUrl + ref → `askWithBackends` 降级链 → 摘要文本
+- **工具 `iris_media_summarize`**（`lib/index.js`）：
+  - 视频 → 抽帧（≤12）→ 联系表 → attachment；有音轨且 `transcribe !== false` 时自动
+    extractAudioTrack → 上传 → 提交转写 → 复用盯守框架等待（≤120s，超时转后台并在结果
+    注明「本次摘要未含语音」）→ 视觉模型摘要
+  - 返回：摘要文本 + 联系表 image attachment
+- **动作 `media_summarize`**（`lib/actions.js`）：GUI 同步快速版（不自动转写，可粘贴已有
+  transcribe_text），返回摘要 + 联系表预览
+- **GUI 卡片「📝 视频摘要」**（`lib/client.js`）
+
+#### 要点
+
+- **上下文压缩语义**：不把 N 帧逐张喂模型（N 次调用/费用），而是拼成带时间戳的单张联系表
+  + 转写文本一段话——把 5 分钟视频压成一次视觉调用的输入
+- **降级纪律**：无音轨跳过转写；有音轨但无 TTS 供应商/转写失败/超时 → 仅画面摘要并在结果
+  注明，绝不因音频环节失败而丢掉画面摘要
+
+#### 测试
+
+- 新增 `tests/summarize.mjs`：6 组断言（contact sheet 网格尺寸/行数列数/空帧报错、
+  提示词组装含转写、stub 后端返回、双后端 failover、无后端报错）
+- `tests/mount.mjs` 增 `iris_media_summarize` 工具断言（14 工具）
+- `tests/client.mjs` 增 `media_summarize` 卡片断言（14 卡片）
+- `tests/actions.mjs` 增 media_summarize 3 项入参校验 + 动作清单断言
+- lint 增阶段 7.3 守卫（summarize 导出契约 + 工具/动作注册）
+- 全量 18 组测试通过

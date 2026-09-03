@@ -35,6 +35,7 @@
 | `iris_long_ocr` | 📄 长截图分块 OCR（视觉模型，默认 1200px 块 + 120px 重叠） |
 | `iris_transcribe_audio` | 🎙️ 音频转写（qwen-audio-turbo，复用供应商栈） |
 | `iris_video_frames` | 🎞️ 视频抽帧（ffmpeg 可选系统条件：时间均匀采样 N 帧，缩放后返回 DSH image attachments） |
+| `iris_media_summarize` | 📝 多模态视频摘要（抽帧拼成带时间戳联系表 + 可选自动转写音轨 → 视觉模型摘要） |
 
 产物统一落在 `$DSH_HOME/iris/v1/outputs/`；图片额外转存为 DSH 持久 attachment 进入对话。
 
@@ -75,7 +76,8 @@ GET /iris/media/:taskId/:token/:name
 - [x] **阶段 6** 供应商模型池与能力调度（多 key 鸡尾酒：模型发现规则、能力分配、供应商管理 GUI）
 - [x] **阶段 7.2** 音频转写（qwen-audio-turbo，复用供应商栈）
 - [x] **阶段 7.1** 视频抽帧（ffmpeg 可选系统条件，`iris_video_frames` 工具 + GUI 卡片）
-- Backlog：阶段 7.3 多模态上下文摘要、阶段 6 条目 4 能力分配 UI 细化、CosyVoice WebSocket 流式 TTS、批量队列并发
+- [x] **阶段 7.3** 多模态上下文摘要（`iris_media_summarize`：联系表 + 自动转写 → 视觉摘要）
+- Backlog：阶段 6 条目 4 能力分配 UI 细化、CosyVoice WebSocket 流式 TTS、批量队列并发
 
 ## License
 

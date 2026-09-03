@@ -124,6 +124,28 @@ if (!/register\('video_frames'/.test(read('lib/actions.js'))) {
   failures.push('lib/actions.js 缺少阶段 7.1 动作（video_frames）');
 }
 
+// 阶段 7.3：多模态摘要后端 + 工具 + 动作 + 卡片
+let summarize = '';
+try {
+  summarize = read('lib/summarize.js');
+} catch (_) {
+  failures.push('缺少 lib/summarize.js（阶段 7.3 多模态摘要后端）');
+}
+if (summarize) {
+  if (!/export async function buildContactSheet/.test(summarize) || !/export async function summarizeMedia/.test(summarize)) {
+    failures.push('lib/summarize.js 必须导出 buildContactSheet / summarizeMedia');
+  }
+  if (!/export function buildSummaryPrompt/.test(summarize)) {
+    failures.push('lib/summarize.js 必须导出 buildSummaryPrompt');
+  }
+}
+if (!/name: 'iris_media_summarize'/.test(index)) {
+  failures.push('lib/index.js 缺少阶段 7.3 工具注册（iris_media_summarize）');
+}
+if (!/register\('media_summarize'/.test(read('lib/actions.js'))) {
+  failures.push('lib/actions.js 缺少阶段 7.3 动作（media_summarize）');
+}
+
 // 阶段 3B：OCR 后端必须存在且复用视觉后端链
 let ocr = '';
 try {
