@@ -83,6 +83,9 @@ if (!/name: 'iris_crop'/.test(index) || !/name: 'iris_pixel_diff'/.test(index)) 
 if (!/name: 'iris_locate'/.test(index)) {
   failures.push('lib/index.js 缺少阶段 3A 工具注册（iris_locate）');
 }
+if (!/name: 'iris_html_screenshot'/.test(index)) {
+  failures.push('lib/index.js 缺少阶段 3C 工具注册（iris_html_screenshot）');
+}
 
 // 阶段 2：像素后端必须存在且不引入 TypeScript/打包器特性
 let pixels = '';

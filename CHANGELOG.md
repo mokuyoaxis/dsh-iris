@@ -131,6 +131,33 @@
 
 > 注：iris_locate 需重新加载插件（toggle iris 或重启）后才会注册进宿主。
 
+### 阶段 3C：HTML 截图
+
+#### 新增
+
+- **`lib/render.js`**：HTML 渲染抽象 + BrowserHtmlRenderer 实现
+  - `HtmlRenderer` 抽象接口：`render({ html, width?, height?, fullPage? }) → { png }`
+  - `BrowserHtmlRenderer`：基于 `ctx.get('browser')` 运行时软耦合（不 import dsh-builtin-browser 包；
+    不存在时工具报人话错误，其余工具不受影响）+ 宿主 `/iris/render/` 静态路由（同源 HTTP 服务渲染
+    目录，避免 file:// CORS 限制，复用宿主 webServer 无独立端口）
+  - 每次调用独立随机子目录，HTML 写入 → 浏览器打开 URL → 截图 → 关闭标签 → 清理目录
+  - `width`/`height` 为 advisory 容器 min 尺寸折中（`ctx.browser.screenshot` 无视口控制 API）
+  - `serveRender` 静态文件 handler（路径穿越防御，仅 GET/HEAD）
+- **新工具 `iris_html_screenshot`**（`lib/index.js`）：输入 HTML 字符串→输出 PNG 附件
+  - 已知缺点（用户要求标注）：可见窗口闪烁/waitMs 折中/无 viewport 控制/依赖 dsh-builtin-browser
+  - 详见 `PLAN.md` 3C 条目的 5 条缺点标注
+
+#### 测试
+
+- 新增 `tests/render.mjs`：`/iris/render` 静态路由（200/穿越/404/405）+ 渲染器（调用序列/目录清理/
+  错误处理）共 6 组
+- `tests/mount.mjs` 扩展为 10 工具断言；lint 新增阶段 3C 守卫
+
+#### 注意
+
+> 所有新工具（iris_crop, iris_pixel_diff, iris_locate, iris_html_screenshot）需重新加载插件
+> 后才会注册进宿主。已知缺点见 PLAN.md 3C 条目。
+
 ### 阶段 4：任务详情抽屉
 
 #### 新增
