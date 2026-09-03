@@ -258,6 +258,43 @@ if (tasksLib) {
   }
 }
 
+// 网络与路由健壮性（2026-09-03 健康检查）
+{
+  const adaptersSrc = read('lib/adapters.js');
+  const fetches = (adaptersSrc.match(/await fetch\(/g) || []).length;
+  const signals = (adaptersSrc.match(/signal:/g) || []).length;
+  if (fetches === 0 || signals < fetches) {
+    failures.push(`lib/adapters.js 每个 fetch 必须带超时 signal（fetch ${fetches} 处，signal ${signals} 处）——挂死连接会冻住盯守 tick`);
+  }
+  if (!/AbortSignal\.timeout/.test(adaptersSrc) || !/T_POLL = 15000/.test(adaptersSrc)) {
+    failures.push('lib/adapters.js 必须有分层超时档位常量（T_SUBMIT/T_POLL/T_DOWNLOAD…）');
+  }
+  if (!/renameSync/.test(adaptersSrc)) {
+    failures.push('lib/adapters.js downloadTo 必须原子落盘（.tmp + rename，失败不留半截产物）');
+  }
+  const idxSrc = index;
+  if (!/function pollDeps[\s\S]{0,400}cap === 'transcribe'/.test(idxSrc)) {
+    failures.push('lib/index.js pollDeps 必须有 transcribe 分支（重启接管走 pollTranscriptionTask，否则转写文本静默丢失）');
+  }
+  const apiSrc = read('lib/api.js');
+  if (!/MAX_BODY_BYTES/.test(apiSrc) || !/totalBytes/.test(apiSrc)) {
+    failures.push('lib/api.js POST body 限长必须按字节计（MAX_BODY_BYTES/totalBytes）——body.length 是块数不是字节数');
+  }
+  if (!/writableEnded \|\| res\.destroyed/.test(apiSrc)) {
+    failures.push('lib/api.js sendJson 必须有 writableEnded/destroyed 守卫（防 end 后二次写）');
+  }
+  if (!/closeAllSse[\s\S]{0,500}unbindChangeBus\(\)/.test(apiSrc)) {
+    failures.push('lib/api.js closeAllSse 必须退订状态变化总线（副作用可逆纪律：不留悬挂监听）');
+  }
+  const mediaSrc = read('lib/media.js');
+  if ((mediaSrc.match(/res\.on\('close', \(\) => \{ if \(!res\.writableEnded\) stream\.destroy\(\)/g) || []).length < 2) {
+    failures.push('lib/media.js 两个流式分支都必须断开即毁流（客户端中途断开不留 fd 到 EOF）');
+  }
+  if (!/writableEnded \|\| res\.destroyed/.test(mediaSrc)) {
+    failures.push('lib/media.js sendText 必须有 writableEnded/destroyed 守卫');
+  }
+}
+
 /* ---------- 汇总 ---------- */
 if (failures.length) {
   console.error(`lint 失败（${failures.length} 项）：`);

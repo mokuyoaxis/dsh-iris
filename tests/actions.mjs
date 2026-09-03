@@ -31,9 +31,20 @@ function fakeReq(method, url, body) {
   };
 }
 function fakeRes() {
-  return { headersSent: false, status: 0, body: null, writeHead(s, h) { this.status = s; this.headersSent = true; }, end(d) { if (d) this.body = JSON.parse(d); } };
+  return { headersSent: false, writableEnded: false, status: 0, body: null, writeHead(s, h) { this.status = s; this.headersSent = true; }, end(d) { this.writableEnded = true; if (d) this.body = JSON.parse(d); } };
 }
 const stubCtx = { get: () => undefined };
+
+// 多块 body 的 fakeReq（验证按字节限长，不是按块数——旧实现的坑：body.length 是块数）
+function fakeReqChunks(method, url, chunks) {
+  return {
+    method, url, headers: { 'content-type': 'application/json' },
+    on: (evt, cb) => {
+      if (evt === 'data') for (const c of chunks) cb(c);
+      if (evt === 'end') setTimeout(cb, 5);
+    }
+  };
+}
 
 /* ① POST /status */
 const r1 = fakeRes();
@@ -57,6 +68,17 @@ const r4 = fakeRes();
 serveApi(fakeReq('POST', '/iris/api/actions/status', ''), r4, stubCtx);
 await new Promise((r) => setTimeout(r, 50));
 assert(r4.status === 200 && r4.body && r4.body.ok, '空 body 也接受', r4.body);
+
+/* ④b POST 超 1MB body → 413（按字节计：3×500KB 块 = 1.5MB，旧实现按块数会放行） */
+const r4b = fakeRes();
+serveApi(fakeReqChunks('POST', '/iris/api/actions/status', [Buffer.alloc(500000, 0x61), Buffer.alloc(500000, 0x61), Buffer.alloc(500000, 0x61)]), r4b, stubCtx);
+await new Promise((r) => setTimeout(r, 50));
+assert(r4b.status === 413, '超限 body → 413', r4b.status);
+/* ④c 限内多块 body 正常放行 */
+const r4c = fakeRes();
+serveApi(fakeReqChunks('POST', '/iris/api/actions/status', [Buffer.from('{"a":'), Buffer.from('1}')]), r4c, stubCtx);
+await new Promise((r) => setTimeout(r, 50));
+assert(r4c.status === 200 && r4c.body && r4c.body.ok, '限内多块 body 正常', r4c.status);
 
 /* ---------- ⑤ 供应商管理动作（阶段 6） ---------- */
 process.env.DSH_HOME = '/tmp/iris-actions-home-' + Date.now();

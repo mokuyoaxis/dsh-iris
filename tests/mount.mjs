@@ -111,5 +111,16 @@ assert(resumed.length === 1 && resumed[0] === tGood.id, '只恢复可恢复的�
 assert((tasks.get(tBad.id).status === 'failed') && /恢复异常/.test(tasks.get(tBad.id).error || ''),
   '坏任务被标死且循环继续: ' + JSON.stringify(tasks.get(tBad.id).error));
 
+/* ===== ⑤ pollDeps transcribe 分支（重启接管转写任务不得走丢文本的 pollTask） ===== */
+const { pollDeps } = await import('../lib/index.js');
+const dT = pollDeps({ apiKey: 'K', id: 'p1' }, 'transcribe');
+assert(dT.intervalMs === 2500 && typeof dT.poll === 'function' && dT.key() === 'K', '⑤ transcribe deps 形状');
+const tT = tasks.create({ cap: 'transcribe', providerId: 'p1', model: 'm', prompt: 'z' });
+await dT.onSuccess(tasks.get(tT.id), { urls: ['你好转写'] });
+assert(tasks.get(tT.id).transcribeText === '你好转写', '⑤ onSuccess 存转写文本: ' + JSON.stringify(tasks.get(tT.id).transcribeText));
+const dI = pollDeps({ apiKey: 'K', id: 'p1' }, 'image');
+const dV = pollDeps({ apiKey: 'K', id: 'p1' }, 'video');
+assert(dI.intervalMs === 2500 && dV.intervalMs === 6000, '⑤ image/video 间隔不回归');
+
 console.error = origError;
-console.log('ALL OK —— apply 装载鲁棒性 4 场景断言全部通过（单工具失败/路由缺失/坏任务恢复均不炸宿主）');
+console.log('ALL OK —— apply 装载鲁棒性 5 场景断言全部通过（单工具失败/路由缺失/坏任务恢复/转写接管均不炸宿主）');

@@ -418,3 +418,52 @@
 - `t_mtl94bqgiyc4` 手工标 failed（修复时清理）；`t_mtkuyu57von4` progress 修为 100%。
   注意：运行中的旧代码进程内存缓存仍持有孤儿记录，若下次重启前发生落盘会短暂回退，
   新代码的 `resumePending` 兜底会在下次装载时再次清理——最终一致。
+
+### 健康检查第二轮：网络超时、恢复接管、限长与流生命周期
+
+> 承接孤儿任务修复的同类排查（「错误路径状态泄漏 / 副作用不可逆」模式），
+> 全库扫出四个同类隐患，一并修复。
+
+#### 修复
+
+- **转写任务重启接管丢文本**（`lib/index.js` `pollDeps`）：恢复接管的轮询器此前对
+  所有能力统一用 `pollTask`（找 urls）——转写任务结果在 `transcription_text` 而非
+  urls，重启接管的转写任务会「成功」但文本静默丢失。`pollDeps` 新增 transcribe 分支
+  （`pollTranscriptionTask` + onSuccess 存 `transcribeText`），并导出供测试。
+- **网络调用全量加超时**（`lib/adapters.js`）：11 处 fetch 此前无一带超时——挂死的
+  TCP 连接会永久冻住盯守 tick（`MAX_WATCH_MS` 只在 tick 顶部检查，await 挂起走不到），
+  提交类调用则吊死工具。新增分层档位常量（提交 30s / 轮询 15s / 上传 60s / 下载 120s /
+  同步生成 180s / 视觉流 120s），各函数带 `timeoutMs` 参数便于测试注入；
+  `visionStream` 用 `AbortSignal.any` 组合外部取消信号与超时（不吞取消）。
+  超时抛 TimeoutError 汇入既有错误路径（轮询进 errStreak 容忍、提交进 submitGuard 标 failed）。
+- **downloadTo 原子落盘**（`lib/adapters.js`）：先写 `.tmp` 再 rename——下载失败/超时
+  不再在 outputs/ 留半截产物。
+- **POST body 限长失效**（`lib/api.js`）：旧实现 `body.length < 1e6` 数的是**块数**不是
+  字节数（1MB 上限实际是 100 万块 ≈ 数十 GB）。改为按字节累计，超限回 413 并丢弃已收块。
+- **sendJson/sendText 双保险**（`lib/api.js`/`lib/media.js`）：`writableEnded || destroyed`
+  守卫，防 end 后二次写抛错。
+- **SSE 总线订阅可逆**（`lib/api.js`）：`closeAllSse()` 现在退订 tasks/config 变化总线
+  （旧代码只关连接不退订，插件停用后每次落盘仍空转一个 400ms 节流定时器）；重连时
+  `bindChangeBus` 重新订阅——现有 SSE 重连+推送测试实证生命周期正确。
+- **媒体流断开即释放**（`lib/media.js`）：两个流式分支（206/200）加
+  `res.on('close') → stream.destroy()`——客户端中途断开不再让读流空转到 EOF 占 fd。
+
+#### 测试
+
+- 新增 `tests/adapters-timeout.mjs` 6 组：挂起服务器实证生成/视觉流超时生效、
+  外部取消即时传播、半截下载不留文件（原子性）、成功路径无 .tmp 残留、档位常量导出
+- `tests/mount.mjs` 增场景 ⑤：pollDeps transcribe 分支形状 + onSuccess 存转写文本 +
+  image/video 间隔不回归
+- `tests/actions.mjs` 增 ④b/④c：多块 1.5MB body → 413（旧实现会放行）、限内多块正常放行
+- `tests/lint.mjs` 增守卫：fetch/signal 数量比对、pollDeps transcribe 分支、
+  MAX_BODY_BYTES 按字节限长、sendJson/sendText 守卫、closeAllSse 退订总线、
+  媒体流双分支断开毁流
+- 全量 19 组测试通过
+
+#### 排查过、确认无需改
+
+- `awaitTerminal` 取消竞态：abort 后 watch 已启动也能被首轮循环捕获并 cancel ✅
+- 路由重复挂载：`mediaRouteMounted` 幂等 + dispose 复位 ✅
+- 媒体链接随任务裁剪失效：token 存任务记录内（非独立内存表），无泄漏 ✅
+- client.js EventSource/兜底轮询：最后座位卸载时 close + clearInterval ✅
+- render.js / media-probe.js 临时目录：均有 try/finally 清理 ✅
