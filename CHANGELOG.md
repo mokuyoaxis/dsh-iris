@@ -191,3 +191,28 @@
 - `tests/api.mjs` 新增 `/iris/api/task/:id` 端点 6 项断言（404/405/基础字段/
   完整字段/媒体链接/无明文 key）
 - `tests/client.mjs` 通过（形态不变）；lint 新增阶段 4 守卫
+
+### 阶段 6（前两步）：模型发现规则 + 能力调度改从全局模型池选
+
+#### 新增
+
+- **`lib/models.js`**：模型发现规则
+  - `capabilitiesOfModel`：模型名→能力标签静态映射（wan→image-gen/video-gen、qwen-vl→vision、
+    qwen-tts→tts、gpt-image/dall-e→image-gen、gemini→vision），零 API 调用
+  - `providerModels`：一个 provider 的模型池——显式 `models` 数组 / 旧四字段（imageModel 等）
+    迁移 / 裸 DashScope 已知模型兜底（wan2.2-t2i-flash/wan2.2-t2v-flash/wan2.2-s2v-flash/
+    qwen-vl-plus/qwen-tts-latest）
+  - `modelPool`：全局池合并所有 provider 的模型
+  - `pickModel`：从池按能力挑选
+
+#### 变更
+
+- **`lib/config.js`**：`pickFor`/`pickAllFor` 改从全局模型池选模型（`models.modelPool`），
+  返回 provider 副本并把对应模型字段设为选中模型——**向后兼容**（调用方读 `provider.imageModel`
+  等不变）；`capabilitiesOf` 改为该 provider 模型池覆盖的能力集合（合并各模型标签）
+
+#### 测试
+
+- 新增 `tests/models.mjs`（5 组：能力推断/显式 models/旧字段迁移/裸 DashScope/全局池挑选）
+- `tests/vision.mjs` 夹具补 `visionModel`（模型池需要模型名，仅声明能力不够）
+- lint 新增阶段 6 守卫；全量 16 组测试通过
