@@ -43,8 +43,8 @@ assert(new RegExp('function\\s+ActionGroups\\s*\\(').test(src), '缺少 ActionGr
 assert(src.includes("'/iris/api/actions/' + action"), '缺少 actions POST 调用');
 assert(src.includes("method: 'POST'"), '缺少 POST 方法');
 assert(src.includes("React.createElement(ActionGroups"), '缺少 ActionGroups 挂载到工作台');
-for (const act of ["action: 'image'", "action: 'video'", "action: 'tts'", "action: 'look'", "action: 'crop'", "action: 'diff'", "action: 'locate'", "action: 'html'", "action: 'ocr'"]) {
+for (const act of ["action: 'image'", "action: 'video'", "action: 'tts'", "action: 'look'", "action: 'crop'", "action: 'diff'", "action: 'locate'", "action: 'html'", "action: 'ocr'", "action: 'relook'", "action: 'status'"]) {
   assert(src.includes(act), '缺少操作卡片 ' + act);
 }
 
-console.log('ALL OK —— 客户端形态 3 座位 + 3 组件 + 4 行为痕迹 + 阶段 5 操作卡片组 9 卡片断言全部通过');
+console.log('ALL OK —— 客户端形态 3 座位 + 3 组件 + 4 行为痕迹 + 阶段 5 操作卡片组 11 卡片断言全部通过');
