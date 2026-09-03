@@ -139,6 +139,25 @@ if (locate) {
   }
 }
 
+// 阶段 6：模型发现模块必须存在且被 config 使用
+let models = '';
+try {
+  models = read('lib/models.js');
+} catch (_) {
+  failures.push('缺少 lib/models.js（阶段 6 模型发现）');
+}
+if (models) {
+  if (!/export function capabilitiesOfModel/.test(models) || !/export function providerModels/.test(models) || !/export function modelPool/.test(models)) {
+    failures.push('lib/models.js 必须导出 capabilitiesOfModel / providerModels / modelPool');
+  }
+  if (!/export function pickModel/.test(models)) {
+    failures.push('lib/models.js 必须导出 pickModel（从池按能力选模型）');
+  }
+}
+if (!/from '\.\/models\.js'/.test(read('lib/config.js'))) {
+  failures.push('lib/config.js 必须使用 lib/models.js（阶段 6 模型池调度）');
+}
+
 /* ---------- 汇总 ---------- */
 if (failures.length) {
   console.error(`lint 失败（${failures.length} 项）：`);

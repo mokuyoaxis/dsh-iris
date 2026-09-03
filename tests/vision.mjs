@@ -45,7 +45,7 @@ function writeProviders(patch) {
       apiKey: 'test-key',
       enabled: true,
       mediaProtocol: 'dashscope',
-      capabilities: ['vision'], // 阶段 1：严格能力选择，假 vision 服务器如实声明
+      visionModel: 'qwen-vl-plus', // 阶段 6 模型池需要模型名，仅声明能力不够
       ...patch
     }]
   }, null, 2));
