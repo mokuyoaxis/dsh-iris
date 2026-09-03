@@ -1,62 +1,55 @@
 /**
- * dsh-iris 请求守卫测试（O2 授权边界）。
+ * dsh-iris 请求守卫测试（O2，发布安全版）。
  * 运行：node tests/guard.mjs
- * 覆盖：Host 白名单（回环 + DSH_WEB_BASE）、DNS 重绑定拒绝、
- *       POST Origin/Sec-Fetch-Site 策略、非浏览器本机客户端放行、guarded 包装器。
- * 纯函数 + 假 res，零网络。
+ * 核心断言方向：**任何部署拓扑都不拦合法用户**，只挡跨站 CSRF 驱动付费 POST。
  */
-import { checkRequest, guarded, allowedHosts } from '../lib/guard.js';
+import { checkRequest, guarded } from '../lib/guard.js';
 
 const assert = (cond, msg, extra) => {
   if (!cond) { console.log('FAIL:', msg, extra === undefined ? '' : (' | ' + JSON.stringify(extra))); process.exit(1); }
 };
 
-/* ---------- ① Host 白名单 ---------- */
+/* ---------- ① 读接口全放开（跨源读受 CORS 挡，媒体有 token） ---------- */
 assert(checkRequest({ method: 'GET', headers: { host: '127.0.0.1:3080' } }).ok, '①a 回环 GET 放行');
-assert(checkRequest({ method: 'GET', headers: { host: 'localhost:3080' } }).ok, '①b localhost 放行');
-assert(checkRequest({ method: 'GET', headers: { host: '[::1]:3080' } }).ok, '①c IPv6 回环放行');
-const rebind = checkRequest({ method: 'GET', headers: { host: 'evil.example.com' } });
-assert(!rebind.ok && rebind.status === 403, '①d DNS 重绑定 Host 拒绝', rebind);
-assert(!checkRequest({ method: 'GET', headers: {} }).ok, '①e 缺 Host 拒绝');
-assert(!checkRequest({ method: 'GET', headers: { host: '0.0.0.0:3080' } }).ok, '①f 非白名单主机拒绝');
+assert(checkRequest({ method: 'GET', headers: { host: 'evil.example.com' } }).ok, '①b 任意 Host 的 GET 放行（读不设限）');
+assert(checkRequest({ method: 'HEAD', headers: { host: '192.168.1.5:3080' } }).ok, '①c LAN HEAD 放行');
+assert(checkRequest({ method: 'GET', headers: {} }).ok, '①d 无 Host 的 GET 也放行（读不拦）');
 
-/* ---------- ② POST 跨站策略 ---------- */
+/* ---------- ② 同源 POST 在任何 host 都放行（发布不锁死的证明） ---------- */
+assert(checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080', 'sec-fetch-site': 'same-origin' } }).ok, '②a 回环同源 POST 放行');
+assert(checkRequest({ method: 'POST', headers: { host: '192.168.1.5:3080', origin: 'http://192.168.1.5:3080' } }).ok, '②b LAN 同源 POST 放行（旧白名单会锁死）');
+assert(checkRequest({ method: 'POST', headers: { host: 'dsh.example.com', origin: 'https://dsh.example.com' } }).ok, '②c 反代域名同源 POST 放行');
+assert(checkRequest({ method: 'POST', headers: { host: 'localhost:3080' } }).ok, '②d 无 Origin 的本机 CLI/curl POST 放行');
+
+/* ---------- ③ 跨站/跨源 POST 被挡（drive-by CSRF，唯一真威胁） ---------- */
 const csrf = checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://evil.example.com' } });
-assert(!csrf.ok && csrf.status === 403, '②a 跨站 Origin POST 拒绝（驱动式 CSRF）', csrf);
+assert(!csrf.ok && csrf.status === 403, '③a 跨源 Origin POST 拒绝（drive-by CSRF）', csrf);
 const sfs = checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', 'sec-fetch-site': 'cross-site' } });
-assert(!sfs.ok && /cross-site/.test(sfs.error), '②b Sec-Fetch-Site cross-site 拒绝');
-const sfsSameSite = checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', 'sec-fetch-site': 'same-site' } });
-assert(!sfsSameSite.ok, '②c same-site（子域发起）也拒绝——iris 只信精确同源');
-assert(checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080', 'sec-fetch-site': 'same-origin' } }).ok, '②d 同源 POST 放行');
-assert(checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080' } }).ok, '②e 无 Origin 的本机 CLI/curl 放行（受 Host 关约束）');
+assert(!sfs.ok && /cross-site/.test(sfs.error), '③b Sec-Fetch-Site cross-site 拒绝');
 const badOrigin = checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'not-a-url' } });
-assert(!badOrigin.ok && /bad origin/.test(badOrigin.error), '②f 非法 Origin 拒绝');
+assert(!badOrigin.ok && /bad origin/.test(badOrigin.error), '③c 非法 Origin 拒绝');
+// same-site（子域/跨端口发起）不算同源：Origin.host 不等 → 拒
+const sameSite = checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:9999' } });
+assert(!sameSite.ok, '③d 回环跨端口（Origin≠Host）拒绝');
 
-/* ---------- ③ DSH_WEB_BASE 扩展白名单（反代/远程部署） ---------- */
-const saved = process.env.DSH_WEB_BASE;
-process.env.DSH_WEB_BASE = 'http://iris.lan:3080';
-assert(allowedHosts().has('iris.lan'), '③a DSH_WEB_BASE 主机进入白名单');
-assert(checkRequest({ method: 'GET', headers: { host: 'iris.lan:3080' } }).ok, '③b 声明基址放行');
-assert(!checkRequest({ method: 'GET', headers: { host: 'other.lan:3080' } }).ok, '③c 未声明主机仍拒绝');
-assert(checkRequest({ method: 'POST', headers: { host: 'iris.lan:3080', origin: 'http://iris.lan:3080' } }).ok, '③d 声明基址的同源 POST 放行');
-if (saved === undefined) delete process.env.DSH_WEB_BASE; else process.env.DSH_WEB_BASE = saved;
-assert(!allowedHosts().has('iris.lan'), '③e 还原后扩展主机移除');
+/* ---------- ④ Origin/Host 大小写与端口敏感 ---------- */
+assert(checkRequest({ method: 'POST', headers: { host: 'LOCALHOST:3080', origin: 'http://localhost:3080' } }).ok, '④a Host 大小写归一后同源放行');
+assert(!checkRequest({ method: 'POST', headers: { host: 'localhost:3080', origin: 'http://localhost' } }).ok, '④b 端口不同（默认80 vs 3080）视为跨源拒绝');
 
-/* ---------- ④ guarded 包装器 ---------- */
+/* ---------- ⑤ guarded 包装器 ---------- */
 function fakeRes() {
-  return { headersSent: false, status: 0, body: null, writeHead(s, h) { this.status = s; this.headersSent = true; }, end(d) { this.body = d; } };
+  return { headersSent: false, writableEnded: false, status: 0, body: null, writeHead(s, h) { this.status = s; this.headersSent = true; }, end(d) { this.writableEnded = true; this.body = d; } };
 }
 let called = 0;
 const wrapped = guarded(() => { called++; });
 const r403 = fakeRes();
-wrapped({ method: 'POST', headers: { host: 'evil.example.com' } }, r403);
-assert(r403.status === 403 && called === 0 && JSON.parse(r403.body).error, '④a 未授权请求 403 JSON 且不进 handler');
+wrapped({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://evil.example.com' } }, r403);
+assert(r403.status === 403 && called === 0 && JSON.parse(r403.body).error, '⑤a 跨源 POST 403 且不进 handler');
 const r200 = fakeRes();
-wrapped({ method: 'GET', headers: { host: '127.0.0.1:3080' } }, r200);
-assert(called === 1 && r200.status === 0, '④b 授权请求透传 handler');
-// 已死连接不抛错
+wrapped({ method: 'GET', headers: { host: 'anything.example.com' } }, r200);
+assert(called === 1 && r200.status === 0, '⑤b 读请求透传 handler');
 const dead = { headersSent: true, writeHead() { throw new Error('boom'); }, end() {} };
-wrapped({ method: 'GET', headers: { host: 'evil' } }, dead);
-assert(true, '④c 已发送头的连接静默跳过');
+wrapped({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://evil' } }, dead);
+assert(true, '⑤c 已发送头的连接静默跳过');
 
-console.log('ALL OK —— 请求守卫 4 组断言全部通过（Host 白名单/重绑定/CSRF 策略/DSH_WEB_BASE/包装器）');
+console.log('ALL OK —— 请求守卫（发布安全版）5 组断言全部通过：读全放开 / 同源 POST 任意 host 放行 / 跨站 CSRF 挡 / 端口敏感 / 包装器');

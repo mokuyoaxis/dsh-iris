@@ -637,3 +637,31 @@
 - `tests/client.mjs` ⑧：ModelPool/逐模型测试/移除/手动添加/发现/verified 标记结构断言
 - lint 守卫：config 四函数、probeModel、四动作注册、ModelPool UI 要素
 - 全量 20 组测试通过
+
+### 守卫修正：发布安全优先（对齐宿主信任栅栏，去除锁死风险）
+
+> 用户追问"守卫一开始的作用"，回头查实宿主鉴权姿态（读 `dsh-client-connection`）：
+> 宿主**有一套权威信任栅栏** `isTrustedApiRequest`（Host ∈ 回环∪`trustedHosts` +
+> `Sec-Fetch-Site≠cross-site` + `Origin.host===Host`），**但只挂在 `/api` 前缀**。
+> iris 的 `/iris/*` 是裸 prefix 路由，在栅栏之外——所以 iris 确需自备一道。
+> 但原守卫把 Host 白名单**写死成只有回环、无 trustedHosts 逃生口**，正是会锁死
+> LAN/反代发布用户的劣质复刻。用户裁定：发布安全优先，反代/重绑定无所谓（iris 开源）。
+
+#### 变更（`lib/guard.js` 重写）
+
+- **删除 Host 白名单**（回环∪DSH_WEB_BASE 那套）——它是唯一会拦合法发布用户的东西，
+  其独有收益（挡 DNS 重绑定）价值低且用户明确不追。
+- **读接口（GET/HEAD/SSE）全放开**：跨源读本就受 CORS 阻挡（无 ACAO 读不到响应），
+  媒体另有 token 能力凭证。
+- **仅 POST 保留 CSRF 栅栏**（唯一真实高价值威胁：恶意网页驱动付费生成）：
+  `Sec-Fetch-Site === cross-site` 拒；有 `Origin` 且 `Origin.host ≠ Host`（host:port 精确比对，
+  与宿主同语义）拒；同源浏览器与无 Origin 的 CLI 放行。
+- 净效果：**任何拓扑（回环/LAN IP/反代域名）都不误伤同源用户**，只挡跨站 POST。
+
+#### 测试
+
+- `tests/guard.mjs` 重写为发布安全语义 5 组：读全放开、**同源 POST 在回环/LAN/反代域名
+  均放行**（旧白名单会锁死的证明）、跨站/跨源/非法 Origin/跨端口拒绝、Host 大小写归一、
+  端口敏感、guarded 包装器
+- lint 守卫更新：不再要求 DSH_WEB_BASE/Host 白名单，改校验"非 POST 放行 + POST 挡 cross-site"
+- 全量 20 组测试通过

@@ -331,8 +331,8 @@ if (tasksLib) {
   } catch (_) {
     failures.push('缺少 lib/guard.js（O2 请求守卫）');
   }
-  if (guardSrc && (!/export function checkRequest/.test(guardSrc) || !/DSH_WEB_BASE/.test(guardSrc) || !/cross-site/.test(guardSrc))) {
-    failures.push('lib/guard.js 必须含 checkRequest/DSH_WEB_BASE 白名单/cross-site 拒绝');
+  if (guardSrc && (!/export function checkRequest/.test(guardSrc) || !/cross-site/.test(guardSrc) || !/method !== 'POST'/.test(guardSrc))) {
+    failures.push('lib/guard.js 必须是发布安全版：checkRequest + 读接口放开(非 POST 放行) + POST 挡 cross-site/跨源');
   }
 }
 

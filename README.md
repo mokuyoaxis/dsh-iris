@@ -48,9 +48,11 @@ GET /iris/media/:taskId/:token/:name
 ```
 
 - 生成完成即自动登记，工具结果与 `iris_task_status` 都会给出可点击的播放链接
-- **安全边界（O2，2026-09-03）**：宿主 webServer 无鉴权（loopback 即信任），iris 路由自带纵深防御守卫（`lib/guard.js`）——
-  所有请求 Host 必须在回环白名单（127.0.0.1/localhost/::1 ∪ `DSH_WEB_BASE` 声明主机），斩断 DNS 重绑定；
-  POST 另查 Origin/Sec-Fetch-Site 拒跨站，挡住恶意网页驱动付费生成；本机 CLI（无 Origin）在 Host 关约束下放行。
+- **安全边界（O2，2026-09-03 修订为发布安全）**：宿主在 `/api` 上有权威信任栅栏，但 iris 的 `/iris/*` 裸 prefix 路由在其之外，故自带一道**对齐宿主、且绝不锁死合法用户**的守卫（`lib/guard.js`）——
+  读接口（GET/HEAD/SSE）全放开（跨源读本就受 CORS 阻挡，媒体另有 token 能力凭证）；
+  **仅 POST 挡跨站 CSRF**：`Sec-Fetch-Site: cross-site` 或 `Origin.host ≠ Host` 一律 403，挡住恶意网页驱动付费生成；
+  同源浏览器（无论经回环 / LAN IP / 反代域名访问，Origin 总与 Host 同源）与无 Origin 的本机 CLI 一律放行——**任何部署拓扑都不误伤**。
+  DNS 重绑定需 Host 白名单才能挡，但那正是锁死 LAN/反代用户的元凶；iris 开源、该攻击价值低，故不设 Host 白名单（明确取舍）。
   媒体通道另有：token 为 crypto 随机 128bit 能力凭证（只存任务记录）；文件定位只信任务记录、URL 文件名段不参与路径解析（防穿越）；未命中一律 404；仅 GET/HEAD
 - **M4 泡泡工作台数据通道**：`GET /iris/api/state`（同源 JSON，兜底轮询 30s）+ **SSE 实时推送**
   `GET /iris/api/state/events`（EventSource，状态变化即推，延迟 ≤400ms，替代原 5s 轮询）；
