@@ -103,9 +103,11 @@ assert(r0 && typeof r0.id === 'string' && typeof r0.cap === 'string' && typeof r
   && Array.isArray(r0.media), 'running 任务最小标量字段（media 恒为数组）');
 
 /* ---------- ⑥ /iris/api/task/:id 详情端点（阶段 4 抽屉数据源） ---------- */
-const { serveApi } = await import('../lib/api.js');
+const { serveApi, closeAllSse, sseClientCount } = await import('../lib/api.js');
 const tasks = await import('../lib/tasks.js');
+const config = await import('../lib/config.js');
 tasks.resetCache(); // 让任务注册表重新读盘（fixture 里写好的任务）
+config.resetCache();
 
 function fakeRes() {
   return { headersSent: false, status: 0, headers: null, body: null, wrote: false,
@@ -131,4 +133,64 @@ assert(d.media[0] && d.media[0].url && d.media[0].url.includes('/iris/media/t_do
 assert(typeof d.remoteTaskId === 'string' && Array.isArray(d.attachments), '详情 remoteTaskId/attachments');
 assert(!JSON.stringify(d).includes('must-never-leak'), '详情不含明文 key');
 
-console.log('ALL OK —— /iris/api/state 数据层 5 项断言 + /iris/api/task/:id 详情端点 6 项断言全部通过');
+/* ---------- ⑦ SSE 端点（阶段 4：真实 HTTP 服务器 + 事件流验证） ---------- */
+const http = await import('node:http');
+const srv = http.createServer((req, res) => serveApi(req, res));
+await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+const port = srv.address().port;
+const sseUrl = `http://127.0.0.1:${port}/iris/api/state/events`;
+
+// 7a. 连接后立即收到初始状态
+function connectSse() {
+  return new Promise((resolve, reject) => {
+    const req = http.get(sseUrl, (res) => {
+      assert(res.statusCode === 200, 'SSE 状态码 200', res.statusCode);
+      assert(res.headers['content-type'] === 'text/event-stream; charset=utf-8', 'SSE Content-Type');
+      let data = '';
+      res.on('data', (c) => { data += c; });
+      const close = () => { res.destroy(); };
+      resolve({ res, close, getData: () => data });
+    });
+    req.on('error', reject);
+  });
+}
+const sse = await connectSse();
+await new Promise((r) => setTimeout(r, 100)); // 等一些数据
+const firstData = sse.getData();
+assert(firstData.includes('data: {'), 'SSE 初始消息含 data: {...}', firstData.slice(0, 50));
+assert(firstData.includes('t_running_1'), '初始状态含 running 任务');
+assert(firstData.includes('retry: 3000'), 'SSE 含断线重连指令');
+
+// 7b. 触发任务变更后收到新推送
+tasks.create({ cap: 'image', providerId: 'iris_testp', model: 'm', prompt: 'sse test' });
+await new Promise((r) => setTimeout(r, 600)); // 等节流 400ms + 缓冲
+const afterCreate = sse.getData();
+const secondPayload = afterCreate.slice(firstData.length);
+assert(secondPayload.includes('sse test'), 'SSE 收到新任务的推送', secondPayload.slice(0, 100));
+
+// 7c. sseClientCount 正确
+assert(sseClientCount() >= 1, 'SSE 连接计数 ≥1', sseClientCount());
+
+// 7d. closeAllSse 关闭所有连接
+const beforeClose = sseClientCount();
+sse.close();
+closeAllSse();
+await new Promise((r) => setTimeout(r, 50));
+assert(sseClientCount() === 0, 'closeAllSse 后连接数为 0', sseClientCount());
+
+// 7e. 重新连接：触发供应商变更测试
+const sse2 = await connectSse();
+await new Promise((r) => setTimeout(r, 100));
+const afterReconnect = sse2.getData();
+assert(afterReconnect.includes('data: {'), '重连后收到初始状态');
+config.upsert({ id: 'sse_test', name: 'SSE Test', type: 'openai', apiKey: 'sk-test', baseUrl: 'http://127.0.0.1:9999/v1' });
+await new Promise((r) => setTimeout(r, 600));
+const afterConfig = sse2.getData().slice(afterReconnect.length);
+assert(afterConfig.includes('SSE Test'), 'SSE 收到供应商变更推送', afterConfig.slice(0, 100));
+// 清理配置
+config.removeProvider('sse_test');
+sse2.close();
+closeAllSse();
+
+srv.close();
+console.log('ALL OK —— /iris/api/state 数据层 5 项断言 + /iris/api/task/:id 详情端点 6 项断言 + SSE 7 项断言全部通过');

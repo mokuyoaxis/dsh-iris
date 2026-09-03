@@ -341,3 +341,42 @@
 - `tests/actions.mjs` 增 media_summarize 3 项入参校验 + 动作清单断言
 - lint 增阶段 7.3 守卫（summarize 导出契约 + 工具/动作注册）
 - 全量 18 组测试通过
+
+### 阶段 4（SSE 共享轮询测量）—— 状态变化即推，替代 5s 轮询
+
+> 原计划「先测量共享状态源成本，再决定 SSE」——共享状态源（一个 pub/sub 供三个座位）已
+> 在阶段 0 落地；测量结论：SSE 可行，延迟 ≤400ms（vs 原 5s）、空闲时零网络流量、生命周期
+> 成本可控。本阶段实现 SSE 推送并保留 30s 兜底轮询。
+
+#### 新增
+
+- **`lib/tasks.js`** + **`lib/config.js`**：`onChange` / `emitChange` 状态变化总线
+  - `persist()` 落盘即触发 `emitChange()`（任何任务 create/update/成功/失败 或供应商
+    upsert/remove/assignment 均自动通知），无监听者时零开销
+- **`lib/api.js`** SSE 推送枢纽：
+  - `GET /iris/api/state/events` SSE 端点：连接即推当前状态，tick → 400ms 节流广播。心跳
+    `: ping` 每 15s（unref，无连接时自动停止）。`closeAllSse()` 插件停用/路由卸载时全关
+  - `sseClientCount()` 暴露活跃连接数（测试用）
+  - 生命周期纪律：`res.on('close')` 移除连接；0 连接 → 停心跳；`closeAllSse()` 清理所有定时器与连接
+- **`lib/index.js`**：`mountIrisRoutes` 的 effect 清理中调用 `closeAllSse()`
+- **`lib/client.js`**：5s 轮询 → **EventSource + 30s 兜底轮询**
+  - 三个座位的 `useIrisState` 改为：首次挂载时建立 `EventSource('/iris/api/state/events')`，
+    `onmessage` 直接 `apply(data)` 广播给所有 listeners；保留 `setInterval(load, 30000)` 作为
+    SSE 断线/漏推时的兜底最终一致。最后座位卸载时 `close()` EventSource 并清除定时器
+
+#### 生命周期成本评估
+
+| 维度 | 成本 | 控制措施 |
+|---|---|---|
+| 连接数 | 每标签页 = 浏览器共享 1 个 SSE 连接；多标签页每标签 +1 | `closeAllSse()` 在插件停用全关 |
+| 心跳 | 15s 一次 `: ping` 注释行（无连接时自动停止，不拖住进程） | unref 定时器，不阻止退出 |
+| 推送节流 | 400ms 窗口合并，盯守高频 update（2.5–6s） → 最多 ~2.5 次/秒 | 单次推送 = 1 次 `buildState()` 读盘 |
+| 内存 | 每连接一个未完成 HTTP 响应对象（~KB 级） | 连接数上限 = 浏览器标签数，可控 |
+| 网络 | 空闲时零流量；状态变化时单次推送，比 5s 轮询减少 ~85% 请求 | — |
+
+#### 测试
+
+- `tests/api.mjs` 增 SSE 7 项断言（初始推送、任务变更推送、连接计数、closeAll 清理、
+  重连、供应商变更推送）—— 真实 HTTP 服务器 + 事件流验证
+- lint 增 SSE 守卫（`serveSse`/`closeAllSse`/EventSource/`onmessage`/`close()`/30s 兜底）
+- 全量 18 组测试通过

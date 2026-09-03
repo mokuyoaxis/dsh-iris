@@ -49,6 +49,9 @@ if (/iris\.home\b/.test(api)) {
 if (!/serveTaskDetail/.test(api) || !/\/iris\/api\/task\//.test(api)) {
   failures.push('lib/api.js 缺少 /iris/api/task/:id 详情端点（阶段 4 抽屉）');
 }
+if (!/state\/events/.test(api) || !/serveSse/.test(api) || !/closeAllSse/.test(api)) {
+  failures.push('lib/api.js 缺少 SSE 状态推送端点（阶段 4：/iris/api/state/events + serveSse + closeAllSse）');
+}
 
 const media = read('lib/media.js');
 if (!/'Accept-Ranges'/.test(media) || !/createReadStream/.test(media) || !/parseRange/.test(media)) {
@@ -64,7 +67,19 @@ if (!/\.corrupted-/.test(tasks) || !/\.corrupted-/.test(config)) {
 const client = read('lib/client.js');
 const pollCount = (client.match(/setInterval\(load/g) || []).length;
 if (pollCount !== 1) {
-  failures.push(`lib/client.js 状态轮询应为 1 份共享，实际 setInterval(load) 出现 ${pollCount} 次`);
+  failures.push(`lib/client.js 状态轮询应为 1 份兜底（SSE 为主通道），实际 setInterval(load) 出现 ${pollCount} 次`);
+}
+if (!/new EventSource\(['"]\/iris\/api\/state\/events['"]\)/.test(client)) {
+  failures.push('lib/client.js 缺少 SSE 主通道（EventSource /iris/api/state/events）');
+}
+if (!/sharedSource\.close\(\)/.test(client)) {
+  failures.push('lib/client.js 缺少 SSE 连接清理（sharedSource.close()）');
+}
+if (!/sharedSource\.onmessage/.test(client)) {
+  failures.push('lib/client.js 缺少 SSE onmessage 处理');
+}
+if (!/setInterval\(load, 30000\)/.test(client)) {
+  failures.push('lib/client.js 缺少兜底轮询（setInterval(load, 30000)）');
 }
 if (!/closest\(['\"]\.iris-bubble-btn['\"]\)/.test(client)) {
   failures.push('lib/client.js 缺少面板交互隔离（.iris-bubble-btn closest 守卫）');
