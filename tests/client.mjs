@@ -37,4 +37,14 @@ assert(src.includes("'iris-bubble' + (configured ? ' lit' : ' dim')"), '缺少�
 assert(src.includes('setOpen(!open)'), '缺少点击切换面板');
 assert(src.includes("className: 'iris-bubble-badge'"), '缺少运行中数字角标');
 
-console.log('ALL OK —— 客户端形态 3 座位 + 3 组件 + 4 行为痕迹断言全部通过');
+/* ④ 阶段 5 操作卡片组：ActionCard/ActionGroups + POST /iris/api/actions */
+assert(new RegExp('function\\s+ActionCard\\s*\\(').test(src), '缺少 ActionCard 组件');
+assert(new RegExp('function\\s+ActionGroups\\s*\\(').test(src), '缺少 ActionGroups 组件');
+assert(src.includes("'/iris/api/actions/' + action"), '缺少 actions POST 调用');
+assert(src.includes("method: 'POST'"), '缺少 POST 方法');
+assert(src.includes("React.createElement(ActionGroups"), '缺少 ActionGroups 挂载到工作台');
+for (const act of ["action: 'image'", "action: 'video'", "action: 'tts'", "action: 'look'", "action: 'crop'", "action: 'diff'", "action: 'locate'", "action: 'html'", "action: 'ocr'"]) {
+  assert(src.includes(act), '缺少操作卡片 ' + act);
+}
+
+console.log('ALL OK —— 客户端形态 3 座位 + 3 组件 + 4 行为痕迹 + 阶段 5 操作卡片组 9 卡片断言全部通过');
