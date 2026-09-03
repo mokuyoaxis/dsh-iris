@@ -86,6 +86,23 @@ if (!/name: 'iris_locate'/.test(index)) {
 if (!/name: 'iris_html_screenshot'/.test(index)) {
   failures.push('lib/index.js 缺少阶段 3C 工具注册（iris_html_screenshot）');
 }
+if (!/name: 'iris_long_ocr'/.test(index)) {
+  failures.push('lib/index.js 缺少阶段 3B 工具注册（iris_long_ocr）');
+}
+
+// 阶段 3B：OCR 后端必须存在且复用视觉后端链
+let ocr = '';
+try {
+  ocr = read('lib/ocr.js');
+} catch (_) {
+  failures.push('缺少 lib/ocr.js（阶段 3B OCR 后端）');
+}
+if (ocr && !/export async function longOcr/.test(ocr)) {
+  failures.push('lib/ocr.js 必须导出 longOcr');
+}
+if (ocr && !/askWithBackends/.test(ocr)) {
+  failures.push('lib/ocr.js 必须复用视觉后端链（askWithBackends），不直连供应商');
+}
 
 // 阶段 2：像素后端必须存在且不引入 TypeScript/打包器特性
 let pixels = '';
