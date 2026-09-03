@@ -226,6 +226,38 @@ if (!/from '\.\/models\.js'/.test(read('lib/config.js'))) {
   failures.push('lib/config.js 必须使用 lib/models.js（阶段 6 模型池调度）');
 }
 
+// 孤儿任务防线（2026-09-03 修复）：提交段守卫 + 启动兜底清理 + progress 收尾
+let tasksLib = '';
+try {
+  tasksLib = read('lib/tasks.js');
+} catch (_) {
+  failures.push('缺少 lib/tasks.js');
+}
+if (tasksLib) {
+  if (!/export async function submitGuard/.test(tasksLib)) {
+    failures.push('lib/tasks.js 必须导出 submitGuard（提交失败即标 failed，不留 running 孤儿）');
+  }
+  if (!/无远程任务 id/.test(tasksLib)) {
+    failures.push('lib/tasks.js resumePending 必须有孤儿记录兜底清理（running 且无 remoteTaskId → failed）');
+  }
+  if (!/status: 'succeeded', files, progress: '100%'/.test(tasksLib)) {
+    failures.push('lib/tasks.js 盯守成功必须把 progress 收尾为 100%（不残留轮询期 RUNNING 文本）');
+  }
+}
+{
+  const actionsSrc = read('lib/actions.js');
+  const creates = (actionsSrc.match(/tasks\.create\(/g) || []).length;
+  const guards = (actionsSrc.match(/tasks\.submitGuard\(/g) || []).length;
+  if (guards < creates) {
+    failures.push(`lib/actions.js 每个 tasks.create 站点必须套 submitGuard（create ${creates} 处，守卫仅 ${guards} 处）`);
+  }
+  const idxGuards = (index.match(/tasks\.submitGuard\(/g) || []).length;
+  const idxTryFailed = (index.match(/status: 'failed', error: String\(err\.message \|\| err\)/g) || []).length;
+  if (idxGuards < 2 || idxTryFailed < 3) {
+    failures.push(`lib/index.js 提交段守卫退化（submitGuard ${idxGuards} 处 <2 或 try/catch 标 failed ${idxTryFailed} 处 <3）`);
+  }
+}
+
 /* ---------- 汇总 ---------- */
 if (failures.length) {
   console.error(`lint 失败（${failures.length} 项）：`);

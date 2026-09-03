@@ -121,6 +121,27 @@ tasks.watch(tasks.get(t9.id), {
 await sleep(800);
 assert(tasks.get(t9.id).status === 'succeeded' && racePolls > 3, '场景9 竞态重试后落袋');
 
+// 场景 10：submitGuard——提交抛错即标 failed 并原样重抛（不留 running 孤儿）
+const t10 = tasks.create({ cap: 'transcribe', providerId: 'p1', model: 'm', prompt: 'sg' });
+let threw = null;
+try {
+  await tasks.submitGuard(t10, async () => { throw new Error('上传 401'); });
+} catch (err) { threw = err; }
+assert(threw && /上传 401/.test(String(threw.message)), '场景10a submitGuard 原样重抛');
+assert(tasks.get(t10.id).status === 'failed' && /提交失败.*上传 401/.test(tasks.get(t10.id).error || ''), '场景10b 标 failed 带原因');
+// 成功路径：返回值透传，任务保持 running（等待 watch 接管）
+const t10b = tasks.create({ cap: 'transcribe', providerId: 'p1', model: 'm', prompt: 'sg-ok' });
+const passed = await tasks.submitGuard(t10b, async () => 'REMOTE-OK');
+assert(passed === 'REMOTE-OK' && tasks.get(t10b.id).status === 'running', '场景10c 成功透传不误伤');
+
+// 场景 11：resumePending 孤儿兜底——running 且无 remoteTaskId 的残留记录启动时标 failed
+const t11 = tasks.create({ cap: 'image', providerId: 'p1', model: 'm', prompt: 'orphan' });
+const resumed11 = tasks.resumePending(() => null);
+assert(!resumed11.includes(t11.id) && tasks.get(t11.id).status === 'failed' && /无远程任务 id/.test(tasks.get(t11.id).error || ''), '场景11 孤儿记录启动即清理');
+
+// 场景 12：盯守成功后 progress 收尾为数值（轮询期的 "RUNNING" 文本不残留）
+assert(tasks.get(f1.id).progress === '100%', '场景12 成功任务 progress=100%（场景1 复用断言）');
+
 /* ================= 媒体路由 ================= */
 
 /* ---- 视觉适配器：visionStream 的 SSE 解析（本地假服务器） ---- */
@@ -176,12 +197,12 @@ assert(media.authorizeMedia('t_nonexist', reg.token, 'clip.mp4') === null, '不�
 const links = media.mediaLinksOf(tasks.get(f1.id));
 assert(links.length === 1 && links[0].includes('[▶ 视频 播放]('), '播放链接生成');
 
-// 场景 10：重复登记幂等（同文件不产生第二个 token）
+// 场景 13：重复登记幂等（同文件不产生第二个 token）
 const again = media.registerMedia(f1.id, mp4);
 const count = tasks.get(f1.id).media.length;
 assert(again.token === reg.token && count === 1, '重复登记幂等');
 
-console.log(`ALL OK —— 任务框架 9 场景 + 媒体通道 ${links.length ? 6 : 0} 断言全部通过`);
+console.log(`ALL OK —— 任务框架 12 场景（含孤儿守卫/恢复清理/progress 收尾）+ 媒体通道 ${links.length ? 6 : 0} 断言全部通过`);
 
 /* ---- 占位：serveMedia handler 的集成验证随插件装载进行 ---- */
 function mediaRouteHandler() { /* 见 index.js；离线仅验授权内核 */ }

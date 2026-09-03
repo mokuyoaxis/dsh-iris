@@ -380,3 +380,41 @@
   重连、供应商变更推送）—— 真实 HTTP 服务器 + 事件流验证
 - lint 增 SSE 守卫（`serveSse`/`closeAllSse`/EventSource/`onmessage`/`close()`/30s 兜底）
 - 全量 18 组测试通过
+
+### 可靠性修复：孤儿任务防线（提交段守卫 + 启动兜底 + progress 收尾）
+
+> 实况检验（2026-09-03）发现：`t_mtl94bqgiyc4`（transcribe）卡 running 1 小时+，
+> 无 remoteTaskId、无 updatedAt。根因：`tasks.create()` 落盘后、`watch()` 启动前的
+> 上传/提交调用抛错时没有标 failed——记录成为孤儿（无盯守者，`resumePending` 又因
+> 缺 remoteTaskId 跳过，永远占着「运行中」角标）。工具侧 image/video/tts 早有
+> try/catch 纪律，但转写两处与 GUI 动作侧四个动作全部裸奔。
+
+#### 变更
+
+- **`lib/tasks.js`** 框架层三件套：
+  - 新增 `submitGuard(task, fn)`：提交段抛错 → 任务标 `failed`（带「提交失败：原因」）
+    并原样重抛；成功则透传返回值、不误伤 running 状态。
+  - `resumePending()` 孤儿兜底：`running` 且无 `remoteTaskId` 的残留记录启动时直接标
+    failed（「提交未完成」）——覆盖「进程死在 create 与提交完成之间」这种守卫也救不了的
+    场景，保证最终一致。
+  - 盯守成功收尾时 `progress: '100%'`：轮询期写入的 `RUNNING` 等文本不再残留到
+    succeeded 记录上（实况：`t_mtkuyu57von4` succeeded 却 progress=running）。
+- **`lib/index.js`**：`iris_transcribe_audio` 与 `iris_media_summarize` 转写子步骤的
+  upload+submit 段套 `submitGuard`。
+- **`lib/actions.js`**：GUI 动作侧 image（dashscope 与 openai-images 两分支）/ video /
+  tts / transcribe 四个 create 站点全部套 `submitGuard`（动作侧比工具侧更裸——四个动作
+  全有泄漏路径）。
+
+#### 测试
+
+- `tests/smoke.mjs` 新增场景 10–12：submitGuard 抛错标 failed+原样重抛+成功透传、
+  resumePending 孤儿清理、成功任务 progress 收尾 100%（复用场景 1 记录断言）
+- `tests/lint.mjs` 新增结构守卫：`submitGuard` 导出、孤儿清理分支、progress 收尾、
+  actions.js 每个 create 站点必须有守卫、index.js 守卫数量下限
+- 全量 18 组测试通过
+
+#### 线上数据清理
+
+- `t_mtl94bqgiyc4` 手工标 failed（修复时清理）；`t_mtkuyu57von4` progress 修为 100%。
+  注意：运行中的旧代码进程内存缓存仍持有孤儿记录，若下次重启前发生落盘会短暂回退，
+  新代码的 `resumePending` 兜底会在下次装载时再次清理——最终一致。
