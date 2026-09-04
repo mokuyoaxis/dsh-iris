@@ -133,6 +133,12 @@ assert(tasks.get(t10.id).status === 'failed' && /提交失败.*上传 401/.test(
 const t10b = tasks.create({ cap: 'transcribe', providerId: 'p1', model: 'm', prompt: 'sg-ok' });
 const passed = await tasks.submitGuard(t10b, async () => 'REMOTE-OK');
 assert(passed === 'REMOTE-OK' && tasks.get(t10b.id).status === 'running', '场景10c 成功透传不误伤');
+// 取消路径：AbortError 必须收口为 canceled，而不是伪装成供应商失败
+const t10c = tasks.create({ cap: 'image', providerId: 'p1', model: 'm', prompt: 'sg-cancel' });
+try {
+  await tasks.submitGuard(t10c, async () => { throw Object.assign(new Error('aborted'), { name: 'AbortError' }); });
+} catch (_) { /* expected */ }
+assert(tasks.get(t10c.id).status === 'canceled' && /取消/.test(tasks.get(t10c.id).error || ''), '场景10d 提交取消标 canceled');
 
 // 场景 11：resumePending 孤儿兜底——running 且无 remoteTaskId 的残留记录启动时标 failed
 const t11 = tasks.create({ cap: 'image', providerId: 'p1', model: 'm', prompt: 'orphan' });

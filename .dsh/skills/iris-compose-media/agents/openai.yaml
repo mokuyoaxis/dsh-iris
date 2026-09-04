@@ -1,0 +1,4 @@
+interface:
+  display_name: "Iris Compose Media"
+  short_description: "Compose multi-step media workflows with Iris"
+  default_prompt: "Use $iris-compose-media to analyze the supplied media and complete the requested multi-step creation workflow."

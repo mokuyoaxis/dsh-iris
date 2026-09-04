@@ -21,6 +21,7 @@ const assert = (cond, msg, extra) => {
 assert(cap.CAPABILITIES.IMAGE === 'image-gen', 'IMAGE 常量');
 assert(cap.CAPABILITIES.VIDEO === 'video-gen', 'VIDEO 常量');
 assert(cap.CAPABILITIES.TTS === 'tts', 'TTS 常量');
+assert(cap.CAPABILITIES.TRANSCRIBE === 'transcribe', 'TRANSCRIBE 常量');
 assert(cap.CAPABILITIES.VISION === 'vision', 'VISION 常量');
 assert(cap.isKnownCapability('vision') && !cap.isKnownCapability('bogus'), '已知能力过滤');
 
@@ -32,12 +33,12 @@ const explicitP = { id: 'p1', capabilities: ['vision'], visionModel: 'x', imageM
 assert(JSON.stringify(cap.capabilitiesOf(explicitP)) === JSON.stringify(['vision']), '显式声明权威');
 
 // 空 capabilities + 模型字段 → 按字段推断
-const modelP = { id: 'p2', capabilities: [], imageModel: 'm1', videoModel: 'm2', ttsModel: 'm3' };
-assert(cap.capabilitiesOf(modelP).sort().join(',') === 'image-gen,tts,video-gen', '模型字段推断', cap.capabilitiesOf(modelP));
+const modelP = { id: 'p2', capabilities: [], imageModel: 'm1', videoModel: 'm2', ttsModel: 'm3', transcribeModel: 'm4' };
+assert(cap.capabilitiesOf(modelP).sort().join(',') === 'image-gen,transcribe,tts,video-gen', '模型字段推断', cap.capabilitiesOf(modelP));
 
 // 空 capabilities + 无模型 + DashScope baseUrl → 全部能力（裸账号迁移）
 const bareDash = { id: 'p3', capabilities: [], baseUrl: dashscopeBase };
-assert(cap.capabilitiesOf(bareDash).sort().join(',') === 'image-gen,tts,video-gen,vision', '裸 DashScope 全能力', cap.capabilitiesOf(bareDash));
+assert(cap.capabilitiesOf(bareDash).sort().join(',') === 'image-gen,transcribe,tts,video-gen,vision', '裸 DashScope 全能力', cap.capabilitiesOf(bareDash));
 
 // 空 capabilities + 无模型 + 非 DashScope → 空
 const bareOther = { id: 'p4', capabilities: [], baseUrl: 'https://other.example.com/v1' };

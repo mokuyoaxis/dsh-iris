@@ -37,7 +37,7 @@ const get = (p) => new Promise((resolve) => {
   const r = http.request(`http://127.0.0.1:${port}${p}`, (res) => {
     const chunks = [];
     res.on('data', (c) => chunks.push(c));
-    res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString() }));
+    res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString() }));
   });
   r.on('error', () => resolve({ status: 0 }));
   r.end();
@@ -45,6 +45,8 @@ const get = (p) => new Promise((resolve) => {
 
 let r = await get('/iris/render/abc123/index.html');
 assert(r.status === 200 && r.body === '<h1>hello render</h1>', '渲染文件 200 + 内容', r.status);
+const csp = r.headers && r.headers['content-security-policy'];
+assert(csp && /sandbox/.test(csp) && /default-src 'none'/.test(csp) && /connect-src 'none'/.test(csp), '渲染 HTML 有 CSP sandbox 且禁脚本网络', csp);
 // .html 必须 text/html（Chromium 在 nosniff 下拒绝 octet-stream → ERR_ABORTED）
 const ct = await new Promise((resolve) => {
   const req = http.request(`http://127.0.0.1:${port}/iris/render/abc123/index.html`, (res) => {

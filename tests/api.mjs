@@ -28,7 +28,7 @@ fs.writeFileSync(path.join(irisV1, 'providers.json'), JSON.stringify({
     name: '本地测试供应商',
     type: 'openai',
     baseUrl: 'http://127.0.0.1:9999/compatible-mode/v1',
-    apiKey: 'sk-this-must-never-leak-secret-key-value-123456',
+    apiKey: 'test-api-key-that-must-never-leak-123456',
     enabled: true,
     mediaProtocol: 'dashscope',
     imageModel: 'wan2.2-t2i-flash',
@@ -104,7 +104,7 @@ assert(r0 && typeof r0.id === 'string' && typeof r0.cap === 'string' && typeof r
   && Array.isArray(r0.media), 'running 任务最小标量字段（media 恒为数组）');
 
 /* ---------- ⑥ /iris/api/task/:id 详情端点（阶段 4 抽屉数据源） ---------- */
-const { serveApi, closeAllSse, sseClientCount } = await import('../lib/api.js');
+const { serveApi, closeAllSse, sseClientCount, purgeStaleUploads, UPLOAD_TTL_MS } = await import('../lib/api.js');
 const tasks = await import('../lib/tasks.js');
 const config = await import('../lib/config.js');
 tasks.resetCache(); // 让任务注册表重新读盘（fixture 里写好的任务）
@@ -155,8 +155,16 @@ function connectSse() {
     req.on('error', reject);
   });
 }
+async function waitUntil(test, timeoutMs = 2500) {
+  const deadline = Date.now() + timeoutMs;
+  while (!test()) {
+    if (Date.now() >= deadline) return false;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  return true;
+}
 const sse = await connectSse();
-await new Promise((r) => setTimeout(r, 100)); // 等一些数据
+await waitUntil(() => sse.getData().includes('data: {'));
 const firstData = sse.getData();
 assert(firstData.includes('data: {'), 'SSE 初始消息含 data: {...}', firstData.slice(0, 50));
 assert(firstData.includes('t_running_1'), '初始状态含 running 任务');
@@ -164,7 +172,7 @@ assert(firstData.includes('retry: 3000'), 'SSE 含断线重连指令');
 
 // 7b. 触发任务变更后收到新推送
 tasks.create({ cap: 'image', providerId: 'iris_testp', model: 'm', prompt: 'sse test' });
-await new Promise((r) => setTimeout(r, 600)); // 等节流 400ms + 缓冲
+await waitUntil(() => sse.getData().includes('sse test'));
 const afterCreate = sse.getData();
 const secondPayload = afterCreate.slice(firstData.length);
 assert(secondPayload.includes('sse test'), 'SSE 收到新任务的推送', secondPayload.slice(0, 100));
@@ -181,11 +189,11 @@ assert(sseClientCount() === 0, 'closeAllSse 后连接数为 0', sseClientCount()
 
 // 7e. 重新连接：触发供应商变更测试
 const sse2 = await connectSse();
-await new Promise((r) => setTimeout(r, 100));
+await waitUntil(() => sse2.getData().includes('data: {'));
 const afterReconnect = sse2.getData();
 assert(afterReconnect.includes('data: {'), '重连后收到初始状态');
 config.upsert({ id: 'sse_test', name: 'SSE Test', type: 'openai', apiKey: 'sk-test', baseUrl: 'http://127.0.0.1:9999/v1' });
-await new Promise((r) => setTimeout(r, 600));
+await waitUntil(() => sse2.getData().includes('SSE Test'));
 const afterConfig = sse2.getData().slice(afterReconnect.length);
 assert(afterConfig.includes('SSE Test'), 'SSE 收到供应商变更推送', afterConfig.slice(0, 100));
 // 清理配置
@@ -195,20 +203,33 @@ closeAllSse();
 
 // 8. 文件选择器 L2：POST /iris/api/upload 存 uploads/ 返回路径（阶段 10，服务器仍开）
 const upl = await new Promise((resolve) => {
-  const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/iris/api/upload?name=cat%20photo.png' }, (res) => {
+  const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/iris/api/upload?name=cat%3Aphoto.png' }, (res) => {
     let d = ''; res.on('data', (c) => (d += c)); res.on('end', () => resolve({ status: res.statusCode, json: JSON.parse(d || '{}') }));
   });
   req.on('error', () => resolve({ status: 0, json: {} }));
   req.end(Buffer.from('HELLO-IRIS-UPLOAD'));
 });
 assert(upl.status === 200 && upl.json.ok && upl.json.path && fs.existsSync(upl.json.path), 'upload 存盘返回真实路径', upl.json);
-assert(fs.readFileSync(upl.json.path).toString() === 'HELLO-IRIS-UPLOAD' && /photo/.test(upl.json.path), 'upload 内容一致 + 文件名保留', upl.json.path);
+assert(upl.json.expiresInMs === UPLOAD_TTL_MS, 'upload 返回临时副本 TTL', upl.json.expiresInMs);
+assert(fs.readFileSync(upl.json.path).toString() === 'HELLO-IRIS-UPLOAD' && /cat_photo\.png$/.test(upl.json.path), 'upload 内容一致 + 文件名安全化保留', upl.json.path);
 const uplEmpty = await new Promise((resolve) => {
   const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/iris/api/upload?name=x.png' }, (res) => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
   req.on('error', () => resolve(0)); req.end();
 });
 assert(uplEmpty === 400, '空上传 400', uplEmpty);
 if (upl.json.path) fs.rmSync(upl.json.path, { force: true });
+// 8b. 生命周期：超过 TTL 的上传副本会被清理，新文件保留
+const uploads = path.join(irisV1, 'uploads');
+fs.mkdirSync(uploads, { recursive: true });
+const stale = path.join(uploads, 'stale.bin');
+const fresh = path.join(uploads, 'fresh.bin');
+fs.writeFileSync(stale, 'old'); fs.writeFileSync(fresh, 'new');
+const oldTime = new Date(Date.now() - UPLOAD_TTL_MS - 60000);
+fs.utimesSync(stale, oldTime, oldTime);
+const purged = purgeStaleUploads();
+assert(purged.deleted === 1 && !fs.existsSync(stale) && fs.existsSync(fresh), '过期上传清理且保留新文件', purged);
+assert(!fs.readdirSync(uploads).some((n) => n.endsWith('.part')), '上传完成后无 .part 残留');
+fs.rmSync(fresh, { force: true });
 
 srv.close();
 console.log('ALL OK —— /iris/api/state 数据层 5 项 + /iris/api/task/:id 6 项 + SSE 7 项 + 上传路由 3 项断言全部通过');

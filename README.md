@@ -1,98 +1,177 @@
-# dsh-iris
+<p align="center">
+  <img src="docs/assets/iris-wordmark.svg" width="520" alt="IRIS 彩色字标">
+</p>
 
-给 DeepSeek Harness 装上**眼睛和双手**：多供应商媒体生成（DashScope 百炼原生协议 + OpenAI Images 兼容）、视觉理解，以及规划中的 🫧 常驻工作台。
+<h1 align="center">dsh-iris</h1>
 
-前身是独立运行的 [ai-paint](../ai-paint) 工作台（配置中心 + 生成工作台）；dsh-iris 是同一套能力向 DSH 的**宿内移植**——工具即接口（Agent 用），泡泡工作台是人机共用的门面。
+<p align="center"><strong>DeepSeek Harness 的多供应商媒体与视觉工具箱</strong></p>
 
-## 定位：三件套
+<p align="center">
+  <a href="#deepseek-harness-适配"><img alt="DeepSeek Harness compatible" src="https://img.shields.io/badge/DeepSeek%20Harness-compatible-4D6BFE.svg?style=flat-square"></a>
+  <a href="CHANGELOG.md"><img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-7C5CFC.svg?style=flat-square"></a>
+  <a href="https://nodejs.org/"><img alt="Node.js 20.9 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D20.9-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
+  <a href="#开发与验证"><img alt="npm test" src="https://img.shields.io/badge/tests-npm%20test-2EA44F.svg?style=flat-square"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
+</p>
 
-| | 能力 | 状态 |
-|---|---|---|
-| ✋ 双手 | 图像生成 / 视频生成 / 语音合成 | M1–M2 已交付 |
-| 👁 眼睛 | 视觉路由：显式工具（look/relook），自持 qwen-vl 为主、全局模型降级为辅 | M3 已交付 |
-| 🫧 门面 | 常驻泡泡工作台（前身 public/ 前端的化身） | M4 已交付 |
+dsh-iris 为 Agent 和 Iris 工作台提供图像、视频、语音与视觉理解能力。它可以连接 DashScope 百炼及 OpenAI Images 兼容服务；完整配置和任务管理集中在 Iris 工作台，右下角的 Iris 泡泡提供快捷入口。
 
-## 架构原则
+项目目前处于早期版本，接口和配置格式仍可能随版本迭代调整。
 
-1. **宿内共生，不开后台**：纯宿内插件，无任何独立进程/端口。盯守定时器全部 `unref` 且随插件 Fiber 清理——DSH 停它就停，DSH 重启后自动接管未完成的远程任务。
-2. **自持供应商栈**：凭据存 `$DSH_HOME/iris/v1/providers.json`（0600，接口层永不回明文）。首次运行从 ai-paint 工作台幂等导入。聊天模型设置里本来就没有 wan*/qwen-tts 这类媒体模型的位置——这是自持的正当性。
-3. **与 vision-mix 平行互补**：vision-mix 是「隐式模型路由」（借全局聊天模型让文本 Agent 会看）；iris 是「显式工具 + 自持媒体栈」（画/摄/说 + 主动看图）。理念吸收、代码零耦合、命名空间天然隔离。
+## 最快开始
+
+已经安装 DeepSeek Harness 且 `pnpm` 在 PATH 中时，把 Iris 加入 Web profile：
+
+```bash
+dsh plugin --profile web add @mokuyoaxis/dsh-iris
+dsh web
+```
+
+从当前源码目录试用时，把第一条命令中的 `@mokuyoaxis/dsh-iris` 换成 `.`。插件会在下一次 DSH 启动时装载，Web UI 默认位于 `http://127.0.0.1:3080`。
+
+首次启动后，打开“设置 → Iris 工作台 → + 添加供应商”，填入 DashScope Base URL 和 API Key，再点“发现模型”。单供应商可以先使用自动能力分配。完整步骤、OpenAI Images 兼容配置和故障转移说明见[用户指南](user_guide.md)。
+
+配置完成后，最小指令可以是：
+
+```text
+使用 iris_draw_image：画一只坐在蓝色窗边的白猫。
+总结我刚上传的这张图片。
+用 Iris 总结 /absolute/path/demo.mp4，再把摘要合成为语音。
+```
+
+DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)定义。生成图片、视频或语音可能产生供应商费用。
+
+## 功能概览
+
+- 图像生成、文生视频、图生视频和 S2V 数字人视频
+- 文本转语音与音频转写
+- 看图问答、长图 OCR、目标定位、裁剪和像素差异分析
+- 视频抽帧与多模态内容摘要
+- 异步任务跟踪、重启恢复和带授权令牌的媒体播放
+- 多供应商模型池，以及按 `供应商 + 模型` 分配能力
+- 浏览器上传、会话附件和宿主路径三种文件来源
+
+## 使用前准备
+
+- 满足所用 DeepSeek Harness 版本要求的 Node.js；dsh-iris 自身最低为 20.9
+- 一个可用的 DeepSeek Harness 环境，以及 PATH 中的 `pnpm`
+- 至少一个受支持的媒体或视觉服务供应商
+- 使用视频抽帧和视频摘要时，需要系统提供 `ffmpeg` 与 `ffprobe`
+
+安装插件后，在 Iris 工作台中添加供应商并为所需能力分配模型。供应商密钥只保存在宿主侧，界面和接口不会返回完整密钥。
+
+## DeepSeek Harness 适配
+
+dsh-iris 按 DeepSeek Harness 插件形态提供服务端与 Web 客户端入口：服务端注册 14 个 Agent 工具，并复用宿主的工具、路由和生命周期服务；客户端通过 DSH 模块加载器接入设置页、会话输入区和全局悬浮层。插件不会启动独立服务或额外监听端口。
+
+当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。由于项目尚未声明 DSH 的最低或最高版本，兼容徽章表示项目已按当前 DSH 插件接口实现，并不代表官方认证或对所有历史版本的承诺。
 
 ## 工具
 
-| 工具 | 说明 |
+### 生成、语音与任务
+
+| 工具 | 用途 |
 |---|---|
-| `iris_draw_image` | 文生图：DashScope wan* 异步（提交→盯守→转存 attachment）或 OpenAI Images 兼容同步；附视觉自述 |
-| `iris_generate_video` | 三种模式：文生视频 / 图生视频（首帧 = iris 图片 attachment id 或本地绝对路径）/ **s2v 数字人**（wan2.2-s2v：首帧+语音 <20s，本地图音自动上传百炼临时存储 oss://）；长渲染自动转后台，`iris_task_status` 查询 |
-| `iris_speak_text` | qwen-tts 同步合成，wav 落盘 |
-| `iris_task_status` | 查询任务状态/进度/错误/产物路径（单条或最近列表） |
-| `iris_look_at_image` | 👁 看图问答：本地图片 → 存附件 → qwen-vl 流式回答（自持栈为主，全局视觉模型降级为辅） |
-| `iris_relook_attachment` | 对本会话已出现过的图片（上传/工具产物/iris 生成）换问题重看像素 |
-| `iris_crop` | ✂️ 裁剪图片区域，返回 PNG 附件 |
-| `iris_pixel_diff` | 📷 两图像素差异分析（diff ratio + 8×8 最差区域 + 热力图附件） |
-| `iris_locate` | 📍 模型驱动定位目标，返回原像素 bbox（与 iris_crop 无缝接力） |
-| `iris_html_screenshot` | 🖼️ 渲染 HTML 字符串为截图（依赖 dsh-builtin-browser 插件） |
-| `iris_long_ocr` | 📄 长截图分块 OCR（视觉模型，默认 1200px 块 + 120px 重叠） |
-| `iris_transcribe_audio` | 🎙️ 音频转写（qwen-audio-turbo，复用供应商栈） |
-| `iris_video_frames` | 🎞️ 视频抽帧（ffmpeg 可选系统条件：时间均匀采样 N 帧，缩放后返回 DSH image attachments） |
-| `iris_media_summarize` | 📝 多模态视频摘要（抽帧拼成带时间戳联系表 + 可选自动转写音轨 → 视觉模型摘要） |
+| `iris_draw_image` | 根据提示词生成图片 |
+| `iris_generate_video` | 生成文生视频、图生视频或 S2V 数字人视频 |
+| `iris_speak_text` | 将文本合成为语音 |
+| `iris_transcribe_audio` | 将音频转写为文本 |
+| `iris_task_status` | 查询单个任务或最近任务的状态和产物 |
 
-产物统一落在 `$DSH_HOME/iris/v1/outputs/`；图片额外转存为 DSH 持久 attachment 进入对话。
+### 视觉与图像处理
 
-## 媒体通道（对话流内点播）
+| 工具 | 用途 |
+|---|---|
+| `iris_look_at_image` | 对图片提问并获得视觉模型回答 |
+| `iris_relook_attachment` | 使用新问题重新查看会话中的图片附件 |
+| `iris_long_ocr` | 分块识别长截图或长图文字 |
+| `iris_locate` | 定位图片中的目标并返回像素坐标 |
+| `iris_crop` | 按像素区域裁剪图片 |
+| `iris_pixel_diff` | 比较两张图片并生成差异统计和热力图 |
+| `iris_html_screenshot` | 在受限环境中将 HTML 字符串渲染为截图 |
 
-DSH 附件服务只收图片，视频/音频走宿内授权路由：
+### 视频处理
 
-```
-GET /iris/media/:taskId/:token/:name
-```
+| 工具 | 用途 |
+|---|---|
+| `iris_video_frames` | 从视频中均匀抽取画面帧 |
+| `iris_media_summarize` | 结合画面帧和可选音频转写生成视频摘要 |
 
-- 生成完成即自动登记，工具结果与 `iris_task_status` 都会给出可点击的播放链接
-- **安全边界（O2，2026-09-03 修订为发布安全）**：宿主在 `/api` 上有权威信任栅栏，但 iris 的 `/iris/*` 裸 prefix 路由在其之外，故自带一道**对齐宿主、且绝不锁死合法用户**的守卫（`lib/guard.js`）——
-  读接口（GET/HEAD/SSE）全放开（跨源读本就受 CORS 阻挡，媒体另有 token 能力凭证）；
-  **仅 POST 挡跨站 CSRF**：`Sec-Fetch-Site: cross-site` 或 `Origin.host ≠ Host` 一律 403，挡住恶意网页驱动付费生成；
-  同源浏览器（无论经回环 / LAN IP / 反代域名访问，Origin 总与 Host 同源）与无 Origin 的本机 CLI 一律放行——**任何部署拓扑都不误伤**。
-  DNS 重绑定需 Host 白名单才能挡，但那正是锁死 LAN/反代用户的元凶；iris 开源、该攻击价值低，故不设 Host 白名单（明确取舍）。
-  媒体通道另有：token 为 crypto 随机 128bit 能力凭证（只存任务记录）；文件定位只信任务记录、URL 文件名段不参与路径解析（防穿越）；未命中一律 404；仅 GET/HEAD
-- **M4 泡泡工作台数据通道**：`GET /iris/api/state`（同源 JSON，兜底轮询 30s）+ **SSE 实时推送**
-  `GET /iris/api/state/events`（EventSource，状态变化即推，延迟 ≤400ms，替代原 5s 轮询）；
-  供应商状态只给 Key hint、历史面板按 running/recent 分组、产物给授权播放链接；接口只回标量，
-  apiKey/文件绝对路径永不明文
-- SSE 生命周期成本：一次连接 = 一个未完成 HTTP 响应 + 15s 心跳保持活跃；插件停用时 `closeAllSse()`
-  关闭全部长连接，不留悬挂连接
-- 反代/远程部署用 `DSH_WEB_BASE` 覆盖默认基址 `http://127.0.0.1:3080`
-- 插件停用即撤路由；任务元数据裁剪（200 条）后旧链接自然失效
+## 文件输入
 
-## 任务框架（继承 ai-paint，宿内化）
+Iris 支持三种文件来源，推荐顺序如下：
 
-- 元数据：`$DSH_HOME/iris/v1/tasks.json`（只存元数据与 attachment 索引，最多 200 条）
-- 服务端盯守：轮询容错（连续 5 次失败才判死）、单任务上限 20 分钟、间隔按能力区分（图像 2.5s / 视频 6s）
-- 工具内等待有上限（图像 3 分钟 / 视频 8 分钟），超时自动转后台并告知 task id
-- 取消信号传播：abort 即标记 canceled 并停盯
-- DSH 重启恢复：百炼异步任务在服务端继续跑、结果 URL 存活 24h，启动时重新接管落袋
+1. **浏览器上传**：适合本地文件和跨环境访问，单文件上限为 64 MB。
+2. **会话附件**：适合复用当前会话中已经上传或生成的媒体。
+3. **宿主路径**：适合宿主可以直接读取的大文件。这里填写的是宿主进程看到的路径，不一定等同于浏览器所在系统的路径。
 
-## 里程碑
+上传内容保存在 `$DSH_HOME/iris/v1/uploads/`，默认保留 7 天。不同系统下的路径选择建议见[文件访问与跨环境](docs/file-access-across-environments.md)。
 
-- [x] **M1** 工具（画图/语音）+ 配置自持 + 工作台导入
-- [x] **M2** 任务盯守框架（后台化/重启恢复/历史元数据）+ 视频生成
-- [x] **M3** 眼睛：`iris_look_at_image` / `iris_relook_attachment`（visionStream 移植，qwen-vl 走自持栈；与 vision-mix 分工——它是隐式模型路由，我们是显式工具）
-- [x] **M4** 🫧 泡泡工作台（settings.section 常驻工作台页 + conversation.input.dock 任务进度条 + shell.overlay 主界面悬浮泡泡——可拖动、未配置 API 时暗淡、配置就绪发亮、运行中带数字角标、点击展开工作台浮层；host 侧 /iris/api/state JSON 数据通道，Key 只出 hint）
-- [x] **阶段 4 续** 泡泡瘦身 + 任务清理（浮层改「📋任务/⚡常用」双标签，常用卡片由用户在设置页勾选、默认干净；设置页历史按今天/昨天/更早分组 + 清空已完成/清理 N 天前/扫描并删除孤儿产物，删记录默认只删元数据产物留盘；后台历史上限 200→500）
-- [x] **阶段 0** M4 收口与可靠性（泡泡交互收口/共享状态源/媒体 Range/持久化加固/真实 lint）
-- [x] **阶段 1** Provider / Capability 基座（VisionBackend 抽象、严格能力选择、结构化错误分类）
-- [x] **阶段 2** 确定性像素工具（iris_crop / iris_pixel_diff，基于 sharp）
-- [x] **阶段 3** 模型驱动视觉工具（iris_locate / iris_html_screenshot / iris_long_ocr）
-- [x] **阶段 4** 任务详情抽屉（/iris/api/task/:id + TaskDetailDrawer 组件）
-- [x] **阶段 5** 前端操作面板（GUI 直连：11 工具可折叠操作卡片组 + POST /iris/api/actions/:name）
-- [x] **阶段 6** 供应商模型池与能力调度（多 key 鸡尾酒：模型发现规则、能力分配、供应商管理 GUI）
-- [x] **阶段 6 条目 4** 能力有序分配 UI（每能力一个 failover 列表：加入/↑↓排序/移出/恢复自动；qwen3-vl 强视觉模型入池——VERIFY 实证 grounding 零偏差）
-- [x] **O2 授权边界** 请求守卫 `lib/guard.js`（Host 回环白名单斩 DNS 重绑定 + POST Origin/Sec-Fetch-Site 拒跨站 CSRF；本机 CLI 放行）
-- [x] **可靠性两轮** 孤儿任务防线（submitGuard+接管兜底+progress 收尾）/ 网络超时分层 / 转写重启接管 / body 按字节限长 / 流与总线生命周期
-- [x] **阶段 7.2** 音频转写（qwen-audio-turbo，复用供应商栈）
-- [x] **阶段 7.1** 视频抽帧（ffmpeg 可选系统条件，`iris_video_frames` 工具 + GUI 卡片）
-- [x] **阶段 7.3** 多模态上下文摘要（`iris_media_summarize`：联系表 + 自动转写 → 视觉摘要）
-- Backlog：CosyVoice WebSocket 流式 TTS、批量队列并发、阶段 8 Skills 沉淀
+## 模型分配与故障转移
+
+能力分配使用 `providerId::modelId` 作为模型身份。同名模型如果来自不同供应商或不同账号，会被视为两个独立选项。
+
+生成类能力可以配置多个候选模型。Iris 只会在上传、提交或同步生成阶段失败时尝试下一个候选项；远端服务一旦受理任务，就不会自动重新提交，以免产生重复任务或重复计费。已经受理的异步任务由任务系统继续跟踪。
+
+转写是独立的 `transcribe` 能力，不会占用 TTS 或视觉能力的模型配置。
+
+## 数据与任务
+
+运行数据默认位于 `$DSH_HOME/iris/v1/`：
+
+| 位置 | 内容 |
+|---|---|
+| `providers.json` | 供应商和能力分配，文件权限为 0600 |
+| `tasks.json` | 任务元数据和附件索引，最多保留 500 条 |
+| `outputs/` | 生成和处理后的媒体文件 |
+| `uploads/` | 浏览器上传的临时输入副本 |
+
+异步任务会在后台轮询。插件重启后，可以继续接管仍在远端执行的任务。取消信号会传递到本地等待与轮询流程；是否能取消远端计算，取决于供应商接口。
+
+音频和视频通过带随机令牌的 Iris 媒体链接访问。图片会尽量转存为 DSH 持久附件，方便在会话中继续使用。
+
+## 安全说明
+
+- 供应商密钥不会通过状态接口返回。
+- 修改状态的 HTTP 请求会检查跨站来源，降低第三方页面触发付费操作的风险。
+- HTML 截图在不具备同源权限的沙箱页面中渲染，脚本和外部网络默认不可用。
+- 媒体链接使用随机能力令牌，文件路径只从任务记录解析。
+- Iris 不提供独立账号体系，多用户隔离和访问控制由 DeepSeek Harness 部署负责。
+
+## 已知限制
+
+- `sharp` 包含原生组件；主要支持 glibc Linux、Windows 和 macOS。裸 Termux 等非标准运行环境可能需要额外处理。
+- 视频抽帧和视频摘要依赖系统安装的 `ffmpeg` 与 `ffprobe`。
+- HTML 截图不加载远程脚本、字体或图片；需要的资源应先内联。
+- WSL、容器和远程部署中，浏览器路径通常不能直接交给宿主读取，请优先上传文件。
+- 供应商返回的模型清单只是候选集合，模型是否真正支持某项能力仍以实际调用为准。
+
+## Agent Skills
+
+源码和 npm 包附带两个仓库级预览 Skill：
+
+| Skill | 适用场景 |
+|---|---|
+| [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md) | 组合截图、语义检查、元素定位、裁剪和像素比较，完成有证据的 UI 验收 |
+| [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) | 组合两个以上 Iris 工具，完成看图后绘图、图片转视频、视频总结配旁白或 S2V 等媒体工作流 |
+
+当 DSH 会话以本仓库为项目目录且启用了文件系统 Skill 服务时，可以直接发现它们。当前版本尚未在插件启用时自动向其他项目注册这些 Skill；14 个 Iris 工具不受影响。
+
+## 开发与验证
+
+在项目目录运行：
+
+    npm test
+
+测试覆盖配置合并、模型身份、任务生命周期、生成动作、HTTP/SSE 路由、客户端交互和安全边界。项目采用 ES Modules，不需要构建步骤。
+
+## 文档
+
+- [用户指南](user_guide.md)
+- [变更记录](CHANGELOG.md)
+- [路线图](docs/ROADMAP.md)
+- [文件访问与跨环境](docs/file-access-across-environments.md)
 
 ## License
 
-MIT
+[MIT](LICENSE)

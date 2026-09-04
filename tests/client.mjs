@@ -25,6 +25,9 @@ assert(src.includes("ctx.slots.inject('conversation.input.dock'"), '缺少 conve
 assert(src.includes("id: 'iris-progress'"), '缺少 iris-progress 座位 id');
 assert(src.includes("ctx.slots.inject('shell.overlay'"), '缺少 shell.overlay 注册');
 assert(src.includes("id: 'iris-bubble'"), '缺少 iris-bubble 座位 id');
+assert(src.includes("label: function () { return 'Iris 工作台'; }"), '设置页正式名称应为 Iris 工作台');
+assert(!src.includes('Iris 泡泡工作台'), '正式名称不应继续使用 Iris 泡泡工作台');
+assert(src.includes("label: function () { return 'Iris 泡泡'; }"), '悬浮入口应保留 Iris 泡泡名称');
 
 /* ② 三个组件函数必须存在 */
 for (const fn of ['WorkbenchPanel', 'ProgressDock', 'FloatingBubble']) {
@@ -51,8 +54,8 @@ for (const act of ["action: 'image'", "action: 'video'", "action: 'tts'", "actio
 assert(new RegExp('function\\s+CapabilityAssigner\\s*\\(').test(src), '缺少 CapabilityAssigner 组件');
 assert(src.includes("React.createElement(CapabilityAssigner"), '缺少 CapabilityAssigner 挂载到工作台');
 assert(src.includes("'能力分配（failover 顺序）'"), '缺少能力分配区标题');
-assert(src.includes("capability: cap, model_ids: ids"), '缺少有序列表保存调用（model_ids 数组）');
-for (const capRow of ["cap: 'image-gen'", "cap: 'video-gen'", "cap: 'tts'", "cap: 'vision'"]) {
+assert(src.includes("capability: cap, model_refs: refs"), '缺少复合引用有序列表保存调用（model_refs 数组）');
+for (const capRow of ["cap: 'image-gen'", "cap: 'video-gen'", "cap: 'tts'", "cap: 'transcribe'", "cap: 'vision'"]) {
   assert(src.includes(capRow), '缺少能力行 ' + capRow);
 }
 assert(src.includes("'↑'") && src.includes("'↓'") && src.includes("'恢复自动'"), '缺少排序/清除操作');
@@ -80,8 +83,8 @@ assert(new RegExp('function\\s+taskRowMini\\s*\\(').test(src), '缺少紧凑任�
 assert(!/capability:\s*capability,\s*model_id:/.test(src), 'ActionCard 仍在写单值 model_id 分配（应移除，唯一入口是 CapabilityAssigner）');
 assert(!/function\s+assignModel/.test(src), '残留 assignModel（旧下拉写入口）');
 assert(src.includes('改分配 → 上方「能力分配'), '卡片缺少只读模型提示（引导去唯一入口）');
-// 唯一写入口：CapabilityAssigner 用 model_ids 数组
-assert((src.match(/model_ids:/g) || []).length >= 1, 'CapabilityAssigner 应通过 model_ids 数组写分配');
+// 唯一写入口：CapabilityAssigner 用 provider+model 复合引用数组
+assert((src.match(/model_refs:/g) || []).length >= 1, 'CapabilityAssigner 应通过 model_refs 复合引用数组写分配');
 
 /* ⑧ 阶段 9 P4：模型池 UI（发现/手动 + verified 标记 + 逐模型测试/移除 + 手动添加） */
 assert(new RegExp('function\\s+ModelPool\\s*\\(').test(src), '缺少 ModelPool 组件');
@@ -98,7 +101,19 @@ assert(src.includes('/iris/api/upload'), 'FileField 缺少上传端点调用');
 assert(src.includes('attachments_list'), 'FileField 缺少附件枚举调用');
 assert(src.includes('attachment_export'), 'FileField 缺少附件导出调用');
 assert(src.includes('ctx.sessions') || src.includes('sessions.list'), '客户端缺少当前会话 id 读取（ctx.sessions）');
-assert(src.includes("'💻 本地文件'") && src.includes("'📎 附件'") && src.includes("'⌨️ 路径'"), 'FileField 缺少三来源按钮');
+assert(src.includes("'💻 上传文件'") && src.includes("'📎 会话附件'") && src.includes("'⌨️ 高级 · 宿主路径'"), 'FileField 三来源按钮标签不符（上传文件/会话附件/高级·宿主路径）');
+/* 上传优先：💻 排在 📎 与 ⌨️ 之前，且带 primary 强调；宿主路径降为 ghost 虚线 */
+var iUp = src.indexOf("'💻 上传文件'"), iAtt = src.indexOf("'📎 会话附件'"), iPath = src.indexOf("'⌨️ 高级 · 宿主路径'");
+assert(iUp > 0 && iUp < iAtt && iAtt < iPath, 'FileField 来源顺序应为 上传 → 会话附件 → 宿主路径');
+assert(/\.iris-ff-btn\.primary/.test(src) && src.includes("className: 'iris-ff-btn primary'"), '上传按钮缺少 primary 强调样式');
+assert(/\.iris-ff-btn\.ghost/.test(src) && src.includes("className: 'iris-ff-btn ghost'"), '宿主路径按钮缺少 ghost 弱化样式');
+assert(/className: 'iris-ff-hint'[\s\S]{0,240}WSL/.test(src), 'FileField 缺少"跨设备/WSL/安卓建议用上传"提示语');
+assert(/value \? null : React\.createElement\('div', \{ className: 'iris-ff-hint'/.test(src), 'FileField 提示语应仅在未选文件时出现（选后不占位）');
+assert(/placeholder: '高级：粘贴 DSH 宿主上的绝对路径/.test(src), '手输框未标注为宿主路径语义');
+/* 活体走查发现：旧 useState(!value) 让空字段默认摊出高级路径框，与"上传优先"相反 */
+var ffBody = src.slice(src.indexOf('function FileField'), src.indexOf('function ActionCard'));
+assert(/useState\(!value/.test(ffBody) === false, 'FileField 高级路径框不应默认展开（上传优先）');
+assert(/var manualPair = React\.useState\(false\)/.test(ffBody), 'FileField manual 初值应为 false');
 assert((src.match(/type: 'file'/g) || []).length >= 8, '卡片路径字段未转 FileField（应 ≥8 处 type:file）');
 
 console.log('ALL OK —— 客户端形态 3 座位 + 组件群 + 14 卡片注册表 + 能力分配 UI + 泡泡瘦身 + 分配唯一入口 + 模型池 UI + 文件选择器 断言全部通过');

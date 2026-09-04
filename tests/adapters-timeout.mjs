@@ -62,6 +62,14 @@ try { await adapters.visionStream({ key: 'k', baseUrl: holeBase, prompt: 'q', im
 catch (e) { err = e; }
 assert(err && /AbortError|abort/i.test(String(err.name) + String(err.message)), '③ 外部取消即时传播', String(err && (err.name || err.message)));
 
+/* ③b 生成请求同样接收外部取消信号 */
+err = null;
+const genAbort = new AbortController();
+setTimeout(() => genAbort.abort(), 80);
+try { await adapters.openAiGenerateImage({ key: 'k', baseUrl: holeBase, model: 'm', prompt: 'p', signal: genAbort.signal, timeoutMs: 30000 }); }
+catch (e) { err = e; }
+assert(err && /AbortError|abort/i.test(String(err.name) + String(err.message)), '③b 生成外部取消即时传播', String(err && (err.name || err.message)));
+
 /* ④ downloadTo：半截 body → 超时抛错且目标文件不存在（原子落盘不留半截） */
 const outPath = path.join(os.tmpdir(), 'iris-dl-test-' + Date.now() + '.bin');
 err = null;
@@ -90,4 +98,4 @@ assert(JSON.stringify(mids) === JSON.stringify(['wan2.7-image', 'qwen3-tts-flash
 modelsSrv.close();
 
 hole.close(); trickle.close(); good.close();
-console.log('ALL OK —— 网络超时（生成/视觉/取消传播）+ 原子落盘 + listModels 7 组断言全部通过');
+console.log('ALL OK —— 网络超时（生成/视觉/取消传播）+ 原子落盘 + listModels 8 组断言全部通过');

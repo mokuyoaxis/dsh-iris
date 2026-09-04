@@ -35,14 +35,16 @@ assert(models.capabilitiesOfModel('wan2.5-i2v-preview').includes(CAPABILITIES.VI
 assert(models.capabilitiesOfModel('wan2.2-t2v-flash').includes(CAPABILITIES.VIDEO), 'wan2.2-t2v → video');
 assert(!models.capabilitiesOfModel('wan2.7-image').includes(CAPABILITIES.VIDEO), 'wan2.7-image 不误标 video');
 assert(models.capabilitiesOfModel('qwen-image-3.0-pro').includes(CAPABILITIES.IMAGE), 'qwen-image → image');
-assert(models.capabilitiesOfModel('qwen-image-edit-max').includes(CAPABILITIES.IMAGE), 'qwen-image-edit → image');
+assert(!models.capabilitiesOfModel('qwen-image-edit-max').includes(CAPABILITIES.IMAGE), '纯 qwen-image-edit 不误标文生图');
 assert(models.capabilitiesOfModel('z-image-turbo').includes(CAPABILITIES.IMAGE), 'z-image → image');
 assert(models.capabilitiesOfModel('qwen3-tts-flash').includes(CAPABILITIES.TTS), 'qwen3-tts → tts');
 assert(models.capabilitiesOfModel('qwen-tts-latest').includes(CAPABILITIES.TTS), 'qwen-tts → tts（旧命名）');
 assert(models.capabilitiesOfModel('cosyvoice-v2').includes(CAPABILITIES.TTS), 'cosyvoice → tts');
 assert(models.capabilitiesOfModel('qwen-vl-max').includes(CAPABILITIES.VISION), 'qwen-vl-max → vision');
 assert(models.capabilitiesOfModel('qwen3-vl-235b-a22b-thinking').includes(CAPABILITIES.VISION), 'qwen3-vl → vision');
-assert(models.capabilitiesOfModel('paraformer-v2').length === 0, 'paraformer（ASR）不属四能力 → 空');
+assert(models.capabilitiesOfModel('paraformer-v2').includes(CAPABILITIES.TRANSCRIBE), 'paraformer → transcribe');
+assert(!models.capabilitiesOfModel('qwen-audio-turbo').includes(CAPABILITIES.TRANSCRIBE), 'qwen-audio-turbo 是理解模型，不误标文件转写');
+assert(models.capabilitiesOfModel('qwen-audio-3.0-asr-flash-filetrans').includes(CAPABILITIES.TRANSCRIBE), 'Qwen-Audio Filetrans → transcribe');
 
 /* ---------- ② providerModels ---------- */
 // 显式 models 数组
@@ -51,6 +53,9 @@ const mExp = models.providerModels(pExplicit);
 assert(mExp.length === 2, '显式 models 2 条', mExp.length);
 assert(mExp[0].id === 'wan2.2-t2i-flash' && mExp[0].capabilities.includes('image-gen'), '显式模型带能力');
 assert(mExp[1].id === 'qwen-vl-plus' && mExp[1].capabilities.includes('vision'), '无能力声明则按规则推断');
+const explicitEmpty = models.providerModels({ id: 'p-empty', models: [{ id: 'qwen-vl-plus', capabilities: [] }] });
+assert(explicitEmpty[0].capabilities.length === 0, '显式空能力数组覆盖名字推断');
+assert(models.parseModelRef(models.modelRef('p::x', 'model/a')).providerId === 'p::x', '复合引用可逆编码 provider');
 
 // 旧四字段迁移
 const pOld = { id: 'p2', imageModel: 'wan2.2-t2i-flash', visionModel: 'qwen-vl-plus' };
@@ -66,6 +71,7 @@ assert(mDash.length >= 3, '裸 DashScope 至少 3 个已知模型', mDash.length
 assert(mDash.some((m) => m.id === 'wan2.2-t2i-flash' && m.capabilities.includes('image-gen')), 'DashScope 含 wan t2i');
 assert(mDash.some((m) => m.id === 'qwen-vl-plus' && m.capabilities.includes('vision')), 'DashScope 含 qwen-vl');
 assert(mDash.some((m) => m.id === 'qwen3-vl-235b-a22b-thinking' && m.capabilities.includes('vision')), 'DashScope 池含 qwen3-vl 强视觉模型');
+assert(mDash.some((m) => m.id === 'qwen-audio-3.0-asr-flash-filetrans' && m.capabilities.includes('transcribe')), 'DashScope 池含独立转写模型');
 
 // 空（无字段、非 DashScope）
 const pEmpty = { id: 'p4', baseUrl: 'https://other.com/v1' };

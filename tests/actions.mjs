@@ -112,6 +112,11 @@ const listed2 = await runAction(stubCtx, 'providers_list', {});
 assert(listed2.providers.length === 2, 'upsert 新增后 2 个', listed2.providers.length);
 const np = listed2.providers.find((p) => p.name === '新供应商');
 assert(np && np.models.length === 2, '新 provider 模型池 2 条（image+video）', np && np.models);
+// 局部更新只能改 enabled，不能把未传的 key/baseUrl/models 覆盖成 undefined
+await runAction(stubCtx, 'providers_upsert', { id: np.id, enabled: false });
+let rawNp = config.allProviders().find((p) => p.id === np.id);
+assert(rawNp && rawNp.enabled === false && rawNp.apiKey === 'sk-new-key' && rawNp.baseUrl && rawNp.imageModel, '局部更新保留供应商凭据和模型', rawNp);
+await runAction(stubCtx, 'providers_upsert', { id: np.id, enabled: true });
 
 // ③ set_models 覆盖模型池
 await runAction(stubCtx, 'providers_set_models', { id: np.id, models: [{ id: 'gpt-image-1', capabilities: ['image-gen'] }] });
@@ -181,11 +186,14 @@ await runAction(stubCtx, 'providers_set_models', { id: 'p_old', models: [
 ] });
 config.resetCache();
 // ⑩a 设置有序 failover 列表
-const setR = await runAction(stubCtx, 'assignments_set', { capability: 'vision', model_ids: ['qwen3-vl-235b-a22b-thinking', 'qwen-vl-plus'] });
-assert(setR.ok && JSON.stringify(setR.model_ids) === JSON.stringify(['qwen3-vl-235b-a22b-thinking', 'qwen-vl-plus']), 'assignments_set 有序列表', setR);
+const poolBefore = (await runAction(stubCtx, 'assignments_get', {})).poolByCapability.vision;
+const strongRef = poolBefore.find((m) => m.id === 'qwen3-vl-235b-a22b-thinking').ref;
+const plusRef = poolBefore.find((m) => m.id === 'qwen-vl-plus').ref;
+const setR = await runAction(stubCtx, 'assignments_set', { capability: 'vision', model_refs: [strongRef, plusRef] });
+assert(setR.ok && JSON.stringify(setR.model_refs) === JSON.stringify([strongRef, plusRef]), 'assignments_set 复合引用有序列表', setR);
 // ⑩b get 返回归一化 order
 const getR = await runAction(stubCtx, 'assignments_get', {});
-assert(JSON.stringify(getR.order.vision) === JSON.stringify(['qwen3-vl-235b-a22b-thinking', 'qwen-vl-plus']), 'assignments_get order 归一化', getR.order);
+assert(JSON.stringify(getR.order.vision) === JSON.stringify([strongRef, plusRef]), 'assignments_get order 归一化为复合引用', getR.order);
 // ⑩c pickFor 取分配序首位
 assert(config.pickFor('vision').visionModel === 'qwen3-vl-235b-a22b-thinking', 'pickFor 取分配首位', config.pickFor('vision').visionModel);
 // ⑩d pickAllFor 尊重分配序（failover 顺序）
@@ -203,11 +211,18 @@ assert(!getR2.order.vision || getR2.order.vision.length === 0, '空数组清除�
 assert(config.pickFor('vision').visionModel === 'qwen-vl-plus', '清除后回退池顺序', config.pickFor('vision').visionModel);
 // ⑩g 旧单字符串向后兼容
 config.setAssignment('vision', 'qwen3-vl-235b-a22b-thinking');
-assert(JSON.stringify(config.assignmentOrder('vision')) === JSON.stringify(['qwen3-vl-235b-a22b-thinking']), '单字符串归一化为列表', config.assignmentOrder('vision'));
+assert(JSON.stringify(config.assignmentOrder('vision')) === JSON.stringify([strongRef]), '旧纯 model id 归一化为复合引用', config.assignmentOrder('vision'));
 // ⑩h 重复 id 自动去重
 await runAction(stubCtx, 'assignments_set', { capability: 'vision', model_ids: ['qwen-vl-plus', 'qwen-vl-plus', 'qwen3-vl-235b-a22b-thinking'] });
 const getR3 = await runAction(stubCtx, 'assignments_get', {});
-assert(JSON.stringify(getR3.order.vision) === JSON.stringify(['qwen-vl-plus', 'qwen3-vl-235b-a22b-thinking']), '重复 id 去重', getR3.order.vision);
+assert(JSON.stringify(getR3.order.vision) === JSON.stringify([plusRef, strongRef]), '重复旧 id 去重并归一化', getR3.order.vision);
+// 同名模型跨 provider 可精确选择，不再被池中第一个同名项劫持
+const clone = config.upsert({ name: '同名模型供应商', baseUrl: 'https://example.invalid/v1', apiKey: 'sk-clone', enabled: true, models: [{ id: 'qwen-vl-plus', capabilities: ['vision'] }] });
+const dupGet = await runAction(stubCtx, 'assignments_get', {});
+const cloneRef = dupGet.poolByCapability.vision.find((m) => m.providerId === clone.id && m.id === 'qwen-vl-plus').ref;
+await runAction(stubCtx, 'assignments_set', { capability: 'vision', model_refs: [cloneRef, plusRef] });
+assert(config.pickFor('vision').id === clone.id, '复合引用精确选中同名模型所属 provider', config.pickFor('vision'));
+config.removeProvider(clone.id);
 
 /* ---------- ⑪ 任务清理动作（阶段 4 续） ---------- */
 const tasksMod = await import('../lib/tasks.js');
