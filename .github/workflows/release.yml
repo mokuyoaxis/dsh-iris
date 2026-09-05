@@ -1,0 +1,58 @@
+name: Release
+
+# 推送 vX.Y.Z 标签即发布：跑测试 → 打包 → 建 GitHub Release（附 tarball）→ 发布 npm。
+# GitHub Release 用工作流内置 GITHUB_TOKEN，无需本机凭据；
+# npm 发布需要仓库 secret NPM_TOKEN（缺失时跳过发布并给出警告，不阻塞 Release）。
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+      - name: Pack tarball
+        run: |
+          npm pack --silent
+          echo "TARBALL=$(ls -1 *.tgz | head -1)" >> "$GITHUB_ENV"
+
+      - name: Extract release notes
+        run: node scripts/release-notes.mjs "${GITHUB_REF_NAME#v}" > /tmp/release-notes.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Iris $GITHUB_REF_NAME" \
+            --notes-file /tmp/release-notes.md \
+            "$TARBALL#dsh-iris $GITHUB_REF_NAME tarball"
+
+      - name: Check npm credentials
+        id: npmcheck
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: echo "ready=$([ -n "$NPM_TOKEN" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to npm
+        if: steps.npmcheck.outputs.ready == 'yes'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+      - name: npm publish skipped
+        if: steps.npmcheck.outputs.ready != 'yes'
+        run: echo "::warning::未配置 NPM_TOKEN secret，GitHub Release 已创建但 npm 发布已跳过。"
