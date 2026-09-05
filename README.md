@@ -9,7 +9,7 @@
 <p align="center">
   <a href="#deepseek-harness-适配"><img alt="DeepSeek Harness compatible" src="https://img.shields.io/badge/DeepSeek%20Harness-compatible-4D6BFE.svg?style=flat-square"></a>
   <a href="https://www.npmjs.com/package/@mokuyoaxis/dsh-iris"><img alt="npm version" src="https://img.shields.io/npm/v/%40mokuyoaxis%2Fdsh-iris.svg?style=flat-square"></a>
-  <a href="https://nodejs.org/"><img alt="Node.js 20.9 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D20.9-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
+  <a href="https://nodejs.org/"><img alt="Node.js 20.10 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D20.10-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
   <a href="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
@@ -61,7 +61,7 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 
 ## 使用前准备
 
-- 满足所用 DeepSeek Harness 版本要求的 Node.js；dsh-iris 自身最低为 20.9
+- 满足所用 DeepSeek Harness 版本要求的 Node.js；dsh-iris 自身最低为 20.10
 - 一个可用的 DeepSeek Harness 环境，以及 PATH 中的 `pnpm`
 - 至少一个受支持的媒体或视觉服务供应商
 - 使用视频抽帧和视频摘要时，需要系统提供 `ffmpeg` 与 `ffprobe`
@@ -72,7 +72,7 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 
 dsh-iris 按 DeepSeek Harness 插件形态提供服务端与 Web 客户端入口：服务端注册 14 个 Agent 工具，并复用宿主的工具、路由和生命周期服务；客户端通过 DSH 模块加载器接入设置页、会话输入区和全局悬浮层。插件不会启动独立服务或额外监听端口。
 
-当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。0.1.1 已在 Linux ARM64 的干净与真实 Web profile 中，使用 DSH `0.1.2-rc.1`、Node.js `22.23.2` 完成宿主烟测；浏览器启动图、完整组合 bundle、Iris 客户端工厂和三个 UI 座位均已验证。Iris 自身仍以 Node.js `>=20.9` 为最低基线。
+当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。0.1.1 已在 Linux ARM64 的干净与真实 Web profile 中，使用 DSH `0.1.2-rc.1`、Node.js `22.23.2` 完成宿主烟测；浏览器启动图、完整组合 bundle、Iris 客户端工厂和三个 UI 座位均已验证。Iris 自身仍以 Node.js `>=20.10` 为最低基线。
 
 0.1.1 明确支持 DSH `>=0.1.2-rc.1 <0.1.3-0`，不再兼容 0.1.0/0.1.1 的旧客户端 Runtime。DSH 仍在快速演进，后续预览版须经验证后再扩大范围；兼容徽章不代表官方认证。若 DSH 要求更高 Node 版本，以 DSH 为准。
 
@@ -180,7 +180,7 @@ Iris 支持三种文件来源，推荐顺序如下：
 
 测试覆盖配置合并、模型身份、任务生命周期、生成动作、HTTP/SSE 路由、客户端交互和安全边界。项目采用 ES Modules，不需要构建步骤。
 
-测试调度使用 Node.js，逐文件启动独立进程，首个失败即停止，不依赖 Bash；临时目录使用系统 API 并在退出时清理。GitHub Actions 定义 Linux/Windows × Node.js 20.9/22 矩阵，发布前钩子会重新运行完整测试。原生 Windows/WSL 的 DSH 宿主烟测仍待实机验证。
+测试调度使用 Node.js，逐文件启动独立进程，首个失败即停止，不依赖 Bash；临时目录使用系统 API 并在退出时清理。GitHub Actions 定义 Linux/Windows × Node.js 20.10/22 矩阵，发布前钩子会重新运行完整测试。原生 Windows/WSL 的 DSH 宿主烟测仍待实机验证。
 
 ## 文档
 

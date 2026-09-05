@@ -545,8 +545,8 @@ if (tasksLib) {
       failures.push('README.md 必须链接仓库级 ' + skill + ' Skill');
     }
   }
-  if (!pkg.engines || pkg.engines.node !== '>=20.9.0') {
-    failures.push('package.json 必须声明 sharp 0.35.4 所需 Node >=20.9.0');
+  if (!pkg.engines || pkg.engines.node !== '>=20.10.0') {
+    failures.push('package.json 必须声明 JSON import attributes 所需 Node >=20.10.0');
   }
   if (pkg.dsh?.engines?.dsh !== '>=0.1.2-rc.1 <0.1.3-0') {
     failures.push('package.json 必须声明已实测的 DSH 0.1.2 兼容窗口');

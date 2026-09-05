@@ -22,7 +22,9 @@ const t0 = tasks.create({ cap: 'image', providerId: 'p1', model: 'm', prompt: 'x
 assert(t0.id && t0.status === 'running', 'create 初始化');
 tasks.update(t0.id, { remoteTaskId: 'R0' });
 assert(tasks.get(t0.id).remoteTaskId === 'R0', 'update 生效');
-assert(fs.statSync(path.join(tasks.outputsDir(), '..', 'tasks.json')).mode & 0o600, 'tasks.json 已落盘且 0600');
+if (process.platform !== 'win32') {
+  assert((fs.statSync(path.join(tasks.outputsDir(), '..', 'tasks.json')).mode & 0o777) === 0o600, 'tasks.json 已落盘且 0600');
+}
 
 // 场景 1：正常成功路径
 let polls = 0;

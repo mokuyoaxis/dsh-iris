@@ -15,7 +15,8 @@
 - 对齐公开路线图与 `v0.1.0` 标签，区分当前 DSH 插件能力和未来宿主无关 Core/CLI/工作台。
 - 工作台新增安全的媒体协议自动判断与显式选择；模型实测改为按能力触发，真实调用前确认，视频与转写不再提交空样本探针。
 - 测试临时目录改用系统 API 并自动清理；`ffmpeg` 探测不再依赖 POSIX `which`。
-- 增加 Linux/Windows × Node.js 20.9/22 CI 矩阵和发布前完整测试钩子。
+- 增加 Linux/Windows × Node.js 20.10/22 CI 矩阵和发布前完整测试钩子。
+- Node.js 最低版本调整为 20.10；20.9 无法解析当前图片依赖使用的 JSON import attributes。
 
 ### Fixed
 

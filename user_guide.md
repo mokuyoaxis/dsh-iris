@@ -4,7 +4,7 @@
 
 ## 安装
 
-你需要 DeepSeek Harness `>=0.1.2-rc.1 <0.1.3-0`、PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。dsh-iris 自身要求 Node.js 20.9 或更高版本；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
+你需要 DeepSeek Harness `>=0.1.2-rc.1 <0.1.3-0`、PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。dsh-iris 自身要求 Node.js 20.10 或更高版本；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
 
 从 npm 安装到 Web profile：
 
