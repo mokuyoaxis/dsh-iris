@@ -16,6 +16,7 @@
 - 工作台新增安全的媒体协议自动判断与显式选择；模型实测改为按能力触发，真实调用前确认，视频与转写不再提交空样本探针。
 - 测试临时目录改用系统 API 并自动清理；`ffmpeg` 探测不再依赖 POSIX `which`。
 - 增加 Linux/Windows × Node.js 20.10/22 CI 矩阵和发布前完整测试钩子。
+- 新增标签驱动的 Release 工作流：推送 `vX.Y.Z` 标签即自动跑全量测试、校验标签与 package.json 版本一致、创建附 tarball 的 GitHub Release 并发布 npm（含 provenance；未配置 `NPM_TOKEN` 时仅跳过 npm 发布）。
 - Node.js 最低版本调整为 20.10；20.9 无法解析当前图片依赖使用的 JSON import attributes。
 
 ### Fixed
