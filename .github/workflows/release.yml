@@ -75,7 +75,14 @@ jobs:
         if: steps.npmcheck.outputs.ready == 'yes'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public --provenance
+        run: |
+          PKG_FULL="$(node -p "require('./package.json').name")@$(node -p "require('./package.json').version")"
+          # 幂等：该版本已发布过（如重跑）则跳过，避免 409 使整条流水线变红。
+          if npm view "$PKG_FULL" version >/dev/null 2>&1; then
+            echo "::warning::$PKG_FULL 已存在于 npm，跳过发布"
+          else
+            npm publish --access public --provenance
+          fi
 
       - name: npm publish skipped
         if: steps.npmcheck.outputs.ready != 'yes'
