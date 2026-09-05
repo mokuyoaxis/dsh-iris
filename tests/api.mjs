@@ -8,8 +8,9 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { useTempDshHome } from './test-env.js';
 
-process.env.DSH_HOME = '/tmp/iris-api-home-' + Date.now();
+useTempDshHome('iris-api-home');
 const irisV1 = path.join(process.env.DSH_HOME, 'iris', 'v1');
 fs.mkdirSync(path.join(irisV1, 'outputs'), { recursive: true });
 
@@ -84,7 +85,7 @@ assert(state.tasks.recentTotal === 2, 'recentTotal 计数终态总数（泡泡�
 const done = state.tasks.recent.find((t) => t.id === 't_done_1');
 const media = done && done.media && done.media[0];
 assert(media && typeof media.url === 'string' && media.url.includes('/iris/media/t_done_1/'), '媒体给授权播放链接', media && media.url);
-assert(media && !media.url.includes('/tmp/'), '链接不含本地绝对路径', media && media.url);
+assert(media && !media.url.includes(process.env.DSH_HOME), '链接不含本地绝对路径', media && media.url);
 assert(media && typeof media.token === 'undefined' && typeof media.mime === 'string' && typeof media.file === 'string', '媒体条目只透 file/mime/url，token 不出 JSON', media);
 assert(done && done.saved === true, 'saved 标记透传');
 

@@ -13,8 +13,9 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { useTempDshHome } from './test-env.js';
 
-process.env.DSH_HOME = '/tmp/iris-vb-home-' + Date.now();
+useTempDshHome('iris-vb-home');
 const irisV1 = path.join(process.env.DSH_HOME, 'iris', 'v1');
 fs.mkdirSync(path.join(irisV1, 'outputs'), { recursive: true });
 

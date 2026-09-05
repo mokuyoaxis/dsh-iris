@@ -15,8 +15,9 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { useTempDshHome } from './test-env.js';
 
-process.env.DSH_HOME = '/tmp/iris-media-home-' + Date.now();
+useTempDshHome('iris-media-home');
 
 const assert = (cond, msg, extra) => {
   if (!cond) {

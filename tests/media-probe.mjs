@@ -54,9 +54,10 @@ assert(d.width === 1 && d.height === 2, '空输入兜底宽=1 高=2', d);
 
 /* ---------- ③ 无 ffmpeg：错误路径（不依赖真实抽帧） ---------- */
 if (!HAVE_FFMPEG) {
-  try { probe.probeVideo('/tmp/nonexistent.mp4'); } catch (x) { e = x; }
+  const missing = path.join(os.tmpdir(), 'iris-nonexistent.mp4');
+  try { probe.probeVideo(missing); } catch (x) { e = x; }
   assert(e && /ffmpeg 不可用/.test(e.message), '无 ffmpeg 时 probeVideo 报人话错误', e && e.message);
-  try { await probe.extractFrames({ inputPath: '/tmp/nonexistent.mp4' }); } catch (x) { e = x; }
+  try { await probe.extractFrames({ inputPath: missing }); } catch (x) { e = x; }
   assert(e && /ffmpeg 不可用/.test(e.message), '无 ffmpeg 时 extractFrames 报人话错误', e && e.message);
   console.log('ALL OK（跳过真实抽帧）—— 参数校验 + 无 ffmpeg 错误路径断言通过');
   process.exit(0);

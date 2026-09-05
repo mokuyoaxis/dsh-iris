@@ -10,8 +10,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createServer } from 'node:http';
+import { useTempDshHome } from './test-env.js';
 
-process.env.DSH_HOME = '/tmp/iris-vision-home-' + Date.now();
+useTempDshHome('iris-vision-home');
 const irisHome = path.join(process.env.DSH_HOME, 'iris', 'v1');
 fs.mkdirSync(path.join(irisHome, 'outputs'), { recursive: true });
 

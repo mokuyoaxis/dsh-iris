@@ -33,7 +33,7 @@ function walk(dir) {
 }
 
 /* ---------- ① 语法检查 ---------- */
-const files = [...walk(path.join(root, 'lib')), ...walk(path.join(root, 'tests'))];
+const files = [...walk(path.join(root, 'lib')), ...walk(path.join(root, 'tests')), ...walk(path.join(root, 'scripts'))];
 for (const file of files) {
   const r = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
   if (r.status !== 0) {
@@ -61,9 +61,24 @@ if (!/'Accept-Ranges'/.test(media) || !/createReadStream/.test(media) || !/parse
   failures.push('lib/media.js 缺少 Range 流式契约（Accept-Ranges / createReadStream / parseRange）');
 }
 
+const adapters = read('lib/adapters.js');
+if (!/dashscopeApiBase\(baseUrl\)/.test(adapters) || /res\.arrayBuffer\(\)/.test(adapters)) {
+  failures.push('lib/adapters.js 必须绑定 DashScope 官方端点并保持下载流式落盘');
+}
+
+const guardSrc = read('lib/guard.js');
+if (!/IRIS_TRUSTED_HOSTS/.test(guardSrc) || !/isTrustedHost/.test(guardSrc)) {
+  failures.push('lib/guard.js 必须默认执行 Host 信任边界');
+}
+
+const privateStorage = read('lib/private-storage.js');
+if (!/hardenPrivateTree/.test(privateStorage) || !/0o700/.test(privateStorage) || !/0o600/.test(privateStorage)) {
+  failures.push('lib/private-storage.js 缺少 0700/0600 与既有树收紧契约');
+}
+
 const tasks = read('lib/tasks.js');
 const config = read('lib/config.js');
-if (!/\.corrupted-/.test(tasks) || !/\.corrupted-/.test(config)) {
+if (!/privateSibling\(file, 'corrupted'\)/.test(tasks) || !/privateSibling\(file, 'corrupted'\)/.test(config)) {
   failures.push('tasks.js / config.js 必须包含 .corrupted- 损坏隔离');
 }
 
@@ -129,7 +144,7 @@ if (mediaProbe) {
     failures.push('lib/media-probe.js 必须导出 ffmpegAvailable / probeVideo / extractFrames');
   }
   if (!/MAX_FRAMES\s*=\s*20/.test(mediaProbe)) {
-    failures.push('lib/media-probe.js 必须有帧数上限（MAX_FRAMES=20，对齐 RESEARCH §9.2）');
+    failures.push('lib/media-probe.js 必须有帧数上限（MAX_FRAMES=20）');
   }
   if (!/normalizeFramesOptions/.test(mediaProbe)) {
     failures.push('lib/media-probe.js 必须有参数校验/clamp（normalizeFramesOptions）');
@@ -479,12 +494,18 @@ if (tasksLib) {
   for (const contract of ['dsh plugin --profile web add @mokuyoaxis/dsh-iris', 'dsh web', '最小指令']) {
     if (!readme.includes(contract)) failures.push(`README.md 缺少快速开始契约：${contract}`);
   }
+  for (const contract of ['ai-paint` 是 Iris 维护者本机未公开的前身项目', '不是用户需要下载、安装或自行创建的目录', 'IRIS_IMPORT_WORKBENCH_CONFIG']) {
+    if (!readme.includes(contract)) failures.push(`README.md 缺少 ai-paint 配置分离契约：${contract}`);
+  }
   const userGuide = read('user_guide.md');
   for (const section of ['安装', '最快配置：DashScope', '供应商与协议', '模型池', '能力分配和故障转移', '高级配置文件', '文件输入', '最小指令', '常见问题']) {
     if (!userGuide.includes(`## ${section}`)) failures.push(`user_guide.md 缺少「${section}」节`);
   }
   for (const contract of ['mediaProtocol', 'providerId::modelId', '64 MB', 'iris_task_status']) {
     if (!userGuide.includes(contract)) failures.push(`user_guide.md 缺少配置契约：${contract}`);
+  }
+  for (const contract of ['ai-paint` 是 Iris 维护者本机未公开的前身项目', '不应该为了使用 Iris 去下载、安装或自行创建 ai-paint 目录', '值只是来源配置文件的路径，不包含 API Key']) {
+    if (!userGuide.includes(contract)) failures.push(`user_guide.md 缺少旧配置安全迁移契约：${contract}`);
   }
   const changelog = read('CHANGELOG.md');
   if (!/^## \[Unreleased\]/m.test(changelog)) {
@@ -504,9 +525,11 @@ if (tasksLib) {
     failures.push('package.json name 必须使用未被占用的 @mokuyoaxis/dsh-iris');
   }
   const lock = JSON.parse(read('package-lock.json'));
-  if (lock.name !== pkg.name || lock.packages?.['']?.name !== pkg.name) {
-    failures.push('package-lock.json 根包名必须与 package.json 保持一致');
+  if (lock.name !== pkg.name || lock.packages?.['']?.name !== pkg.name || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) {
+    failures.push('package-lock.json 根包名和版本必须与 package.json 保持一致');
   }
+  if (pkg.scripts?.prepublishOnly !== 'npm test') failures.push('package.json 发布前必须运行完整 npm test');
+  if (!fs.existsSync(path.join(root, '.github', 'workflows', 'ci.yml'))) failures.push('缺少 GitHub Actions CI workflow');
   if (!read('cordis.patch.yml').includes("name: '@mokuyoaxis/dsh-iris'")) {
     failures.push('cordis.patch.yml 必须使用 scoped npm 包名');
   }
@@ -524,6 +547,27 @@ if (tasksLib) {
   }
   if (!pkg.engines || pkg.engines.node !== '>=20.9.0') {
     failures.push('package.json 必须声明 sharp 0.35.4 所需 Node >=20.9.0');
+  }
+  if (pkg.dsh?.engines?.dsh !== '>=0.1.2-rc.1 <0.1.3-0') {
+    failures.push('package.json 必须声明已实测的 DSH 0.1.2 兼容窗口');
+  }
+  const expectedClientPeers = [
+    '@deepseek-ai/dsh-client-locale',
+    '@deepseek-ai/dsh-client-ui-conversation',
+    '@deepseek-ai/dsh-client-ui-renderer',
+    '@deepseek-ai/dsh-client-ui-session',
+    '@deepseek-ai/dsh-client-ui-settings'
+  ];
+  for (const name of expectedClientPeers) {
+    if (pkg.peerDependencies?.[name] !== '^0.1.2-rc.1') {
+      failures.push(`package.json ${name} 必须作为显式覆盖 rc 分支的 peer dependency`);
+    }
+    if (pkg.dependencies?.[name]) {
+      failures.push(`package.json 不得把 DSH 官方包 ${name} 放入 dependencies`);
+    }
+  }
+  if (pkg.dsh?.client?.inject?.some((name) => /dsh-client-runtime|dsh-client-ui-slots/.test(name))) {
+    failures.push('package.json dsh.client.inject 不得恢复已移除的 Runtime/Slots 图入口');
   }
 }
 

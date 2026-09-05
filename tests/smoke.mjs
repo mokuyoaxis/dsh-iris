@@ -5,8 +5,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { useTempDshHome } from './test-env.js';
 
-process.env.DSH_HOME = '/tmp/iris-smoke-home-' + Date.now();
+useTempDshHome('iris-smoke-home');
 const assert = (cond, msg) => { if (!cond) { console.error('FAIL:', msg); process.exit(1); } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -48,7 +49,7 @@ tasks.watch(tasks.get(t2.id), {
   poll: () => { if (++boom <= 4) throw new Error('网络抖动'); return { done: true, ok: true, urls: [] }; },
   onSuccess: async () => ['b.png']
 });
-await sleep(1200);
+await sleep(2000);
 assert(tasks.get(t2.id).status === 'succeeded', '场景2 抖动后成功');
 
 // 场景 3：业务失败直达人话

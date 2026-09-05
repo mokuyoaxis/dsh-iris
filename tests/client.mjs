@@ -6,6 +6,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -17,6 +18,45 @@ const assert = (cond, msg) => {
     process.exit(1);
   }
 };
+
+/* ⓪ DSH 0.1.2+ 按完整 npm 包名核对 bundle 注册身份。 */
+assert(src.includes("window.__ModuleLoader__.load({ id: '@mokuyoaxis/dsh-iris'"),
+  'client bundle 必须以完整 scoped npm 包名注册');
+assert(!src.includes("window.__ModuleLoader__.load({ id: 'dsh-iris'"),
+  'client bundle 不得继续使用旧短名注册');
+
+/* 不只匹配文本：执行 bundle，确认 loader 身份、导出及 apply 座位注册均成立。 */
+const registrations = [];
+const appendedStyles = [];
+const sandbox = {
+  console: { log() {}, error() {} },
+  document: {
+    getElementById() { return null; },
+    createElement() { return { dataset: {} }; },
+    head: { appendChild(node) { appendedStyles.push(node); } }
+  },
+  window: { __ModuleLoader__: { load(entry) { registrations.push(entry); } } }
+};
+sandbox.globalThis = sandbox.window;
+vm.runInNewContext(src, sandbox, { filename: 'lib/client.js', timeout: 5000 });
+assert(registrations.length === 1, 'client bundle 必须且只能注册一个 loader entry');
+assert(registrations[0].id === '@mokuyoaxis/dsh-iris', 'loader entry id 与 npm 包名不一致');
+const clientModule = registrations[0].factory((request) => {
+  if (request === 'react') return { createElement() {} };
+  throw new Error('意外的客户端依赖：' + request);
+});
+assert(JSON.stringify(clientModule.inject) === JSON.stringify(['slots']), 'client 导出的 Cordis inject 必须为 slots');
+const slotRegistrations = [];
+clientModule.apply({ slots: {
+  inject(name, callback) { return callback(); },
+  register(meta, component) {
+    slotRegistrations.push({ name: meta.name, id: meta.id, component });
+    return () => {};
+  }
+} });
+assert(appendedStyles.length === 1, 'client apply 应注入一份 Iris 样式');
+assert(slotRegistrations.length === 3, 'client apply 必须注册三个座位');
+assert(slotRegistrations.every((item) => typeof item.component === 'function'), '三个座位必须注册 React 组件');
 
 /* ① 三个座位注册必须存在 */
 assert(src.includes("ctx.slots.inject('settings.section'"), '缺少 settings.section 注册');
@@ -94,6 +134,9 @@ assert(src.includes('providers_remove_model'), '缺少逐模型移除调用');
 assert(src.includes('providers_add_model'), '缺少手动添加模型调用');
 assert(src.includes('providers_discover'), '缺少发现模型调用');
 assert(/verBadge|verified/.test(src), '模型池缺少 verified 状态标记');
+assert(src.includes('confirm_paid') && src.includes('可能产生费用'), '真实模型实测缺少费用确认');
+assert(src.includes("capability === 'video-gen' || capability === 'transcribe'"), '视频/转写应走不提交空样本的跳过路径');
+assert(src.includes("mediaProtocol: 'auto'") && src.includes('自动（按 Base URL 安全判断）'), '供应商表单缺少媒体协议安全自动判断');
 
 /* ⑨ 阶段 10：文件选择器 FileField（看见并选文件，不手填路径） */
 assert(new RegExp('function\\s+FileField\\s*\\(').test(src), '缺少 FileField 组件');

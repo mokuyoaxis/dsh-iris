@@ -4,13 +4,13 @@
 
 <h1 align="center">dsh-iris</h1>
 
-<p align="center"><strong>DeepSeek Harness 的多供应商媒体与视觉工具箱</strong></p>
+<p align="center"><strong>Iris 多模态生产运行时 · 当前通过 DeepSeek Harness 插件使用</strong></p>
 
 <p align="center">
   <a href="#deepseek-harness-适配"><img alt="DeepSeek Harness compatible" src="https://img.shields.io/badge/DeepSeek%20Harness-compatible-4D6BFE.svg?style=flat-square"></a>
-  <a href="CHANGELOG.md"><img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-7C5CFC.svg?style=flat-square"></a>
+  <a href="https://www.npmjs.com/package/@mokuyoaxis/dsh-iris"><img alt="npm version" src="https://img.shields.io/npm/v/%40mokuyoaxis%2Fdsh-iris.svg?style=flat-square"></a>
   <a href="https://nodejs.org/"><img alt="Node.js 20.9 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D20.9-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
-  <a href="#开发与验证"><img alt="npm test" src="https://img.shields.io/badge/tests-npm%20test-2EA44F.svg?style=flat-square"></a>
+  <a href="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
 
@@ -18,9 +18,17 @@ dsh-iris 为 Agent 和 Iris 工作台提供图像、视频、语音与视觉理�
 
 项目目前处于早期版本，接口和配置格式仍可能随版本迭代调整。
 
+Iris 的长期方向是可独立运行、可接入不同 Agent 宿主的媒体生产核心。DeepSeek Harness 是首个受支持宿主；当前版本仍需要 DSH，独立 Core、CLI 和工作台属于后续路线，尚未提供。
+
+## 与 ai-paint 的关系
+
+`ai-paint` 是 Iris 维护者本机未公开的前身项目，不是 Iris 的公开依赖，也不是用户需要下载、安装或自行创建的目录。没有该项目的用户直接按下文在 Iris 工作台配置供应商即可。
+
+早期版本从维护者本机的 ai-paint 配置读取模型与凭据，既用于迁移前身项目，也让宿主进程可以在本地复用已有 API Key，避免为迁移而把密钥粘贴到 Agent 会话、命令行参数或文档中。0.1.1 将两者的配置彻底分离：Iris 只使用自己的配置；旧配置仅可通过把 `IRIS_IMPORT_WORKBENCH_CONFIG` 显式设为本地配置文件的绝对路径进行一次性导入，不会默认扫描 ai-paint，也不会在两边同步。该变量保存的是文件路径而不是 API Key，来源文件不会被修改；具体操作见[用户指南](user_guide.md#从旧工作台显式导入)。
+
 ## 最快开始
 
-已经安装 DeepSeek Harness 且 `pnpm` 在 PATH 中时，把 Iris 加入 Web profile：
+已经安装 DeepSeek Harness `0.1.2-rc.1` 且 `pnpm` 在 PATH 中时，把 Iris 加入 Web profile：
 
 ```bash
 dsh plugin --profile web add @mokuyoaxis/dsh-iris
@@ -58,13 +66,15 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 - 至少一个受支持的媒体或视觉服务供应商
 - 使用视频抽帧和视频摘要时，需要系统提供 `ffmpeg` 与 `ffprobe`
 
-安装插件后，在 Iris 工作台中添加供应商并为所需能力分配模型。供应商密钥只保存在宿主侧，界面和接口不会返回完整密钥。
+安装插件后，在 Iris 工作台中添加供应商并为所需能力分配模型。供应商密钥保存在宿主侧的 Iris 配置中；POSIX 系统上 Iris 自有目录和文件分别收紧为 `0700` 与 `0600`，界面和接口不会返回完整密钥。Windows 的 mode 不等同于 ACL，仍需依赖当前用户目录和系统账户权限。
 
 ## DeepSeek Harness 适配
 
 dsh-iris 按 DeepSeek Harness 插件形态提供服务端与 Web 客户端入口：服务端注册 14 个 Agent 工具，并复用宿主的工具、路由和生命周期服务；客户端通过 DSH 模块加载器接入设置页、会话输入区和全局悬浮层。插件不会启动独立服务或额外监听端口。
 
-当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。由于项目尚未声明 DSH 的最低或最高版本，兼容徽章表示项目已按当前 DSH 插件接口实现，并不代表官方认证或对所有历史版本的承诺。
+当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。0.1.1 已在 Linux ARM64 的干净与真实 Web profile 中，使用 DSH `0.1.2-rc.1`、Node.js `22.23.2` 完成宿主烟测；浏览器启动图、完整组合 bundle、Iris 客户端工厂和三个 UI 座位均已验证。Iris 自身仍以 Node.js `>=20.9` 为最低基线。
+
+0.1.1 明确支持 DSH `>=0.1.2-rc.1 <0.1.3-0`，不再兼容 0.1.0/0.1.1 的旧客户端 Runtime。DSH 仍在快速演进，后续预览版须经验证后再扩大范围；兼容徽章不代表官方认证。若 DSH 要求更高 Node 版本，以 DSH 为准。
 
 ## 工具
 
@@ -126,6 +136,8 @@ Iris 支持三种文件来源，推荐顺序如下：
 | `outputs/` | 生成和处理后的媒体文件 |
 | `uploads/` | 浏览器上传的临时输入副本 |
 
+0.1.1 首次装载时会收紧既有 `$DSH_HOME/iris/v1/` 树的 POSIX 权限，不修改文件内容，也不跟随符号链接。大媒体下载采用流式私有临时文件与原子替换，不再把整段视频载入内存。
+
 异步任务会在后台轮询。插件重启后，可以继续接管仍在远端执行的任务。取消信号会传递到本地等待与轮询流程；是否能取消远端计算，取决于供应商接口。
 
 音频和视频通过带随机令牌的 Iris 媒体链接访问。图片会尽量转存为 DSH 持久附件，方便在会话中继续使用。
@@ -133,7 +145,10 @@ Iris 支持三种文件来源，推荐顺序如下：
 ## 安全说明
 
 - 供应商密钥不会通过状态接口返回。
-- 修改状态的 HTTP 请求会检查跨站来源，降低第三方页面触发付费操作的风险。
+- DashScope 媒体协议只允许把密钥发送到阿里云官方 HTTPS 域名；其他 Base URL 默认推断为 OpenAI Images 兼容协议。
+- `/iris/*` 默认只接受回环 Host；LAN 或反向代理必须显式设置 `IRIS_TRUSTED_HOSTS`，修改状态的请求还会检查跨站来源。
+- `IRIS_TRUSTED_HOSTS` 不是认证机制。对公网或不可信网络开放 DSH 时，必须在反向代理或宿主层配置身份认证与 HTTPS。
+- 模型实测只按单项能力运行，并在真实供应商调用前确认；视频和转写不会用空样本自动提交付费探针。
 - HTML 截图在不具备同源权限的沙箱页面中渲染，脚本和外部网络默认不可用。
 - 媒体链接使用随机能力令牌，文件路径只从任务记录解析。
 - Iris 不提供独立账号体系，多用户隔离和访问控制由 DeepSeek Harness 部署负责。
@@ -164,6 +179,8 @@ Iris 支持三种文件来源，推荐顺序如下：
     npm test
 
 测试覆盖配置合并、模型身份、任务生命周期、生成动作、HTTP/SSE 路由、客户端交互和安全边界。项目采用 ES Modules，不需要构建步骤。
+
+测试调度使用 Node.js，逐文件启动独立进程，首个失败即停止，不依赖 Bash；临时目录使用系统 API 并在退出时清理。GitHub Actions 定义 Linux/Windows × Node.js 20.9/22 矩阵，发布前钩子会重新运行完整测试。原生 Windows/WSL 的 DSH 宿主烟测仍待实机验证。
 
 ## 文档
 

@@ -1,6 +1,6 @@
 {
   "name": "@mokuyoaxis/dsh-iris",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Give DeepSeek Harness eyes and hands: multi-provider media generation, vision routing, and an integrated Iris workbench.",
   "type": "module",
   "main": "lib/index.js",
@@ -24,16 +24,19 @@
     ".dsh/skills/iris-compose-media"
   ],
   "dsh": {
+    "engines": {
+      "dsh": ">=0.1.2-rc.1 <0.1.3-0"
+    },
     "bundle": {
       "patch": "./cordis.patch.yml"
     },
     "client": {
       "platform": "web",
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-locale",
-        "@deepseek-ai/dsh-client-ui-slots",
         "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-session",
         "@deepseek-ai/dsh-client-ui-settings"
       ]
     }
@@ -51,27 +54,28 @@
     "node": ">=20.9.0"
   },
   "scripts": {
-    "test": "for f in tests/*.mjs; do node \"$f\" || exit 1; done",
-    "lint": "node tests/lint.mjs"
+    "test": "node scripts/test.mjs",
+    "lint": "node tests/lint.mjs",
+    "prepublishOnly": "npm test"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-client-locale": "*",
-    "@deepseek-ai/dsh-client-runtime": "*",
-    "@deepseek-ai/dsh-client-ui-conversation": "*",
-    "@deepseek-ai/dsh-client-ui-settings": "*",
-    "@deepseek-ai/dsh-client-ui-slots": "*"
+    "@deepseek-ai/dsh-client-locale": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-session": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.2-rc.1"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-client-runtime": {
-      "optional": true
-    },
     "@deepseek-ai/dsh-client-locale": {
       "optional": true
     },
-    "@deepseek-ai/dsh-client-ui-slots": {
+    "@deepseek-ai/dsh-client-ui-conversation": {
       "optional": true
     },
-    "@deepseek-ai/dsh-client-ui-conversation": {
+    "@deepseek-ai/dsh-client-ui-renderer": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-session": {
       "optional": true
     },
     "@deepseek-ai/dsh-client-ui-settings": {

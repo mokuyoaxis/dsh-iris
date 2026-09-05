@@ -13,8 +13,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
+import { useTempDshHome } from './test-env.js';
 
-process.env.DSH_HOME = '/tmp/iris-ocr-home-' + Date.now();
+useTempDshHome('iris-ocr-home');
 
 const assert = (cond, msg, extra) => {
   if (!cond) {

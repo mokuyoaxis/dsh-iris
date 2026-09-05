@@ -9,6 +9,7 @@
  */
 import http from 'node:http';
 import { irisHome } from '../lib/config.js';
+import { useTempDshHome } from './test-env.js';
 
 const assert = (cond, msg, extra) => {
   if (!cond) { console.log('FAIL:', msg, extra === undefined ? '' : (' | ' + JSON.stringify(extra))); process.exit(1); }
@@ -81,7 +82,7 @@ await new Promise((r) => setTimeout(r, 50));
 assert(r4c.status === 200 && r4c.body && r4c.body.ok, '限内多块 body 正常', r4c.status);
 
 /* ---------- ⑤ 供应商管理动作（阶段 6） ---------- */
-process.env.DSH_HOME = '/tmp/iris-actions-home-' + Date.now();
+useTempDshHome('iris-actions-home');
 const fsMod = await import('node:fs');
 const fs = fsMod.default;
 const pathMod = await import('node:path');

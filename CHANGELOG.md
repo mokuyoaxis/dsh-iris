@@ -6,6 +6,30 @@
 
 当前没有尚未发布的用户可见变更。
 
+## [0.1.1] - 2026-09-05
+
+### Changed
+
+- 明确 ai-paint 是维护者未公开的本地前身而非用户依赖；插件默认启动不再读取其固定路径，仅在用户显式设置 `IRIS_IMPORT_WORKBENCH_CONFIG` 时由宿主本地一次性导入，已有供应商时跳过。
+- `npm test` 使用 Node.js 调度器，移除 POSIX Shell 循环，保留逐文件进程隔离和失败即停。
+- 对齐公开路线图与 `v0.1.0` 标签，区分当前 DSH 插件能力和未来宿主无关 Core/CLI/工作台。
+- 工作台新增安全的媒体协议自动判断与显式选择；模型实测改为按能力触发，真实调用前确认，视频与转写不再提交空样本探针。
+- 测试临时目录改用系统 API 并自动清理；`ffmpeg` 探测不再依赖 POSIX `which`。
+- 增加 Linux/Windows × Node.js 20.9/22 CI 矩阵和发布前完整测试钩子。
+
+### Fixed
+
+- 修复 DSH 0.1.2+ Web 客户端按完整 npm 包名校验时，Iris 仍以旧短名注册而导致整个插件组合包加载失败的问题；同时将客户端依赖声明对齐新版的 Renderer/Session 服务。
+- 旧配置为 `null` 或供应商凭据字段类型错误时，跳过无效内容而不使导入崩溃。
+- 语法合法但根节点、供应商、模型、任务或分配结构错误的持久化文件现在会被隔离并安全重建，不再静默丢失后续更新。
+- 大媒体下载改为流式原子落盘，避免把完整视频一次性载入内存，并清理失败的临时文件。
+
+### Security
+
+- DashScope 凭据在网络请求发出前绑定到阿里云官方 HTTPS 域名，阻止错误协议配置把 API Key 发给第三方端点。
+- POSIX 上统一以 `0700` 目录和 `0600` 文件保存 Iris 配置、任务、上传及产物；启动时收紧既有 Iris 树且不跟随符号链接。
+- `/iris/*` 默认只接受回环 Host；LAN/反向代理需显式配置 `IRIS_TRUSTED_HOSTS`，公开文档明确该列表不替代身份认证。
+
 ## [0.1.0] - 2026-09-04
 
 ### Added
@@ -49,5 +73,6 @@
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mokuyoaxis/dsh-iris/releases/tag/v0.1.0

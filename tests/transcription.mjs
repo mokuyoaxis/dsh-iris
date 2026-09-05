@@ -1,4 +1,5 @@
 import * as adapters from '../lib/adapters.js';
+const DS_BASE = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 const assert = (cond, msg, extra) => {
   if (!cond) { console.log('FAIL:', msg, extra === undefined ? '' : (' | ' + JSON.stringify(extra))); process.exit(1); }
 };
@@ -13,14 +14,14 @@ global.fetch = async (input, init = {}) => {
   throw new Error('unexpected fetch: ' + url);
 };
 try {
-  await adapters.submitTranscription({ key: 'k', model: 'qwen-audio-3.0-asr-flash-filetrans', audioUrl: 'oss://bucket/audio.wav' });
+  await adapters.submitTranscription({ key: 'k', baseUrl: DS_BASE, model: 'qwen-audio-3.0-asr-flash-filetrans', audioUrl: 'oss://bucket/audio.wav' });
   let call = calls.at(-1);
   assert(call.body.input.file_urls[0] === 'oss://bucket/audio.wav', 'Qwen-Audio Filetrans 使用 file_urls', call.body);
   assert(call.init.headers['X-DashScope-OssResourceResolve'] === 'enable', 'oss:// 转写启用资源解析头');
-  await adapters.submitTranscription({ key: 'k', model: 'qwen3-asr-flash-filetrans', audioUrl: 'https://example.invalid/audio.wav' });
+  await adapters.submitTranscription({ key: 'k', baseUrl: DS_BASE, model: 'qwen3-asr-flash-filetrans', audioUrl: 'https://example.invalid/audio.wav' });
   call = calls.at(-1);
   assert(call.body.input.file_url === 'https://example.invalid/audio.wav', 'Qwen3 Filetrans 使用 file_url', call.body);
-  const result = await adapters.pollTranscriptionTask({ key: 'k', remoteTaskId: 'asr-task' });
+  const result = await adapters.pollTranscriptionTask({ key: 'k', baseUrl: DS_BASE, remoteTaskId: 'asr-task' });
   assert(result.done && result.ok && result.text === '你好，Iris。', '轮询下载 transcription_url 并提取正文', result);
   assert(adapters.transcriptionText({ transcripts: [{ text: '第一段' }, { sentences: [{ text: '第二段' }] }] }) === '第一段\n第二段', '正文提取兼容两种结构');
 } finally { global.fetch = originalFetch; }

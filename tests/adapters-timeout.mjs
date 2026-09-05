@@ -76,12 +76,14 @@ err = null;
 try { await adapters.downloadTo(trickleBase + '/clip.mp4', outPath, { timeoutMs: T }); }
 catch (e) { err = e; }
 assert(err, '④a 半截下载必须报错', String(err));
-assert(!fs.existsSync(outPath) && !fs.existsSync(outPath + '.tmp'), '④b 失败不留目标文件也不留 .tmp');
+const tempPrefix = path.basename(outPath) + '.download-';
+assert(!fs.existsSync(outPath) && !fs.readdirSync(path.dirname(outPath)).some((name) => name.startsWith(tempPrefix)), '④b 失败不留目标文件也不留临时文件');
 
 /* ⑤ downloadTo：成功路径落盘且无 .tmp 残留 */
 const n = await adapters.downloadTo(goodBase + '/ok.bin', outPath);
 assert(n === 10 && fs.readFileSync(outPath).toString() === 'hello-iris', '⑤a 成功下载内容正确');
-assert(!fs.existsSync(outPath + '.tmp'), '⑤b 成功后 .tmp 已 rename 消失');
+assert(!fs.readdirSync(path.dirname(outPath)).some((name) => name.startsWith(tempPrefix)), '⑤b 成功后临时文件已 rename 消失');
+if (process.platform !== 'win32') assert((fs.statSync(outPath).mode & 0o777) === 0o600, '⑤c 下载产物权限为 0600');
 fs.rmSync(outPath, { force: true });
 
 /* ⑥ 档位常量存在（盯守/提交/下载分层） */

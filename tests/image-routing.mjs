@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-process.env.DSH_HOME = '/tmp/iris-image-routing-' + Date.now();
+import { useTempDshHome } from './test-env.js';
+useTempDshHome('iris-image-routing');
 const assert = (cond, msg, extra) => {
   if (!cond) { console.log('FAIL:', msg, extra === undefined ? '' : (' | ' + JSON.stringify(extra))); process.exit(1); }
 };
@@ -9,6 +10,7 @@ const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
 const { runAction } = await import('../lib/actions.js');
+const DS_BASE = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 
 assert(adapters.dashscopeImageMode('wan2.2-t2i-flash') === 'legacy-async', 'Wan 2.2 走旧异步');
 assert(adapters.dashscopeImageMode('wan2.5-t2i-preview') === 'legacy-async', 'Wan 2.5 按官方协议仍走旧异步');
@@ -39,19 +41,19 @@ global.fetch = async (input, init = {}) => {
 };
 
 try {
-  const old = await adapters.startImageGeneration({ key: 'k', model: 'wan2.5-t2i-preview', prompt: 'old' });
+  const old = await adapters.startImageGeneration({ key: 'k', baseUrl: DS_BASE, model: 'wan2.5-t2i-preview', prompt: 'old' });
   assert(old.remoteTaskId === 'legacy-task' && old.urls.length === 0, '旧协议返回后台 task id', old);
   const oldCall = calls.find((c) => c.url.includes('/text2image/image-synthesis'));
   assert(oldCall && oldCall.body.input.prompt === 'old' && !('size' in oldCall.body.parameters), '旧协议保留 input.prompt，留空尺寸时采用模型默认值', oldCall && oldCall.body);
   assert(oldCall.init.headers['X-DashScope-Async'] === 'enable', '旧协议声明异步头');
 
-  const modern = await adapters.startImageGeneration({ key: 'k', model: 'qwen-image-2.0-pro', prompt: 'new', size: '2048*2048', n: 2 });
+  const modern = await adapters.startImageGeneration({ key: 'k', baseUrl: DS_BASE, model: 'qwen-image-2.0-pro', prompt: 'new', size: '2048*2048', n: 2 });
   assert(modern.remoteTaskId === null && modern.urls[0] === 'https://result.invalid/generated.png', '新版协议直接返回 URL', modern);
   const modernCall = calls.find((c) => c.url.includes('/multimodal-generation/generation'));
   assert(modernCall && modernCall.body.input.messages[0].content[0].text === 'new', '新版协议使用 messages/content/text', modernCall && modernCall.body);
   assert(modernCall.body.parameters.n === 2 && !modernCall.init.headers['X-DashScope-Async'], '新版同步协议参数与请求头正确');
 
-  const polled = await adapters.pollTask({ key: 'k', remoteTaskId: 'new-shape' });
+  const polled = await adapters.pollTask({ key: 'k', baseUrl: DS_BASE, remoteTaskId: 'new-shape' });
   assert(polled.done && polled.ok && polled.urls[0] === 'https://result.invalid/polled.png', '轮询兼容 choices 图片结果', polled);
 
   const provider = config.upsert({ name: 'modern-image', apiKey: 'modern-key', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', enabled: true, models: [{ id: 'wan2.7-image', capabilities: ['image-gen'] }] });

@@ -9,8 +9,9 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { useTempDshHome } from './test-env.js';
 
-process.env.DSH_HOME = '/tmp/iris-mount-home-' + Date.now();
+useTempDshHome('iris-mount-home');
 const assert = (cond, msg, extra) => {
   if (!cond) {
     console.log('FAIL:', msg, extra === undefined ? '' : (' | extra: ' + JSON.stringify(extra)));
