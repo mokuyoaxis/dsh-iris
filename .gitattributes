@@ -1,0 +1,17 @@
+# 统一换行符：仓库内以 LF 存储，所有平台检出 LF。
+# GitHub Windows runner 的 git 全局配置 core.autocrlf=true，
+# 会把文本文件检出为 CRLF，导致按 '\n' 解析内容的测试失败。
+* text=auto eol=lf
+
+# 二进制文件不做换行符转换（text=auto 已按内容嗅探，此处显式兜底）。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.mp3 binary
+*.wav binary
+*.mp4 binary
+*.webm binary
+*.mov binary

@@ -15,7 +15,8 @@ const assert = (condition, message) => {
 };
 
 assert(fs.existsSync(skillPath), 'missing .dsh/skills/iris-verify-ui/SKILL.md');
-const src = fs.readFileSync(skillPath, 'utf8');
+// 归一化换行符：Windows 检出可能带 CRLF，frontmatter 正则与行数统计按 LF 处理。
+const src = fs.readFileSync(skillPath, 'utf8').replaceAll('\r\n', '\n');
 const frontmatter = src.match(/^---\n([\s\S]*?)\n---\n/);
 assert(frontmatter, 'SKILL.md must have valid YAML frontmatter');
 assert(/^name:\s*iris-verify-ui$/m.test(frontmatter[1]), 'Skill name must be iris-verify-ui');
