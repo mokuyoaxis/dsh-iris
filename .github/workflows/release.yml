@@ -52,10 +52,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "Iris $GITHUB_REF_NAME" \
-            --notes-file /tmp/release-notes.md \
-            "$TARBALL#dsh-iris $GITHUB_REF_NAME tarball"
+          # 幂等：重跑时 Release 已存在则改为更新说明与资产，避免 create 报错中断发布。
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" \
+              --title "Iris $GITHUB_REF_NAME" \
+              --notes-file /tmp/release-notes.md
+            gh release upload "$GITHUB_REF_NAME" "$TARBALL" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "Iris $GITHUB_REF_NAME" \
+              --notes-file /tmp/release-notes.md \
+              "$TARBALL#dsh-iris $GITHUB_REF_NAME tarball"
+          fi
 
       - name: Check npm credentials
         id: npmcheck
