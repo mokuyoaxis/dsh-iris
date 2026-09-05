@@ -25,6 +25,7 @@
 - 语法合法但根节点、供应商、模型、任务或分配结构错误的持久化文件现在会被隔离并安全重建，不再静默丢失后续更新。
 - 大媒体下载改为流式原子落盘，避免把完整视频一次性载入内存，并清理失败的临时文件。
 - Windows CI：Skill 测试先归一化 CRLF 再解析 frontmatter，并新增 `.gitattributes` 强制所有平台以 LF 检出（Windows runner 默认 `core.autocrlf=true` 曾致 `npm test` 失败）。
+- Windows CI：`tests/pixels.mjs` 改用 `fileURLToPath` 解析模块路径；`URL.pathname` 在 Windows 上返回 `/D:/...`，拼出的非法临时目录路径使该测试进程直接崩溃。
 - 上传接口竞态：写入流改为惰性创建、`.part` 清理等待 fd 关闭，空上传或提前失败的请求不再可能残留孤儿 `.part` 文件。
 
 ### Security

@@ -10,9 +10,11 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
-const root = path.dirname(new URL(import.meta.url).pathname);
+// 必须用 fileURLToPath：URL.pathname 在 Windows 上返回 "/D:/..."，拼出非法路径。
+const root = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(root, '..', 'tmp', 'pixels-test-' + Date.now());
 fs.mkdirSync(outDir, { recursive: true });
 
