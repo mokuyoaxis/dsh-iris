@@ -33,7 +33,9 @@ assert(imported.config.targets.image === 'CUSTOM IMAGE', '自定义目标模板�
 assert(imported.config.targets.video.length > 0, '局部 JSON 应补齐默认目标模板');
 assert(imported.config.generation.reasoningEffort === 'inherit', '自定义思考策略未生效');
 assert(!('ignored' in imported.config), '未知字段不得落盘');
-assert(fs.statSync(config.promptOptimizerConfigFile()).mode % 0o1000 === 0o600, '配置文件权限应为 0600');
+if (process.platform !== 'win32') {
+  assert((fs.statSync(config.promptOptimizerConfigFile()).mode & 0o777) === 0o600, '配置文件权限应为 0600');
+}
 
 config.resetPromptOptimizerConfigCache();
 const reloaded = config.loadPromptOptimizerConfig();
