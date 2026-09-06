@@ -6,6 +6,46 @@
 
 当前没有尚未发布的用户可见变更。
 
+## [0.1.2] - 2026-09-06
+
+### Changed
+
+- 提示词优化器不再默认继承主会话的 High/Low thinking 档位；新增 `generation.reasoningEffort` 策略，默认在模型元数据明确支持时关闭推理，并在面板显示思考策略与输出预算，降低推理 token 挤占正文和意外增费的风险。
+
+- 提示词优化器按 DSH `modelSelection.current` 投影读取当前会话模型，避免界面已有选择时仍误回退为“DSH 默认模型”。
+
+- 对外展示名使用 “Iris Media for DSH”，npm 包名继续保留为 `@mokuyoaxis/dsh-iris`，安装文档始终使用完整 scoped 名称。
+
+### Added
+
+- 新增独立于 Iris 工作台的 DSH 对话框提示词优化器：输入区只保留无边框、无文字的 🫧 入口，进入带背景模糊和柔和光影的半透明玻璃悬浮窗；窄屏自动切换为安全区自适应、可内部滚动的底部面板。支持通用、图片、视频和首尾帧视频目标，默认使用当前会话模型，先预览后写回且绝不自动发送。
+
+- 新增独立的 `prompt-optimizer.json` 配置：面板可导入/导出 JSON、固定其他 DSH provider/model、一键恢复 Iris 默认 Prompt，并可单独关闭对话入口；入口关闭后工作台、Agent 工具和任务后台继续运行。
+
+- 插件启用时通过 DSH Skill registry 自动注册随包的 `iris-verify-ui` 与 `iris-compose-media`；用户无需克隆本仓库或把会话工作目录切到 Iris。
+
+- README 首屏新增一张可追溯到供应商、模型与提示词的真实 Iris 生成图片。
+
+- 新增 Android 16 真机截图画廊，记录通用提示词优化、图片 Prompt 优化、写回、任务成功和实际产物；公开副本统一移除 EXIF/XMP/IPTC 元数据。中英文 README 直接展示三张关键截图，根目录 `screenshots.json` 为插件市场声明四张精选素材。
+
+- README 新增三张示意图：插件架构总览、生成任务生命周期与受理边界，以及「看图 → 重绘 → 自检」组合工作流示例（附 SVG 与可编辑 drawio 源文件）。
+
+- 新增英文版 `README.en.md` 并在两份 README 顶部互设语言切换链接；npm 包清单纳入英文版。
+
+- 新增 `scripts/gen-diagrams.mjs`：README 三张示意图由单一脚本再生成，每次运行同步产出 PNG、SVG 与可编辑 drawio 源文件。
+
+### Fixed
+
+- 泡泡快捷任务不再混入失败、取消或无产物的旧记录，只显示当前运行任务与最近成功产物；完整历史和错误仍保留在 Iris 工作台。
+
+- 常用区与 Iris 工作台的功能状态灯改为挂载后直接读取共享供应商状态：启用的 API 且具备相应能力时常驻绿色，不再要求逐张点开卡片；当前执行报错后立即变暗。
+
+- Cordis 运行时行 ID 改为唯一的 `mokuyoaxis-dsh-iris`，避免与另一款 `dsh-iris` 插件同装时按短 ID 相互覆盖；文档说明手动 profile 覆盖的迁移方式。
+
+### Security
+
+- 随包 Skill 直接从已安装的 Iris 包读取，不扫描额外项目或用户目录，也不改变默认 filesystem Skill provider 配置。
+
 ## [0.1.1] - 2026-09-05
 
 ### Changed
@@ -78,6 +118,7 @@
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mokuyoaxis/dsh-iris/releases/tag/v0.1.0

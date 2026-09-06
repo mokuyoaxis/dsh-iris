@@ -4,7 +4,7 @@
 
 ## 安装
 
-你需要 DeepSeek Harness `>=0.1.2-rc.1 <0.1.3-0`、PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。dsh-iris 自身要求 Node.js 20.10 或更高版本；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
+你需要 DeepSeek Harness `>=0.1.2-rc.1 <0.1.3-0`、PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。dsh-iris 自身要求 Node.js 20.10 或更高版本；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 及后续 0.1.x 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
 
 从 npm 安装到 Web profile：
 
@@ -12,6 +12,8 @@
 dsh plugin --profile web add @mokuyoaxis/dsh-iris
 dsh web
 ```
+
+npm 上无 scope 的 `dsh-iris` 是另一款插件；安装或更新 Iris Media 时必须使用完整 scoped 包名。
 
 从源码目录试用：
 
@@ -28,7 +30,7 @@ dsh web
 dsh --profile web --dump-config
 ```
 
-输出中应出现 `dsh-iris` 配置层。DSH 的插件命令和 profile 机制见[官方说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)。
+输出中应出现 `@mokuyoaxis/dsh-iris` 配置层和唯一行 ID `mokuyoaxis-dsh-iris`。DSH 的插件命令和 profile 机制见[官方说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)。
 
 ## 最快配置：DashScope
 
@@ -180,7 +182,61 @@ Iris 工作台中的文件字段提供三种方式：
 
 直接写工具名最明确；自然语言也可以，由 Agent 判断需要调用哪个 Iris 工具。视频、图片和语音生成可能产生供应商费用。
 
-仓库还附带 `iris-verify-ui` 和 `iris-compose-media` 两个项目级 Skill。它们目前只会在会话工作区能够发现本仓库 `.dsh/skills/` 时加载，安装 npm 插件不会把它们自动注册到其他项目。
+从 0.1.2 起，插件会在 DSH Skill registry 可用时自动注册 `iris-verify-ui` 和 `iris-compose-media`，不要求会话工作区位于本仓库，也不需要用户复制 `.dsh/skills/`。项目目录中存在同名 Skill 时，DSH 仍优先使用项目版本；宿主未提供 Skill registry 时不影响 14 个 Iris 工具。
+
+## 对话框提示词优化
+
+安装并启用 Iris 后，DSH 对话输入区会出现一个没有边框、底色和文字的“🫧”入口。点击后打开半透明玻璃悬浮窗；桌面端靠近输入区，手机窄屏自动变为底部面板，并适配浏览器安全区、可用高度和内部滚动。它独立于 Iris 工作台，可用于普通问答、写作、编程以及图片/视频生成提示词。[查看 Android 16 真机完整流程](docs/screenshots.md)。
+
+使用流程：
+
+1. 在对话框写入草稿，点击“🫧”。
+2. 选择“通用对话、图片生成、视频生成、首尾帧视频”之一。
+3. 点击“生成预览”。此时会调用模型，可能产生费用。
+4. 检查结果后选择“写回输入框、复制、再优化”或“恢复原文”。Iris 不会自动发送消息。
+
+默认路由是当前会话模型；当前会话没有选择时使用 DSH 默认模型。面板中的“JSON 配置”可以导出当前配置、导入修改后的 JSON，或恢复 Iris 内置默认值。配置单独保存在 `$DSH_HOME/iris/v1/prompt-optimizer.json`，不包含供应商 API Key，也不与 `providers.json` 混合。
+
+导出文件格式：
+
+```json
+{
+  "version": 1,
+  "enabled": true,
+  "systemPrompt": "你自己的优化器系统提示词",
+  "targets": {
+    "general": "通用任务的补充要求",
+    "image": "图片提示词的补充要求",
+    "video": "视频提示词的补充要求",
+    "s2v": "首尾帧视频的补充要求"
+  },
+  "route": {
+    "mode": "session"
+  },
+  "generation": {
+    "temperature": 0.3,
+    "reasoningEffort": "off-if-supported",
+    "maxOutputTokens": 1200,
+    "timeoutMs": 45000
+  }
+}
+```
+
+如需固定使用另一供应商模型，把路由改为：
+
+```json
+{
+  "route": {
+    "mode": "fixed",
+    "provider": "DSH 中注册的 provider id",
+    "model": "该 provider 下的 model id"
+  }
+}
+```
+
+`generation.reasoningEffort` 默认是 `off-if-supported`：Iris 查询 DSH 的模型元数据，只在模型明确提供 `off`（或等价关闭档位）时关闭 thinking；不支持时回退供应商默认值。它也可设为 `provider-default`（忽略会话档位）、`inherit`（显式继承会话 High/Low）或当前模型声明的具体 effort ID。thinking token 可能与正文共用 `maxOutputTokens`，因此不建议先盲目提高上限；优先关闭 thinking，或用 `fixed` 路由选择轻量非思考模型，确有长输出需求时再调高，当前允许 64–4096。Iris 不会自动重试，避免重复计费。
+
+导入允许局部配置，缺少的字段会补成 Iris 默认值，未知字段不会落盘。面板导出的则是完整配置。Prompt 最大 32 KiB，结果最大 16000 字符；请求无工具权限，且不会附带会话历史、附件、工作区文件或 API Key。当前版本不会改写含 `@` 或 `/` 结构化引用的草稿，以免写回时破坏引用节点。面板可单独关闭这个对话入口；关闭后 Iris 工作台、Agent 工具和任务后台仍然运行，可在“设置 → Iris 工作台 → 对话框提示词优化”重新启用。开发中若只热更新了客户端而服务端尚未重载，关闭请求可能返回 `method not allowed`；重启 DSH 并刷新浏览器即可让新接口生效，正式安装或升级后也应重启宿主。
 
 ## 任务和产物
 
@@ -194,6 +250,7 @@ Iris 会在会话输入区显示运行中任务，并在 Iris 工作台保留最
 | `$DSH_HOME/iris/v1/uploads/` | 浏览器上传的临时输入 |
 | `$DSH_HOME/iris/v1/tasks.json` | 任务状态与附件索引 |
 | `$DSH_HOME/iris/v1/providers.json` | 供应商、模型池和能力分配 |
+| `$DSH_HOME/iris/v1/prompt-optimizer.json` | 提示词优化器的用户 JSON 配置 |
 
 音视频播放链接带随机令牌。默认只接受回环 Host。反向代理或 LAN 访问时，需要同时显式信任外部 Host，并按需设置媒体链接基址，例如：
 
@@ -217,6 +274,8 @@ HTML 截图依赖 DSH 提供 `dsh-builtin-browser`。截图页在离线沙箱中
 dsh plugin --profile web update @mokuyoaxis/dsh-iris
 ```
 
+从 0.1.1 升级到 0.1.2 时，插件自带 bundle 会自动使用新的唯一行 ID。如果你曾在个人 `cordis.patch.yml` 中手动覆盖 `id: dsh-iris`，需要把该覆盖改成 `id: mokuyoaxis-dsh-iris`，否则 DSH 会报告旧行未匹配。
+
 更新后重启 DSH。卸载插件：
 
 ```bash
@@ -227,6 +286,8 @@ dsh plugin --profile web remove @mokuyoaxis/dsh-iris
 
 ## 常见问题
 
+- **对话框没有“🫧”入口**：确认 Iris 客户端已加载且当前存在会话；再到“设置 → Iris 工作台 → 对话框提示词优化”检查是否被单独关闭。
+- **提示词优化提示没有模型**：先在当前会话选择主模型，或在 JSON 中配置 `route.mode: "fixed"`。
 - **设置中没有 Iris 工作台**：确认插件已加入 Web profile，并在安装后重启 DSH；可用 `dsh plugin --profile web list` 和 `--dump-config` 检查。
 - **没有可用模型**：先确认供应商已启用且 Key 有效，再运行“发现模型”；不支持 `/models` 时手动添加。
 - **OpenAI 兼容图片请求走错协议**：确认该供应商的 `mediaProtocol` 是 `openai-images`。

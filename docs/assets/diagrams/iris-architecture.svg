@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="800" viewBox="0 0 1180 800" role="img" aria-label="Iris 架构总览（DSH 插件形态）">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7686"/></marker></defs>
+<rect width="1180" height="800" fill="#ffffff"/>
+<text x="48" y="52" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="21" font-weight="700" fill="#1f2328">Iris 架构总览（DSH 插件形态）</text>
+<text x="48" y="78" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="13" fill="#5b6472">三个入口共用同一套动作实现；凭据与数据只留在宿主侧，插件不额外监听端口</text>
+<rect x="36" y="96" width="1108" height="560" rx="10" fill="none" stroke="#b9c2ce" stroke-width="1.4"/>
+<text x="50" y="120" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12.5" fill="#5b6472">DeepSeek Harness 宿主进程 · Iris 插件（复用宿主工具 / 路由 / 生命周期服务）</text>
+<path d="M216,210 L216,239 L308,239 L308,268" fill="none" stroke="#6b7686" stroke-width="1.6"  marker-end="url(#arr)"/>
+<path d="M590,210 L590,239 L470,239 L470,268" fill="none" stroke="#6b7686" stroke-width="1.6"  marker-end="url(#arr)"/>
+<path d="M848,210 L848,239 L740,239 L740,268" fill="none" stroke="#6b7686" stroke-width="1.6"  marker-end="url(#arr)"/>
+<path d="M362,342 L362,369 L281,369 L281,396" fill="none" stroke="#6b7686" stroke-width="1.6"  marker-end="url(#arr)"/>
+<rect x="321" y="346" width="82" height="19" rx="4" fill="#ffffff"/>
+<text x="362" y="359.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" fill="#5b6472">选择候选模型</text>
+<path d="M578,342 L578,369 L765,369 L765,396" fill="none" stroke="#6b7686" stroke-width="1.6"  marker-end="url(#arr)"/>
+<path d="M496,433 L550,433" fill="none" stroke="#6b7686" stroke-width="1.6"  marker-end="url(#arr)"/>
+<path d="M524,342 L524,480 L236,480 L236,524" fill="none" stroke="#6b7686" stroke-width="1.6"  marker-end="url(#arr)"/>
+<rect x="353" y="488.5" width="58" height="19" rx="4" fill="#ffffff"/>
+<text x="382" y="502" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" fill="#5b6472">创建任务</text>
+<path d="M406,561 L430,561" fill="none" stroke="#6b7686" stroke-width="1.6"  marker-end="url(#arr)"/>
+<path d="M236,598 L236,640 L935,640 L935,598" fill="none" stroke="#6b7686" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+<rect x="351" y="620.5" width="58" height="19" rx="4" fill="#ffffff"/>
+<text x="380" y="634" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" fill="#5b6472">状态事件</text>
+<path d="M935,210 L935,268" fill="none" stroke="#6b7686" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+<path d="M765,470 L765,676 L860,676 L860,706" fill="none" stroke="#6b7686" stroke-width="1.6"  marker-end="url(#arr)"/>
+<rect x="790.2" y="666.5" width="43.6" height="19" rx="4" fill="#ffffff"/>
+<text x="812" y="680" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" fill="#5b6472">HTTPS</text>
+<rect x="66" y="138" width="300" height="72" rx="9" fill="#f5f6f8" stroke="#b9c2ce" stroke-width="1.6"/>
+<text x="216" y="170" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">Agent 工具（14 个）</text>
+<text x="216" y="190.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">iris_draw_image · iris_generate_video · …</text>
+<rect x="440" y="138" width="300" height="72" rx="9" fill="#f5f6f8" stroke="#b9c2ce" stroke-width="1.6"/>
+<text x="590" y="170" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">GUI 动作卡</text>
+<text x="590" y="190.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">会话内的 Iris 操作入口</text>
+<rect x="790" y="138" width="290" height="72" rx="9" fill="#f5f6f8" stroke="#b9c2ce" stroke-width="1.6"/>
+<text x="935" y="170" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">Iris 工作台（三座位）</text>
+<text x="935" y="190.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">设置 · 进度 · 悬浮泡泡</text>
+<rect x="200" y="268" width="540" height="74" rx="9" fill="#eef3ff" stroke="#4d6bfe" stroke-width="1.6"/>
+<text x="470" y="301" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">统一动作层 · lib/actions.js</text>
+<text x="470" y="321.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">参数校验 · 输入解析（上传 / 会话附件 / 宿主路径）· failover 编排</text>
+<rect x="66" y="396" width="430" height="74" rx="9" fill="#eef3ff" stroke="#4d6bfe" stroke-width="1.6"/>
+<text x="281" y="429" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">模型池 · lib/models.js + capability.js</text>
+<text x="281" y="449.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">providerId::modelId 复合身份 · 能力分配 · 有序候选</text>
+<rect x="550" y="396" width="430" height="74" rx="9" fill="#eef3ff" stroke="#4d6bfe" stroke-width="1.6"/>
+<text x="765" y="429" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">Provider 适配 · lib/adapters.js</text>
+<text x="765" y="449.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">DashScope 媒体协议 · OpenAI Images 兼容</text>
+<rect x="66" y="524" width="340" height="74" rx="9" fill="#eaf7ef" stroke="#2e9e5b" stroke-width="1.6"/>
+<text x="236" y="557" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">任务系统 · lib/tasks.js</text>
+<text x="236" y="577.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">异步轮询 · 重启恢复 · 取消传播</text>
+<rect x="430" y="524" width="300" height="74" rx="9" fill="#eaf7ef" stroke="#2e9e5b" stroke-width="1.6"/>
+<text x="580" y="557" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">文件与媒体 · lib/media.js</text>
+<text x="580" y="577.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">uploads/ outputs/ · 令牌媒体链接 · Range 流式</text>
+<rect x="790" y="524" width="290" height="74" rx="9" fill="#eef3ff" stroke="#4d6bfe" stroke-width="1.6"/>
+<text x="935" y="557" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">Web 客户端 · lib/client.js</text>
+<text x="935" y="577.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">三座位 UI · 共享状态订阅 + SSE</text>
+<rect x="790" y="268" width="290" height="74" rx="9" fill="#f5f6f8" stroke="#b9c2ce" stroke-width="1.6"/>
+<text x="935" y="301" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">Skill registry</text>
+<text x="935" y="321.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">随包注册 iris-verify-ui / iris-compose-media</text>
+<rect x="66" y="690" width="470" height="56" rx="8" fill="#ffffff" stroke="#b9c2ce" stroke-width="1.3" stroke-dasharray="5 4"/>
+<text x="301" y="714" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">本地数据 · $DSH_HOME/iris/v1/</text>
+<text x="301" y="734.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">providers.json · tasks.json · uploads/ · outputs/（POSIX 0700 / 0600）</text>
+<rect x="580" y="706" width="560" height="64" rx="9" fill="#f5f6f8" stroke="#b9c2ce" stroke-width="1.6"/>
+<text x="860" y="734" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="14.5" font-weight="600" fill="#1f2328">媒体 / 视觉服务商</text>
+<text x="860" y="754.5" text-anchor="middle" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Noto Sans SC','Microsoft YaHei',sans-serif" font-size="12" font-weight="400" fill="#5b6472">DashScope 百炼 · OpenAI Images 兼容服务（凭据只发往官方 HTTPS 域名）</text>
+</svg>

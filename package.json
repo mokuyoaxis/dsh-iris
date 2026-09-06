@@ -1,7 +1,7 @@
 {
   "name": "@mokuyoaxis/dsh-iris",
-  "version": "0.1.1",
-  "description": "Give DeepSeek Harness eyes and hands: multi-provider media generation, vision routing, and an integrated Iris workbench.",
+  "version": "0.1.2",
+  "description": "Multi-provider media generation, visual understanding, prompt optimization, and an integrated Iris workbench for DeepSeek Harness.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -17,9 +17,12 @@
     "lib",
     "cordis.patch.yml",
     "README.md",
+    "README.en.md",
     "user_guide.md",
     "CHANGELOG.md",
+    "screenshots.json",
     "docs",
+    "!docs/assets/examples/orange-cat-reading.png",
     ".dsh/skills/iris-verify-ui",
     ".dsh/skills/iris-compose-media"
   ],
@@ -47,7 +50,8 @@
     "vision",
     "image-generation",
     "dashscope",
-    "tts"
+    "tts",
+    "prompt-optimization"
   ],
   "license": "MIT",
   "engines": {

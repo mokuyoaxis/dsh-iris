@@ -304,7 +304,7 @@ if (tasksLib) {
   if (!/closeAllSse[\s\S]{0,500}unbindChangeBus\(\)/.test(apiSrc)) {
     failures.push('lib/api.js closeAllSse 必须退订状态变化总线（副作用可逆纪律：不留悬挂监听）');
   }
-  if (!/new AbortController\(\)/.test(apiSrc) || !/signal: controller\.signal/.test(apiSrc)) {
+  if (!/new AbortController\(\)/.test(apiSrc) || !/(?:signal:\s*controller\.signal|execute\(body,\s*controller\.signal\))/.test(apiSrc)) {
     failures.push('lib/api.js GUI action 必须把客户端断开传播为 AbortSignal');
   }
   if (!/UPLOAD_TTL_MS/.test(apiSrc) || !/purgeStaleUploads/.test(apiSrc) || !/\.part/.test(apiSrc)) {
@@ -453,7 +453,7 @@ if (tasksLib) {
 
 /* ---------- ③ 文档守卫：相对链接必须存在 + 折叠不回流 ---------- */
 {
-  const docFiles = ['README.md', 'user_guide.md', 'CHANGELOG.md']
+  const docFiles = ['README.md', 'README.en.md', 'user_guide.md', 'CHANGELOG.md']
     .concat(fs.readdirSync(path.join(root, 'docs')).filter((f) => /\.md$/.test(f)).map((f) => path.join('docs', f)));
   for (const rel of docFiles) {
     const raw = fs.readFileSync(path.join(root, rel), 'utf8');
@@ -490,6 +490,13 @@ if (tasksLib) {
   const badgeCount = (readme.match(/https:\/\/img\.shields\.io\//g) || []).length;
   if (badgeCount < 3) {
     failures.push('README.md 至少应包含版本、运行时和许可证等基础徽章');
+  }
+  const generatedExample = 'docs/assets/examples/iris-flower-generated.webp';
+  if (!readme.includes(generatedExample) || !fs.existsSync(path.join(root, generatedExample))) {
+    failures.push('README.md 必须包含可追溯的真实 Iris 生成图片证据');
+  }
+  if (!readme.includes('docs/screenshots.md') || !fs.existsSync(path.join(root, 'docs/screenshots.md'))) {
+    failures.push('README.md 必须链接真实设备截图画廊');
   }
   for (const contract of ['dsh plugin --profile web add @mokuyoaxis/dsh-iris', 'dsh web', '最小指令']) {
     if (!readme.includes(contract)) failures.push(`README.md 缺少快速开始契约：${contract}`);
@@ -530,12 +537,43 @@ if (tasksLib) {
   }
   if (pkg.scripts?.prepublishOnly !== 'npm test') failures.push('package.json 发布前必须运行完整 npm test');
   if (!fs.existsSync(path.join(root, '.github', 'workflows', 'ci.yml'))) failures.push('缺少 GitHub Actions CI workflow');
-  if (!read('cordis.patch.yml').includes("name: '@mokuyoaxis/dsh-iris'")) {
+  const cordisPatch = read('cordis.patch.yml');
+  if (!cordisPatch.includes("name: '@mokuyoaxis/dsh-iris'")) {
     failures.push('cordis.patch.yml 必须使用 scoped npm 包名');
+  }
+  if (!/^\s*- id: mokuyoaxis-dsh-iris$/m.test(cordisPatch)) {
+    failures.push('cordis.patch.yml 必须使用唯一运行时 ID mokuyoaxis-dsh-iris');
+  }
+  if (/^\s*- id: dsh-iris$/m.test(cordisPatch)) {
+    failures.push('cordis.patch.yml 不得使用会与 RangeKing/dsh-iris 冲突的短 ID');
   }
   const packed = Array.isArray(pkg.files) ? pkg.files : [];
   if (!packed.includes('user_guide.md') || !packed.includes('CHANGELOG.md') || !packed.includes('docs')) {
     failures.push('package.json files 必须包含 user_guide.md、CHANGELOG.md 与 docs（README 发布链接不可失效）');
+  }
+  if (!packed.includes('screenshots.json')) failures.push('package.json files 必须包含插件市场截图清单 screenshots.json');
+  const screenshotManifest = JSON.parse(read('screenshots.json'));
+  if (!Array.isArray(screenshotManifest) || screenshotManifest.length < 1 || screenshotManifest.length > 8) {
+    failures.push('screenshots.json 必须是含 1–8 张图片的数组');
+  } else {
+    for (const rel of screenshotManifest) {
+      if (typeof rel !== 'string' || path.isAbsolute(rel) || rel.split(/[\\/]/).includes('..') || !/\.(png|jpe?g|webp|gif)$/i.test(rel)) {
+        failures.push('screenshots.json 含非法相对图片路径：' + String(rel));
+      } else if (!fs.existsSync(path.join(root, rel))) {
+        failures.push('screenshots.json 图片不存在：' + rel);
+      }
+    }
+  }
+  for (const rel of ['docs/assets/screenshots/prompt-general-before.webp', 'docs/assets/screenshots/prompt-general-after.webp', 'docs/assets/screenshots/image-task-succeeded.webp']) {
+    if (!readme.includes(rel)) failures.push('README.md 首屏缺少真机截图：' + rel);
+  }
+  const release012 = read('docs/releases/0.1.2.md');
+  if (!release012.includes('# Iris Media for DSH v0.1.2') || /[\u3400-\u9fff]/.test(release012)) {
+    failures.push('docs/releases/0.1.2.md 必须存在且使用英文 Release 文案');
+  }
+  if (!/^## \[0\.1\.2\] - 2026-09-06$/m.test(changelog)) failures.push('CHANGELOG.md 缺少已冻结的 0.1.2 章节');
+  if (!fs.existsSync(path.join(root, 'lib', 'bundled-skills.js'))) {
+    failures.push('缺少随插件启用的嵌入式 Skill 注册器 lib/bundled-skills.js');
   }
   for (const skill of ['iris-verify-ui', 'iris-compose-media']) {
     if (!packed.includes('.dsh/skills/' + skill)) {

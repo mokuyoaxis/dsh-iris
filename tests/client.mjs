@@ -1,7 +1,7 @@
 /**
  * dsh-iris 客户端形态冒烟（静态检查 lib/client.js）。
  * 运行：node tests/client.mjs
- * 不依赖浏览器 —— 验证三个座位注册与悬浮泡泡的结构性存在，
+ * 不依赖浏览器 —— 验证四个座位注册与悬浮泡泡的结构性存在，
  * 防止后续重构把「设置页工作台 / 输入框进度条 / 主界面悬浮泡泡」改丢。
  */
 import fs from 'node:fs';
@@ -55,14 +55,16 @@ clientModule.apply({ slots: {
   }
 } });
 assert(appendedStyles.length === 1, 'client apply 应注入一份 Iris 样式');
-assert(slotRegistrations.length === 3, 'client apply 必须注册三个座位');
-assert(slotRegistrations.every((item) => typeof item.component === 'function'), '三个座位必须注册 React 组件');
+assert(slotRegistrations.length === 4, 'client apply 必须注册四个座位');
+assert(slotRegistrations.every((item) => typeof item.component === 'function'), '四个座位必须注册 React 组件');
 
-/* ① 三个座位注册必须存在 */
+/* ① 四个座位注册必须存在 */
 assert(src.includes("ctx.slots.inject('settings.section'"), '缺少 settings.section 注册');
 assert(src.includes("id: 'iris-workbench'"), '缺少 iris-workbench 座位 id');
 assert(src.includes("ctx.slots.inject('conversation.input.dock'"), '缺少 conversation.input.dock 注册');
 assert(src.includes("id: 'iris-progress'"), '缺少 iris-progress 座位 id');
+assert(src.includes("ctx.slots.inject('conversation.input.right'"), '缺少 conversation.input.right 注册');
+assert(src.includes("id: 'iris-prompt-optimizer'"), '缺少 iris-prompt-optimizer 座位 id');
 assert(src.includes("ctx.slots.inject('shell.overlay'"), '缺少 shell.overlay 注册');
 assert(src.includes("id: 'iris-bubble'"), '缺少 iris-bubble 座位 id');
 assert(src.includes("label: function () { return 'Iris 工作台'; }"), '设置页正式名称应为 Iris 工作台');
@@ -70,7 +72,7 @@ assert(!src.includes('Iris 泡泡工作台'), '正式名称不应继续使用 Ir
 assert(src.includes("label: function () { return 'Iris 泡泡'; }"), '悬浮入口应保留 Iris 泡泡名称');
 
 /* ② 三个组件函数必须存在 */
-for (const fn of ['WorkbenchPanel', 'ProgressDock', 'FloatingBubble']) {
+for (const fn of ['WorkbenchPanel', 'PromptOptimizerControl', 'ProgressDock', 'FloatingBubble']) {
   assert(new RegExp('function\\s+' + fn + '\\s*\\(').test(src), '缺少组件函数 ' + fn);
 }
 
@@ -79,6 +81,7 @@ assert(src.includes('localStorage.getItem(\'iris-bubble-pos\''), '缺少拖动�
 assert(src.includes("'iris-bubble' + (configured ? ' lit' : ' dim')"), '缺少配置明暗类');
 assert(src.includes('setOpen(!open)'), '缺少点击切换面板');
 assert(src.includes("className: 'iris-bubble-badge'"), '缺少运行中数字角标');
+assert(src.includes(".iris-bubble-panel { position: fixed") && src.includes("font-size: 12px; line-height: 1.45"), '泡泡面板应使用紧凑字号，避免运行中任务文字偏大');
 
 /* ④ 阶段 5 操作卡片组：ActionCard/ActionGroups + POST /iris/api/actions */
 assert(new RegExp('function\\s+ActionCard\\s*\\(').test(src), '缺少 ActionCard 组件');
@@ -118,6 +121,16 @@ for (const act of ['tasks_clear', 'tasks_orphans', 'tasks_purge_orphans']) {
 }
 assert(src.includes('window.confirm'), '破坏性清理缺少二次确认');
 assert(new RegExp('function\\s+taskRowMini\\s*\\(').test(src), '缺少紧凑任务行 taskRowMini');
+
+/* ⑥b 泡泡历史与功能状态灯的回归保护 */
+assert(src.includes("t.status === 'succeeded' && Array.isArray(t.media) && t.media.length > 0"),
+  '泡泡快捷历史必须只显示带产物的成功任务');
+assert(!src.includes('var shown = recent.slice(0, 6)'), '泡泡不得重新直接展示失败/取消历史');
+assert(src.includes('失败、取消与完整历史请到 Iris 工作台查看'), '泡泡缺少完整错误历史去向提示');
+assert(src.includes('function capabilityReady(state, capability)'), '缺少功能能力就绪判定');
+assert(src.includes('p.enabled && p.apiKeyHint && Array.isArray(p.capabilities)'), '功能状态灯未同时校验启用 API 与能力');
+assert(src.includes('capabilityReady(irisState, capability) && !headError'), '功能状态灯未独立于卡片展开，或错误后不会变暗');
+assert(!src.includes('var headLit = !capability || (modelInfo && modelInfo.loaded'), '功能状态灯仍依赖点开后加载模型');
 
 /* ⑦ P1：分配唯一入口——ActionCard 不再写 assignments（消除互相覆盖） */
 assert(!/capability:\s*capability,\s*model_id:/.test(src), 'ActionCard 仍在写单值 model_id 分配（应移除，唯一入口是 CapabilityAssigner）');
@@ -159,4 +172,20 @@ assert(/useState\(!value/.test(ffBody) === false, 'FileField 高级路径框不�
 assert(/var manualPair = React\.useState\(false\)/.test(ffBody), 'FileField manual 初值应为 false');
 assert((src.match(/type: 'file'/g) || []).length >= 8, '卡片路径字段未转 FileField（应 ≥8 处 type:file）');
 
-console.log('ALL OK —— 客户端形态 3 座位 + 组件群 + 14 卡片注册表 + 能力分配 UI + 泡泡瘦身 + 分配唯一入口 + 模型池 UI + 文件选择器 断言全部通过');
+assert(src.includes("props.useProjection('modelSelection')"), '提示词优化器必须读取当前会话模型投影');
+assert(src.includes('projection.current || projection.selection'), '提示词优化器必须优先读取 modelSelection 快照的 current 选择');
+assert(src.includes('props.inputActions.setDraft'), '提示词优化器必须通过 DSH 正式 inputActions 写回草稿');
+assert(src.includes("promptRequest('import'"), '提示词优化器缺少 JSON 导入');
+assert(src.includes("promptRequest('reset'"), '提示词优化器缺少恢复默认');
+assert(src.includes('尚未写回输入框'), '提示词优化器必须先预览而非自动覆盖');
+assert(src.includes("}, '🫧'),"), '对话框入口应只显示 🫧，不显示功能名称');
+assert(/\.iris-po-trigger \{[^}]*border: 0;[^}]*background: transparent;/.test(src), '对话框 🫧 入口必须取消边框与按钮底色');
+assert(src.includes('backdrop-filter: blur(28px) saturate(1.28)'), '提示词窗口缺少半透明玻璃模糊层');
+assert(!src.includes("}, '✨ 优化'),"), '对话框入口不得继续显示“优化”文字');
+assert(src.includes("promptRequest('enabled'"), '提示词优化器缺少独立关闭入口');
+assert(/function\s+PromptOptimizerSettings\s*\(/.test(src), '工作台缺少提示词入口重新启用控制');
+assert(src.includes('iris-po-backdrop') && src.includes("role: 'dialog'"), '提示词浮层缺少遮罩与对话框语义');
+assert(src.includes('@media (max-width: 640px)') && src.includes('100dvh') && src.includes('safe-area-inset-bottom'), '提示词浮层缺少手机视口与安全区自适应');
+assert(src.includes('position: fixed') && src.includes('overscroll-behavior: contain'), '提示词浮层不得继续受输入区绝对定位和滚动叠层影响');
+
+console.log('ALL OK —— 客户端形态 4 座位 + 对话框提示词优化 + 组件群 + 14 卡片注册表 + 能力分配 UI + 泡泡瘦身 + 分配唯一入口 + 模型池 UI + 文件选择器 断言全部通过');

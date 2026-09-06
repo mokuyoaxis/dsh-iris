@@ -1,8 +1,12 @@
 <p align="center">
+  <sub>简体中文 | <a href="README.en.md">English</a></sub>
+</p>
+
+<p align="center">
   <img src="docs/assets/iris-wordmark.svg" width="520" alt="IRIS 彩色字标">
 </p>
 
-<h1 align="center">dsh-iris</h1>
+<h1 align="center">Iris Media for DSH</h1>
 
 <p align="center"><strong>Iris 多模态生产运行时 · 当前通过 DeepSeek Harness 插件使用</strong></p>
 
@@ -14,7 +18,29 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
 
-dsh-iris 为 Agent 和 Iris 工作台提供图像、视频、语音与视觉理解能力。它可以连接 DashScope 百炼及 OpenAI Images 兼容服务；完整配置和任务管理集中在 Iris 工作台，右下角的 Iris 泡泡提供快捷入口。
+dsh-iris 为 Agent 和 Iris 工作台提供图像、视频、语音与视觉理解能力，也能直接优化 DSH 对话框中的任意提示词。它可以连接 DashScope 百炼及 OpenAI Images 兼容服务；完整配置和任务管理集中在 Iris 工作台，右下角的 Iris 泡泡提供快捷入口。
+
+## 实际生成示例
+
+<p align="center">
+  <img src="docs/assets/examples/iris-flower-generated.webp" width="720" alt="由 Iris 优化提示词并生成的蓝紫色鸢尾花">
+</p>
+
+> 从一句“鸢尾花”开始：Iris 对话框优化 Prompt（`deepseek-v4-flash`，thinking `off`）→ 阿里云百炼 `qwen-image-3.0-pro` 生成 · 2048×2048
+
+## Android 16 真机界面
+
+以下截图来自 Android 浏览器连接 Termux/PRoot Debian ARM64 中的 DSH，使用 DSH 默认皮肤；公开图片均已移除 EXIF/XMP/IPTC 元数据。
+
+| 对话输入区的 🫧 入口 | 优化结果写回输入框 |
+|---|---|
+| ![DSH 对话输入区中的 Iris 泡泡入口](docs/assets/screenshots/prompt-general-before.webp) | ![Iris 将优化结果写回 DSH 输入框](docs/assets/screenshots/prompt-general-after.webp) |
+
+<p align="center">
+  <img src="docs/assets/screenshots/image-task-succeeded.webp" width="520" alt="Iris 工作台中的图片任务成功详情">
+</p>
+
+> [查看完整六图流程：优化前、玻璃预览窗、写回、任务成功与实际产物](docs/screenshots.md)
 
 项目目前处于早期版本，接口和配置格式仍可能随版本迭代调整。
 
@@ -35,6 +61,8 @@ dsh plugin --profile web add @mokuyoaxis/dsh-iris
 dsh web
 ```
 
+> npm 上无 scope 的 `dsh-iris` 属于另一款插件。安装和更新 Iris Media 时必须保留完整包名 `@mokuyoaxis/dsh-iris`。
+
 从当前源码目录试用时，把第一条命令中的 `@mokuyoaxis/dsh-iris` 换成 `.`。插件会在下一次 DSH 启动时装载，Web UI 默认位于 `http://127.0.0.1:3080`。
 
 首次启动后，打开“设置 → Iris 工作台 → + 添加供应商”，填入 DashScope Base URL 和 API Key，再点“发现模型”。单供应商可以先使用自动能力分配。完整步骤、OpenAI Images 兼容配置和故障转移说明见[用户指南](user_guide.md)。
@@ -51,6 +79,8 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 
 ## 功能概览
 
+![Iris 架构总览](docs/assets/diagrams/iris-architecture.png)
+
 - 图像生成、文生视频、图生视频和 S2V 数字人视频
 - 文本转语音与音频转写
 - 看图问答、长图 OCR、目标定位、裁剪和像素差异分析
@@ -58,6 +88,7 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 - 异步任务跟踪、重启恢复和带授权令牌的媒体播放
 - 多供应商模型池，以及按 `供应商 + 模型` 分配能力
 - 浏览器上传、会话附件和宿主路径三种文件来源
+- 独立于工作台的对话框提示词优化，支持当前会话模型与 JSON 固定模型路由
 
 ## 使用前准备
 
@@ -72,9 +103,9 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 
 dsh-iris 按 DeepSeek Harness 插件形态提供服务端与 Web 客户端入口：服务端注册 14 个 Agent 工具，并复用宿主的工具、路由和生命周期服务；客户端通过 DSH 模块加载器接入设置页、会话输入区和全局悬浮层。插件不会启动独立服务或额外监听端口。
 
-当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。0.1.1 已在 Linux ARM64 的干净与真实 Web profile 中，使用 DSH `0.1.2-rc.1`、Node.js `22.23.2` 完成宿主烟测；浏览器启动图、完整组合 bundle、Iris 客户端工厂和三个 UI 座位均已验证。Iris 自身仍以 Node.js `>=20.10` 为最低基线。
+当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。0.1.1 已在 Linux ARM64 的干净与真实 Web profile 中，使用 DSH `0.1.2-rc.1`、Node.js `22.23.2` 完成宿主烟测；浏览器启动图、完整组合 bundle、Iris 客户端工厂和当时的三个 UI 座位均已验证。0.1.2 新增的第四个提示词优化座位已在 Android 浏览器真机确认渲染，配置读取、真实会话模型优化（实际 thinking `off`）、预览写回、独立关闭与重新启用，以及从短草稿到图片生成任务成功的闭环均已验证；浏览器端取消和 JSON 操作已有自动化 HTTP/配置覆盖，尚待补充真机逐项记录。Iris 自身仍以 Node.js `>=20.10` 为最低基线。
 
-0.1.1 明确支持 DSH `>=0.1.2-rc.1 <0.1.3-0`，不再兼容 0.1.0/0.1.1 的旧客户端 Runtime。DSH 仍在快速演进，后续预览版须经验证后再扩大范围；兼容徽章不代表官方认证。若 DSH 要求更高 Node 版本，以 DSH 为准。
+Iris 0.1.1–0.1.2 明确支持 DSH `>=0.1.2-rc.1 <0.1.3-0`，不再兼容 0.1.0/0.1.1 的旧客户端 Runtime。DSH 仍在快速演进，后续预览版须经验证后再扩大范围；兼容徽章不代表官方认证。若 DSH 要求更高 Node 版本，以 DSH 为准。
 
 ## 工具
 
@@ -117,13 +148,29 @@ Iris 支持三种文件来源，推荐顺序如下：
 
 上传内容保存在 `$DSH_HOME/iris/v1/uploads/`，默认保留 7 天。不同系统下的路径选择建议见[文件访问与跨环境](docs/file-access-across-environments.md)。
 
+## 对话框提示词优化
+
+Iris 会在 DSH 对话输入区提供一个无边框、无文字的“🫧”入口，不需要打开 Iris 工作台。点击后打开带背景模糊、半透明层次和柔和光影的玻璃悬浮窗；桌面端靠近输入区显示，窄屏与 Android 浏览器自动切换为带安全区和内部滚动的底部面板，避免遮挡、溢出或控件挤叠。它只读取当前未发送的纯文本草稿，并提供通用、图片、视频和首尾帧视频四种目标模板；结果先预览，用户确认后才写回输入框，不会自动发送。含 `@` 或 `/` 结构化引用的草稿暂不改写，以免引用身份丢失。
+
+默认使用当前会话选中的主模型；会话尚未选定模型时回退到 DSH 默认模型。优化请求不携带聊天历史、工具、附件或工作区，只发送当前草稿与目标模板。为避免推理模型在正文前耗尽生成预算，默认 `generation.reasoningEffort` 为 `off-if-supported`：仅在 DSH 模型元数据明确支持关闭 thinking 时禁用推理，否则使用供应商默认值，并且不再继承主会话的 High/Low 档位。可在 JSON 中改为 `provider-default`、`inherit` 或模型声明的具体 effort ID；成本与稳定性优先时，建议使用 `fixed` 路由指定轻量非思考模型。用户也可以导出 `prompt-optimizer.json`，将 `route.mode` 改为 `fixed` 并指定其他已在 DSH 注册的 `provider` 与 `model`，然后从面板重新导入。面板提供“恢复默认”，可还原 Iris 内置 Prompt、目标模板、会话模型路由和生成参数。该对话入口可以单独关闭，并从 Iris 工作台重新启用；关闭不会停用工作台、Agent 工具或任务后台。优化调用可能产生对应文本模型的费用。
+
 ## 模型分配与故障转移
 
 能力分配使用 `providerId::modelId` 作为模型身份。同名模型如果来自不同供应商或不同账号，会被视为两个独立选项。
 
 生成类能力可以配置多个候选模型。Iris 只会在上传、提交或同步生成阶段失败时尝试下一个候选项；远端服务一旦受理任务，就不会自动重新提交，以免产生重复任务或重复计费。已经受理的异步任务由任务系统继续跟踪。
 
+![生成任务生命周期与受理边界](docs/assets/diagrams/iris-task-lifecycle.png)
+
 转写是独立的 `transcribe` 能力，不会占用 TTS 或视觉能力的模型配置。
+
+## 组合工作流示例
+
+Iris 自带两个 Agent Skills（`iris-verify-ui` 与 `iris-compose-media`），把多个工具编排成有界、可复核的媒体工作流。下例是「看图 → 重绘 → 自检」：先理解原图，再生成，复核针对具体偏差，只有复核通过才交付。
+
+![组合工作流示例](docs/assets/diagrams/iris-workflow-compose.png)
+
+图的 SVG 版本与可编辑 drawio 源文件位于 [`docs/assets/diagrams/`](docs/assets/diagrams/)。
 
 ## 数据与任务
 
@@ -132,6 +179,7 @@ Iris 支持三种文件来源，推荐顺序如下：
 | 位置 | 内容 |
 |---|---|
 | `providers.json` | 供应商和能力分配，文件权限为 0600 |
+| `prompt-optimizer.json` | 用户导入的优化 Prompt、目标模板、模型路由和生成参数，文件权限为 0600 |
 | `tasks.json` | 任务元数据和附件索引，最多保留 500 条 |
 | `outputs/` | 生成和处理后的媒体文件 |
 | `uploads/` | 浏览器上传的临时输入副本 |
@@ -163,14 +211,14 @@ Iris 支持三种文件来源，推荐顺序如下：
 
 ## Agent Skills
 
-源码和 npm 包附带两个仓库级预览 Skill：
+插件启用时会通过 DSH Skill registry 自动注册两个随包 Skill：
 
 | Skill | 适用场景 |
 |---|---|
 | [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md) | 组合截图、语义检查、元素定位、裁剪和像素比较，完成有证据的 UI 验收 |
 | [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) | 组合两个以上 Iris 工具，完成看图后绘图、图片转视频、视频总结配旁白或 S2V 等媒体工作流 |
 
-当 DSH 会话以本仓库为项目目录且启用了文件系统 Skill 服务时，可以直接发现它们。当前版本尚未在插件启用时自动向其他项目注册这些 Skill；14 个 Iris 工具不受影响。
+从 0.1.2 起，只要宿主提供 DSH Skill registry，普通 npm 安装用户在任意项目目录中都能发现并加载它们，不需要克隆本仓库或另外配置 Skill 搜索目录。项目目录中存在同名 Skill 时，仍按 DSH 原生优先级使用项目版本；Skill registry 不可用时，14 个 Iris 工具仍可独立装载。
 
 ## 开发与验证
 
@@ -190,6 +238,7 @@ Iris 支持三种文件来源，推荐顺序如下：
 - [变更记录](CHANGELOG.md)
 - [路线图](docs/ROADMAP.md)
 - [文件访问与跨环境](docs/file-access-across-environments.md)
+- [Android 16 真机截图画廊](docs/screenshots.md)
 
 ## License
 

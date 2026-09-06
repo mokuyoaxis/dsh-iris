@@ -24,7 +24,14 @@ const assert = (cond, msg, extra) => {
  * 所以 stub 也要把 tools 挂成自有属性（只靠 get() 是不够的，会误报「tools 服务不可用」）。
  */
 function stubCtx({ registerThrows }) {
+  const registeredSkills = [];
   const services = {
+    skills: {
+      register(skill) {
+        registeredSkills.push(skill);
+        return () => {};
+      }
+    },
     tools: {
       register(def) {
         if (registerThrows && registerThrows === def.name) {
@@ -44,6 +51,7 @@ function stubCtx({ registerThrows }) {
   const disposers = [];
   const stub = {
     _registered: registered,
+    _registeredSkills: registeredSkills,
     _disposers: disposers,
     get(name) {
       return services[name];
@@ -57,6 +65,7 @@ function stubCtx({ registerThrows }) {
     }
   };
   stub.tools = services.tools; // 模拟 inject 直读面
+  stub.skills = services.skills;
   return stub;
 }
 
@@ -75,6 +84,8 @@ const names = ctx1._registered.map((d) => d.name);
 for (const want of ['iris_draw_image', 'iris_generate_video', 'iris_speak_text', 'iris_transcribe_audio', 'iris_look_at_image', 'iris_relook_attachment', 'iris_task_status', 'iris_crop', 'iris_pixel_diff', 'iris_locate', 'iris_html_screenshot', 'iris_long_ocr', 'iris_video_frames', 'iris_media_summarize']) {
   assert(names.includes(want), '缺少工具: ' + want + '（实际: ' + names.join(', ') + '）');
 }
+assert(ctx1._registeredSkills.map((skill) => skill.name).join(',') === 'iris-verify-ui,iris-compose-media',
+  '插件启用时应注册两项随包 Skill：' + ctx1._registeredSkills.map((skill) => skill.name).join(','));
 
 /* ===== ② 单个工具注册抛错 ===== */
 errs = [];
