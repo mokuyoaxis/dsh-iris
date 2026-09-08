@@ -45,6 +45,19 @@ if (files.length === 0) failures.push('未找到任何 .js/.mjs 文件');
 /* ---------- ② 结构防回归 ---------- */
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 
+/* v0.1.3 Core 候选不得反向导入 DSH/Cordis 运行时。 */
+for (const rel of ['lib/task-semantics.js', 'lib/provider-contract.js', 'lib/doctor.js']) {
+  const source = read(rel);
+  if (/@deepseek-ai\/|from ['"](?:cordis|dsh)/.test(source)) {
+    failures.push(rel + ' 不得导入 DSH/Cordis 运行时');
+  }
+}
+const packageJson = JSON.parse(read('package.json'));
+if (!packageJson.bin || packageJson.bin['dsh-iris'] !== './bin/dsh-iris.js' || packageJson.exports['./doctor'] !== './lib/doctor.js') {
+  failures.push('package.json 缺少离线 dsh-iris CLI 或 ./doctor 公开导出');
+}
+
+
 const api = read('lib/api.js');
 if (/iris\.home\b/.test(api)) {
   failures.push('lib/api.js buildState 仍泄露 iris.home 绝对路径');
@@ -291,8 +304,10 @@ if (tasksLib) {
     failures.push('lib/adapters.js downloadTo 必须原子落盘（.tmp + rename，失败不留半截产物）');
   }
   const idxSrc = index;
-  if (!/function pollDeps[\s\S]{0,400}cap === 'transcribe'/.test(idxSrc)) {
-    failures.push('lib/index.js pollDeps 必须有 transcribe 分支（重启接管走 pollTranscriptionTask，否则转写文本静默丢失）');
+  const recoverySrc = read('lib/actions.js');
+  if (!/function taskPollDeps[\s\S]{0,400}task\.cap === 'transcribe'/.test(recoverySrc)
+      || !/return taskPollDeps\(provider, \{ cap \}\)/.test(idxSrc)) {
+    failures.push('启动恢复与人工接管必须共用 actions.taskPollDeps，且保留 transcribe 专用轮询');
   }
   const apiSrc = read('lib/api.js');
   if (!/MAX_BODY_BYTES/.test(apiSrc) || !/totalBytes/.test(apiSrc)) {

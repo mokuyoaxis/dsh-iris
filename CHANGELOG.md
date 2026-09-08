@@ -6,6 +6,38 @@
 
 当前没有尚未发布的用户可见变更。
 
+## [0.1.3] - 2026-09-08
+
+### Added
+
+- 新增公开的 Task/Attempt v2 语义契约，以及零网络纯函数真值表；冻结受理、自动 failover、观察、取消、产物交付、旧状态兼容和移动端用户状态的不可违反规则。
+
+- 新增最小 Provider 提交契约、脱敏错误分类、写前持久化 Hook、零网络 Fake Provider 和旧任务纯规范化器；普通提交异常默认归为受理未知，只有明确 `not_accepted` 才能自动切换候选。
+
+- 新增 Task v2 复制落盘与单调 revision 原语，并覆盖图片、视频、转写和 TTS：一次用户请求只创建一个 Task，每次候选在 HTTP 请求前写入 Attempt；视频和转写进一步区分上传与提交 stage。明确 4xx 拒绝才允许 failover，5xx、网络异常及缺失必要响应会以受理未知停止。
+
+- 新增图片故障注入测试，覆盖 429 后异步/同步混合候选安全切换、500/网络失败/缺远端 ID 后零重复提交、API Key 不落任务文件、同步与异步生成成功后交付失败不重新生成、未知取消及提交中断恢复。
+
+- 图片、视频、转写和 TTS Agent 工具开始读取 v2 事实轴：交付失败会明确表述为“生成成功但交付失败”，受理或结果未知会停止等待并要求人工确认。
+
+- 新增 Task v2 运行时故障矩阵，覆盖盯守超时、连续轮询异常、远端明确失败、重启恢复、供应商缺失、交付中断、SSE 慢消费者和人工接管；全部使用本地 Fake/fixture，不发送计费请求。
+
+- 新增无需安装或启动 DSH 的离线 `doctor()`、`dsh-iris doctor` CLI 与 `--json` 输出；检查运行时、依赖、私有存储、配置、模型、任务、临时文件和产物，使用稳定的 0/1/2 退出码。
+
+- 新增公开架构、安全边界和故障注入矩阵文档。
+
+### Changed
+
+- 将 v0.1.3 聚焦为“防重复计费与事实可信”：离线 Doctor v0 与最薄 CLI 保留在本版，完整 Host Adapter、Provider conformance 和依赖 DSH 运行时的 Doctor 扩展顺延到 0.1.4。
+
+- 工作台、泡泡和任务详情开始消费 v2 派生用户态：排队/运行仍属于活动任务，观察暂停、受理或结果未知、生成成功但交付失败进入独立“需要处理”分区；旧任务继续按原四态显示。
+
+- 状态快照新增进程 epoch 与单调 revision，客户端拒绝迟到快照；SSE 对慢消费者只保留最新待发状态。
+
+- 任务详情新增重新观察、重新交付与知情重试：前两者禁止新生成提交；知情重试必须确认可能重复计费，并用新旧 Task 关系保留审计线索。
+
+- 待处理任务新增“标为已读/恢复提醒”；知情重试创建新任务后自动归档原提醒并展示关联，避免同一异常重复占用泡泡角标。只有明确的 Task v1 才显示“旧任务 · 只读”，热更新字段缺失不再误标新任务。
+
 ## [0.1.2] - 2026-09-06
 
 ### Changed
@@ -118,7 +150,8 @@
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mokuyoaxis/dsh-iris/releases/tag/v0.1.0

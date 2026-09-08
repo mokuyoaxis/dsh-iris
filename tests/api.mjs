@@ -8,6 +8,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { EventEmitter } from 'node:events';
 import { useTempDshHome } from './test-env.js';
 
 useTempDshHome('iris-api-home');
@@ -65,10 +66,32 @@ fs.writeFileSync(path.join(irisV1, 'tasks.json'), JSON.stringify({
   ]
 }, null, 2));
 
+/* ---------- v2 假数据：验证用户态不会被旧 status=running 困住 ---------- */
+const taskFile = path.join(irisV1, 'tasks.json');
+const fixture = JSON.parse(fs.readFileSync(taskFile, 'utf8'));
+const v2Base = {
+  schemaVersion: 2, status: 'running', revision: 4, attempts: [], cap: 'image',
+  model: 'wan2.2-t2i-flash', providerId: 'iris_testp', providerName: '本地测试供应商',
+  phase: 'terminal', acceptance: 'accepted', watchState: 'idle', outcome: 'none',
+  deliveryState: 'none', cancelState: 'none', createdAt: iso(1), updatedAt: iso(0.5)
+};
+fixture.tasks.push(
+  { ...v2Base, id: 't_v2_unknown', acceptance: 'unknown', outcome: 'unknown', prompt: 'unknown acceptance' },
+  { ...v2Base, id: 't_v2_delivery', outcome: 'succeeded', deliveryState: 'failed', prompt: 'delivery failed', error: '结果转存失败' },
+  { ...v2Base, id: 't_v2_paused', phase: 'running', watchState: 'suspended', prompt: 'watch paused', remoteTaskId: 'R2' },
+  { ...v2Base, id: 't_v2_ack', acceptance: 'unknown', outcome: 'unknown', prompt: 'acknowledged unknown',
+    manualRetries: [{ taskId: 't_retry_done', createdAt: iso(0.3) }] },
+  { ...v2Base, id: 't_v2_queued', phase: 'queued', acceptance: 'none', prompt: 'queued' }
+);
+fs.writeFileSync(taskFile, JSON.stringify(fixture, null, 2));
+
 /* ---------- 载入被测模块 ---------- */
 const { buildState } = await import('../lib/api.js');
 
 const state = buildState();
+const stateNext = buildState();
+assert(stateNext.stateEpoch === state.stateEpoch && stateNext.stateRevision === state.stateRevision + 1,
+  '状态快照带同进程单调序号', [state.stateRevision, stateNext.stateRevision]);
 
 /* ① apiKey 掩码 */
 const p0 = state.providers[0];
@@ -76,10 +99,19 @@ assert(p0 && typeof p0.apiKey === 'undefined', 'apiKey 绝不出现在输出', s
 assert(typeof p0.apiKeyHint === 'string' && p0.apiKeyHint.includes('****'), 'key 只给 hint', p0.apiKeyHint);
 assert(!JSON.stringify(state).includes('must-never-leak'), '序列化后不得含明文 key');
 
-/* ② 分组：running 1 条，recent 2 条（succeeded+failed） */
-assert(state.tasks.running.length === 1 && state.tasks.running[0].id === 't_running_1', 'running 分组', state.tasks.running.map((t) => t.id));
-assert(state.tasks.recent.length === 2, 'recent 分组（排除 running）', state.tasks.recent.map((t) => t.id));
-assert(state.tasks.recentTotal === 2, 'recentTotal 计数终态总数（泡泡查看全部用）', state.tasks.recentTotal);
+/* ② 分组：旧任务保持四态；v2 未知/暂停/交付失败单列为 attention */
+assert(state.tasks.running.length === 2 && state.tasks.running.some((t) => t.id === 't_running_1')
+  && state.tasks.running.some((t) => t.id === 't_v2_queued'), 'running 分组含旧运行与 v2 排队', state.tasks.running.map((t) => t.id));
+assert(state.tasks.attention.length === 3, 'v2 需要处理任务单列', state.tasks.attention.map((t) => [t.id, t.userState]));
+assert(state.tasks.attention.some((t) => t.id === 't_v2_unknown' && t.userState === 'needs_attention'), '受理未知 → 需要确认');
+assert(state.tasks.attention.some((t) => t.id === 't_v2_delivery' && t.userState === 'artifact_unavailable'), '生成成功但交付失败 → 结果待取回');
+assert(state.tasks.attention.some((t) => t.id === 't_v2_paused' && t.userState === 'watching_paused'), '观察暂停 → 观察暂停');
+assert(state.tasks.recent.length === 3, 'recent 含稳定终态与已处置提醒', state.tasks.recent.map((t) => t.id));
+assert(state.tasks.recentTotal === 3, 'recentTotal 计数稳定终态与已处置提醒', state.tasks.recentTotal);
+const acknowledged = state.tasks.recent.find((t) => t.id === 't_v2_ack');
+assert(acknowledged && acknowledged.userState === 'needs_attention'
+  && acknowledged.attentionDisposition.status === 'acknowledged'
+  && acknowledged.attentionDisposition.reason === 'retried', '已处置提醒退出 attention，但保留未知事实并进入历史', acknowledged);
 
 /* ③ 媒体链接：授权 URL 形态，且不含绝对路径 */
 const done = state.tasks.recent.find((t) => t.id === 't_done_1');
@@ -88,6 +120,7 @@ assert(media && typeof media.url === 'string' && media.url.includes('/iris/media
 assert(media && !media.url.includes(process.env.DSH_HOME), '链接不含本地绝对路径', media && media.url);
 assert(media && typeof media.token === 'undefined' && typeof media.mime === 'string' && typeof media.file === 'string', '媒体条目只透 file/mime/url，token 不出 JSON', media);
 assert(done && done.saved === true, 'saved 标记透传');
+assert(done && done.schemaVersion === 1, '旧任务摘要显式标记 schemaVersion=1，供工作台显示只读说明');
 
 /* ④ 全标量可序列化 */
 let roundtrip = null;
@@ -134,8 +167,34 @@ assert(typeof d.prompt === 'string' && Array.isArray(d.media) && Array.isArray(d
 assert(d.media[0] && d.media[0].url && d.media[0].url.includes('/iris/media/t_done_1/'), '详情媒体链接');
 assert(typeof d.remoteTaskId === 'string' && Array.isArray(d.attachments), '详情 remoteTaskId/attachments');
 assert(!JSON.stringify(d).includes('must-never-leak'), '详情不含明文 key');
+const v2DetailRes = hitApi('/iris/api/task/t_v2_delivery');
+const v2Detail = JSON.parse(v2DetailRes.body);
+assert(v2Detail.userState === 'artifact_unavailable' && v2Detail.outcome === 'succeeded'
+  && v2Detail.deliveryState === 'failed' && v2Detail.revision === 4, '详情透出 v2 用户态与事实轴', v2Detail);
+const acknowledgedDetail = JSON.parse(hitApi('/iris/api/task/t_v2_ack').body);
+assert(acknowledgedDetail.attentionDisposition.reason === 'retried'
+  && acknowledgedDetail.manualRetries[0].taskId === 't_retry_done', '详情透出处置状态与安全的新旧任务关联', acknowledgedDetail);
 
 /* ---------- ⑦ SSE 端点（阶段 4：真实 HTTP 服务器 + 事件流验证） ---------- */
+// 7a0. 慢消费者背压：阻塞期间只保留最新快照，drain 后继续发送。
+class SlowRes extends EventEmitter {
+  constructor() { super(); this.headersSent = false; this.writes = []; this.blockData = true; this.destroyed = false; this.writableEnded = false; }
+  writeHead() { this.headersSent = true; }
+  write(chunk) { this.writes.push(String(chunk)); return !(this.blockData && String(chunk).startsWith('data: ')); }
+  end() { this.writableEnded = true; }
+}
+const slow = new SlowRes();
+serveApi({ method: 'GET', url: '/iris/api/state/events', headers: {} }, slow);
+tasks.create({ cap: 'image', providerId: 'iris_testp', model: 'm', prompt: 'slow-one' });
+tasks.create({ cap: 'image', providerId: 'iris_testp', model: 'm', prompt: 'slow-latest' });
+await new Promise((r) => setTimeout(r, 550));
+const writesWhileBlocked = slow.writes.length;
+slow.blockData = false;
+slow.emit('drain');
+await new Promise((r) => setTimeout(r, 20));
+assert(slow.writes.length === writesWhileBlocked + 1 && slow.writes.at(-1).includes('slow-latest'),
+  'SSE 慢消费者 drain 后只收到合并的最新快照', slow.writes.map((item) => item.slice(0, 40)));
+slow.emit('close');
 const http = await import('node:http');
 const srv = http.createServer((req, res) => serveApi(req, res));
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));

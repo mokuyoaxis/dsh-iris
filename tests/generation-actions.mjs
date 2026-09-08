@@ -83,6 +83,10 @@ try {
   assert(first.providerId === providerIds.good, '首 provider 429 后提交到第二 provider', first);
   assert(submitCalls.slice(0, 2).map((c) => c.auth).join(',') === 'Bearer bad-key,Bearer good-key',
     '提交按复合引用顺序 failover', submitCalls);
+  const firstTask = tasks.get(first.taskId);
+  assert(firstTask.schemaVersion === 2 && firstTask.attempts.length === 2, '视频 failover 只创建一个 Task v2', firstTask);
+  assert(firstTask.attempts[0].acceptance === 'not_accepted' && firstTask.attempts[1].acceptance === 'accepted',
+    '视频 Attempt 保存明确拒绝与受理事实', firstTask.attempts);
 
   // 后续明确只把 good 放首位；自动池补齐项不会被触发，因为首项提交成功。
   config.setAssignmentOrder('video-gen', [goodRef]);
@@ -127,6 +131,9 @@ try {
   const asr = await runAction({}, 'transcribe', { audio_path: audio });
   tasks.stopWatchAll();
   assert(asr.providerId === asrProvider.id && asr.model === 'qwen-audio-3.0-asr-flash-filetrans', '转写只走独立 transcribe capability', asr);
+  const asrTask = tasks.get(asr.taskId);
+  assert(asrTask.schemaVersion === 2 && asrTask.attempts.length === 1 && asrTask.acceptance === 'accepted',
+    '转写上传与提交纳入 Task v2', asrTask);
 
   const indexSrc = fs.readFileSync(new URL('../lib/index.js', import.meta.url), 'utf8');
   assert(indexSrc.includes("runAction(ctx, 'video', args, { signal: exec.signal })"),

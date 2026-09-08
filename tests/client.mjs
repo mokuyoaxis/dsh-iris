@@ -132,6 +132,30 @@ assert(src.includes('p.enabled && p.apiKeyHint && Array.isArray(p.capabilities)'
 assert(src.includes('capabilityReady(irisState, capability) && !headError'), '功能状态灯未独立于卡片展开，或错误后不会变暗');
 assert(!src.includes('var headLit = !capability || (modelInfo && modelInfo.loaded'), '功能状态灯仍依赖点开后加载模型');
 
+/* ⑥c Task v2 用户态：异常事实不得继续伪装成运行中 */
+assert(src.includes("watching_paused: '观察暂停'") && src.includes("needs_attention: '需要确认'")
+  && src.includes("artifact_unavailable: '结果待取回'"), '客户端缺少 v2 稳定用户态文案');
+assert(src.includes("var attention = (state && state.tasks && state.tasks.attention) || []"), '工作台/泡泡未消费待处理任务分组');
+assert(src.includes("className: 'iris-wb-badge.warn") || src.includes("'.iris-wb-badge.warn"), '待处理状态缺少警示色');
+assert(src.includes("'需要处理'"), '工作台和泡泡缺少需要处理分区');
+assert(src.includes('var badgeCount = running.length + attention.length'), '泡泡角标未提示待处理任务');
+assert(src.includes('data.stateEpoch === sharedState.stateEpoch') && src.includes('data.stateRevision || 0'),
+  '共享状态订阅未拒绝同一进程内迟到的旧快照');
+assert(src.includes("['状态', taskStateLabel(detail)]"), '任务详情未使用稳定的人类状态');
+assert(!src.includes("kv.push(['受理'") && !src.includes("kv.push(['交付'"), '移动端任务抽屉不应堆叠内部事实轴');
+assert(/function\s+TaskRecoveryActions\s*\(/.test(src), '任务详情缺少人工接管组件');
+for (const action of ['task_reobserve', 'task_redeliver', 'task_ack_attention', 'task_restore_attention', 'task_manual_retry']) {
+  assert(src.includes("'" + action + "'"), '任务详情缺少人工动作 ' + action);
+}
+assert(src.includes('confirm_duplicate_charge: true') && src.includes('可能重复计费'), '知情重试缺少独立费用确认');
+assert(src.includes('旧任务 · 只读') && src.includes('旧版任务记录 · 仅支持查看')
+  && src.includes('Number(task.schemaVersion) === 1') && !src.includes('Number(task.schemaVersion || 1) < 2'),
+  '只有明确 schemaVersion=1 才能标记旧任务，字段缺失不得误判');
+assert(src.includes('标为已读') && src.includes('恢复提醒') && src.includes('已通过重试处理'),
+  'Task v2 提醒必须可处置、可恢复，并显示重试归档结果');
+assert(src.includes("['来源任务', detail.retryOf") && src.includes("['后续重试', (detail.manualRetries"),
+  '任务详情必须显示安全的新旧任务关联');
+
 /* ⑦ P1：分配唯一入口——ActionCard 不再写 assignments（消除互相覆盖） */
 assert(!/capability:\s*capability,\s*model_id:/.test(src), 'ActionCard 仍在写单值 model_id 分配（应移除，唯一入口是 CapabilityAssigner）');
 assert(!/function\s+assignModel/.test(src), '残留 assignModel（旧下拉写入口）');

@@ -105,7 +105,7 @@ dsh-iris ships as a native DSH plugin with a server side and a web client. The s
 
 Automated tests currently cover plugin loading, tool registration, client seats, and routing behavior. Version 0.1.1 completed host smoke tests on Linux ARM64 — in both a clean and a real web profile — against DSH `0.1.2-rc.1` on Node.js `22.23.2`: the browser startup graph, the full combined bundle, the Iris client factory, and the three UI seats present at that time were verified. The fourth prompt-optimizer seat added in 0.1.2 has now been rendered in a live Android browser; configuration loading, a real session-model optimization with thinking actually `off`, preview write-back, independent disabling and re-enabling, and the loop from a short draft to a succeeded image-generation task are verified. Browser-side cancellation and JSON operations have automated HTTP/configuration coverage; a step-by-step live-device record is still pending. Iris itself keeps Node.js `>=20.10` as its own floor.
 
-Iris 0.1.1–0.1.2 explicitly supports DSH `>=0.1.2-rc.1 <0.1.3-0` and no longer works with the legacy client runtime of DSH 0.1.0/0.1.1. DSH is still evolving quickly; later preview versions must pass verification before the supported range widens, and the compatibility badge is not an official certification. If DSH requires a newer Node.js, DSH wins.
+Iris 0.1.1–0.1.3 explicitly supports DSH `>=0.1.2-rc.1 <0.1.3-0` and no longer works with the legacy client runtime of DSH 0.1.0/0.1.1. DSH is still evolving quickly; later preview versions must pass verification before the supported range widens, and the compatibility badge is not an official certification. If DSH requires a newer Node.js, DSH wins.
 
 ## Tools
 
@@ -158,11 +158,24 @@ By default, the optimizer uses the model selected for the current session and fa
 
 Capability assignment uses `providerId::modelId` as the model identity. The same model name from a different provider or account counts as two independent options.
 
-Generation capabilities accept multiple candidate models. Iris only tries the next candidate when the upload, the submission, or a synchronous generation fails; once a remote service has accepted a task, Iris never resubmits it automatically — that is how duplicate tasks and double billing are avoided. Accepted asynchronous tasks remain under the task system's watch.
+Generation capabilities accept multiple candidate models. Iris tries the next candidate only when the provider explicitly proves that the request was not accepted. A 500 response, timeout, disconnect, missing response, polling failure, or local persistence failure never authorizes automatic resubmission. Once accepted, Iris may only resume observation or delivery.
+
+The workbench lists paused observation, unknown acceptance/outcome, and successful generation with failed delivery under “Needs attention.” Re-observe never submits; re-deliver never regenerates; acknowledge/restore only changes the local reminder queue; only an explicitly confirmed informed retry creates a linked new task and may incur duplicate charges. Creating that task archives the original reminder while preserving its unknown facts and audit link. See [Task semantics](docs/TASK_SEMANTICS.md), [Architecture](docs/ARCHITECTURE.md), [Security](docs/SECURITY.md), and the [Fault-injection matrix](docs/FAULT_INJECTION.md).
 
 ![Task lifecycle and acceptance boundary](docs/assets/diagrams/iris-task-lifecycle.png)
 
 Transcription is a separate `transcribe` capability and does not consume the TTS or vision model configuration.
+
+## Offline diagnostics
+
+No DSH installation or running host is required, and no provider request is sent:
+
+```bash
+npx @mokuyoaxis/dsh-iris doctor
+npx @mokuyoaxis/dsh-iris doctor --json
+```
+
+The installed binary is `dsh-iris`. Exit code `0` is healthy, `1` means warnings, and `2` means hard errors. Doctor checks Node.js, sharp, ffmpeg/ffprobe, a real but cleaned-up storage write probe, configuration, models/assignments, task semantics, temporary files, and orphaned or missing artifacts. It cannot verify a running DSH host, browser service, or live provider.
 
 ## Composed workflow example
 
@@ -239,6 +252,7 @@ Releases are triggered by `v*` tags through `.github/workflows/release.yml`: the
 - [Roadmap](docs/ROADMAP.md) (Chinese)
 - [File access across environments](docs/file-access-across-environments.md) (Chinese)
 - [Android 16 screenshot gallery](docs/screenshots.md)
+- [Task/Attempt v2 semantics (Chinese)](docs/TASK_SEMANTICS.md)
 
 ## License
 

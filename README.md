@@ -105,7 +105,7 @@ dsh-iris 按 DeepSeek Harness 插件形态提供服务端与 Web 客户端入口
 
 当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。0.1.1 已在 Linux ARM64 的干净与真实 Web profile 中，使用 DSH `0.1.2-rc.1`、Node.js `22.23.2` 完成宿主烟测；浏览器启动图、完整组合 bundle、Iris 客户端工厂和当时的三个 UI 座位均已验证。0.1.2 新增的第四个提示词优化座位已在 Android 浏览器真机确认渲染，配置读取、真实会话模型优化（实际 thinking `off`）、预览写回、独立关闭与重新启用，以及从短草稿到图片生成任务成功的闭环均已验证；浏览器端取消和 JSON 操作已有自动化 HTTP/配置覆盖，尚待补充真机逐项记录。Iris 自身仍以 Node.js `>=20.10` 为最低基线。
 
-Iris 0.1.1–0.1.2 明确支持 DSH `>=0.1.2-rc.1 <0.1.3-0`，不再兼容 0.1.0/0.1.1 的旧客户端 Runtime。DSH 仍在快速演进，后续预览版须经验证后再扩大范围；兼容徽章不代表官方认证。若 DSH 要求更高 Node 版本，以 DSH 为准。
+Iris 0.1.1–0.1.3 明确支持 DSH `>=0.1.2-rc.1 <0.1.3-0`，不再兼容 0.1.0/0.1.1 的旧客户端 Runtime。DSH 仍在快速演进，后续预览版须经验证后再扩大范围；兼容徽章不代表官方认证。若 DSH 要求更高 Node 版本，以 DSH 为准。
 
 ## 工具
 
@@ -158,11 +158,24 @@ Iris 会在 DSH 对话输入区提供一个无边框、无文字的“🫧”入
 
 能力分配使用 `providerId::modelId` 作为模型身份。同名模型如果来自不同供应商或不同账号，会被视为两个独立选项。
 
-生成类能力可以配置多个候选模型。Iris 只会在上传、提交或同步生成阶段失败时尝试下一个候选项；远端服务一旦受理任务，就不会自动重新提交，以免产生重复任务或重复计费。已经受理的异步任务由任务系统继续跟踪。
+生成类能力可以配置多个候选模型。Iris 只有在供应商明确证明未受理时才会尝试下一个候选；500、超时、断网、响应缺失、轮询失败和本地落盘失败都不会授权自动重提。远端服务一旦受理任务，Iris 只会恢复观察或交付，以免产生重复任务或重复计费。
+
+工作台把观察暂停、受理/结果未知和生成成功但交付失败单列为“需要处理”。“重新观察”不会提交；“重新交付”不会重新生成；“标为已读/恢复提醒”只改变本地提醒队列；只有“知情重试”会创建新任务，并要求用户逐次确认潜在重复费用。新任务创建后，原提醒自动归档但保留未知事实和新旧任务关联。任务语义、架构、安全边界与故障证据分别见 [`TASK_SEMANTICS.md`](docs/TASK_SEMANTICS.md)、[`ARCHITECTURE.md`](docs/ARCHITECTURE.md)、[`SECURITY.md`](docs/SECURITY.md) 和 [`FAULT_INJECTION.md`](docs/FAULT_INJECTION.md)。
 
 ![生成任务生命周期与受理边界](docs/assets/diagrams/iris-task-lifecycle.png)
 
 转写是独立的 `transcribe` 能力，不会占用 TTS 或视觉能力的模型配置。
+
+## 离线诊断
+
+无需安装或启动 DSH，也不会发送供应商请求：
+
+```bash
+npx @mokuyoaxis/dsh-iris doctor
+npx @mokuyoaxis/dsh-iris doctor --json
+```
+
+安装后的二进制名是 `dsh-iris`。退出码 `0` 表示正常、`1` 表示有警告、`2` 表示有硬错误。Doctor 检查 Node、sharp、ffmpeg/ffprobe、数据目录真实写入、配置、模型/分配、任务语义、临时文件和孤儿/缺失产物；它不会判断运行中的 DSH、浏览器或真实 Provider 是否在线。
 
 ## 组合工作流示例
 
@@ -239,6 +252,7 @@ Iris 自带两个 Agent Skills（`iris-verify-ui` 与 `iris-compose-media`），
 - [路线图](docs/ROADMAP.md)
 - [文件访问与跨环境](docs/file-access-across-environments.md)
 - [Android 16 真机截图画廊](docs/screenshots.md)
+- [Task/Attempt v2 语义契约](docs/TASK_SEMANTICS.md)
 
 ## License
 
