@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { useTempDshHome } from './test-env.js';
 import { doctor, formatDoctorReport } from '../lib/doctor.js';
 
@@ -62,7 +63,7 @@ assert(broken.exitCode === 2 && broken.summary.errors > 0, '硬错误稳定退�
 assert(broken.checks.find((item) => item.id === 'config').suggestion, '每个配置硬错误带可执行建议');
 
 const cli = spawnSync(process.execPath, ['bin/dsh-iris.js', 'doctor', '--json'], {
-  cwd: path.dirname(path.dirname(new URL(import.meta.url).pathname)),
+  cwd: path.dirname(path.dirname(fileURLToPath(import.meta.url))),
   env: { ...process.env, DSH_HOME: root }, encoding: 'utf8', shell: false
 });
 assert([0, 1, 2].includes(cli.status), 'CLI 使用稳定诊断退出码', cli.status);
