@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const src = fs.readFileSync(path.join(root, 'lib', 'client.js'), 'utf8');
+const packageVersion = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 
 const assert = (cond, msg) => {
   if (!cond) {
@@ -28,21 +29,49 @@ assert(!src.includes("window.__ModuleLoader__.load({ id: 'dsh-iris'"),
 /* 不只匹配文本：执行 bundle，确认 loader 身份、导出及 apply 座位注册均成立。 */
 const registrations = [];
 const appendedStyles = [];
+const hostClientReports = [];
+const reactStub = {
+  createElement(type, props, ...children) {
+    return { type, props: { ...(props || {}), children } };
+  },
+  useState(initial) {
+    return [typeof initial === 'function' ? initial() : initial, () => {}];
+  },
+  useEffect() {},
+  useMemo(factory) { return factory(); },
+  useRef(initial) { return { current: initial }; },
+  useCallback(callback) { return callback; }
+};
+const localStorageStub = {
+  getItem() { return null; },
+  setItem() {},
+  removeItem() {}
+};
 const sandbox = {
   console: { log() {}, error() {} },
+  localStorage: localStorageStub,
   document: {
     getElementById() { return null; },
     createElement() { return { dataset: {} }; },
     head: { appendChild(node) { appendedStyles.push(node); } }
   },
-  window: { __ModuleLoader__: { load(entry) { registrations.push(entry); } } }
+  window: {
+    innerWidth: 412,
+    innerHeight: 915,
+    localStorage: localStorageStub,
+    addEventListener() {},
+    removeEventListener() {},
+    confirm() { return false; },
+    fetch(url, options) { hostClientReports.push({ url, body: JSON.parse(options.body) }); return Promise.resolve({ ok: true }); },
+    __ModuleLoader__: { load(entry) { registrations.push(entry); } }
+  }
 };
 sandbox.globalThis = sandbox.window;
 vm.runInNewContext(src, sandbox, { filename: 'lib/client.js', timeout: 5000 });
 assert(registrations.length === 1, 'client bundle 必须且只能注册一个 loader entry');
 assert(registrations[0].id === '@mokuyoaxis/dsh-iris', 'loader entry id 与 npm 包名不一致');
 const clientModule = registrations[0].factory((request) => {
-  if (request === 'react') return { createElement() {} };
+  if (request === 'react') return reactStub;
   throw new Error('意外的客户端依赖：' + request);
 });
 assert(JSON.stringify(clientModule.inject) === JSON.stringify(['slots']), 'client 导出的 Cordis inject 必须为 slots');
@@ -58,14 +87,44 @@ assert(appendedStyles.length === 1, 'client apply 应注入一份 Iris 样式');
 assert(slotRegistrations.length === 4, 'client apply 必须注册四个座位');
 assert(slotRegistrations.every((item) => typeof item.component === 'function'), '四个座位必须注册 React 组件');
 
+/* 真正执行关键组件树，避免仅靠源码字符串漏掉分支作用域等运行时错误。 */
+function renderTree(node, depth = 0) {
+  if (node == null || typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean') return;
+  if (depth > 80) throw new Error('组件树疑似递归失控');
+  if (Array.isArray(node)) {
+    node.forEach((child) => renderTree(child, depth + 1));
+    return;
+  }
+  if (typeof node.type === 'function') {
+    renderTree(node.type(node.props || {}), depth + 1);
+    return;
+  }
+  renderTree(node.props && node.props.children, depth + 1);
+}
+for (const id of ['iris-workbench', 'iris-progress', 'iris-bubble']) {
+  const seat = slotRegistrations.find((item) => item.id === id);
+  try {
+    renderTree(reactStub.createElement(seat.component, {}));
+  } catch (error) {
+    assert(false, id + ' 组件树运行失败：' + error.message);
+  }
+}
+assert(hostClientReports.length === 4, '每个实际 Slot 注册后都应刷新 Host Doctor 握手');
+const finalHostClientReport = hostClientReports.at(-1);
+assert(finalHostClientReport.url === '/iris/api/host-client'
+  && finalHostClientReport.body.version === packageVersion
+  && finalHostClientReport.body.protocolVersion === 0
+  && finalHostClientReport.body.seats.join(',') === 'settings.section,conversation.input.right,conversation.input.dock,shell.overlay',
+'客户端握手应报告与包一致的版本和四个实际 Slot', finalHostClientReport);
+
 /* ① 四个座位注册必须存在 */
-assert(src.includes("ctx.slots.inject('settings.section'"), '缺少 settings.section 注册');
+assert(src.includes('function clientSlotsPort(ctx)') && src.includes("clientSlots.inject('settings.section'"), '缺少 clientSlots 适配和 settings.section 注册');
 assert(src.includes("id: 'iris-workbench'"), '缺少 iris-workbench 座位 id');
-assert(src.includes("ctx.slots.inject('conversation.input.dock'"), '缺少 conversation.input.dock 注册');
+assert(src.includes("clientSlots.inject('conversation.input.dock'"), '缺少 conversation.input.dock 注册');
 assert(src.includes("id: 'iris-progress'"), '缺少 iris-progress 座位 id');
-assert(src.includes("ctx.slots.inject('conversation.input.right'"), '缺少 conversation.input.right 注册');
+assert(src.includes("clientSlots.inject('conversation.input.right'"), '缺少 conversation.input.right 注册');
 assert(src.includes("id: 'iris-prompt-optimizer'"), '缺少 iris-prompt-optimizer 座位 id');
-assert(src.includes("ctx.slots.inject('shell.overlay'"), '缺少 shell.overlay 注册');
+assert(src.includes("clientSlots.inject('shell.overlay'"), '缺少 shell.overlay 注册');
 assert(src.includes("id: 'iris-bubble'"), '缺少 iris-bubble 座位 id');
 assert(src.includes("label: function () { return 'Iris 工作台'; }"), '设置页正式名称应为 Iris 工作台');
 assert(!src.includes('Iris 泡泡工作台'), '正式名称不应继续使用 Iris 泡泡工作台');
@@ -75,13 +134,29 @@ assert(src.includes("label: function () { return 'Iris 泡泡'; }"), '悬浮入�
 for (const fn of ['WorkbenchPanel', 'PromptOptimizerControl', 'ProgressDock', 'FloatingBubble']) {
   assert(new RegExp('function\\s+' + fn + '\\s*\\(').test(src), '缺少组件函数 ' + fn);
 }
+assert(/function\s+HostDoctorPanel\s*\(/.test(src)
+  && src.includes("fetch('/iris/api/doctor')")
+  && src.includes('React.createElement(HostDoctorPanel'),
+  '工作台缺少 Host Doctor 只读诊断卡');
+assert(src.includes('不调用 Browser、模型或供应商'), 'Host Doctor UI 缺少零调用边界说明');
 
-/* ③ 泡泡关键行为痕迹：拖动状态、配置明暗、点击展开、数字角标 */
+/* ③ 泡泡关键行为：位置持久化、健康四色、窄屏边界、触摸取消与数字角标 */
 assert(src.includes('localStorage.getItem(\'iris-bubble-pos\''), '缺少拖动位置持久化');
-assert(src.includes("'iris-bubble' + (configured ? ' lit' : ' dim')"), '缺少配置明暗类');
+assert(src.includes("'iris-bubble health-' + overallHealth"), '主泡泡缺少健康状态类');
+for (const status of ['unconfigured', 'configured', 'verified', 'failed']) {
+  assert(src.includes('.iris-bubble.health-' + status), '主泡泡缺少状态样式 ' + status);
+}
 assert(src.includes('setOpen(!open)'), '缺少点击切换面板');
 assert(src.includes("className: 'iris-bubble-badge'"), '缺少运行中数字角标');
-assert(src.includes(".iris-bubble-panel { position: fixed") && src.includes("font-size: 12px; line-height: 1.45"), '泡泡面板应使用紧凑字号，避免运行中任务文字偏大');
+assert(src.includes('onPointerCancel: onPointerCancel') && src.includes('persistCurrentPosition'),
+  '泡泡缺少 pointercancel 与最新位置持久化');
+assert(src.includes('width: min(360px, calc(100vw - 16px))')
+  && src.includes('box-sizing: border-box')
+  && src.includes('max-height: min(520px, calc(100dvh - 16px))'),
+'泡泡面板缺少真实窄屏宽高约束');
+assert(src.includes('window.innerWidth - panelWidth - 8') && src.includes('window.innerHeight - panelHeight - 8'),
+  '泡泡面板定位未同时约束视口四边');
+assert(src.includes("font-size: 12px; line-height: 1.45"), '泡泡面板应使用紧凑字号，避免运行中任务文字偏大');
 
 /* ④ 阶段 5 操作卡片组：ActionCard/ActionGroups + POST /iris/api/actions */
 assert(new RegExp('function\\s+ActionCard\\s*\\(').test(src), '缺少 ActionCard 组件');
@@ -122,15 +197,37 @@ for (const act of ['tasks_clear', 'tasks_orphans', 'tasks_purge_orphans']) {
 assert(src.includes('window.confirm'), '破坏性清理缺少二次确认');
 assert(new RegExp('function\\s+taskRowMini\\s*\\(').test(src), '缺少紧凑任务行 taskRowMini');
 
-/* ⑥b 泡泡历史与功能状态灯的回归保护 */
-assert(src.includes("t.status === 'succeeded' && Array.isArray(t.media) && t.media.length > 0"),
-  '泡泡快捷历史必须只显示带产物的成功任务');
-assert(!src.includes('var shown = recent.slice(0, 6)'), '泡泡不得重新直接展示失败/取消历史');
-assert(src.includes('失败、取消与完整历史请到 Iris 工作台查看'), '泡泡缺少完整错误历史去向提示');
-assert(src.includes('function capabilityReady(state, capability)'), '缺少功能能力就绪判定');
-assert(src.includes('p.enabled && p.apiKeyHint && Array.isArray(p.capabilities)'), '功能状态灯未同时校验启用 API 与能力');
-assert(src.includes('capabilityReady(irisState, capability) && !headError'), '功能状态灯未独立于卡片展开，或错误后不会变暗');
-assert(!src.includes('var headLit = !capability || (modelInfo && modelInfo.loaded'), '功能状态灯仍依赖点开后加载模型');
+/* ⑥b 独立作品库、泡泡最近作品与功能状态灯的回归保护 */
+assert(/function\s+ArtifactGallery\s*\(/.test(src) && /function\s+artifactRowMini\s*\(/.test(src),
+  '客户端缺少独立作品库组件');
+assert(src.includes("fetch('/iris/api/artifacts?offset='") && src.includes("React.createElement(ArtifactGallery"),
+  '工作台缺少作品分页 API 或作品库挂载');
+for (const action of ['artifacts_reindex', 'artifacts_delete', 'artifacts_clear']) {
+  assert(src.includes("'" + action + "'"), '作品库缺少动作调用 ' + action);
+}
+assert(src.includes('清任务历史不会删除') && src.includes('永久删除作品库中的全部媒体文件'),
+  '作品与任务分离语义或独立删除确认不完整');
+assert(src.includes("var works = (state && state.artifacts && state.artifacts.recent) || []"),
+  '泡泡最近作品仍依赖任务历史');
+assert(src.includes("works.length ? works.map(artifactRowMini)"), '泡泡未展示独立作品索引');
+assert(!src.includes("t.status === 'succeeded' && Array.isArray(t.media) && t.media.length > 0"),
+  '泡泡不得继续从任务记录推导作品');
+assert(src.includes('完整作品库、失败与取消历史请到 Iris 工作台查看'), '泡泡缺少作品库与错误历史去向提示');
+assert(src.includes('grid-template-columns: repeat(auto-fill, minmax(148px, 1fr))')
+  && src.includes('@media (max-width: 360px) { .iris-gallery-grid { grid-template-columns: 1fr; } }'),
+  '作品库缺少移动端自适应网格');
+assert(src.includes('function capabilityHealth(state, capability)'), '缺少功能健康状态判定');
+assert(src.includes('state.health.capabilities') && src.includes('CapabilityHealthOverview'),
+  '工作台未消费服务端健康快照或缺少五项能力概览');
+for (const status of ['unconfigured', 'configured', 'verified', 'failed']) {
+  assert(src.includes(status + ": { label:") || src.includes(status + ": { label:"), '健康状态文案缺失 ' + status);
+}
+assert(src.includes("className: 'iris-pm-dot ' + headStatus") && src.includes("className: 'iris-act-card'"),
+  '功能卡片未使用持久健康状态');
+assert(!src.includes('headError ?') && !src.includes('capabilityReady(irisState'),
+  '临时 UI 执行错误不得替代 Provider 健康事实');
+assert(src.includes('绿色有效 7 天') && src.includes('不会后台探测'),
+  '工作台缺少健康新鲜度与零后台探测说明');
 
 /* ⑥c Task v2 用户态：异常事实不得继续伪装成运行中 */
 assert(src.includes("watching_paused: '观察暂停'") && src.includes("needs_attention: '需要确认'")

@@ -67,6 +67,27 @@ const remoteFailedResult = tasks.get(remoteFailed.id);
 assert(remoteFailedResult.outcome === 'failed' && remoteFailedResult.status === 'failed'
   && remoteFailedResult.watchState === 'idle', '远端明确失败形成稳定失败终态', remoteFailedResult);
 
+// canonical Provider poll 的 unknown/canceled 必须映射成不同事实，不能退化为普通 failed。
+const remoteUnknown = acceptedTask('remote unknown', 'remote-unknown');
+tasks.watch(remoteUnknown, {
+  intervalMs: 10,
+  poll: async () => ({ kind: 'unknown', message: 'provider state unavailable' }),
+  onSuccess: async () => []
+});
+const remoteCanceled = acceptedTask('remote canceled', 'remote-canceled');
+tasks.watch(remoteCanceled, {
+  intervalMs: 10,
+  poll: async () => ({ kind: 'canceled', message: 'provider confirmed cancel' }),
+  onSuccess: async () => []
+});
+await sleep(650);
+const remoteUnknownResult = tasks.get(remoteUnknown.id);
+const remoteCanceledResult = tasks.get(remoteCanceled.id);
+assert(remoteUnknownResult.outcome === 'unknown' && remoteUnknownResult.watchState === 'exhausted'
+  && remoteUnknownResult.acceptance === 'accepted', 'canonical unknown 保留受理事实并停止盯守', remoteUnknownResult);
+assert(remoteCanceledResult.outcome === 'canceled' && remoteCanceledResult.cancelState === 'remote_confirmed'
+  && remoteCanceledResult.watchState === 'idle', 'canonical canceled 只在远端确认后成为取消终态', remoteCanceledResult);
+
 // 重启后：可用供应商恢复盯守；缺失供应商只暂停，不声称失败。
 const resumable = acceptedTask('resume accepted task', 'remote-resume');
 const runningResume = acceptedTask('resume running task', 'remote-running');

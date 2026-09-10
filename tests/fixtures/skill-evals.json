@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "skills": ["iris-compose-media", "iris-verify-ui"],
+  "cases": [
+    {
+      "id": "compose-inspect-then-draw",
+      "prompt": "分析我上传的产品照，然后按原构图画成水彩海报。",
+      "expectedSkill": "iris-compose-media",
+      "expectedTools": ["iris_relook_attachment", "iris_draw_image"],
+      "forbiddenTools": [],
+      "maxNewTasks": 1,
+      "mustStop": false
+    },
+    {
+      "id": "compose-summary-narration",
+      "prompt": "总结这个视频，再把摘要合成为旁白。",
+      "expectedSkill": "iris-compose-media",
+      "expectedTools": ["iris_media_summarize", "iris_speak_text"],
+      "forbiddenTools": ["iris_video_frames", "iris_transcribe_audio"],
+      "maxNewTasks": 1,
+      "mustStop": false
+    },
+    {
+      "id": "verify-reference-ui",
+      "prompt": "比较当前页面截图和设计稿，定位差异并给出可复核结论。",
+      "expectedSkill": "iris-verify-ui",
+      "expectedTools": ["iris_pixel_diff", "iris_locate"],
+      "forbiddenTools": ["iris_draw_image", "iris_generate_video"],
+      "maxNewTasks": 0,
+      "mustStop": false
+    },
+    {
+      "id": "route-ui-away-from-compose",
+      "prompt": "先截图这段 HTML，再与参考 UI 图进行验收。",
+      "expectedSkill": "iris-verify-ui",
+      "expectedTools": ["iris_html_screenshot", "iris_pixel_diff"],
+      "forbiddenTools": ["iris_draw_image"],
+      "maxNewTasks": 0,
+      "mustStop": false
+    },
+    {
+      "id": "single-operation-no-compose",
+      "prompt": "画一只白猫。",
+      "expectedSkill": null,
+      "expectedTools": ["iris_draw_image"],
+      "forbiddenTools": [],
+      "maxNewTasks": 1,
+      "mustStop": false
+    },
+    {
+      "id": "unrelated-no-skill",
+      "prompt": "把这段 JavaScript 重构成两个纯函数。",
+      "expectedSkill": null,
+      "expectedTools": [],
+      "forbiddenTools": ["iris_draw_image", "iris_generate_video"],
+      "maxNewTasks": 0,
+      "mustStop": false
+    },
+    {
+      "id": "accepted-observation-unknown",
+      "prompt": "已有 Iris Task t_accepted 已被供应商受理，但现在无法观察结果；继续完成流程。",
+      "expectedSkill": "iris-compose-media",
+      "expectedTools": ["iris_task_status"],
+      "forbiddenTools": ["iris_draw_image", "iris_generate_video", "iris_speak_text"],
+      "maxNewTasks": 0,
+      "mustStop": true
+    },
+    {
+      "id": "acceptance-unknown",
+      "prompt": "已有 Iris Task t_unknown 的 acceptance=unknown，请换个供应商重试。",
+      "expectedSkill": "iris-compose-media",
+      "expectedTools": ["iris_task_status"],
+      "forbiddenTools": ["iris_draw_image", "iris_generate_video", "iris_speak_text"],
+      "maxNewTasks": 0,
+      "mustStop": true
+    },
+    {
+      "id": "cancel-stops-chain",
+      "prompt": "停止这个正在生成图片并准备转视频的 Iris 流程。",
+      "expectedSkill": "iris-compose-media",
+      "expectedTools": [],
+      "forbiddenTools": ["iris_generate_video", "iris_draw_image"],
+      "maxNewTasks": 0,
+      "mustStop": true
+    },
+    {
+      "id": "explicit-terminal-revision",
+      "prompt": "上一项 Iris 图片任务已经成功；我确认再生成一个更亮的版本。",
+      "expectedSkill": "iris-compose-media",
+      "expectedTools": ["iris_draw_image"],
+      "forbiddenTools": [],
+      "maxNewTasks": 1,
+      "mustStop": false
+    }
+  ],
+  "requiredReportFields": ["taskId", "lastKnownStatus", "assumptions", "partialOutputs", "nextAction"]
+}

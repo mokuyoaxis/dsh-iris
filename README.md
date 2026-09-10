@@ -54,7 +54,7 @@ Iris 的长期方向是可独立运行、可接入不同 Agent 宿主的媒体�
 
 ## 最快开始
 
-已经安装 DeepSeek Harness `0.1.2-rc.1` 且 `pnpm` 在 PATH 中时，把 Iris 加入 Web profile：
+已经安装受支持的 DeepSeek Harness（`>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1`）且 `pnpm` 在 PATH 中时，把 Iris 加入 Web profile：
 
 ```bash
 dsh plugin --profile web add @mokuyoaxis/dsh-iris
@@ -86,6 +86,7 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 - 看图问答、长图 OCR、目标定位、裁剪和像素差异分析
 - 视频抽帧与多模态内容摘要
 - 异步任务跟踪、重启恢复和带授权令牌的媒体播放
+- 独立作品库：清除任务历史后仍可浏览本地作品，并可重新索引旧 `outputs/`
 - 多供应商模型池，以及按 `供应商 + 模型` 分配能力
 - 浏览器上传、会话附件和宿主路径三种文件来源
 - 独立于工作台的对话框提示词优化，支持当前会话模型与 JSON 固定模型路由
@@ -103,9 +104,9 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 
 dsh-iris 按 DeepSeek Harness 插件形态提供服务端与 Web 客户端入口：服务端注册 14 个 Agent 工具，并复用宿主的工具、路由和生命周期服务；客户端通过 DSH 模块加载器接入设置页、会话输入区和全局悬浮层。插件不会启动独立服务或额外监听端口。
 
-当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。0.1.1 已在 Linux ARM64 的干净与真实 Web profile 中，使用 DSH `0.1.2-rc.1`、Node.js `22.23.2` 完成宿主烟测；浏览器启动图、完整组合 bundle、Iris 客户端工厂和当时的三个 UI 座位均已验证。0.1.2 新增的第四个提示词优化座位已在 Android 浏览器真机确认渲染，配置读取、真实会话模型优化（实际 thinking `off`）、预览写回、独立关闭与重新启用，以及从短草稿到图片生成任务成功的闭环均已验证；浏览器端取消和 JSON 操作已有自动化 HTTP/配置覆盖，尚待补充真机逐项记录。Iris 自身仍以 Node.js `>=20.10` 为最低基线。
+当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。0.1.1 已在 Linux ARM64 的干净与真实 Web profile 中，使用 DSH `0.1.2-rc.1`、Node.js `22.23.2` 完成宿主烟测；浏览器启动图、完整组合 bundle、Iris 客户端工厂和当时的三个 UI 座位均已验证。0.1.2 新增的第四个提示词优化座位已在 Android 浏览器真机确认渲染，配置读取、真实会话模型优化（实际 thinking `off`）、预览写回、独立关闭与重新启用，以及从短草稿到图片生成任务成功的闭环均已验证；浏览器端取消和 JSON 操作已有自动化 HTTP/配置覆盖，尚待补充真机逐项记录。Iris 自身仍以 Node.js `>=20.10` 为最低基线。0.1.4 另在 Android/Linux 日常 DSH `0.1.5-rc.1` 上完成 14 工具、2 项 Skill、4 组路由与 4 个 UI Slot 的实机装载验证。
 
-Iris 0.1.1–0.1.3 明确支持 DSH `>=0.1.2-rc.1 <0.1.3-0`，不再兼容 0.1.0/0.1.1 的旧客户端 Runtime。DSH 仍在快速演进，后续预览版须经验证后再扩大范围；兼容徽章不代表官方认证。若 DSH 要求更高 Node 版本，以 DSH 为准。
+Iris 0.1.4 明确支持 DSH `>=0.1.2-rc.1 <0.1.3-0` 与 `0.1.5-rc.1` 这两个已实测窗口，不再兼容 0.1.0/0.1.1 的旧客户端 Runtime。其余预览版未经宿主 canary，不宣称兼容，验证通过后再扩大范围；兼容徽章不代表官方认证。若 DSH 要求更高 Node 版本，以 DSH 为准。
 
 ## 工具
 
@@ -166,6 +167,12 @@ Iris 会在 DSH 对话输入区提供一个无边框、无文字的“🫧”入
 
 转写是独立的 `transcribe` 能力，不会占用 TTS 或视觉能力的模型配置。
 
+## 能力健康与模型验证
+
+工作台与主泡泡使用四色健康状态：灰色表示未配置，蓝色表示已配置但尚未验证或成功证据已超过 7 天，绿色表示对应“供应商 × 模型 × 能力”近期实测或真实任务成功，暗红色只表示明确的 401/403 或认证/权限失败。界面同时显示文字和证据时间；关键供应商配置变化会使旧证据失效。
+
+Iris 不做后台探测。429、网络、5xx、内容安全、取消和受理未知不会把近期绿色改成红色，也不会触发隐形重试或费用。模型池可逐项实测视觉、图片和 TTS；视频与转写必须用真实任务验证。Host Doctor 只核验 DSH/Iris 的装载与 Host Port，不会验证供应商或模型。完整状态、failover 汇总和安全规则见 [Provider 与能力健康状态](docs/PROVIDER_HEALTH.md)。
+
 ## 离线诊断
 
 无需安装或启动 DSH，也不会发送供应商请求：
@@ -175,7 +182,9 @@ npx @mokuyoaxis/dsh-iris doctor
 npx @mokuyoaxis/dsh-iris doctor --json
 ```
 
-安装后的二进制名是 `dsh-iris`。退出码 `0` 表示正常、`1` 表示有警告、`2` 表示有硬错误。Doctor 检查 Node、sharp、ffmpeg/ffprobe、数据目录真实写入、配置、模型/分配、任务语义、临时文件和孤儿/缺失产物；它不会判断运行中的 DSH、浏览器或真实 Provider 是否在线。
+安装后的二进制名是 `dsh-iris`。退出码 `0` 表示正常、`1` 表示有警告、`2` 表示有硬错误。离线 Doctor 检查 Node、sharp、ffmpeg/ffprobe、数据目录真实写入、配置、模型/分配、任务语义、临时文件和孤儿/缺失产物。
+
+运行中的 DSH 另在 Iris 工作台提供“宿主诊断”卡片，并公开已认证的 `/iris/api/doctor` JSON：检查 DSH 版本、插件、14 个工具、两项 Skill、四组路由、Browser/附件/模型能力、客户端版本和四个 UI Slot。它只读取安全快照与注册证据，不调用 Browser、模型或 Provider；详见 [Host Doctor](docs/HOST_DOCTOR.md)。
 
 ## 组合工作流示例
 
@@ -183,7 +192,7 @@ Iris 自带两个 Agent Skills（`iris-verify-ui` 与 `iris-compose-media`），
 
 ![组合工作流示例](docs/assets/diagrams/iris-workflow-compose.png)
 
-图的 SVG 版本与可编辑 drawio 源文件位于 [`docs/assets/diagrams/`](docs/assets/diagrams/)。
+仓库的 [`docs/assets/diagrams/`](docs/assets/diagrams/) 另提供 SVG 版本与可编辑 drawio 源文件；npm 包只随附 README 直接展示的 PNG。
 
 ## 数据与任务
 
@@ -191,15 +200,18 @@ Iris 自带两个 Agent Skills（`iris-verify-ui` 与 `iris-compose-media`），
 
 | 位置 | 内容 |
 |---|---|
-| `providers.json` | 供应商和能力分配，文件权限为 0600 |
+| `providers.json` | 供应商、能力分配和脱敏健康证据，文件权限为 0600 |
 | `prompt-optimizer.json` | 用户导入的优化 Prompt、目标模板、模型路由和生成参数，文件权限为 0600 |
 | `tasks.json` | 任务元数据和附件索引，最多保留 500 条 |
+| `artifacts.json` | 作品库最小索引与随机访问令牌，不含 Prompt、Provider 或任务关系 |
 | `outputs/` | 生成和处理后的媒体文件 |
 | `uploads/` | 浏览器上传的临时输入副本 |
 
 0.1.1 首次装载时会收紧既有 `$DSH_HOME/iris/v1/` 树的 POSIX 权限，不修改文件内容，也不跟随符号链接。大媒体下载采用流式私有临时文件与原子替换，不再把整段视频载入内存。
 
 异步任务会在后台轮询。插件重启后，可以继续接管仍在远端执行的任务。取消信号会传递到本地等待与轮询流程；是否能取消远端计算，取决于供应商接口。
+
+作品库与任务历史相互独立：清理终态任务不会删除作品，新旧媒体可在工作台分页浏览，也可用“找回本地作品”重新扫描 `outputs/`。删除作品或清空作品库会删除实际文件并单独确认；详见[作品库 v0](docs/ARTIFACT_LIBRARY.md)。收藏、标签和搜索留待完整 Artifact Manifest。
 
 音频和视频通过带随机令牌的 Iris 媒体链接访问。图片会尽量转存为 DSH 持久附件，方便在会话中继续使用。
 
@@ -211,7 +223,7 @@ Iris 自带两个 Agent Skills（`iris-verify-ui` 与 `iris-compose-media`），
 - `IRIS_TRUSTED_HOSTS` 不是认证机制。对公网或不可信网络开放 DSH 时，必须在反向代理或宿主层配置身份认证与 HTTPS。
 - 模型实测只按单项能力运行，并在真实供应商调用前确认；视频和转写不会用空样本自动提交付费探针。
 - HTML 截图在不具备同源权限的沙箱页面中渲染，脚本和外部网络默认不可用。
-- 媒体链接使用随机能力令牌，文件路径只从任务记录解析。
+- 媒体链接使用随机能力令牌，文件路径只从任务记录或最小作品索引解析。
 - Iris 不提供独立账号体系，多用户隔离和访问控制由 DeepSeek Harness 部署负责。
 
 ## 已知限制
@@ -232,6 +244,16 @@ Iris 自带两个 Agent Skills（`iris-verify-ui` 与 `iris-compose-media`），
 | [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) | 组合两个以上 Iris 工具，完成看图后绘图、图片转视频、视频总结配旁白或 S2V 等媒体工作流 |
 
 从 0.1.2 起，只要宿主提供 DSH Skill registry，普通 npm 安装用户在任意项目目录中都能发现并加载它们，不需要克隆本仓库或另外配置 Skill 搜索目录。项目目录中存在同名 Skill 时，仍按 DSH 原生优先级使用项目版本；Skill registry 不可用时，14 个 Iris 工具仍可独立装载。
+
+用户想稳定指定方法时，可直接用 DSH 的 `/name` 形式：
+
+```text
+/iris-compose-media 分析我上传的产品照，生成同构图海报，再检查是否符合要求
+
+/iris-verify-ui 对比当前截图和参考图，定位偏差并给出有证据的结论
+```
+
+也可以继续用自然语言让 Agent 自动发现。单步绘图、OCR、转写等无需强行唤起组合 Skill，直接说需求或指定对应 Iris 工具即可。Skill 只规划工具链，不会绕过 Iris 的任务、费用确认和安全边界。
 
 ## 开发与验证
 

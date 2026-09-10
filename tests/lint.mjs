@@ -46,15 +46,45 @@ if (files.length === 0) failures.push('未找到任何 .js/.mjs 文件');
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 
 /* v0.1.3 Core 候选不得反向导入 DSH/Cordis 运行时。 */
-for (const rel of ['lib/task-semantics.js', 'lib/provider-contract.js', 'lib/doctor.js']) {
+for (const rel of [
+  'lib/task-semantics.js', 'lib/provider-contract.js', 'lib/provider-adapter.js',
+  'lib/provider-adapters.js', 'lib/host-contract.js', 'lib/host-runtime.js', 'lib/doctor.js'
+]) {
   const source = read(rel);
   if (/@deepseek-ai\/|from ['"](?:cordis|dsh)/.test(source)) {
     failures.push(rel + ' 不得导入 DSH/Cordis 运行时');
   }
 }
+
+const actionSource = read('lib/actions.js');
+const bypassedProviderOps = actionSource.match(/adapters\.(?:submitImage|generateImageMultimodal|openAiGenerateImage|startImageGeneration|submitVideo|submitTranscription|synthesizeTts|pollTask|pollTranscriptionTask|downloadTo|listModels)\b/g) || [];
+if (bypassedProviderOps.length) {
+  failures.push('lib/actions.js 的 Provider 生命周期必须经 Provider Adapter：' + [...new Set(bypassedProviderOps)].join(', '));
+}
+
+/* Host 消费者只接收命名端口；原始 ctx 访问只允许留在 DSH Adapter/入口。 */
+for (const rel of ['lib/actions.js', 'lib/api.js', 'lib/prompt-optimizer.js', 'lib/vision.js', 'lib/bundled-skills.js']) {
+  const source = read(rel);
+  if (/ctx\.get|ctx\.(?:tools|skills|slots)/.test(source)) {
+    failures.push(rel + ' 不得读取原始 DSH ctx 服务');
+  }
+}
+const clientSource = read('lib/client.js');
+if (!clientSource.includes('function clientSlotsPort(ctx)')
+    || (clientSource.match(/ctx\.slots/g) || []).length !== 1) {
+  failures.push('lib/client.js 的 ctx.slots 只能存在于 clientSlotsPort 适配边界及其说明');
+}
 const packageJson = JSON.parse(read('package.json'));
-if (!packageJson.bin || packageJson.bin['dsh-iris'] !== './bin/dsh-iris.js' || packageJson.exports['./doctor'] !== './lib/doctor.js') {
+/* npm 11 会在发布清单中把 `./` 前缀归一化掉，因此这里比较归一化后的相对路径，
+   而不是要求某一种字面写法；包内真实路径仍必须是 bin/dsh-iris.js 与 lib/doctor.js。 */
+const relativePath = (value) => (typeof value === 'string' ? value.replace(/^\.\//, '') : value);
+if (!packageJson.bin
+    || relativePath(packageJson.bin['dsh-iris']) !== 'bin/dsh-iris.js'
+    || relativePath(packageJson.exports?.['./doctor']) !== 'lib/doctor.js') {
   failures.push('package.json 缺少离线 dsh-iris CLI 或 ./doctor 公开导出');
+}
+if (!clientSource.includes("var IRIS_CLIENT_VERSION = '" + packageJson.version + "'")) {
+  failures.push('lib/client.js 的 Host Doctor 客户端版本必须与 package.json 一致');
 }
 
 
@@ -67,6 +97,9 @@ if (!/serveTaskDetail/.test(api) || !/\/iris\/api\/task\//.test(api)) {
 }
 if (!/state\/events/.test(api) || !/serveSse/.test(api) || !/closeAllSse/.test(api)) {
   failures.push('lib/api.js 缺少 SSE 状态推送端点（阶段 4：/iris/api/state/events + serveSse + closeAllSse）');
+}
+if (!api.includes('/iris/api/doctor') || !api.includes('/iris/api/host-client') || !/hostRuntimeEvidence/.test(api)) {
+  failures.push('lib/api.js 缺少零网络 Host Doctor 或受限客户端握手端点');
 }
 
 const media = read('lib/media.js');
@@ -283,7 +316,7 @@ if (tasksLib) {
     failures.push(`lib/actions.js 每个 tasks.create 站点必须套 submitGuard（create ${creates} 处，守卫仅 ${guards} 处）`);
   }
   for (const action of ['image', 'video', 'tts', 'transcribe']) {
-    if (!index.includes("runAction(ctx, '" + action + "'")) {
+    if (!index.includes("runAction(dshHost(ctx), '" + action + "'")) {
       failures.push('lib/index.js Agent ' + action + ' 必须复用 lib/actions.js 共享动作（避免双实现漂移）');
     }
   }
@@ -305,9 +338,10 @@ if (tasksLib) {
   }
   const idxSrc = index;
   const recoverySrc = read('lib/actions.js');
-  if (!/function taskPollDeps[\s\S]{0,400}task\.cap === 'transcribe'/.test(recoverySrc)
+  if (!/function taskPollDeps[\s\S]{0,1200}capability: 'transcribe'/.test(recoverySrc)
+      || !/function taskPollDeps[\s\S]{0,1600}invokeProviderOperation\(providerAdapter, 'poll'/.test(recoverySrc)
       || !/return taskPollDeps\(provider, \{ cap \}\)/.test(idxSrc)) {
-    failures.push('启动恢复与人工接管必须共用 actions.taskPollDeps，且保留 transcribe 专用轮询');
+    failures.push('启动恢复与人工接管必须共用 actions.taskPollDeps，并经 Provider Adapter 保留 transcribe 专用轮询');
   }
   const apiSrc = read('lib/api.js');
   if (!/MAX_BODY_BYTES/.test(apiSrc) || !/totalBytes/.test(apiSrc)) {
@@ -587,6 +621,14 @@ if (tasksLib) {
     failures.push('docs/releases/0.1.2.md 必须存在且使用英文 Release 文案');
   }
   if (!/^## \[0\.1\.2\] - 2026-09-06$/m.test(changelog)) failures.push('CHANGELOG.md 缺少已冻结的 0.1.2 章节');
+  const release014 = read('docs/releases/0.1.4.md');
+  if (!release014.includes('## Iris Media for DSH 0.1.4') || /[\u3400-\u9fff]/.test(release014)) {
+    failures.push('docs/releases/0.1.4.md 必须存在且使用英文 Release 文案');
+  }
+  if (!/^## \[0\.1\.4\] - 2026-09-10$/m.test(changelog)) failures.push('CHANGELOG.md 缺少 0.1.4 候选章节');
+  if (!changelog.includes('[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.4...HEAD')) {
+    failures.push('CHANGELOG.md Unreleased 比较链接必须从 v0.1.4 开始');
+  }
   if (!fs.existsSync(path.join(root, 'lib', 'bundled-skills.js'))) {
     failures.push('缺少随插件启用的嵌入式 Skill 注册器 lib/bundled-skills.js');
   }
@@ -601,8 +643,8 @@ if (tasksLib) {
   if (!pkg.engines || pkg.engines.node !== '>=20.10.0') {
     failures.push('package.json 必须声明 JSON import attributes 所需 Node >=20.10.0');
   }
-  if (pkg.dsh?.engines?.dsh !== '>=0.1.2-rc.1 <0.1.3-0') {
-    failures.push('package.json 必须声明已实测的 DSH 0.1.2 兼容窗口');
+  if (pkg.dsh?.engines?.dsh !== '>=0.1.2-rc.1 <0.1.3-0 || 0.1.5-rc.1') {
+    failures.push('package.json 必须声明已实测的 DSH 兼容窗口（0.1.2 线 + 0.1.5-rc.1）');
   }
   const expectedClientPeers = [
     '@deepseek-ai/dsh-client-locale',

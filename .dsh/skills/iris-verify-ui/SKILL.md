@@ -96,32 +96,10 @@ After each modification:
 
 Run at most 3 modify-and-recheck rounds by default. Stop as soon as the user's criteria pass. Also stop when one round gives no improvement, capture conditions cannot be aligned, or remaining differences come from the environment. Explain the stopping reason instead of looping indefinitely.
 
-## Assign a verdict
+## Assign a verdict and degrade safely
 
-Use exactly one verdict:
-
-- **Pass**: all objective requirements are satisfied and the evidence supports the conclusion.
-- **Partial pass**: the primary goal is satisfied, but localized differences or environment noise remain.
-- **Indeterminate**: a reference is missing, capture conditions differ, a required tool is unavailable, or evidence is insufficient.
-
-For a “pixel-identical” claim, require matching dimensions and matching render conditions. When the longest side exceeds 1024 pixels, `iris_pixel_diff` downsizes the comparison and cannot by itself prove original-resolution identity.
-
-## Degrade safely
-
-- `dsh-builtin-browser` unavailable: ask for a current screenshot and continue with image comparison.
-- Vision model unavailable: skip semantic inspection and model location; continue with known coordinates, crops, and pixel diff.
-- `iris_locate` unstable: narrow the target using the heatmap and known layout; do not retry blindly.
-- HTML depends on scripts or remote resources: create a static offline-renderable version, or use the project's existing screenshot workflow.
-- Reference contains dynamic data: freeze or mask dynamic regions. If that is impossible, report them separately as noise.
+Read [references/verdict-and-degradation.md](references/verdict-and-degradation.md) when assigning the final verdict or when Browser, vision, location, offline HTML, or comparable capture conditions are unavailable. Use exactly **Pass**, **Partial pass**, or **Indeterminate**, and apply the reference's evidence limits.
 
 ## Report the result
 
-Include:
-
-1. Conditions: inputs, dimensions, theme, capture method, and known noise sources.
-2. Changes: what changed and why.
-3. Evidence: before-and-after diff, worst regions, key bounding boxes, and relevant attachments.
-4. Verdict: Pass, Partial pass, or Indeterminate.
-5. Remaining work: anything requiring human judgment or a real-browser check.
-
-Do not finish with only “looks correct.” Do not report precision that the evidence cannot support.
+Use the five-field report in [references/verdict-and-degradation.md](references/verdict-and-degradation.md). Keep conditions, changes, evidence, one verdict, and remaining work distinct. Do not finish with only “looks correct” or report precision the evidence cannot support.

@@ -1,6 +1,6 @@
 # Iris Provider 提交契约 v0
 
-状态：**v0.1.3 最小内部契约，已覆盖现有生成能力。** 图片、视频、转写与 TTS 均执行本契约；完整 discovery、poll、cancel、download conformance 留到 v0.1.4。
+状态：**v0.1.3 最小提交契约已实现；v0.1.4 已纳入完整 Provider Adapter v0。** 图片、视频、转写与 TTS 均执行本契约；discovery、poll、cancel、download 与 error mapping 见 [完整生命周期契约](PROVIDER_ADAPTER_CONTRACT.md)。
 
 ## 提交结果
 
@@ -57,4 +57,4 @@ Provider `submit()` 必须返回以下四种结构之一：
 
 429 等可证明未创建任务的明确 4xx 拒绝可进入下一候选；408、409、425、499、5xx、网络异常、超时和成功响应缺少必要结果一律停止并记录 `acceptance=unknown`。同步生成已经成功后，下载或落盘失败记录为 `outcome=succeeded / deliveryState=failed`，不会重新生成。
 
-视频、转写与 TTS 也已使用相同边界：视频和转写分别持久化 `prepare/upload/submit` stage，上传失败只表示生成请求未受理；TTS 同步成功则先记 `completed/accepted` 再交付音频。工作台已经消费稳定的人类状态，并提供重新观察、重新交付、提醒已读/恢复和需确认费用的知情重试；v0.1.4 再完成 discovery、poll、cancel、download 等完整 Provider conformance。
+视频、转写与 TTS 也使用相同边界：视频和转写分别持久化 `prepare/upload/submit` stage，上传失败只表示生成请求未受理；TTS 同步成功则先记 `completed/accepted` 再交付音频。工作台消费稳定的人类状态，并提供重新观察、重新交付、提醒已读/恢复和需确认费用的知情重试。v0.1.4 已将 discovery、submit、poll、cancel、download 与 error mapping 收口到统一 Adapter，并由零网络 conformance runner 覆盖现有 DashScope/OpenAI Images 路径。

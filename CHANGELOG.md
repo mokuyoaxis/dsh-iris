@@ -4,7 +4,28 @@
 
 ## [Unreleased]
 
-当前没有尚未发布的用户可见变更。
+## [0.1.4] - 2026-09-10
+
+### Added
+
+- 冻结 Host Adapter v0 的命名端口、能力快照、缺能力错误和 Command × Host Port 矩阵，并加入零网络纯契约测试。
+- 深化两项随包 Skill：增加显式用户/模型调用策略、DSH `/name` 示例、渐进参考资料和 10 条零费用行为契约。
+- 增加 test-only Local Host fixture：在无 DSH、无网络下运行确定性图片动作、Task 查询与提醒确认，并固定缺 Host Port 和未迁移动作的错误边界。
+- 增加 DSH Host Adapter：集中探测并映射工具、路由、附件、会话、Browser、文本/视觉模型、Skill 和客户端 Slot 九类能力，区分能力缺失与接口不兼容。
+- 增加 Provider Adapter v0 完整生命周期与零网络 conformance runner；DashScope/OpenAI Images 的发现、提交、轮询、下载和错误映射统一声明，未验证的取消能力显式标为 unsupported。
+- 增加零网络 Host Doctor 与工作台诊断卡：从安全能力快照、成功注册账本和受限浏览器握手检查 DSH 版本、插件、14 个工具、2 项 Skill、4 组路由、可选 Host 能力及 4 个 UI Slot；不调用 Browser、模型或 Provider。
+- 增加 Provider × Model × Capability 持久健康证据与四色 UI：灰色未配置、蓝色待验证、绿色 7 天内成功、暗红色明确认证/权限失败；真实任务与显式实测共用证据，记录脱敏来源和时间且不做后台探测。
+- 增加独立作品库 v0：新产物自动入库，升级时接回已有 `outputs/`，支持分页浏览、重新索引和独立删除；清任务历史后工作台与泡泡仍能访问作品。
+
+### Changed
+
+- 将公开路线图切换到 0.1.4：聚焦 Host/Provider 适配边界、Host Doctor、现有两项 Skill 的 Agent 易用性深化与最小作品库；不在本版扩充 Provider、完整 Artifact Manifest 或 standalone 范围。
+- 将动作、工作台 API、提示词优化、视觉后端和注册生命周期改为消费 Host Port；非空原始 DSH `ctx` 不能再作为 Command 输入。HTML Browser 渲染同时补齐 `AbortSignal` 取消与清理边界。
+- 将图片、视频、转写、TTS、模型发现、能力实测、任务恢复和重新交付的供应商生命周期调用收口到 Provider Adapter；canonical `unknown` 与 `canceled` 分别保持未知事实和远端确认取消，禁止退化为普通失败。
+- 健康状态按当前 failover 候选保守汇总：任一近期成功即绿色，有待验证路径即蓝色，只有全部候选明确认证失败才为暗红；429、网络、5xx、内容安全、取消和未知受理不覆盖近期成功。汇总时间只取决定当前颜色的候选证据；模型或能力移除会裁掉旧绿灯，空成功说明不再误写为失败文案。
+- 收紧手机端泡泡面板的真实视口宽高与四边约束，补充 `pointercancel` 位置持久化，并加入实际执行工作台、进度条和泡泡组件树的运行级回归测试。
+- 分离任务历史与作品生命周期：清历史只移除任务事实和 Prompt；删除单件作品、清空作品库与删除孤儿文件分别确认。作品最小索引不保存 Provider、Model 或任务关系。
+- 将 DSH 支持窗口从单一 `>=0.1.2-rc.1 <0.1.3-0` 扩展为同时声明已实测的 `0.1.5-rc.1`；Host Doctor、README、用户指南、公开路线图与市场声明同步，其余预览版继续保持不宣称兼容。
 
 ## [0.1.3] - 2026-09-08
 
@@ -150,7 +171,8 @@
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.0...v0.1.1

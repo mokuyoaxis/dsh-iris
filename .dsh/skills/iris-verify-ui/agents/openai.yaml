@@ -1,0 +1,4 @@
+interface:
+  display_name: "Iris Verify UI"
+  short_description: "Verify UI changes with visual evidence"
+  default_prompt: "Use $iris-verify-ui to compare the supplied UI with its reference and return a bounded evidence-based verdict."

@@ -1,6 +1,6 @@
 # Iris Task/Attempt v2 语义契约
 
-状态：**v0.1.3 已实现。** Task v2 已覆盖图片、视频、转写与 TTS，包括同步/异步、上传/提交、混合协议候选、工作台稳定用户态、状态流防倒退、重新观察、重新交付、提醒已读/恢复和知情人工重试。正式 Artifact Manifest、完整 Provider/Host Adapter 和宿主扩展诊断仍属于后续版本。
+状态：**v0.1.3 已实现；v0.1.4 Host/Provider Adapter、Host Doctor 与作品库 v0 已接入。** Task v2 已覆盖图片、视频、转写与 TTS，包括同步/异步、上传/提交、混合协议候选、工作台稳定用户态、状态流防倒退、重新观察、重新交付、提醒已读/恢复和知情人工重试。作品库 v0 只分离本地作品生命周期；正式 Artifact Manifest 仍属于后续工作。
 
 ## 1. 为什么需要 v2
 
@@ -94,6 +94,7 @@ Task v2 至少包含以下事实轴；字段值采用可序列化的 snake_case 
 - 交付失败只允许重新下载/落盘，不允许重新生成。
 - 只有本地产物完成原子落盘并可读后，才写 `deliveryState=ready`。
 - 供应商明确返回生成失败时才写 `outcome=failed`。
+- 任务历史与本地作品是两个生命周期：删除终态任务不得隐式删除作品，删除作品也不得改写任务事实；媒体是否仍可访问由作品库单独呈现。
 
 ## 7. 观察、超时与恢复
 
@@ -143,5 +144,5 @@ Task v2 至少包含以下事实轴；字段值采用可序列化的 snake_case 
 
 - 不在语义冻结阶段重写全部任务存储或 UI。
 - 不新增 Gemini、Fal、Replicate 等供应商分支。
-- v0.1.3 包含零网络、可独立运行的离线 Doctor v0 与最薄 CLI；依赖 DSH `ctx` 的宿主扩展诊断、完整 Host Adapter 和 Artifact Manifest 不属于本版。
+- v0.1.3 包含零网络、可独立运行的离线 Doctor v0 与最薄 CLI；v0.1.4 已接入 Host/Provider Adapter、Host Doctor 和不含谱系的作品库 v0。完整 Artifact Manifest 仍属于后续版本。
 - 不用更多自动重试换取表面成功率。

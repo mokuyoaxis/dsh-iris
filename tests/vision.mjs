@@ -55,6 +55,8 @@ writeProviders({});
 
 /* ---------- 载入被测模块（index.js 顶层无副作用，import 即得全部导出） ---------- */
 const iris = await import('../lib/index.js');
+const { createDshHostAdapter } = await import('../lib/dsh-host-adapter.js');
+const host = (services = {}) => createDshHostAdapter(stubCtx(services));
 const tasks = await import('../lib/tasks.js');
 const config = await import('../lib/config.js');
 
@@ -87,20 +89,20 @@ const fakeSessionQuery = {
 const stubCtx = (services) => ({ get: (name) => services[name] });
 const exec = { agent: { session: { id: 's1' } }, signal: new AbortController().signal };
 
-const hit1 = await iris.sessionAttachmentRef(stubCtx({ sessionQuery: fakeSessionQuery }), exec, 'sess-img');
+const hit1 = await iris.sessionAttachmentRef(host({ sessionQuery: fakeSessionQuery }), exec, 'sess-img');
 assert(hit1 && hit1.ref.attachmentId === 'sess-img' && hit1.ref.mediaType === 'image/png', 'sessionAttachmentRef 形态1（attachment 块）命中');
-const hit2 = await iris.sessionAttachmentRef(stubCtx({ sessionQuery: fakeSessionQuery }), exec, 'iris-img');
+const hit2 = await iris.sessionAttachmentRef(host({ sessionQuery: fakeSessionQuery }), exec, 'iris-img');
 assert(hit2 && hit2.ref.attachmentId === 'iris-img', 'sessionAttachmentRef 形态2（裸 attachmentId）命中');
-assert(await iris.sessionAttachmentRef(stubCtx({ sessionQuery: fakeSessionQuery }), exec, 'missing') === null, 'sessionAttachmentRef 不存在 → null');
-assert(await iris.sessionAttachmentRef(stubCtx({}), exec, 'sess-img') === null, '无 sessionQuery 服务 → null');
+assert(await iris.sessionAttachmentRef(host({ sessionQuery: fakeSessionQuery }), exec, 'missing') === null, 'sessionAttachmentRef 不存在 → null');
+assert(await iris.sessionAttachmentRef(host({}), exec, 'sess-img') === null, '无 sessionQuery 服务 → null');
 const brokenSq = { readSession: async () => { throw new Error('boom'); } };
-assert(await iris.sessionAttachmentRef(stubCtx({ sessionQuery: brokenSq }), exec, 'sess-img') === null, 'readSession 失败 → null（防御）');
+assert(await iris.sessionAttachmentRef(host({ sessionQuery: brokenSq }), exec, 'sess-img') === null, 'readSession 失败 → null（防御）');
 const noAgent = { agent: undefined };
-assert(await iris.sessionAttachmentRef(stubCtx({ sessionQuery: fakeSessionQuery }), noAgent, 'sess-img') === null, '无 agent → null（防御）');
+assert(await iris.sessionAttachmentRef(host({ sessionQuery: fakeSessionQuery }), noAgent, 'sess-img') === null, '无 agent → null（防御）');
 
 /* ======= ③ askVision：降级链 ======= */
 // a) 自持栈为主（假 SSE 服务器）
-const ra = await iris.askVision(stubCtx({}), {
+const ra = await iris.askVision({}, {
   question: '这是什么？', ref: { attachmentId: 'sess-img', mediaType: 'image/png' },
   dataUrl: 'data:image/png;base64,aGk=', signal: undefined
 });
@@ -115,7 +117,7 @@ const fakeLlm = {
     yield { delta: '视觉回答' };
   }
 };
-const rb = await iris.askVision(stubCtx({ llm: fakeLlm }), {
+const rb = await iris.askVision(host({ llm: fakeLlm }), {
   question: '这是什么？', ref: { attachmentId: 'sess-img', mediaType: 'image/png' },
   dataUrl: 'data:image/png;base64,aGk=', signal: undefined
 });
@@ -124,7 +126,7 @@ assert(rb.answer === '全局视觉回答' && rb.via === 'global', 'askVision 全
 // c) 双失败 → 抛人话错误
 let thrown = '';
 try {
-  await iris.askVision(stubCtx({}), {
+  await iris.askVision({}, {
     question: '这是什么？', ref: { attachmentId: 'sess-img', mediaType: 'image/png' },
     dataUrl: 'data:image/png;base64,aGk=', signal: undefined
   });
@@ -138,13 +140,13 @@ writeProviders({});
 config.resetCache();
 
 /* ======= ④ runVisionTool：look/relook 共用执行器 ======= */
-const out = await iris.runVisionTool(stubCtx({}), exec, {
+const out = await iris.runVisionTool({}, exec, {
   origin: 'tool', model: undefined, question: '这是什么？',
   ref: { attachmentId: 'sess-img', mediaType: 'image/png' },
   dataUrl: 'data:image/png;base64,aGk='
 });
 assert(typeof out === 'string' && out.startsWith('[iris] 看图回答（qwen-vl-plus · iris 自持栈）') && out.includes('像素小猫'), 'runVisionTool 格式: ' + out);
-const outRelook = await iris.runVisionTool(stubCtx({}), exec, {
+const outRelook = await iris.runVisionTool({}, exec, {
   origin: 'relook', model: undefined, question: '再问一次？',
   ref: { attachmentId: 'sess-img', mediaType: 'image/png' },
   dataUrl: 'data:image/png;base64,aGk='

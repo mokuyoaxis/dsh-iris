@@ -14,10 +14,11 @@ dsh-iris 已具备媒体生成、视觉处理和任务管理主流程。长期�
 - 多供应商模型池与复合模型身份
 - 浏览器上传、会话附件和宿主路径输入
 - 异步任务恢复、取消传播、SSE 状态更新和授权媒体链接
+- 独立作品库 v0：清任务历史后仍可浏览媒体，并可重新索引旧 `outputs/`
 - 面向 Agent 与用户的统一视频生成实现
 - 两个随包 Agent Skills：UI 视觉验收与多步骤媒体编排；0.1.2 会在插件启用时自动注册
 
-当前发布版本为 `v0.1.2`。0.1.1 完成配置独立、安全与工程收口，并把 Web loader 适配固定到已验证的 DSH `0.1.2-rc.1` 接口；更高预览版在进入支持范围前需要重新运行宿主 canary。
+当前发布版本为 `v0.1.3`。0.1.1 完成配置独立、安全与工程收口，并把 Web loader 适配固定到已验证的 DSH `0.1.2-rc.1` 接口；0.1.4 把已验证支持窗口扩展为 `>=0.1.2-rc.1 <0.1.3-0` 与 `0.1.5-rc.1`，其余预览版在进入支持范围前仍需重新运行宿主 canary。
 
 ## 已完成：0.1.1
 
@@ -45,18 +46,27 @@ dsh-iris 已具备媒体生成、视觉处理和任务管理主流程。长期�
 
 ## 下一步
 
-### 当前发行候选 0.1.3：可信任务与适配边界
+### 已完成：0.1.3 可信任务
 
-- 图片、视频、转写与 TTS 已区分未受理、已受理与受理未知，并使用一个 Task、多 Attempt、独立观察/交付/取消事实；规范见[Task/Attempt v2 语义契约](TASK_SEMANTICS.md)。
-- 零网络故障矩阵已覆盖提交响应丢失、受理后持久化失败、轮询耗尽、取消未知、各阶段重启、下载/落盘、上传残留、SSE 慢消费者与人工接管；证据见[故障注入矩阵](FAULT_INJECTION.md)。
-- 最小 Provider 提交契约和 Core 依赖守卫已冻结；完整 Host Adapter 和 Provider conformance 顺延到 0.1.4，避免把可靠性修复变成大重构。
-- 离线 `doctor()`、`dsh-iris doctor [--json]`、[架构](ARCHITECTURE.md)与[安全边界](SECURITY.md)已经提供；依赖 DSH 运行时的扩展诊断顺延到 0.1.4。
-- 在具备稳定录制条件后补充真实短视频证据；不以伪造或不稳定链接阻塞 0.1.2。
+- 图片、视频、转写与 TTS 已接入 Task/Attempt v2；只有明确未受理才允许自动 failover。
+- 零网络故障矩阵已覆盖受理未知、轮询耗尽、取消、重启、交付、SSE 与人工接管。
+- 提供重新观察、重新交付、提醒已读/恢复和知情重试，并防止重复提醒与错误旧任务标记。
+- 提供零网络离线 Doctor、公开任务/架构/安全契约，以及 Linux/Windows CI 与 Android 真机短验。
+
+### 当前开发：0.1.4 适配边界与 Agent 易用性
+
+- 冻结 [Host Adapter v0](HOST_ADAPTER_CONTRACT.md) 与 Command × Host Port 矩阵，提供无 DSH 的 Local Host fixture；DSH Adapter 已收口工具、路由、附件、会话、Browser、模型、Skill 与客户端 Slot 消费者，并通过 `0.1.2-rc.1` 隔离 canary 与 `0.1.5-rc.1` 日常宿主实测。
+- 已实现 [Provider Adapter v0 完整生命周期](PROVIDER_ADAPTER_CONTRACT.md) 和零网络 conformance runner；现有 DashScope/OpenAI Images 兼容实现、Task 恢复与重新交付均消费统一契约，本版不新增 Provider。
+- 已实现 [Host Doctor](HOST_DOCTOR.md)：观察插件、14 个工具、2 项 Skill、4 组路由、Browser/附件/模型能力、客户端版本与 UI Slot；只读取安全快照和注册证据，默认零网络、零计费。
+- 已实现 [Provider 与能力健康状态](PROVIDER_HEALTH.md)：按 Provider × Model × Capability 持久化实测/真实任务证据，以灰、蓝、绿、暗红四色及时间呈现，并按当前 failover 候选保守汇总；不增加后台探测。
+- 深化现有 `iris-verify-ui`、`iris-compose-media` 两项 Skill：对齐 Task v2、增加显式调用示例、渐进资源与行为 eval；不以增加 Skill 数量为目标。
+- 增加最小作品库索引，但继续采用渐进迁移；本版不引入完整 Artifact Manifest、standalone 服务、完整 headless 命令集或大规模目录重写。
 
 ### 0.2.0：独立 Core 与产物记录
 
 - 统一 Agent、工作台与 CLI 的命令执行核心，将 DSH 集成集中到宿主适配器。
-- 为产物保存内容哈希、来源和派生关系，支持检查与导出。
+- 将作品库 v0 升级为经安全评审的 Artifact Manifest，为产物保存内容哈希、来源和派生关系，支持检查与导出。
+- 在完整 Manifest 上增加收藏、标签、搜索、筛选和批量导出，不把这些字段塞回任务历史。
 - 在未安装 DSH 的干净环境完成本地动作和供应商任务验收。
 - 建立 Iris 正式产品视觉身份：以简约鸢尾花和泡泡为核心母题，完成可缩放 Logo、图标、单色版与深浅色适配，并替换临时字标。
 - 在统一 Provider Adapter 与 conformance 测试稳定后，依次接入 Gemini、Fal，并把 Replicate 排入后续 0.2.x。

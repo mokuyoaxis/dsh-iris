@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const skillPath = path.join(root, '.dsh', 'skills', 'iris-verify-ui', 'SKILL.md');
+const referencePath = path.join(root, '.dsh', 'skills', 'iris-verify-ui', 'references', 'verdict-and-degradation.md');
 const assert = (condition, message) => {
   if (!condition) {
     console.error('FAIL:', message);
@@ -17,6 +18,8 @@ const assert = (condition, message) => {
 assert(fs.existsSync(skillPath), 'missing .dsh/skills/iris-verify-ui/SKILL.md');
 // 归一化换行符：Windows 检出可能带 CRLF，frontmatter 正则与行数统计按 LF 处理。
 const src = fs.readFileSync(skillPath, 'utf8').replaceAll('\r\n', '\n');
+assert(fs.existsSync(referencePath), 'verify UI verdict/degradation reference 必须随包存在');
+const contractSource = src + '\n' + fs.readFileSync(referencePath, 'utf8');
 const frontmatter = src.match(/^---\n([\s\S]*?)\n---\n/);
 assert(frontmatter, 'SKILL.md must have valid YAML frontmatter');
 assert(/^name:\s*iris-verify-ui$/m.test(frontmatter[1]), 'Skill name must be iris-verify-ui');
@@ -47,7 +50,7 @@ for (const contract of [
   '**Partial pass**',
   '**Indeterminate**'
 ]) {
-  assert(src.includes(contract), 'workflow is missing contract: ' + contract);
+  assert(contractSource.includes(contract), 'workflow is missing contract: ' + contract);
 }
 
 assert(src.includes('is not concurrency-safe'), 'HTML screenshots must be serialized');

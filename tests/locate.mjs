@@ -18,7 +18,7 @@ const assert = (cond, msg, extra) => {
 };
 
 const { extractBboxJson, locateObject, LocateError } = await import('../lib/locate.js');
-const { buildVisionBackends, SelfStackVisionBackend } = await import('../lib/vision.js');
+const { buildVisionBackendsFromHost, SelfStackVisionBackend } = await import('../lib/vision.js');
 
 /* ---------- ① extractBboxJson ---------- */
 assert(extractBboxJson('{"x1":10,"y1":20,"x2":30,"y2":40}') === '{"x1":10,"y1":20,"x2":30,"y2":40}', '纯 JSON');
@@ -75,7 +75,7 @@ const srv = createServer((req, res) => {
 });
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const port = srv.address().port;
-const backends = buildVisionBackends({ get: () => undefined }, {
+const backends = buildVisionBackendsFromHost({}, {
   providers: [{ id: 'ptest', type: 'openai', baseUrl: `http://127.0.0.1:${port}/v1`, apiKey: 'k', visionModel: 'm' }]
 });
 const r4 = await locateObject(backends, { target: 'button', imageDataUrl: 'data:image/png;base64,AA==', width: 100, height: 100 });

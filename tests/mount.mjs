@@ -86,6 +86,13 @@ for (const want of ['iris_draw_image', 'iris_generate_video', 'iris_speak_text',
 }
 assert(ctx1._registeredSkills.map((skill) => skill.name).join(',') === 'iris-verify-ui,iris-compose-media',
   '插件启用时应注册两项随包 Skill：' + ctx1._registeredSkills.map((skill) => skill.name).join(','));
+const { hostRuntimeEvidence } = await import('../lib/host-runtime.js');
+const runtimeEvidence = hostRuntimeEvidence();
+assert(runtimeEvidence.server.loaded && runtimeEvidence.server.pluginId === '@mokuyoaxis/dsh-iris'
+  && runtimeEvidence.server.version === JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')).version,
+  'Host Doctor 应登记服务端身份与包版本', runtimeEvidence.server);
+assert(runtimeEvidence.tools.length === 14 && runtimeEvidence.skills.length === 2 && runtimeEvidence.routes.length === 4,
+  'Host Doctor 应只登记成功完成的 14 工具、2 Skill 与 4 路由组', runtimeEvidence);
 
 /* ===== ② 单个工具注册抛错 ===== */
 errs = [];
@@ -125,13 +132,18 @@ assert((tasks.get(tBad.id).status === 'failed') && /恢复异常/.test(tasks.get
 
 /* ===== ⑤ pollDeps transcribe 分支（重启接管转写任务不得走丢文本的 pollTask） ===== */
 const { pollDeps } = await import('../lib/index.js');
-const dT = pollDeps({ apiKey: 'K', id: 'p1' }, 'transcribe');
-assert(dT.intervalMs === 2500 && typeof dT.poll === 'function' && dT.key() === 'K', '⑤ transcribe deps 形状');
+const fixtureProvider = {
+  apiKey: 'K', id: 'p1',
+  baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+};
+const dT = pollDeps(fixtureProvider, 'transcribe');
+assert(dT.intervalMs === 2500 && typeof dT.poll === 'function' && !('key' in dT),
+  '⑤ transcribe deps 经 Adapter 闭包持有凭据，不向 watcher 暴露 key');
 const tT = tasks.create({ cap: 'transcribe', providerId: 'p1', model: 'm', prompt: 'z' });
 await dT.onSuccess(tasks.get(tT.id), { urls: ['你好转写'] });
 assert(tasks.get(tT.id).transcribeText === '你好转写', '⑤ onSuccess 存转写文本: ' + JSON.stringify(tasks.get(tT.id).transcribeText));
-const dI = pollDeps({ apiKey: 'K', id: 'p1' }, 'image');
-const dV = pollDeps({ apiKey: 'K', id: 'p1' }, 'video');
+const dI = pollDeps(fixtureProvider, 'image');
+const dV = pollDeps(fixtureProvider, 'video');
 assert(dI.intervalMs === 2500 && dV.intervalMs === 6000, '⑤ image/video 间隔不回归');
 
 console.error = origError;

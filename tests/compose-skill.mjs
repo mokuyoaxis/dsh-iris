@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const skillPath = path.join(root, '.dsh', 'skills', 'iris-compose-media', 'SKILL.md');
+const workflowPath = path.join(root, '.dsh', 'skills', 'iris-compose-media', 'references', 'workflows.md');
+const recoveryPath = path.join(root, '.dsh', 'skills', 'iris-compose-media', 'references', 'task-v2-recovery.md');
 const assert = (condition, message) => {
   if (!condition) {
     console.error('FAIL:', message);
@@ -17,6 +19,9 @@ const assert = (condition, message) => {
 assert(fs.existsSync(skillPath), 'missing .dsh/skills/iris-compose-media/SKILL.md');
 // 归一化换行符：Windows 检出可能带 CRLF，frontmatter 正则与行数统计按 LF 处理。
 const src = fs.readFileSync(skillPath, 'utf8').replaceAll('\r\n', '\n');
+assert(fs.existsSync(workflowPath) && fs.existsSync(recoveryPath), 'compose Skill references 必须随包存在');
+const references = [workflowPath, recoveryPath].map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+const contractSource = src + '\n' + references;
 const frontmatter = src.match(/^---\n([\s\S]*?)\n---\n/);
 assert(frontmatter, 'SKILL.md must have valid YAML frontmatter');
 assert(/^name:\s*iris-compose-media$/m.test(frontmatter[1]), 'Skill name must be iris-compose-media');
@@ -43,21 +48,22 @@ for (const tool of [
 
 for (const contract of [
   'two or more dependent Iris operations',
-  'one generation attempt per requested artifact',
-  'at most 2 generation attempts per artifact',
+  'one new Iris generation **Task** per requested artifact',
+  'at most 2 new generation Tasks per artifact',
+  'acceptance=not_accepted',
   'providerId::modelId',
-  'never resubmit automatically',
+  'must never trigger another Provider Attempt or Task automatically',
   'smaller than 15 MB',
   'shorter than 20 seconds',
   'Do not pass t2v/i2v-only',
   'Do not also call',
-  'Never describe a queued or running task as complete'
+  'Never describe queued/running work as complete'
 ]) {
-  assert(src.includes(contract), 'workflow is missing contract: ' + contract);
+  assert(contractSource.includes(contract), 'workflow is missing contract: ' + contract);
 }
 
 assert(src.includes('browser-local path'), 'host and browser path boundary must be explicit');
-assert(src.includes('Do not pass an ordinary session attachment'), 'video first-frame attachment boundary must be explicit');
+assert(contractSource.includes('Do not pass an ordinary session attachment'), 'video first-frame attachment boundary must be explicit');
 assert(src.includes('use `iris-verify-ui` instead'), 'UI verification must route to iris-verify-ui');
 assert(src.includes('do not use this skill'), 'single media operations must not trigger composition');
 assert(src.includes('If the user cancels, stop the chain'), 'cancellation must stop downstream work');

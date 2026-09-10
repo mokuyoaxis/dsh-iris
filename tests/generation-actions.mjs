@@ -78,7 +78,7 @@ global.fetch = async (input, init = {}) => {
 };
 
 try {
-  const first = await runAction({ get: () => undefined }, 'video', { prompt: 'failover test' });
+  const first = await runAction({}, 'video', { prompt: 'failover test' });
   tasks.stopWatchAll();
   assert(first.providerId === providerIds.good, '首 provider 429 后提交到第二 provider', first);
   assert(submitCalls.slice(0, 2).map((c) => c.auth).join(',') === 'Bearer bad-key,Bearer good-key',
@@ -136,7 +136,7 @@ try {
     '转写上传与提交纳入 Task v2', asrTask);
 
   const indexSrc = fs.readFileSync(new URL('../lib/index.js', import.meta.url), 'utf8');
-  assert(indexSrc.includes("runAction(ctx, 'video', args, { signal: exec.signal })"),
+  assert(indexSrc.includes("runAction(dshHost(ctx), 'video', args, { signal: exec.signal })"),
     'Agent 视频工具复用 GUI 的 video action');
 } finally {
   tasks.stopWatchAll();

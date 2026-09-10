@@ -45,61 +45,35 @@ An attachment returned by `iris_draw_image` can be passed as `first_frame_attach
 
 ## Choose a workflow
 
-### Analyze an image, then draw
+Choose the minimum chain, then read only the matching section of [references/workflows.md](references/workflows.md):
 
-1. Inspect the source with `iris_look_at_image` or `iris_relook_attachment`. Ask specifically about the subject, composition, palette, style, visible text, and the transformation requested by the user.
-2. Convert the observations into a self-contained generation prompt. Separate facts visible in the source from requested changes; preserve explicit constraints and exact text.
-3. Call `iris_draw_image` once for each requested artifact.
-4. If the user requested verification or iteration, inspect the generated attachment with `iris_relook_attachment` against the original requirements. Regenerate only for a concrete mismatch.
+- inspect an image, then draw: `iris_look_at_image` or `iris_relook_attachment` → `iris_draw_image`;
+- generate/reuse a still, then animate: optional `iris_draw_image` → `iris_generate_video`;
+- summarize a video, then narrate: `iris_media_summarize` → `iris_speak_text`;
+- create an S2V talking video: resolve a first frame and audio → `iris_generate_video`;
+- recognize, then create: `iris_long_ocr` or `iris_transcribe_audio` → the requested creation tool.
 
-### Generate a still, then animate it
-
-1. Create the still with `iris_draw_image`, reuse an Iris-produced first-frame attachment, or obtain a host-visible absolute path for the supplied image. Do not pass an ordinary session attachment as `first_frame_attachment_id`.
-2. Write a motion prompt describing camera movement, subject motion, timing, and what must remain stable. Do not merely repeat the still-image prompt.
-3. Call `iris_generate_video` with `first_frame_attachment_id` or `first_frame_path` for i2v. Use `size` and `duration` only when appropriate for the selected t2v/i2v model.
-4. If the call returns a background task ID, use `iris_task_status` before claiming that the video exists.
-
-### Summarize a video, then narrate it
-
-1. Call `iris_media_summarize` with the user's question and `transcribe=true` unless they want a visual-only summary.
-2. Do not also call `iris_video_frames` or `iris_transcribe_audio` by default: `iris_media_summarize` already samples frames and optionally transcribes the audio track.
-3. Turn the summary into narration suited to the requested audience and length. Do not present inferred details as visible facts.
-4. Call `iris_speak_text` and return the summary, contact-sheet attachment, and saved audio path.
-
-Use `iris_video_frames` separately only when the user explicitly needs individual frames or a custom frame-level workflow. Use `iris_transcribe_audio` separately when the full transcript itself is required or when the input is an audio file rather than a video-summary task.
-
-### Create an S2V talking video
-
-1. Resolve or generate a suitable first-frame portrait.
-2. Use an existing host audio file, or call `iris_speak_text` and capture its saved absolute path.
-3. Confirm that the audio is a clear human voice in WAV or MP3 format, smaller than 15 MB, and shorter than 20 seconds. Shorten the script and synthesize it again if the generated speech exceeds the limit.
-4. Call `iris_generate_video` with an S2V model, `first_frame_attachment_id` or `first_frame_path`, `audio_path`, and `resolution` of `480P` or `720P`. Do not pass t2v/i2v-only `size` or `duration` controls.
-5. Track a background result with `iris_task_status`; do not submit a duplicate while it is running.
-
-### Turn recognized content into a new artifact
-
-Use `iris_long_ocr` for image text or `iris_transcribe_audio` for audio speech, then structure the recognized content for the requested output. Feed only the necessary, checked facts into `iris_draw_image`, `iris_speak_text`, or `iris_generate_video`. Preserve names, numbers, and quoted wording exactly when accuracy matters.
+Use `iris_video_frames` only for explicit frame extraction or a custom frame-level workflow. Do not load every workflow section when one route is sufficient.
 
 ## Control cost and iteration
 
-- Make one generation attempt per requested artifact by default.
-- A request to create an artifact authorizes that requested generation; do not ask again solely because it may incur provider cost.
-- Run at most 2 generation attempts per artifact unless the user explicitly requests a larger iterative loop.
-- Review does not automatically authorize regeneration. If the user asked only for one result, report a detected mismatch and offer the next step.
-- Do not probe models or create speculative alternatives as part of the workflow.
-- Honor an explicit `providerId::modelId` override. Otherwise use the configured capability assignment and its ordered failover list.
+- Create one new Iris generation **Task** per requested artifact by default. A Provider Attempt is an internal candidate submission inside that Task; do not count failover attempts as user-authorized new Tasks.
+- The original request authorizes its requested artifact. Review alone does not authorize regeneration.
+- Create at most 2 new generation Tasks per artifact, and only when the first Task has a known terminal outcome and the user explicitly requested iteration. Respect a lower or higher bound stated by the user.
+- Do not probe models or create speculative alternatives. Honor an explicit `providerId::modelId`; otherwise use Iris capability assignment and bounded failover.
+- Automatic failover is allowed only while the current Provider Attempt has `acceptance=not_accepted`. Accepted, acceptance-unknown, or outcome-unknown work must never trigger another Provider Attempt or Task automatically.
 
-Iris generation failover covers upload, submission, and synchronous-generation failures only. Once a remote service accepts an asynchronous task, that task is bound to its provider. If polling, waiting, or download later fails, query `iris_task_status` and report the state; never resubmit automatically, because that can duplicate work and billing.
+## Handle Task v2, cancellation, and failures
 
-## Handle tasks, cancellation, and failures
+When a generation tool returns a Task, or the user asks to retry, recover, cancel, or deliver one, read [references/task-v2-recovery.md](references/task-v2-recovery.md). Its stop rules are mandatory.
 
-- Continue immediately when a tool returns a completed attachment, text, or local path.
-- When a tool reports a background task, wait or query with `iris_task_status` only when the next step depends on its output.
-- If the user cancels, stop the chain. Do not launch downstream generation after cancellation, even if an earlier artifact later completes.
-- If an attachment cannot be found, ask the user to re-upload it or provide a host path.
-- If `ffmpeg` or `ffprobe` is unavailable, video frames and video summarization cannot run. Explain the missing optional dependency; do not claim that visual video analysis completed.
-- If vision is unavailable but the user's creation prompt is already complete, skip source analysis and proceed only when that still satisfies the request.
-- Preserve partial outputs. Report which step succeeded, which step failed, and whether any accepted task remains active.
+- Continue immediately only from a completed attachment, text, or local path.
+- Use `iris_task_status` to observe an existing background Task when a dependent next step needs the result. Never describe queued/running work as complete.
+- Observation failure resumes observation; delivery failure resumes delivery. Neither authorizes regeneration. If that recovery action is available only in the Iris workbench, say so and preserve the Task ID.
+- If the user cancels, stop the chain and do not launch downstream generation. Cancellation requested or unknown is not proof that no provider work occurred.
+- Preserve partial outputs. Report which step succeeded, which failed or became uncertain, and whether accepted work may remain active.
+- If an attachment is missing, request a re-upload or host path. If `ffmpeg`/`ffprobe` is unavailable, explain that frame extraction and video summarization cannot run.
+- If vision is unavailable but the creation prompt is complete, skip source analysis only when the requested result still remains valid.
 
 ## Report the result
 
@@ -109,6 +83,6 @@ Return a compact workflow record containing:
 2. attachment IDs and host paths needed to use the outputs;
 3. task IDs and their last known status;
 4. any omitted or failed step and its effect on the final artifact;
-5. whether further generation would require another attempt.
+5. whether further generation would create another potentially billable Task.
 
-Never describe a queued or running task as complete. Never hide that a summary omitted audio, that a review was skipped, or that the final artifact differs from the request.
+Never hide that a summary omitted audio, that a review was skipped, or that the final artifact differs from the request.

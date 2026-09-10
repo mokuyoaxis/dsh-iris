@@ -9,6 +9,14 @@ const { root } = useTempDshHome('iris-doctor');
 const dataDir = path.join(root, 'iris', 'v1');
 fs.mkdirSync(path.join(dataDir, 'outputs'), { recursive: true, mode: 0o700 });
 fs.writeFileSync(path.join(dataDir, 'outputs', 'ready.png'), 'ok');
+fs.writeFileSync(path.join(dataDir, 'outputs', 'library-only.png'), 'kept-after-history-clear');
+fs.writeFileSync(path.join(dataDir, 'artifacts.json'), JSON.stringify({
+  version: 1,
+  artifacts: [{
+    id: 'a_1234567890abcdef', file: 'library-only.png', token: 'ab'.repeat(16),
+    mime: 'image/png', size: 24, createdAt: new Date().toISOString()
+  }]
+}), { mode: 0o600 });
 fs.writeFileSync(path.join(dataDir, 'providers.json'), JSON.stringify({
   version: 1,
   providers: [{
@@ -40,6 +48,9 @@ const runner = () => ({ status: 0 });
 const sharpLoader = async () => ({});
 const healthy = await doctor({ dshHome: root, commandRunner: runner, sharpLoader, packageVersion: 'test' });
 assert(healthy.exitCode === 0 && healthy.summary.errors === 0 && healthy.summary.warnings === 0, '健康 fixture 应退出 0', healthy);
+assert(healthy.checks.some((item) => item.id === 'artifact-index' && item.status === 'ok')
+  && healthy.checks.some((item) => item.id === 'artifacts' && item.status === 'ok'),
+  '只有作品索引、没有任务引用的文件不应误报孤儿', healthy.checks);
 assert(!JSON.stringify(healthy).includes('secret-never-print'), 'Doctor JSON 不得输出 API Key');
 assert(!fs.readdirSync(dataDir).some((name) => name.startsWith('.iris-doctor-')), '写入探针必须清理');
 assert(/Iris Doctor test/.test(formatDoctorReport(healthy)), '文本与 JSON 共用结果模型');

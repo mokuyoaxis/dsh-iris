@@ -11,6 +11,8 @@ const assert = (condition, message, extra) => {
 
 const { optimizePrompt, resolvePromptOptimizerRoute, MAX_PROMPT_INPUT_BYTES } = await import('../lib/prompt-optimizer.js');
 const configStore = await import('../lib/prompt-optimizer-config.js');
+const { createDshHostAdapter } = await import('../lib/dsh-host-adapter.js');
+const host = (ctx) => createDshHostAdapter(ctx);
 
 let captured = null;
 const ctx = {
@@ -31,7 +33,7 @@ const ctx = {
   }
 };
 
-const output = await optimizePrompt(ctx, {
+const output = await optimizePrompt(host(ctx), {
   text: '画一只猫',
   target: 'image',
   sessionId: 'session-1',
@@ -46,7 +48,7 @@ assert(captured.messages[0].content[0].text.includes(JSON.stringify({ target: 'i
 assert(captured.tools === undefined, '提示词优化请求不得开放工具');
 
 configStore.importPromptOptimizerConfig({ generation: { reasoningEffort: 'inherit' } });
-await optimizePrompt(ctx, {
+await optimizePrompt(host(ctx), {
   text: '继承测试',
   target: 'general',
   route: { provider: 'session-p', model: 'session-m', reasoningEffort: 'high' }
@@ -54,17 +56,17 @@ await optimizePrompt(ctx, {
 assert(captured.reasoningEffort === 'high', '只有 JSON 显式选择 inherit 时才应继承会话思考档位');
 configStore.resetPromptOptimizerConfig();
 
-const fallback = resolvePromptOptimizerRoute(ctx, configStore.DEFAULT_PROMPT_OPTIMIZER_CONFIG, null);
+const fallback = resolvePromptOptimizerRoute(host(ctx), configStore.DEFAULT_PROMPT_OPTIMIZER_CONFIG, null);
 assert(fallback.source === 'host-default' && fallback.model === 'default-m', '会话无选择时应回退 DSH 默认模型');
 
 configStore.importPromptOptimizerConfig({ route: { mode: 'fixed', provider: 'fixed-p', model: 'fixed-m' } });
-const fixed = await optimizePrompt(ctx, { text: '  hello  ', target: 'general', route: { provider: 'ignored', model: 'ignored' } });
+const fixed = await optimizePrompt(host(ctx), { text: '  hello  ', target: 'general', route: { provider: 'ignored', model: 'ignored' } });
 assert(fixed.route.source === 'iris-fixed' && fixed.route.provider === 'fixed-p' && fixed.route.model === 'fixed-m', 'JSON fixed 路由应覆盖会话模型');
 assert(fixed.original === '  hello  ', '返回的 original 必须保留草稿首尾空白，避免写回时误报并支持精确恢复');
 assert(captured.messages[0].content[0].text.includes(JSON.stringify({ target: 'general', prompt: 'hello' })), '发给模型的提示词应去除无意义首尾空白');
 
 configStore.importPromptOptimizerConfig({ generation: { reasoningEffort: 'provider-default' } });
-await optimizePrompt(ctx, { text: '默认推理测试', target: 'general', route: { provider: 'session-p', model: 'session-m', reasoningEffort: 'high' } });
+await optimizePrompt(host(ctx), { text: '默认推理测试', target: 'general', route: { provider: 'session-p', model: 'session-m', reasoningEffort: 'high' } });
 assert(captured.reasoningEffort === undefined, 'provider-default 应忽略会话思考档位且不向 DSH 传 effort');
 configStore.resetPromptOptimizerConfig();
 
@@ -77,7 +79,7 @@ const noOffCtx = { get: (name) => name === 'llm' ? {
     yield { type: 'finish', reason: { kind: 'stop' } };
   }
 } : undefined };
-const noOff = await optimizePrompt(noOffCtx, { text: 'x', target: 'general', route: { provider: 'p', model: 'm', reasoningEffort: 'high' } });
+const noOff = await optimizePrompt(host(noOffCtx), { text: 'x', target: 'general', route: { provider: 'p', model: 'm', reasoningEffort: 'high' } });
 assert(noOffCaptured.reasoningEffort === undefined && noOff.route.reasoningEffort === 'provider-default', '模型未声明关闭档位时应忽略会话 High 并安全回退供应商默认');
 
 let maxTokenMessage = '';
@@ -85,7 +87,7 @@ const maxTokenCtx = { get: (name) => name === 'llm' ? {
   async resolveModelInfo() { return { reasoning: { efforts: [{ id: 'off', name: 'Off' }] } }; },
   async *stream() { yield { type: 'reasoning-delta', index: 0, text: 'internal' }; yield { type: 'finish', reason: { kind: 'max-tokens' } }; }
 } : undefined };
-try { await optimizePrompt(maxTokenCtx, { text: 'x', target: 'general', route: { provider: 'p', model: 'm' } }); } catch (err) { maxTokenMessage = err.message; }
+try { await optimizePrompt(host(maxTokenCtx), { text: 'x', target: 'general', route: { provider: 'p', model: 'm' } }); } catch (err) { maxTokenMessage = err.message; }
 assert(maxTokenMessage.includes('1200') && maxTokenMessage.includes('off') && maxTokenMessage.includes('未携带会话历史'), '输出上限错误应报告预算、实际思考策略和上下文边界', maxTokenMessage);
 
 let rejectedTool = false;
@@ -93,11 +95,11 @@ const toolCtx = { get: (name) => name === 'llm' ? { async *stream() {
   yield { type: 'tool-call-delta', index: 0, id: 'call-1', name: 'x', argumentsDelta: '{}' };
   yield { type: 'finish', reason: { kind: 'tool-calls' } };
 } } : undefined };
-try { await optimizePrompt(toolCtx, { text: 'x', target: 'general', route: { provider: 'tool-p', model: 'tool-m' } }); } catch (err) { rejectedTool = /工具/.test(err.message); }
+try { await optimizePrompt(host(toolCtx), { text: 'x', target: 'general', route: { provider: 'tool-p', model: 'tool-m' } }); } catch (err) { rejectedTool = /工具/.test(err.message); }
 assert(rejectedTool, '模型工具调用必须被拒绝');
 
 let rejectedLarge = false;
-try { await optimizePrompt(ctx, { text: 'a'.repeat(MAX_PROMPT_INPUT_BYTES + 1), target: 'general' }); } catch (err) { rejectedLarge = /超过/.test(err.message); }
+try { await optimizePrompt(host(ctx), { text: 'a'.repeat(MAX_PROMPT_INPUT_BYTES + 1), target: 'general' }); } catch (err) { rejectedLarge = /超过/.test(err.message); }
 assert(rejectedLarge, '超长草稿必须在模型调用前拒绝');
 
 console.log('ALL OK —— 提示词优化的会话/默认/fixed 路由、原文保真、JSON 封装、流组装与安全边界通过');

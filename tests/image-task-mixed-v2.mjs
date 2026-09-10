@@ -39,6 +39,11 @@ global.fetch = async (input, init = {}) => {
     asyncCalls++;
     const disk = JSON.parse(fs.readFileSync(path.join(config.irisHome(), 'tasks.json'), 'utf8'));
     if (disk.tasks.at(-1)?.attempts?.at(-1)?.acceptance === 'none') writeAhead++;
+    if (mode === 'auth-fail') {
+      return new Response(JSON.stringify({ code: 'InvalidApiKey', message: 'unauthorized' }), {
+        status: 401, headers: { 'Content-Type': 'application/json' }
+      });
+    }
     return new Response(JSON.stringify({ code: 'Throttling', message: 'not accepted' }), {
       status: 429, headers: { 'Content-Type': 'application/json' }
     });
@@ -72,6 +77,13 @@ try {
   assert(finished.outcome === 'succeeded' && finished.deliveryState === 'ready' && finished.status === 'succeeded', '同步生成与交付完整收口', finished);
   assert(action.providerId === syncProvider.id && action.remoteTaskId === null, '动作返回实际同步候选');
   assert(fs.existsSync(path.join(config.irisHome(), 'outputs', finished.files[0])), '同步 base64 产物已落盘');
+  const health = config.providerHealthSnapshot();
+  const imageHealth = health.capabilities['image-gen'];
+  const rejectedHealth = imageHealth.candidates.find((item) => item.providerId === asyncProvider.id);
+  const completedHealth = imageHealth.candidates.find((item) => item.providerId === syncProvider.id);
+  assert(imageHealth.status === 'verified' && rejectedHealth.status === 'configured'
+    && completedHealth.status === 'verified',
+  '真实提交把成功候选标绿，429 候选保持蓝色', imageHealth);
 
   mode = 'delivery-fail';
   let thrown;
@@ -86,6 +98,19 @@ try {
   assert(failedDelivery.outcome === 'succeeded' && failedDelivery.deliveryState === 'failed', '交付失败保留生成成功事实', failedDelivery);
   assert(failedDelivery.status === 'running' && failedDelivery.lastError.stage === 'download', '旧 status 保守且错误阶段为 download', failedDelivery);
   assert(asyncCalls === 1, '显式同步模型交付失败后不回到异步供应商');
+
+  mode = 'auth-fail';
+  let authThrown;
+  try {
+    await runAction({}, 'image', { prompt: 'auth failure', model: asyncRef });
+  } catch (error) {
+    authThrown = error;
+  }
+  const afterAuth = config.providerHealthSnapshot().capabilities['image-gen'];
+  const authHealth = afterAuth.candidates.find((item) => item.providerId === asyncProvider.id);
+  assert(authThrown && authHealth.status === 'failed' && authHealth.httpStatus === 401,
+    '真实动作的明确 401 应把对应候选标为暗红', { error: authThrown && authThrown.message, authHealth });
+  assert(syncCalls === 2, '显式认证失败不得调用另一个候选');
 
   const registry = fs.readFileSync(path.join(config.irisHome(), 'tasks.json'), 'utf8');
   assert(!registry.includes('async-secret') && !registry.includes('sync-secret'), '混合路径不持久化 API Key');

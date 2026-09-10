@@ -28,6 +28,7 @@ const assert = (cond, msg, extra) => {
 
 const tasks = await import('../lib/tasks.js');
 const media = await import('../lib/media.js');
+const artifacts = await import('../lib/artifacts.js');
 
 /* ---------- ① parseRange 单元 ---------- */
 const pr = media.parseRange;
@@ -52,12 +53,15 @@ fs.writeFileSync(bigPath, big);
 const t = tasks.create({ cap: 'video', providerId: 'p1', model: 'm', prompt: 'big' });
 const reg = media.registerMedia(t.id, bigPath);
 assert(reg && reg.token, '媒体登记');
+const work = artifacts.page({ limit: 10 }).items.find((item) => item.file === 'big.mp4');
+assert(work && work.url.includes('/iris/media/artifact/'), '媒体同时登记为独立作品');
 
 /* ---------- 真实 HTTP 服务器挂 serveMedia ---------- */
 const srv = http.createServer((req, res) => media.serveMedia(req, res));
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const port = srv.address().port;
 const base = `http://127.0.0.1:${port}/iris/media/${t.id}/${reg.token}/big.mp4`;
+const artifactBase = `http://127.0.0.1:${port}${new URL(work.url).pathname}`;
 
 function req(url, opts = {}) {
   return new Promise((resolve) => {
@@ -106,9 +110,20 @@ assert(r.status === 404, '穿越名 404');
 r = await req(`http://127.0.0.1:${port}/iris/media/nonexist/${reg.token}/big.mp4`);
 assert(r.status === 404, '不存在任务 404');
 
-/* ⑧ POST → 405 */
+/* ⑧ 清除任务记录后，任务链接失效但独立作品链接仍支持 Range。 */
+tasks.update(t.id, { status: 'succeeded' });
+assert(tasks.remove(t.id).ok, '测试任务记录已清除');
+r = await req(base);
+assert(r.status === 404, '清历史后任务 token 失效');
+r = await req(artifactBase, { headers: { Range: 'bytes=10-19' } });
+assert(r.status === 206 && r.body.equals(big.slice(10, 20)), '清历史后作品 token 与 Range 仍有效');
+const badArtifactBase = artifactBase.replace(/\/[a-f0-9]{32}\//, '/' + 'f'.repeat(32) + '/');
+r = await req(badArtifactBase);
+assert(r.status === 404, '错误作品 token 404');
+
+/* ⑨ POST → 405 */
 r = await req(base, { method: 'POST' });
 assert(r.status === 405, 'POST 405', r.status);
 
 srv.close();
-console.log('ALL OK —— 媒体 Range/流式/授权 9 组断言全部通过（单段/后缀/416/HEAD/404/405/大文件）');
+console.log('ALL OK —— 任务/作品双授权、清历史保留、Range/流式/HEAD/404/405/大文件全部通过');

@@ -47,7 +47,8 @@ const okSrv = await listen((req, res) => {
 });
 
 /* ---------- 被测模块 ---------- */
-const { SelfStackVisionBackend, GlobalLlmVisionBackend, buildVisionBackends, askWithBackends } = await import('../lib/vision.js');
+const { SelfStackVisionBackend, HostVisionBackend, buildVisionBackendsFromHost, askWithBackends } = await import('../lib/vision.js');
+const { createDshHostAdapter } = await import('../lib/dsh-host-adapter.js');
 const adapters = await import('../lib/adapters.js');
 const cap = await import('../lib/capability.js');
 
@@ -59,26 +60,26 @@ const globalLlm = {
     yield { delta: '全局兜底回答' };
   }
 };
-const stubCtx = (services = {}) => ({ get: (name) => services[name] });
+const host = (services = {}) => createDshHostAdapter({ get: (name) => services[name] });
 
 /* ---------- ① 组装顺序 ---------- */
-const backends = buildVisionBackends(stubCtx({ llm: globalLlm }), {
+const backends = buildVisionBackendsFromHost(host({ llm: globalLlm }), {
   providers: [pA(`http://127.0.0.1:${rateLimit.port}/v1`), pB(`http://127.0.0.1:${okSrv.port}/v1`)]
 });
 assert(backends.length === 3, '自持栈2 + 全局1', backends.length);
 assert(backends[0] instanceof SelfStackVisionBackend && backends[1] instanceof SelfStackVisionBackend
-  && backends[2] instanceof GlobalLlmVisionBackend, '顺序：自持栈在前、全局在后');
+  && backends[2] instanceof HostVisionBackend, '顺序：自持栈在前、全局在后');
 assert(backends[0].model === 'm-a' && backends[1].model === 'm-b' && backends[2].model === '全局视觉模型', 'model 透出');
 
 /* ---------- ② 429 → 自动降级到后端 B ---------- */
-const r1 = await askWithBackends(buildVisionBackends(stubCtx({ llm: globalLlm }), {
+const r1 = await askWithBackends(buildVisionBackendsFromHost(host({ llm: globalLlm }), {
   providers: [pA(`http://127.0.0.1:${rateLimit.port}/v1`), pB(`http://127.0.0.1:${okSrv.port}/v1`)]
 }), { question: 'q', imageDataUrl: 'data:image/png;base64,AAAA' });
 assert(r1.answer === '来自后端 C 的回答' && r1.backendId === 'pB' && r1.via === 'selfstack', '429 后降级到 pB', JSON.stringify(r1));
 assert(r1.errors.length === 1 && r1.errors[0].category === 'rate_limit', '429 分类 rate_limit', JSON.stringify(r1.errors));
 
 /* ---------- ③ 401 → 分类 auth，继续降级到全局 ---------- */
-const r2 = await askWithBackends(buildVisionBackends(stubCtx({ llm: globalLlm }), {
+const r2 = await askWithBackends(buildVisionBackendsFromHost(host({ llm: globalLlm }), {
   providers: [pA(`http://127.0.0.1:${auth.port}/v1`)]
 }), { question: 'q', ref: { attachmentId: 'x', mediaType: 'image/png' }, imageDataUrl: 'data:image/png;base64,AAAA' });
 assert(r2.answer === '全局兜底回答' && r2.via === 'global', '401 降级到全局', JSON.stringify(r2));
@@ -87,7 +88,7 @@ assert(r2.errors[0].category === 'auth', '401 分类 auth', JSON.stringify(r2.er
 /* ---------- ④ 取消：AbortSignal 已中止 → 请求被中断 ---------- */
 const ac = new AbortController();
 ac.abort();
-const r4 = await askWithBackends(buildVisionBackends(stubCtx({ llm: globalLlm }), {
+const r4 = await askWithBackends(buildVisionBackendsFromHost(host({ llm: globalLlm }), {
   providers: [pA(`http://127.0.0.1:${okSrv.port}/v1`)]
 }), { question: 'q', imageDataUrl: 'data:image/png;base64,AAAA', signal: ac.signal });
 assert(r4.answer === '全局兜底回答', '中止信号让自持栈失效后仍全局兜底', JSON.stringify(r4));
@@ -95,7 +96,7 @@ assert(r4.answer === '全局兜底回答', '中止信号让自持栈失效后仍
 /* ---------- ⑤ 双失败 → 抛错 + errors 现场 ---------- */
 let thrown = null;
 try {
-  await askWithBackends(buildVisionBackends(stubCtx({}), {
+  await askWithBackends(buildVisionBackendsFromHost(host({}), {
     providers: [pA(`http://127.0.0.1:${rateLimit.port}/v1`), pB(`http://127.0.0.1:${auth.port}/v1`)]
   }), { question: 'q', imageDataUrl: 'data:image/png;base64,AAAA' });
 } catch (err) {
@@ -110,7 +111,7 @@ const emptySrv = await listen((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/event-stream' });
   res.end('data: [DONE]\n\n');
 });
-const r6 = await askWithBackends(buildVisionBackends(stubCtx({ llm: globalLlm }), {
+const r6 = await askWithBackends(buildVisionBackendsFromHost(host({ llm: globalLlm }), {
   providers: [pA(`http://127.0.0.1:${emptySrv.port}/v1`)]
 }), { question: 'q', imageDataUrl: 'data:image/png;base64,AAAA' });
 assert(r6.answer === '全局兜底回答' && r6.via === 'global', '空回答后端继续降级', JSON.stringify(r6));

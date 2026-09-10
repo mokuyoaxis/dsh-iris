@@ -54,7 +54,7 @@ Early versions read models and credentials from the maintainer's local ai-paint 
 
 ## Quickest start
 
-With DeepSeek Harness `0.1.2-rc.1` installed and `pnpm` on your PATH, add Iris to the Web profile:
+With a supported DeepSeek Harness (`>=0.1.2-rc.1 <0.1.3-0` or `0.1.5-rc.1`) installed and `pnpm` on your PATH, add Iris to the Web profile:
 
 ```bash
 dsh plugin --profile web add @mokuyoaxis/dsh-iris
@@ -86,6 +86,7 @@ DSH profiles and plugin commands follow the [official installation docs](https:/
 - Visual question answering, long-image OCR, target grounding, cropping, and pixel-diff analysis
 - Video frame extraction and multimodal video summarization
 - Asynchronous task tracking, restart recovery, and token-authorized media playback
+- An independent work library that survives task-history cleanup and can re-index older `outputs/`
 - A multi-provider model pool with per `provider + model` capability assignment
 - Three file sources: browser upload, session attachments, and host paths
 - Workbench-independent composer prompt optimization with current-session and JSON-configured fixed model routing
@@ -103,9 +104,9 @@ After installing the plugin, add a provider in the Iris workbench and assign mod
 
 dsh-iris ships as a native DSH plugin with a server side and a web client. The server registers 14 agent tools and reuses the host's tool, routing, and lifecycle services; the client hooks into the settings page, the conversation input area, and the global floating layer through DSH's module loader. The plugin never starts a separate service or listens on an extra port.
 
-Automated tests currently cover plugin loading, tool registration, client seats, and routing behavior. Version 0.1.1 completed host smoke tests on Linux ARM64 — in both a clean and a real web profile — against DSH `0.1.2-rc.1` on Node.js `22.23.2`: the browser startup graph, the full combined bundle, the Iris client factory, and the three UI seats present at that time were verified. The fourth prompt-optimizer seat added in 0.1.2 has now been rendered in a live Android browser; configuration loading, a real session-model optimization with thinking actually `off`, preview write-back, independent disabling and re-enabling, and the loop from a short draft to a succeeded image-generation task are verified. Browser-side cancellation and JSON operations have automated HTTP/configuration coverage; a step-by-step live-device record is still pending. Iris itself keeps Node.js `>=20.10` as its own floor.
+Automated tests currently cover plugin loading, tool registration, client seats, and routing behavior. Version 0.1.1 completed host smoke tests on Linux ARM64 — in both a clean and a real web profile — against DSH `0.1.2-rc.1` on Node.js `22.23.2`: the browser startup graph, the full combined bundle, the Iris client factory, and the three UI seats present at that time were verified. The fourth prompt-optimizer seat added in 0.1.2 has now been rendered in a live Android browser; configuration loading, a real session-model optimization with thinking actually `off`, preview write-back, independent disabling and re-enabling, and the loop from a short draft to a succeeded image-generation task are verified. Browser-side cancellation and JSON operations have automated HTTP/configuration coverage; a step-by-step live-device record is still pending. Iris itself keeps Node.js `>=20.10` as its own floor. Version 0.1.4 additionally completed a live host load of 14 tools, two Skills, four route groups, and four UI slots on a daily DSH `0.1.5-rc.1` host.
 
-Iris 0.1.1–0.1.3 explicitly supports DSH `>=0.1.2-rc.1 <0.1.3-0` and no longer works with the legacy client runtime of DSH 0.1.0/0.1.1. DSH is still evolving quickly; later preview versions must pass verification before the supported range widens, and the compatibility badge is not an official certification. If DSH requires a newer Node.js, DSH wins.
+Iris 0.1.4 explicitly supports the two verified DSH windows `>=0.1.2-rc.1 <0.1.3-0` and `0.1.5-rc.1`, and no longer works with the legacy client runtime of DSH 0.1.0/0.1.1. Other preview versions have no host canary and are not claimed as compatible; the range widens only after verification passes, and the compatibility badge is not an official certification. If DSH requires a newer Node.js, DSH wins.
 
 ## Tools
 
@@ -166,6 +167,12 @@ The workbench lists paused observation, unknown acceptance/outcome, and successf
 
 Transcription is a separate `transcribe` capability and does not consume the TTS or vision model configuration.
 
+## Capability health and model verification
+
+The workbench and main bubble expose four persistent health states: gray means unconfigured; blue means configured but unverified, or that success evidence is older than seven days; green means the exact provider × model × capability recently passed an explicit probe or real task; muted red is reserved for explicit 401/403 or authentication/permission failures. Text and evidence time accompany color, and critical provider configuration changes invalidate old evidence.
+
+Iris performs no background probes. Rate limits, network errors, 5xx responses, content-safety failures, cancellation, and unknown acceptance never overwrite a recent green state with red, trigger a hidden retry, or create hidden cost. Vision, image, and TTS can be probed per model; video and transcription require real user tasks. Host Doctor checks only DSH/Iris loading and host ports—it does not validate providers or models. See [Provider and capability health](docs/PROVIDER_HEALTH.md) for the state and failover contract.
+
 ## Offline diagnostics
 
 No DSH installation or running host is required, and no provider request is sent:
@@ -175,7 +182,9 @@ npx @mokuyoaxis/dsh-iris doctor
 npx @mokuyoaxis/dsh-iris doctor --json
 ```
 
-The installed binary is `dsh-iris`. Exit code `0` is healthy, `1` means warnings, and `2` means hard errors. Doctor checks Node.js, sharp, ffmpeg/ffprobe, a real but cleaned-up storage write probe, configuration, models/assignments, task semantics, temporary files, and orphaned or missing artifacts. It cannot verify a running DSH host, browser service, or live provider.
+The installed binary is `dsh-iris`. Exit code `0` is healthy, `1` means warnings, and `2` means hard errors. Offline Doctor checks Node.js, sharp, ffmpeg/ffprobe, a real but cleaned-up storage write probe, configuration, models/assignments, task semantics, temporary files, and orphaned or missing artifacts.
+
+A running DSH instance also provides a “Host diagnostics” card in the Iris workbench and exposes the authenticated `/iris/api/doctor` JSON. It checks the DSH version, plugin, 14 tools, two Skills, four route groups, Browser/attachment/model capabilities, client version, and four UI Slots. It reads only safe snapshots and registration evidence; it never calls Browser, models, or providers. See [Host Doctor](docs/HOST_DOCTOR.md).
 
 ## Composed workflow example
 
@@ -183,7 +192,7 @@ Iris ships two agent skills (`iris-verify-ui` and `iris-compose-media`) that cha
 
 ![Composed workflow example](docs/assets/diagrams/iris-workflow-compose.png)
 
-SVG versions and editable drawio sources of the figures above live in [`docs/assets/diagrams/`](docs/assets/diagrams/). Diagram labels are currently in Chinese.
+The repository also carries SVG versions and editable drawio sources under [`docs/assets/diagrams/`](docs/assets/diagrams/); the npm package ships only the PNGs shown above. Diagram labels are currently in Chinese.
 
 ## Data and tasks
 
@@ -191,15 +200,18 @@ Runtime data lives under `$DSH_HOME/iris/v1/` by default:
 
 | Location | Contents |
 |---|---|
-| `providers.json` | Providers and capability assignments; file mode 0600 |
+| `providers.json` | Providers, capability assignments, and redacted health evidence; file mode 0600 |
 | `prompt-optimizer.json` | Imported optimizer prompt, target templates, model route, and generation settings; file mode 0600 |
 | `tasks.json` | Task metadata and attachment indexes; up to 500 records |
+| `artifacts.json` | Minimal work-library index and random access tokens; no prompt, provider, or task relationship |
 | `outputs/` | Generated and processed media |
 | `uploads/` | Temporary copies of browser uploads |
 
 On first load, 0.1.1 tightens POSIX permissions across an existing `$DSH_HOME/iris/v1/` tree without modifying file contents or following symlinks. Large media downloads stream to a private temporary file and are moved into place atomically, instead of loading a whole video into memory.
 
 Asynchronous tasks are polled in the background. After a plugin restart, Iris can re-adopt tasks that are still running remotely. Cancellation signals propagate through local waits and polling; whether the remote computation itself can be cancelled depends on the provider's API.
+
+The work library has its own lifecycle: clearing terminal task history does not delete works, and older media can be recovered by re-indexing `outputs/`. Deleting one work or clearing the library deletes the actual files behind a separate confirmation. See [Work library v0](docs/ARTIFACT_LIBRARY.md) (Chinese). Favorites, tags, and search remain future work after the full Artifact Manifest.
 
 Audio and video are served through Iris media links that carry random capability tokens. Images are, wherever possible, also saved as DSH durable attachments so they stay usable in the conversation.
 
@@ -211,7 +223,7 @@ Audio and video are served through Iris media links that carry random capability
 - `IRIS_TRUSTED_HOSTS` is not an authentication mechanism. When exposing DSH to the public internet or an untrusted network, configure authentication and HTTPS at the reverse proxy or host layer.
 - Paid model probes run one capability at a time and always confirm before a real provider call; video and transcription never submit empty-sample paid probes automatically.
 - HTML screenshots render inside a sandboxed page without same-origin privileges; scripts and external network access are disabled by default.
-- Media links use random capability tokens, and file paths are resolved only from task records.
+- Media links use random capability tokens, and file paths are resolved only from task records or the minimal work-library index.
 - Iris provides no account system of its own; multi-user isolation and access control are the responsibility of the DeepSeek Harness deployment.
 
 ## Known limitations
@@ -232,6 +244,16 @@ When the plugin is enabled, it automatically registers the two bundled skills th
 | [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) | Chain two or more Iris tools into media workflows: inspect-then-draw, image-to-video, video summary with narration, S2V, and more |
 
 From 0.1.2, as long as the host provides the DSH skill registry, regular npm installs can discover and load both skills from any project directory — no need to clone this repository or configure a skill search path. When the project directory contains same-name skills, DSH's native precedence keeps using the project versions; if the skill registry is unavailable, the 14 Iris tools still load on their own.
+
+For deterministic selection, invoke either skill with DSH's `/name` form:
+
+```text
+/iris-compose-media Inspect my uploaded product photo, create a matching poster, then verify the requested constraints
+
+/iris-verify-ui Compare the current screenshot with the reference, locate regressions, and return an evidence-based verdict
+```
+
+Natural-language discovery remains available. Do not force the composition skill for a single draw, OCR, or transcription action; ask directly or name the matching Iris tool. Skills plan tool use but never bypass Iris task, cost-confirmation, or safety boundaries.
 
 ## Development and verification
 

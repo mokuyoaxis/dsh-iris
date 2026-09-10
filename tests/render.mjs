@@ -118,4 +118,11 @@ let err2 = null;
 try { await new BrowserHtmlRenderer({ browser: stubBrowser }).render({ html: '   ' }); } catch (e) { err2 = e; }
 assert(err2 instanceof RenderError && /html 不能为空/.test(err2.message), '空 HTML 报错', err2 && err2.message);
 
-console.log('ALL OK —— HTML 截图后端 6 组断言全部通过（静态路由 200/穿越/404/405 + 渲染器序列/清理/错误）');
+const canceled = new AbortController();
+canceled.abort();
+let err3 = null;
+const callsBeforeCancel = calls.length;
+try { await renderer.render({ html: '<p>cancel</p>', signal: canceled.signal }); } catch (e) { err3 = e; }
+assert(err3 && err3.name === 'AbortError' && calls.length === callsBeforeCancel, '预取消不得打开浏览器', err3 && err3.message);
+
+console.log('ALL OK —— HTML 截图后端 7 组断言全部通过（静态路由 200/穿越/404/405 + 渲染器序列/清理/错误）');

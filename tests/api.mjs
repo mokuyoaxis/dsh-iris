@@ -14,6 +14,7 @@ import { useTempDshHome } from './test-env.js';
 useTempDshHome('iris-api-home');
 const irisV1 = path.join(process.env.DSH_HOME, 'iris', 'v1');
 fs.mkdirSync(path.join(irisV1, 'outputs'), { recursive: true });
+fs.writeFileSync(path.join(irisV1, 'outputs', 't_done_1-0.png'), 'image-bytes');
 
 const assert = (cond, msg, extra) => {
   if (!cond) {
@@ -98,6 +99,14 @@ const p0 = state.providers[0];
 assert(p0 && typeof p0.apiKey === 'undefined', 'apiKey 绝不出现在输出', state.providers);
 assert(typeof p0.apiKeyHint === 'string' && p0.apiKeyHint.includes('****'), 'key 只给 hint', p0.apiKeyHint);
 assert(!JSON.stringify(state).includes('must-never-leak'), '序列化后不得含明文 key');
+assert(state.health && state.health.schemaVersion === 1 && state.health.freshForMs === 7 * 24 * 60 * 60 * 1000,
+  '状态接口必须带 Provider 健康契约与 7 天有效期', state.health);
+assert(state.health.overall === 'configured'
+  && state.health.capabilities['image-gen'].status === 'configured'
+  && state.health.capabilities['video-gen'].status === 'configured'
+  && state.health.capabilities.transcribe.status === 'unconfigured',
+  '健康快照按当前能力候选区分蓝色与灰色', state.health.capabilities);
+assert(!JSON.stringify(state.health).includes('must-never-leak'), '健康快照不得泄露明文 key');
 
 /* ② 分组：旧任务保持四态；v2 未知/暂停/交付失败单列为 attention */
 assert(state.tasks.running.length === 2 && state.tasks.running.some((t) => t.id === 't_running_1')
@@ -121,6 +130,11 @@ assert(media && !media.url.includes(process.env.DSH_HOME), '链接不含本地�
 assert(media && typeof media.token === 'undefined' && typeof media.mime === 'string' && typeof media.file === 'string', '媒体条目只透 file/mime/url，token 不出 JSON', media);
 assert(done && done.saved === true, 'saved 标记透传');
 assert(done && done.schemaVersion === 1, '旧任务摘要显式标记 schemaVersion=1，供工作台显示只读说明');
+const galleryItem = state.artifacts && state.artifacts.recent && state.artifacts.recent[0];
+assert(state.artifacts.total === 1 && galleryItem && galleryItem.file === 't_done_1-0.png'
+  && galleryItem.url.includes('/iris/media/artifact/'), '状态接口透出独立作品摘要', state.artifacts);
+assert(!('prompt' in galleryItem) && !('provider' in galleryItem) && !('taskId' in galleryItem),
+  '作品摘要不泄露已清理的任务元数据', galleryItem);
 
 /* ④ 全标量可序列化 */
 let roundtrip = null;
@@ -154,6 +168,12 @@ function hitApi(url, method = 'GET') {
   serveApi({ method, url, headers: {} }, res);
   return res;
 }
+
+const galleryRes = hitApi('/iris/api/artifacts?offset=0&limit=1');
+const gallery = JSON.parse(galleryRes.body);
+assert(galleryRes.status === 200 && gallery.total === 1 && gallery.items.length === 1,
+  '作品库分页 API 返回 total/items', gallery);
+assert(hitApi('/iris/api/artifacts', 'HEAD').status === 200, '作品库分页 API 支持 HEAD');
 
 const r404 = hitApi('/iris/api/task/nonexist');
 assert(r404.status === 404, '不存在任务 → 404', r404.status);

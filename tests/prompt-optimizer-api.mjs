@@ -11,6 +11,7 @@ const assert = (condition, message, extra) => {
 };
 
 const { serveApi } = await import('../lib/api.js');
+const { createDshHostAdapter } = await import('../lib/dsh-host-adapter.js');
 const ctx = {
   get(name) {
     if (name === 'llm') return { async *stream() {
@@ -20,7 +21,7 @@ const ctx = {
     if (name === 'agentDefaultModel') return { currentSelection: () => ({ provider: 'api-p', model: 'api-m' }) };
   }
 };
-const server = http.createServer((req, res) => serveApi(req, res, ctx));
+const server = http.createServer((req, res) => serveApi(req, res, createDshHostAdapter(ctx)));
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${server.address().port}`;
 
