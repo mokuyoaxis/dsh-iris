@@ -27,7 +27,7 @@ const {
 const { createConfiguredProviderAdapter } = await import('../lib/provider-adapters.js');
 const { providerTaskBinding } = await import('../lib/provider-catalog.js');
 const { serveApi } = await import('../lib/api.js');
-const fixture = fileURLToPath(new URL('./fixtures/headless-async-fetch.mjs', import.meta.url));
+const fixture = new URL('./fixtures/headless-async-fetch.mjs', import.meta.url).href;
 
 const assert = (condition, message, extra) => {
   if (!condition) throw new Error(message + (extra === undefined ? '' : `: ${JSON.stringify(extra)}`));

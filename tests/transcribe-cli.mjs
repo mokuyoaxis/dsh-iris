@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const fixture = fileURLToPath(new URL('./fixtures/headless-async-fetch.mjs', import.meta.url));
+const fixture = new URL('./fixtures/headless-async-fetch.mjs', import.meta.url).href;
 const base = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-transcribe-cli-'));
 const dataRoot = path.join(base, 'data');
 const configFile = path.join(base, 'providers.json');

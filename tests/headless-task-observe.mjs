@@ -13,7 +13,7 @@ import {
 import { createCoreRuntime } from '../lib/core-runtime.js';
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const fixture = fileURLToPath(new URL('./fixtures/headless-async-fetch.mjs', import.meta.url));
+const fixture = new URL('./fixtures/headless-async-fetch.mjs', import.meta.url).href;
 const writerFixture = fileURLToPath(new URL('./fixtures/core-writer-child.mjs', import.meta.url));
 const base = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-headless-observe-'));
 const dataRoot = path.join(base, 'data');

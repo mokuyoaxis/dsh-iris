@@ -31,7 +31,7 @@ const { providerTaskBinding } = await import('../lib/provider-catalog.js');
 const { createCoreRuntime } = await import('../lib/core-runtime.js');
 const { recordCorePollResult } = await import('../lib/core-tasks.js');
 const { serveApi } = await import('../lib/api.js');
-const fixture = fileURLToPath(new URL('./fixtures/headless-async-fetch.mjs', import.meta.url));
+const fixture = new URL('./fixtures/headless-async-fetch.mjs', import.meta.url).href;
 
 const assert = (condition, message, extra) => {
   if (!condition) throw new Error(message + (extra === undefined ? '' : `: ${JSON.stringify(extra)}`));
