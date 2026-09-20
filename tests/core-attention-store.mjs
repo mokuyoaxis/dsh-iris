@@ -40,8 +40,11 @@ try {
   /* 写：原子落盘、0600、内容只含指针与时间 */
   const first = applyCoreAttentionAction(TASK_A, 'acknowledge');
   assert(first.changed === true && first.disposition === 'acknowledged', '首次受理必须变化', first);
-  assert(fs.existsSync(file()) && (fs.statSync(file()).mode & 0o777) === 0o600,
-    '偏好文件必须 0600', fs.statSync(file()).mode);
+  assert(fs.existsSync(file()), '偏好文件必须创建');
+  if (process.platform !== 'win32') {
+    assert((fs.statSync(file()).mode & 0o777) === 0o600,
+      '偏好文件必须 0600', fs.statSync(file()).mode);
+  }
   const content = fs.readFileSync(file(), 'utf8');
   const parsed = JSON.parse(content);
   assert(parsed.version === 1 && typeof parsed.entries[TASK_A].acknowledgedAt === 'string'
