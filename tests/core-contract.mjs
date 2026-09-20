@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import {
   CORE_ACCESS_MODES,
   CORE_CONTRACT_VERSION,
@@ -80,9 +81,9 @@ try {
   }
   return nextResolve(specifier, context);
 }
-`);
+  `);
   const probe = spawnSync(process.execPath, [
-    '--no-warnings', '--experimental-loader', loader, '--input-type=module', '--eval',
+    '--no-warnings', '--experimental-loader', pathToFileURL(loader).href, '--input-type=module', '--eval',
     `await Promise.all([import(${JSON.stringify(new URL('../lib/core-contract.js', import.meta.url).href)}), import(${JSON.stringify(new URL('../lib/core-runtime.js', import.meta.url).href)}), import(${JSON.stringify(new URL('../lib/core-tasks.js', import.meta.url).href)}), import(${JSON.stringify(new URL('../lib/provider-task-runner.js', import.meta.url).href)}), import(${JSON.stringify(new URL('../lib/command-service.js', import.meta.url).href)})])`
   ], { cwd: isolated, encoding: 'utf8' });
   assert(probe.status === 0, 'Core 契约与 Runtime 必须在 DSH/Cordis 不可解析时装载',
