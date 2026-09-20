@@ -79,8 +79,9 @@ async function postAction(action, taskId, body) {
       for (const handler of req.listeners.end || []) handler();
     });
   }
-  for (let i = 0; i < 400 && !res.writableEnded; i++) {
-    await new Promise((resolve) => setImmediate(resolve));
+  const deadline = Date.now() + 10_000;
+  while (!res.writableEnded && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
   assert(res.writableEnded, action + ' 路由必须结束响应', res.status);
   let parsed = null;
