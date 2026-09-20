@@ -35,7 +35,10 @@ const adapter = defineProviderAdapter({
     },
     async submit(input) {
       if (input.mode === 'accepted') return { kind: 'accepted', remoteTaskId: 'remote-1' };
-      if (input.mode === 'completed') return { kind: 'completed', value: { kind: 'urls', items: ['https://result.invalid/a.png'] } };
+      if (input.mode === 'completed') return {
+        kind: 'completed', value: { kind: 'urls', items: ['https://result.invalid/a.png'] },
+        artifacts: [{ kind: 'remote-url', url: 'https://result.invalid/a.png', mediaType: 'image/png' }]
+      };
       if (input.mode === 'rejected') {
         throw new ProviderContractError('quota ' + secret, {
           stage: 'submit', category: 'quota', acceptance: 'not_accepted', httpStatus: 429, retryable: true
@@ -80,8 +83,9 @@ const accepted = await invokeProviderOperation(adapter, 'submit', { mode: 'accep
 const completed = await invokeProviderOperation(adapter, 'submit', { mode: 'completed' });
 assert(accepted.kind === 'accepted' && accepted.acceptance === 'accepted' && accepted.remoteTaskId === 'remote-1',
   '异步 submit 必须返回受理证据', accepted);
-assert(completed.kind === 'completed' && completed.acceptance === 'accepted',
-  '同步 submit 必须同样视为已受理', completed);
+assert(completed.kind === 'completed' && completed.acceptance === 'accepted'
+    && completed.artifacts[0].kind === 'remote-url' && completed.value.kind === 'urls',
+  '同步 submit 必须同样视为已受理，并提供 canonical artifact 与旧 value 兼容视图', completed);
 
 const rejected = await invokeProviderOperation(adapter, 'submit', { mode: 'rejected' });
 const ambiguous = await invokeProviderOperation(adapter, 'submit', { mode: 'ambiguous' });

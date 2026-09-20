@@ -33,7 +33,7 @@ function walk(dir) {
 }
 
 /* ---------- ① 语法检查 ---------- */
-const files = [...walk(path.join(root, 'lib')), ...walk(path.join(root, 'tests')), ...walk(path.join(root, 'scripts'))];
+const files = [...walk(path.join(root, 'lib')), ...walk(path.join(root, 'bin')), ...walk(path.join(root, 'tests')), ...walk(path.join(root, 'scripts'))];
 for (const file of files) {
   const r = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
   if (r.status !== 0) {
@@ -45,10 +45,10 @@ if (files.length === 0) failures.push('未找到任何 .js/.mjs 文件');
 /* ---------- ② 结构防回归 ---------- */
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 
-/* v0.1.3 Core 候选不得反向导入 DSH/Cordis 运行时。 */
+/* Core 候选不得反向导入 DSH/Cordis 运行时。 */
 for (const rel of [
   'lib/task-semantics.js', 'lib/provider-contract.js', 'lib/provider-adapter.js',
-  'lib/provider-adapters.js', 'lib/host-contract.js', 'lib/host-runtime.js', 'lib/doctor.js'
+  'lib/provider-adapters.js', 'lib/provider-task-runner.js', 'lib/host-contract.js', 'lib/host-runtime.js', 'lib/core-contract.js', 'lib/core-runtime.js', 'lib/core-tasks.js', 'lib/core-artifacts.js', 'lib/core-artifact-store.js', 'lib/command-service.js', 'lib/doctor.js', 'lib/core-user-projection.js'
 ]) {
   const source = read(rel);
   if (/@deepseek-ai\/|from ['"](?:cordis|dsh)/.test(source)) {
@@ -57,9 +57,43 @@ for (const rel of [
 }
 
 const actionSource = read('lib/actions.js');
-const bypassedProviderOps = actionSource.match(/adapters\.(?:submitImage|generateImageMultimodal|openAiGenerateImage|startImageGeneration|submitVideo|submitTranscription|synthesizeTts|pollTask|pollTranscriptionTask|downloadTo|listModels)\b/g) || [];
-if (bypassedProviderOps.length) {
-  failures.push('lib/actions.js 的 Provider 生命周期必须经 Provider Adapter：' + [...new Set(bypassedProviderOps)].join(', '));
+const vendorName = /\b(?:dashscope|aliyun|wan\d|qwen-|gpt-image|gemini|grok|Cherry)/i;
+const codeLines = (source) => source.split('\n').filter((line) => !/^\s*(?:\/\/|\/\*|\*)/.test(line));
+for (const rel of [
+  ...fs.readdirSync(path.join(root, 'lib')).filter((name) => /^core-.*\.js$/.test(name)).map((name) => 'lib/' + name),
+  'lib/command-service.js', 'lib/provider-contract.js', 'lib/provider-adapter.js'
+]) {
+  const lines = codeLines(read(rel)).filter((line) =>
+    // Credential redaction recognizes vendor prefixes; it never selects a provider or model.
+    !(rel === 'lib/provider-contract.js' && line.startsWith('const SECRET_VENDOR = ')));
+  if (lines.some((line) => vendorName.test(line))) failures.push(rel + ' 的 Core 契约不得包含厂商选型字面量');
+}
+const modelLiteral = /\b(?:wan\d|qwen-|gpt-image|Cherry)/i;
+for (const [start, end] of [
+  ['function selectProviders(', 'function taskActionError('],
+  ['function videoRoute(', 'async function submitVideoV2('],
+  ['function simpleModelRoute(', '/** 重新观察'],
+  ['async function submitCoreTts(', '/* ----------'],
+  ["register('tts',", "register('"],
+  ["register('transcribe',", "register('"]
+]) {
+  const from = actionSource.indexOf(start);
+  const next = actionSource.indexOf(end, from + start.length);
+  const selected = actionSource.slice(from, next < 0 ? undefined : next);
+  if (from < 0 || codeLines(selected).some((line) => modelLiteral.test(line))) {
+    failures.push('Host 选型必须使用配置模型：' + start);
+  }
+}
+const visionSource = read('lib/vision.js');
+if (codeLines(visionSource).some((line) => modelLiteral.test(line))) failures.push('视觉选型不得注入厂商默认模型');
+if (!modelLiteral.test("const model = configured || 'qwen-test';")
+    || !vendorName.test("const protocol = 'dashscope';")) failures.push('厂商选型守卫反向校验失败');
+for (const rel of ['lib/actions.js', 'bin/dsh-iris.js']) {
+  const source = read(rel);
+  const bypassedProviderOps = source.match(/\b(?:submitImage|generateImageMultimodal|openAiGenerateImage|startImageGeneration|submitVideo|submitTranscription|synthesizeTts|pollTask|pollTranscriptionTask|downloadTo|listModels|uploadTempFile)\b/g) || [];
+  if (bypassedProviderOps.length) {
+    failures.push(rel + ' 的 Provider 生命周期与输入准备必须经 Provider Adapter：' + [...new Set(bypassedProviderOps)].join(', '));
+  }
 }
 
 /* Host 消费者只接收命名端口；原始 ctx 访问只允许留在 DSH Adapter/入口。 */
@@ -86,6 +120,10 @@ if (!packageJson.bin
 if (!clientSource.includes("var IRIS_CLIENT_VERSION = '" + packageJson.version + "'")) {
   failures.push('lib/client.js 的 Host Doctor 客户端版本必须与 package.json 一致');
 }
+const cliSource = read('bin/dsh-iris.js');
+for (const phrase of ['run crop', 'media diff', 'media frames', 'run image', 'run video', 'run tts', 'run transcribe', 'task inspect', 'task list', 'task observe', 'task redeliver', 'task cancel', 'task retry', '--confirm-billing', 'artifact inspect', 'artifact list', 'artifact export', 'artifact rebuild', '--data-root']) {
+  if (!cliSource.includes(phrase)) failures.push('bin/dsh-iris.js 缺少 headless CLI 契约：' + phrase);
+}
 
 
 const api = read('lib/api.js');
@@ -100,6 +138,10 @@ if (!/state\/events/.test(api) || !/serveSse/.test(api) || !/closeAllSse/.test(a
 }
 if (!api.includes('/iris/api/doctor') || !api.includes('/iris/api/host-client') || !/hostRuntimeEvidence/.test(api)) {
   failures.push('lib/api.js 缺少零网络 Host Doctor 或受限客户端握手端点');
+}
+
+if (!api.includes('/iris/api/core/snapshot') || !/coreSnapshotForDsh/.test(api)) {
+  failures.push('lib/api.js 缺少阶段六 Core Task/Artifact 只读快照端点');
 }
 
 const media = read('lib/media.js');
@@ -152,7 +194,339 @@ if (!/addEventListener\(['\"]resize['\"]/.test(client)) {
   failures.push('lib/client.js 缺少窗口 resize 重约束监听');
 }
 
+if (!/function CoreRuntimePanel\(\)/.test(client)
+    || !client.includes("fetch('/iris/api/core/snapshot?limit=12')")
+    || !client.includes("fetch('/iris/api/core/snapshot?limit=200')")
+    || !client.includes("React.createElement(CoreRuntimePanel, {})")
+    || !/function coreTaskState\(task\)/.test(client)
+    || !client.includes("var openPair = React.useState(false)")
+    || !client.includes("'复制 Task ID'")
+    || !client.includes("'打开作品'")) {
+  failures.push('lib/client.js 缺少统一 Core 作品视图或只读运行事实接线');
+}
+
 const index = read('lib/index.js');
+const dshCoreAdapter = read('lib/dsh-core-adapter.js');
+if (/cropImage\s*\(/.test(actionSource) || /cropImage\s*\(/.test(index)
+    || !/cropForDsh\s*\(/.test(actionSource) || !/cropForDsh\s*\(/.test(index)) {
+  failures.push('DSH crop 消费者必须经 dsh-core-adapter，而不是直接调用像素层');
+}
+if (!/createCommandService/.test(dshCoreAdapter) || !/dshCoreDataRoot/.test(dshCoreAdapter)
+    || /@deepseek-ai\/|from ['"](?:cordis|dsh)/.test(dshCoreAdapter)) {
+  failures.push('lib/dsh-core-adapter.js 必须只负责 profile 数据根、Command 调用和宿主投影');
+}
+for (const name of [
+  'submitProviderTaskForDsh', 'observeProviderTaskForDsh',
+  'inspectProviderTaskForDsh', 'projectCoreTaskForDsh'
+]) {
+  if (!dshCoreAdapter.includes('function ' + name + '(')) {
+    failures.push('lib/dsh-core-adapter.js 缺少阶段六 Provider/Host 投影：' + name);
+  }
+}
+if (!/requireHostPort\(host, 'attachments'/.test(dshCoreAdapter)
+    || !/readCoreArtifactBytes/.test(dshCoreAdapter)) {
+  failures.push('DSH Core Task 投影必须从已校验 Artifact 读取，并只经命名 attachments 端口输出');
+}
+
+/* B 阶段：Core Task 用户侧只读投影收口的结构守卫。 */
+const userProjection = read('lib/core-user-projection.js');
+if (!/from ['"]\.\/task-semantics\.js['"]/.test(userProjection)
+    && !/export function projectCoreTaskUserView/.test(userProjection)) {
+  failures.push('lib/core-user-projection.js 缺少五类用户状态投影入口');
+}
+for (const phrase of ['observation_paused', 'delivery_failed', '远端可能仍在运行', 'core:']) {
+  if (!userProjection.includes(phrase)) failures.push('lib/core-user-projection.js 缺少投影契约：' + phrase);
+}
+if (/node:(fs|net|http)/.test(userProjection) || /fetch\s*\(/.test(userProjection)) {
+  failures.push('lib/core-user-projection.js 必须是零 IO 纯投影（不得读文件或访问网络）');
+}
+if (!/projectCoreTaskUserRow/.test(dshCoreAdapter) || !/userTasks/.test(dshCoreAdapter) || !/skipInvalid/.test(dshCoreAdapter)) {
+  failures.push('lib/dsh-core-adapter.js 快照必须携带 userTasks 安全投影并支持局部降级');
+}
+if (!/userState/.test(clientSource) || !/useCoreUserTasks/.test(clientSource)) {
+  failures.push('lib/client.js 任务区必须消费 Core userTasks 投影');
+}
+
+/* v0.2.0 D1：reobserve 人工单步观察必须全链路同一份 Command Service 实现。 */
+{
+  const commandService = read('lib/command-service.js');
+  if (commandService.includes("'task.reobserve'") !== true
+      || !/name === 'task\.observe' \|\| name === 'task\.reobserve'/.test(commandService)) {
+    failures.push('lib/command-service.js task.reobserve 必须是 task.observe 的同实现命令名');
+  }
+  if (!/reobserveProviderTaskForDsh/.test(dshCoreAdapter)
+      || !/resolveTaskAdapter: configuredAdapterForTask/.test(dshCoreAdapter)) {
+    failures.push('lib/dsh-core-adapter.js reobserve 必须与 Host 观察节拍共用 adapter/binding 解析');
+  }
+  if (!api.includes("(reobserve|redeliver)") || !/handleCoreTaskManual/.test(api)
+      || !/reobserveProviderTaskForDsh/.test(api)) {
+    failures.push('lib/api.js 缺少 POST /iris/api/core/task/:id/reobserve（D1 人工单步观察）');
+  }
+  if (!/export function coreTaskObservable/.test(userProjection) || !/observable:/.test(userProjection)) {
+    failures.push('lib/core-user-projection.js 行 DTO 必须携带 observable（与 task.observe 同一受理事实门）');
+  }
+  if (!/function CoreReobserveButton/.test(clientSource)
+      || !clientSource.includes("action: 'reobserve'") || !clientSource.includes('重新观察')) {
+    failures.push('lib/client.js 任务区/高级诊断必须提供「重新观察」显式动作');
+  }
+}
+
+/* v0.2.0 D2：redeliver 重新取回产物必须全链路同一份 Command Service 实现，绝不重新生成。 */
+{
+  const commandService = read('lib/command-service.js');
+  if (commandService.includes("'task.redeliver'") !== true
+      || !/name === 'task\.redeliver'/.test(commandService)
+      || !/IRIS_TASK_NOT_REDELIVERABLE/.test(commandService)) {
+    failures.push('lib/command-service.js 缺少 task.redeliver（succeeded+failed 门，绝不重新生成）');
+  }
+  if (!/redeliverProviderTaskForDsh/.test(dshCoreAdapter)
+      || !dshCoreAdapter.includes("manualTaskCommandForDsh('task.redeliver'")) {
+    failures.push('lib/dsh-core-adapter.js redeliver 必须与 Host 观察节拍共用 adapter/binding 解析');
+  }
+  if (!/redeliver: \{ command: 'task\.redeliver'/.test(api)) {
+    failures.push('lib/api.js 缺少 POST /iris/api/core/task/:id/redeliver（D2 重新取回产物）');
+  }
+  if (!/export function coreTaskRedeliverable/.test(userProjection) || !/redeliverable:/.test(userProjection)) {
+    failures.push('lib/core-user-projection.js 行 DTO 必须携带 redeliverable（与 task.redeliver 同一交付事实门）');
+  }
+  if (!/function CoreRedeliverButton/.test(clientSource)
+      || !clientSource.includes("action: 'redeliver'") || !clientSource.includes('重新取回作品')) {
+    failures.push('lib/client.js 任务区/高级诊断必须提供「重新取回作品」显式动作');
+  }
+}
+
+/* v0.2.0 D3：cancel 必须全链路同一份 Command Service 实现，unsupported/unknown 绝不伪造已取消。 */
+{
+  const commandService = read('lib/command-service.js');
+  if (commandService.includes("'task.cancel'") !== true
+      || !/name === 'task\.cancel'/.test(commandService)
+      || !/IRIS_TASK_NOT_CANCELABLE/.test(commandService)
+      || !/IRIS_TASK_CANCEL_ALREADY_REQUESTED/.test(commandService)) {
+    failures.push('lib/command-service.js 缺少 task.cancel（受理事实门 + 已请求防重）');
+  }
+  const coreTasks = read('lib/core-tasks.js');
+  if (!/远端事实优先/.test(coreTasks)
+      || !/not_supported[\s\S]{0,400}cancelState = 'none'/.test(coreTasks)
+      || !/远端事实优先[\s\S]{0,500}succeeded/.test(coreTasks)) {
+    failures.push('lib/core-tasks.js recordCoreCancelResult 必须保留三分支与终态竞态守卫（远端事实优先）');
+  }
+  if (!/cancelProviderTaskForDsh/.test(dshCoreAdapter)
+      || !dshCoreAdapter.includes("manualTaskCommandForDsh('task.cancel'")) {
+    failures.push('lib/dsh-core-adapter.js cancel 必须与 Host 观察节拍共用 adapter/binding 解析');
+  }
+  if (!/cancel: \{ command: 'task\.cancel'/.test(api)) {
+    failures.push('lib/api.js 缺少 POST /iris/api/core/task/:id/cancel（D3 人工取消）');
+  }
+  if (!/export function coreTaskCancelable/.test(userProjection) || !/cancelable:/.test(userProjection)) {
+    failures.push('lib/core-user-projection.js 行 DTO 必须携带 cancelable（与 task.cancel 同一受理事实门）');
+  }
+  if (!/function CoreCancelButton/.test(clientSource)
+      || !clientSource.includes("action: 'cancel'") || !clientSource.includes('取消任务')
+      || !clientSource.includes('window.confirm(props.confirm)')
+      || !clientSource.includes('绝不伪造已取消')) {
+    failures.push('lib/client.js 取消动作必须带二次确认且明示不伪造已取消');
+  }
+  if (!clientSource.includes('coreCancelLabel') || !clientSource.includes('供应商已明确确认取消')
+      || !clientSource.includes('已请求取消，远端结果未确认')) {
+    failures.push('lib/client.js 诊断层必须如实区分取消三种结果态（不得把未确认显示成已取消）');
+  }
+}
+
+/* v0.2.0 D4：retry as new task 产生新的真实计费——三层都必须有显式确认门，且 Core 不持久化 Prompt。 */
+{
+  const commandService = read('lib/command-service.js');
+  if (commandService.includes("'task.retry'") !== true
+      || !/name === 'task\.retry'/.test(commandService)
+      || !/IRIS_COMMAND_BILLING_CONFIRM_REQUIRED/.test(commandService)
+      || !/confirm_billing !== true/.test(commandService)
+      || !/IRIS_TASK_NOT_RETRYABLE/.test(commandService)) {
+    failures.push('lib/command-service.js 缺少 task.retry（计费确认门 + 终态未成功交付门）');
+  }
+  const coreTasks = read('lib/core-tasks.js');
+  if (!/retriedFrom/.test(coreTasks) || /prompt\s*[:=]/i.test(coreTasks)) {
+    failures.push('lib/core-tasks.js 必须支持 retriedFrom 关系字段且绝不持久化 Prompt');
+  }
+  const runner = read('lib/provider-task-runner.js');
+  if (/prompt/i.test(runner) || !/retriedFrom: input\.retriedFrom/.test(runner)) {
+    failures.push('lib/provider-task-runner.js 必须把 retriedFrom 透传给新 Task 且绝不接触 Prompt');
+  }
+  if (!/retryProviderTaskForDsh/.test(dshCoreAdapter)
+      || !/resolveTaskCandidates/.test(dshCoreAdapter)) {
+    failures.push('lib/dsh-core-adapter.js retry 必须按当前 assignments/池实况重新解析候选链');
+  }
+  if (!api.includes('/retry\\/?$') || !/handleCoreTaskRetry/.test(api)
+      || !api.includes('confirmBilling !== true')) {
+    failures.push('lib/api.js 缺少 POST /iris/api/core/task/:id/retry（请求体必须显式 confirmBilling:true）');
+  }
+  if (!/export function coreTaskRetryable/.test(userProjection) || !/retryable:/.test(userProjection)) {
+    failures.push('lib/core-user-projection.js 行 DTO 必须携带 retryable（终态且未成功交付门）');
+  }
+    if (!/function CoreRetryButton/.test(clientSource)
+      || !clientSource.includes("action: 'retry'") || !clientSource.includes('重试为新任务')
+      || !clientSource.includes('将创建一个新任务并可能产生重复生成费用')
+      || !clientSource.includes('window.prompt(') || !clientSource.includes('confirmBilling: true')) {
+    failures.push('lib/client.js retry 入口必须二次确认重复计费并用 window.prompt 重新收集生成指令');
+  }
+}
+
+/* v0.2.0 T-10：模型选择原因必须是 Attempt 写前事实，禁止用当前 assignment 事后猜测。 */
+{
+  const modelsSrc = read('lib/models.js');
+  const catalog = read('lib/provider-catalog.js');
+  const coreTasks = read('lib/core-tasks.js');
+  const runner = read('lib/provider-task-runner.js');
+  const cli = read('bin/dsh-iris.js');
+  const actions = read('lib/actions.js');
+  if (!/export function selectionReasonForModel/.test(modelsSrc)
+      || !/selectionReason: 'explicit'/.test(catalog)
+      || !/selectionReasonForModel\(pool, capability, assignment, item\)/.test(catalog)) {
+    failures.push('模型候选必须在构造时区分 explicit / assignment / pool，不能在 task.inspect 时重算');
+  }
+  if (!/ATTEMPT_SELECTION_REASONS/.test(coreTasks)
+      || !/selectionReason: fields\.selectionReason/.test(coreTasks)
+      || !/candidate\.selectionReason/.test(runner)) {
+    failures.push('selectionReason 必须在 Provider submit 前写入对应 Core Attempt，并保持旧记录可选兼容');
+  }
+  if ((cli.match(/selectionReason: route\.selectionReason/g) || []).length < 5
+      || (actions.match(/selectionReason: route\.selectionReason/g) || []).length < 4
+      || !/selectionReason: route\.selectionReason/.test(dshCoreAdapter)) {
+    failures.push('CLI、DSH 四类媒体与 retry 候选必须把 selectionReason 透传给同一 Provider runner');
+  }
+}
+
+/* 0.2.x 补丁：Core 注意力处置属于 Host 偏好——零 Core 写入、可派生自动静默。 */
+{
+  let attention = '';
+  try {
+    attention = read('lib/core-attention.js');
+  } catch (_) {
+    failures.push('缺少 lib/core-attention.js（Core 注意力处置偏好层）');
+  }
+  if (attention) {
+    if (/from ['"][\.\/]+(?:core-tasks|core-artifact|core-artifact-store|provider-task-runner|command-service)\.js['"]/.test(attention)
+        || /core-v0|dshCoreDataRoot/.test(attention)) {
+      failures.push('lib/core-attention.js 必须是纯 Host 偏好层：不得导入 Core 写入 API 或触碰 Core 数据根');
+    }
+    if (!attention.includes('core-attention.json') || !/atomicWritePrivate/.test(attention)
+        || !/applyCoreAttentionAction/.test(attention)) {
+      failures.push('lib/core-attention.js 必须原子写 core-attention.json 并导出处置动作');
+    }
+  }
+  if (!/disposeCoreTaskAttention/.test(dshCoreAdapter)
+      || !/decorateCoreUserRows/.test(dshCoreAdapter)
+      || !/suppressedByRetrySuccess/.test(dshCoreAdapter)
+      || !/retriedFrom/.test(dshCoreAdapter)) {
+    failures.push('lib/dsh-core-adapter.js 快照必须合并处置偏好并从 retriedFrom 派生自动静默');
+  }
+  for (const act of ['acknowledge', 'restore', 'hide', 'unhide']) {
+    if (!api.includes(act + ": { command: 'attention." + act + "'")) {
+      failures.push('lib/api.js 缺少 Core 注意力处置动作：' + act);
+    }
+  }
+  if (!/CoreDispositionButtons/.test(clientSource)
+      || !clientSource.includes("disposition === 'hidden'")
+      || !clientSource.includes('不再提醒') || !clientSource.includes('恢复显示')
+      || !clientSource.includes('仅在本机隐藏')) {
+    failures.push('lib/client.js 必须提供 Core 注意力处置入口与文案边界');
+  }
+  const coreScope = clientSource.slice(clientSource.indexOf('function CoreReobserveButton'),
+    clientSource.indexOf('function coreTaskMini'));
+  if (coreScope.includes('删除任务')) {
+    failures.push('lib/client.js Core 处置路径不得出现"删除任务"文案');
+  }
+}
+
+/* v0.2.0 E 阶段视频迁移：视频走独立交付 Profile，t2v/i2v 全链 Core、零 legacy 双写，s2v 保留 legacy。 */
+{
+  const runner = read('lib/provider-task-runner.js');
+  if (!/DELIVERY_PROFILES/.test(runner)
+      || !runner.includes("video: Object.freeze({ kind: 'generated-video'")
+      || !runner.includes("'video/mp4'")) {
+    failures.push('lib/provider-task-runner.js 必须有视频交付 Profile（generated-video + video/mp4 白名单）');
+  }
+  const catalog = read('lib/provider-catalog.js');
+  if (!/export function videoCandidatesFromCatalog/.test(catalog)
+      || !/只开放图片/.test(catalog)) {
+    failures.push('lib/provider-catalog.js 必须提供 videoCandidatesFromCatalog 并对视频开放恢复解析');
+  }
+  if (!/WATCHABLE_CAPABILITIES/.test(dshCoreAdapter) || !dshCoreAdapter.includes("'video'")
+      || !/WATCH_INTERVAL_BY_CAPABILITY/.test(dshCoreAdapter)
+      || !dshCoreAdapter.includes("'video/mp4'")) {
+    failures.push('lib/dsh-core-adapter.js 必须把视频纳入观察接管、长轮询档与同源媒体路由');
+  }
+  const actionsSrc = read('lib/actions.js');
+  if (!/submitCoreVideo/.test(actionsSrc) || !actionsSrc.includes("storage: 'core'")
+      || !/submitVideoV2\(routes/.test(actionsSrc) || !/audio_path/.test(actionsSrc)) {
+    failures.push('lib/actions.js 视频动作必须 t2v/i2v 走 Core、s2v 意图保留 legacy');
+  }
+  if (!/capability: 'video'/.test(cliSource) || !cliSource.includes('run video')) {
+    failures.push('bin/dsh-iris.js 缺少 run video（E 阶段视频 CLI）');
+  }
+  const projection = read('lib/core-user-projection.js');
+  if (/capability === 'image'/.test(projection)) {
+    failures.push('lib/core-user-projection.js 五类投影必须保持 capability 无关（视频任务自动纳入）');
+  }
+}
+
+/* v0.2.0 E2 阶段 TTS 迁移：同步完成型语音走独立交付 Profile，零 legacy 双写。 */
+{
+  const runner = read('lib/provider-task-runner.js');
+  if (!runner.includes("tts: Object.freeze({ kind: 'generated-audio'")
+      || !runner.includes("'audio/mpeg'")) {
+    failures.push('lib/provider-task-runner.js 必须有 TTS 交付 Profile（generated-audio + 音频白名单）');
+  }
+  const catalog = read('lib/provider-catalog.js');
+  if (!/export function ttsCandidatesFromCatalog/.test(catalog)
+      || !catalog.includes('语音')) {
+    failures.push('lib/provider-catalog.js 必须提供 ttsCandidatesFromCatalog 并对语音开放恢复解析');
+  }
+  const adapters = read('lib/provider-adapters.js');
+  if (!/kind: 'completed', value, artifacts/.test(adapters)
+      || !/inline-base64/.test(adapters)) {
+    failures.push('lib/provider-adapters.js TTS submit 必须物化产物（remote-url 或 inline-base64）');
+  }
+  const actionsSrc = read('lib/actions.js');
+  if (!/submitCoreTts/.test(actionsSrc) || /submitTtsV2/.test(actionsSrc)) {
+    failures.push('lib/actions.js 语音动作必须走 submitCoreTts（legacy submitTtsV2 已移除）');
+  }
+  if (!cliSource.includes('run tts') || !/capability: 'tts'/.test(cliSource)) {
+    failures.push('bin/dsh-iris.js 缺少 run tts（E2 阶段语音 CLI）');
+  }
+  if (!dshCoreAdapter.includes("'audio/'")) {
+    failures.push('lib/dsh-core-adapter.js 同源媒体路由必须放行音频 Artifact');
+  }
+}
+
+/* v0.2.0 E3 阶段转写迁移：上传型异步转写走 Core，文本物化为 transcript Artifact。 */
+{
+  const runner = read('lib/provider-task-runner.js');
+  if (!runner.includes("transcribe: Object.freeze({ kind: 'transcript'")
+      || !runner.includes("'text/plain'")) {
+    failures.push('lib/provider-task-runner.js 必须有转写交付 Profile（transcript + text/plain）');
+  }
+  const catalog = read('lib/provider-catalog.js');
+  if (!/export function transcribeCandidatesFromCatalog/.test(catalog) || !catalog.includes('转写')) {
+    failures.push('lib/provider-catalog.js 必须提供 transcribeCandidatesFromCatalog 并对转写开放恢复解析');
+  }
+  const adapters = read('lib/provider-adapters.js');
+  if (!/kind: 'succeeded',[\s\S]{0,200}mediaType: 'text\/plain'/.test(adapters)) {
+    failures.push('lib/provider-adapters.js 转写 poll 成功必须把正文物化为 text/plain artifact');
+  }
+  const actionsSrc = read('lib/actions.js');
+  if (!/submitCoreTranscribe/.test(actionsSrc) || /submitTranscriptionV2/.test(actionsSrc)
+      || !/audio_url/.test(actionsSrc)) {
+    failures.push('lib/actions.js 转写动作必须走 submitCoreTranscribe（legacy submitTranscriptionV2 已移除）');
+  }
+  if (!/audio_url/.test(read('lib/command-service.js'))) {
+    failures.push('lib/command-service.js retry 必须对转写要求 audio_url');
+  }
+  if (!cliSource.includes('run transcribe') || !/capability: 'transcribe'/.test(cliSource)) {
+    failures.push('bin/dsh-iris.js 缺少 run transcribe（E3 阶段转写 CLI）');
+  }
+  if (!dshCoreAdapter.includes("'text/plain'")) {
+    failures.push('lib/dsh-core-adapter.js 同源媒体路由必须放行纯文本 Artifact');
+  }
+}
 if (/required:\s*true/.test(index)) {
   failures.push('lib/index.js 工具参数属性内不得出现 required: true（JSON Schema 属性级 required 必须是字符串数组）');
 }
@@ -381,8 +755,12 @@ if (tasksLib) {
   if (!/for \(const ref of assignmentOrder\(capability\)\)/.test(configSrc)) {
     failures.push('lib/config.js pickFor 必须按分配顺序取首个可用（不再只认单值）');
   }
-  if (!/assignmentOrder\(capability\)[\s\S]{0,200}for \(const m of pool\) if \(m\.capabilities\.includes/.test(configSrc)) {
-    failures.push('lib/config.js pickAllFor 必须分配序优先、池序补齐（failover 顺序生效）');
+  if (!/export function pickAllFor\(capability\)[\s\S]{0,240}models\.orderedModels\(pool, capability, assignments\(\)\[capability\]\)/.test(configSrc)) {
+    failures.push('lib/config.js pickAllFor 必须复用 orderedModels（分配序优先、池序补齐）');
+  }
+  const modelsSrc = read('lib/models.js');
+  if (!/export function orderedModels\(pool, capability, assignments\)[\s\S]{0,700}resolvePoolModel\(pool, raw, capability\)[\s\S]{0,300}for \(const model of pool\) add\(model\)/.test(modelsSrc)) {
+    failures.push('lib/models.js orderedModels 必须按分配序解析并按池序补齐去重');
   }
   const actionsSrc = read('lib/actions.js');
   if (!/Array\.isArray\(args\.model_refs\)/.test(actionsSrc) || !/store\.setAssignmentOrder/.test(actionsSrc)) {
@@ -391,7 +769,6 @@ if (tasksLib) {
   if (!/order\[c\] = store\.assignmentOrder\(c\)/.test(actionsSrc)) {
     failures.push('lib/actions.js assignments_get 必须返回归一化 order');
   }
-  const modelsSrc = read('lib/models.js');
   if (!/qwen\\d\?-vl/.test(modelsSrc) || !/qwen3-vl-235b-a22b-thinking/.test(modelsSrc)) {
     failures.push('lib/models.js 必须含 qwen?-vl 规则且收录 qwen3-vl 强视觉模型（VERIFY 2026-09-03 实证）');
   }
@@ -408,8 +785,11 @@ if (tasksLib) {
   } catch (_) {
     failures.push('缺少 lib/guard.js（O2 请求守卫）');
   }
-  if (guardSrc && (!/export function checkRequest/.test(guardSrc) || !/cross-site/.test(guardSrc) || !/method !== 'POST'/.test(guardSrc))) {
-    failures.push('lib/guard.js 必须是发布安全版：checkRequest + 读接口放开(非 POST 放行) + POST 挡 cross-site/跨源');
+  if (guardSrc && (!/export function checkRequest/.test(guardSrc)
+      || !/浏览器的读请求同样可能泄露媒体与状态/.test(guardSrc)
+      || !/cross-site request denied/.test(guardSrc)
+      || guardSrc.includes("if (method !== 'POST') return { ok: true }"))) {
+    failures.push('lib/guard.js 必须让浏览器 GET/HEAD/POST 共用 Host、Sec-Fetch-Site 与 Origin 来源守卫');
   }
 }
 
@@ -422,8 +802,9 @@ if (tasksLib) {
   if (!/export function remove/.test(tasksSrc) || !/export function prune/.test(tasksSrc) || !/export function all/.test(tasksSrc)) {
     failures.push('lib/tasks.js 必须导出 remove/prune/all（清理原语，running 强制保护）');
   }
-  if (!/t\.status !== 'running' && pred\(t\)/.test(tasksSrc)) {
-    failures.push('lib/tasks.js prune 必须强制跳过 running（永不批量删除运行中任务）');
+  if (!/export function taskRecordRemovable/.test(tasksSrc)
+      || !/taskRecordRemovable\(t\) && pred\(t\)/.test(tasksSrc)) {
+    failures.push('lib/tasks.js prune 必须复用可删除契约（保护活跃/未处理任务，允许已归档 Task v2）');
   }
   const actionsSrc = read('lib/actions.js');
   for (const act of ['tasks_delete', 'tasks_clear', 'tasks_orphans', 'tasks_purge_orphans']) {
@@ -445,8 +826,10 @@ if (tasksLib) {
 // P2 模型发现：listModels 适配器 + providers_discover 动作 + 扩规则 + UI 按钮
 {
   const adaptersSrc = read('lib/adapters.js');
-  if (!/export async function listModels/.test(adaptersSrc) || !/\/models`/.test(adaptersSrc)) {
-    failures.push('lib/adapters.js 必须有 listModels（GET /models 模型发现）');
+  if (!/export async function listModels/.test(adaptersSrc)
+      || !/base \+ '\/models'/.test(adaptersSrc)
+      || !/dashscopeApiBase\(base\) \+ '\/models'/.test(adaptersSrc)) {
+    failures.push('lib/adapters.js 必须同时保留 OpenAI GET /models 与 DashScope GET /api/v1/models 发现');
   }
   const actionsSrc = read('lib/actions.js');
   if (!/register\('providers_discover'/.test(actionsSrc)) {

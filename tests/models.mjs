@@ -64,8 +64,29 @@ assert(mOld.length === 2, '旧字段迁移 2 条', mOld.length);
 assert(mOld[0].id === 'wan2.2-t2i-flash' && mOld[0].capabilities.includes('image-gen'), '旧字段 image → image-gen');
 assert(mOld[1].id === 'qwen-vl-plus' && mOld[1].capabilities.includes('vision'), '旧字段 vision → vision');
 
+// B-5 回归：显式 models: [] 是权威声明，不得被裸账号迁移穿透
+// （用户明确表示「此供应商没有可用模型」时，不得注入任何厂商默认池）
+const pExplicitEmptyDash = {
+  id: 'p-empty-dash',
+  baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  models: []
+};
+const mExplicitEmptyDash = models.providerModels(pExplicitEmptyDash);
+assert(mExplicitEmptyDash.length === 0,
+  '显式 models: [] 必须尊重用户声明，不得注入已知模型池', mExplicitEmptyDash.map((m) => m.id));
+assert(models.modelPool([pExplicitEmptyDash]).length === 0,
+  'models: [] 的供应商不得出现在全局模型池');
+
+// 旧裸账号只在配置写入时迁移；运行时不隐式注入。
+const pNoModelsDash = { id: 'p-no-models-dash', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' };
+assert(models.providerModels(pNoModelsDash).length === 0, '运行时不猜模型');
+assert(models.migrateProviderModels(pNoModelsDash), '配置层可显式接回旧裸账号');
+assert(!models.migrateProviderModels(pNoModelsDash), '配置迁移幂等');
+assert(models.providerModels(pNoModelsDash).length > 0, '读取已经物化的迁移配置');
+
 // 裸 DashScope 兜底
 const pDash = { id: 'p3', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' };
+models.migrateProviderModels(pDash);
 const mDash = models.providerModels(pDash);
 assert(mDash.length >= 3, '裸 DashScope 至少 3 个已知模型', mDash.length);
 assert(mDash.some((m) => m.id === 'wan2.2-t2i-flash' && m.capabilities.includes('image-gen')), 'DashScope 含 wan t2i');

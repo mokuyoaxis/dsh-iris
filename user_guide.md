@@ -38,8 +38,8 @@ dsh --profile web --dump-config
 
 1. 点击“+ 添加供应商”。
 2. 名称可填“阿里云百炼”。
-3. Base URL 填 `https://dashscope.aliyuncs.com/compatible-mode/v1`。
-4. 填入 DashScope API Key，点击“保存”。
+3. Base URL 填 `https://dashscope.aliyuncs.com/compatible-mode/v1`；如果账号使用百炼业务空间专属域名，再把“媒体 Base URL”填为同地域的 `https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`（地域按账号实际情况替换）。
+4. 填入与模型、Endpoint 同地域的 DashScope API Key，点击“保存”。
 5. 展开刚添加的供应商，点击“发现模型”。
 
 如果只有一个供应商，可以先保留“能力分配”为自动。Iris 会从模型池中为画图、视频、语音、转写和视觉能力选择第一个匹配模型。需要固定模型或设置故障转移顺序时，再到“能力分配（failover 顺序）”中调整。
@@ -55,13 +55,17 @@ Iris 当前支持两类调用路径：
 | DashScope 百炼 | 图片、视频、TTS、转写、视觉 | 覆盖最完整；媒体请求只允许阿里云官方 HTTPS 域名 |
 | OpenAI 兼容 | Images 图片生成、Chat Completions 视觉 | 具体模型和能力取决于兼容服务 |
 
-工作台新增供应商时会按 Base URL 安全推断媒体协议：阿里云官方 DashScope HTTPS 域名使用 `dashscope`，其他地址使用 `openai-images`，也可以在供应商卡片中明确选择。即使配置被误标为 `dashscope`，Iris 也会在 fetch 前拒绝向非官方地址发送 DashScope API Key。
+工作台会按实际媒体端点安全推断协议：设置了“媒体 Base URL”时以它为准，否则沿用 Base URL。阿里云官方 DashScope、地域和 Workspace HTTPS 域名可使用 `dashscope`，其他地址使用 `openai-images`，也可以在供应商卡片中明确选择。即使配置被误标为 `dashscope`，Iris 也会在 fetch 前拒绝向非官方地址发送 DashScope API Key。分离端点后，普通 Base URL 可继续服务视觉/对话，媒体 Base URL 专门服务图片、视频、TTS、转写和媒体模型发现；留空即保持旧行为。
 
 同一个 OpenAI 兼容 Base URL 只有在实际提供相应接口时才能承担对应能力：图片生成需要 Images 接口，视觉理解需要支持图片输入的 Chat Completions 接口。通用 OpenAI 兼容端点目前不能替代 Iris 的 DashScope 视频、TTS 或转写协议。
 
+开发分支中，自动选择的未知端点会在供应商管理区显示“协议为推断值，请确认”，仍按 OpenAI Images 兼容格式请求。显式选择协议后清除标记；不支持的显式协议会在请求前报错，配置值仍保留。视觉类型 `type` 与媒体协议独立，未支持的视觉类型不会被转换为 OpenAI。
+
 ## 模型池
 
-“发现模型”会读取供应商的 `GET /models`，再按模型名识别媒体能力。发现失败时，原模型池不会被清空。
+“发现模型”对普通 OpenAI 兼容服务读取 `GET /models`；对阿里云官方端点读取并分页拉完 `GET /api/v1/models`。官方 `IG/VG/ASR/TTS/VU` 能力元数据优先，缺少元数据时才按模型名兜底。用户手工纠正的能力标签优先级最高，后续重新发现不会覆盖。发现失败时，原模型池不会被清空。
+
+开发分支采用合并发现：保留手工模型、手工能力标注及本次目录未返回的旧模型，只追加或更新发现项。删除模型仍需用户显式操作。运行时仅使用已配置模型；某项能力缺少模型时会提示配置，不再猜测厂商默认值。旧裸账号的兼容目录会在配置写入时转成可编辑的模型条目，显式空模型池不会触发该迁移。
 
 模型池中的能力名称如下：
 
@@ -103,7 +107,7 @@ Iris 当前支持两类调用路径：
 
 每项能力都可以设置一个有序的“供应商 + 模型”列表。界面显示的是模型名和供应商，配置中保存为 `providerId::modelId` 复合引用，因此不同供应商的同名模型不会冲突。
 
-- 未手工分配时，按模型池顺序自动选择。
+- 未手工分配时，每个新请求都从模型池第一个匹配项开始；这不是 round-robin。
 - 手工列表中的模型优先，并按列表顺序尝试。
 - 模型池中其余具备该能力的模型仍会作为后续候选。
 - 点击“恢复自动”会清除手工顺序。
@@ -149,6 +153,7 @@ $DSH_HOME/iris/v1/providers.json
       "name": "Primary media provider",
       "type": "openai",
       "baseUrl": "https://api.example.com/v1",
+      "mediaBaseUrl": "https://WORKSPACE_ID.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
       "apiKey": "YOUR_API_KEY",
       "enabled": true,
       "mediaProtocol": "openai-images",
@@ -165,7 +170,7 @@ $DSH_HOME/iris/v1/providers.json
 }
 ```
 
-`assignments` 可以省略；省略后使用模型池顺序。包含特殊字符的 provider 或模型引用会经过 URL 编码，复杂引用建议在工作台中生成，不要手写。
+`mediaBaseUrl` 可以省略或留空，此时媒体调用沿用 `baseUrl`。`assignments` 可以省略；省略后使用模型池顺序。包含特殊字符的 provider 或模型引用会经过 URL 编码，复杂引用建议在工作台中生成，不要手写。
 
 API Key 以明文保存在宿主侧的 `providers.json` 中。POSIX 上 Iris 目录为 `0700`、文件为 `0600`，0.1.1 首次启动会收紧既有 Iris 树但不修改内容或跟随符号链接；Windows 的 mode 不能替代 ACL。状态接口和界面只返回掩码，不会显示完整 Key。不要把这个文件提交到版本库或发给他人。
 

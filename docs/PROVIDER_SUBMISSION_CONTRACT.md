@@ -57,4 +57,4 @@ Provider `submit()` 必须返回以下四种结构之一：
 
 429 等可证明未创建任务的明确 4xx 拒绝可进入下一候选；408、409、425、499、5xx、网络异常、超时和成功响应缺少必要结果一律停止并记录 `acceptance=unknown`。同步生成已经成功后，下载或落盘失败记录为 `outcome=succeeded / deliveryState=failed`，不会重新生成。
 
-视频、转写与 TTS 也使用相同边界：视频和转写分别持久化 `prepare/upload/submit` stage，上传失败只表示生成请求未受理；TTS 同步成功则先记 `completed/accepted` 再交付音频。工作台消费稳定的人类状态，并提供重新观察、重新交付、提醒已读/恢复和需确认费用的知情重试。v0.1.4 已将 discovery、submit、poll、cancel、download 与 error mapping 收口到统一 Adapter，并由零网络 conformance runner 覆盖现有 DashScope/OpenAI Images 路径。
+视频、转写与 TTS 使用同一受理边界，但提交前输入准备不自动成为 Core 事实。当前 s2v 仍走 legacy 链并可在 legacy Attempt 记录上传错误；Core 转写的 `audio_path` 在 Host/CLI 边界先上传，失败以脱敏的 `stage=upload / acceptance=not_accepted` 返回调用方，零 submit、零 Core Task。准备成功后才创建 Core Task/Attempt 并进入写前 submit；TTS 同步成功则先记 `completed/accepted` 再交付音频。工作台消费稳定的人类状态，并提供重新观察、重新交付、提醒已读/恢复和需确认费用的知情重试。v0.1.4 已将 discovery、submit、poll、cancel、download 与 error mapping 收口到统一 Adapter，并由零网络 conformance runner 覆盖现有 DashScope/OpenAI Images 路径。

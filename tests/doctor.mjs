@@ -64,6 +64,13 @@ if (process.platform !== 'win32') {
 }
 
 const providersFile = path.join(dataDir, 'providers.json');
+fs.writeFileSync(providersFile, JSON.stringify({ providers: [{
+  id: 'no-auth', auth: 'none', mediaBaseUrl: 'http://local.invalid/v1',
+  models: [{ id: 'image-model', capabilities: ['image-gen'] }]
+}], assignments: {} }));
+const noAuth = await doctor({ dshHome: root, commandRunner: runner, sharpLoader });
+assert(noAuth.checks.find((item) => item.id === 'providers').status === 'ok',
+  'auth:none 与独立媒体端点不得误报缺少凭据或端点', noAuth);
 fs.writeFileSync(providersFile, JSON.stringify({ version: 1, providers: [{ id: 'bad', enabled: true }], assignments: {} }));
 const warning = await doctor({ dshHome: root, commandRunner: runner, sharpLoader });
 assert(warning.exitCode === 1 && warning.summary.warnings > 0 && warning.summary.errors === 0, '警告稳定退出码为 1', warning.summary);

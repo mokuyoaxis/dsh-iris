@@ -9,6 +9,7 @@ const adapters = await import('../lib/adapters.js');
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
+const { inspectProviderTaskForDsh, readCoreArtifactMediaForDsh } = await import('../lib/dsh-core-adapter.js');
 const { runAction } = await import('../lib/actions.js');
 const DS_BASE = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 
@@ -58,11 +59,19 @@ try {
 
   const provider = config.upsert({ name: 'modern-image', apiKey: 'modern-key', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', enabled: true, models: [{ id: 'wan2.7-image', capabilities: ['image-gen'] }] });
   config.setAssignmentOrder('image-gen', [models.modelRef(provider.id, 'wan2.7-image')]);
+  const legacyCount = tasks.all().length;
   const action = await runAction({}, 'image', { prompt: 'blue button', size: '1024*1024' });
-  const task = tasks.get(action.taskId);
-  assert(action.remoteTaskId === null && /已完成/.test(action.text), '同步动作返回完成语义', action);
-  assert(task.status === 'succeeded' && task.files.length === 1, '新版图片已转存并登记任务', task);
-  assert(fs.existsSync(path.join(config.irisHome(), 'outputs', task.files[0])), '新版图片产物已落盘');
+  const task = await inspectProviderTaskForDsh(action.taskId);
+  assert(action.storage === 'core' && action.remoteTaskId === null && /已完成/.test(action.text), '同步动作返回 Core 完成语义', action);
+  assert(task.status === 'succeeded' && task.deliveryState === 'ready' && task.artifactIds.length === 1,
+    '新版图片只登记为 Core Task/Artifact', task);
+  assert(tasks.all().length === legacyCount && tasks.get(action.taskId) == null, '同步图片不得双写 legacy tasks/outputs');
+  const media = await readCoreArtifactMediaForDsh(task.artifactIds[0]);
+  assert(media.bytes.toString() === 'fake-png' && action.imageUrl.endsWith('/' + task.artifactIds[0] + '/media'),
+    '动作预览 URL 与 Core Artifact 指向同一字节', { action, artifact: media.artifact });
+  const status = await runAction({}, 'status', { task_id: action.taskId });
+  assert(status.storage === 'core' && status.text.includes(task.artifactIds[0]) && status.text.includes('Core terminal'),
+    'Agent/工作台 status 必须能查询新 Core Task 和 Artifact', status);
 } finally {
   tasks.stopWatchAll();
   global.fetch = originalFetch;

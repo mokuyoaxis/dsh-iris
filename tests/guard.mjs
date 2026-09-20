@@ -1,7 +1,7 @@
 /**
  * dsh-iris 请求守卫测试（O2，发布安全版）。
  * 运行：node tests/guard.mjs
- * 核心断言：默认仅回环；远程 Host 需显式信任；POST 另挡跨站 CSRF。
+ * 核心断言：默认仅回环；远程 Host 需显式信任；浏览器读写均拒绝明确跨站来源。
  */
 import { checkRequest, guarded } from '../lib/guard.js';
 
@@ -19,10 +19,11 @@ assert(!checkRequest({ method: 'GET', headers: {} }).ok, '①d 无 Host 拒绝')
 assert(checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080', 'sec-fetch-site': 'same-origin' } }).ok, '②a 回环同源 POST 放行');
 assert(checkRequest({ method: 'POST', headers: { host: '192.168.1.5:3080', origin: 'http://192.168.1.5:3080' } }, { trustedHosts: '192.168.1.5:3080' }).ok, '②b 精确 LAN host:port 放行');
 assert(checkRequest({ method: 'POST', headers: { host: 'dsh.example.com', origin: 'https://dsh.example.com' } }, { trustedHosts: 'dsh.example.com' }).ok, '②c 反代域名显式信任后放行');
+assert(checkRequest({ method: 'GET', headers: { host: 'dsh.example.com', origin: 'https://dsh.example.com', 'sec-fetch-site': 'same-origin' } }, { trustedHosts: 'dsh.example.com' }).ok, '②d 受信 Host 的同源 GET 放行');
 assert(!checkRequest({ method: 'GET', headers: { host: 'dsh.example.com' } }, { trustedHosts: 'other.example.com' }).ok, '②d 未列出的域名拒绝');
 assert(checkRequest({ method: 'POST', headers: { host: 'localhost:3080' } }).ok, '②d 无 Origin 的本机 CLI/curl POST 放行');
 
-/* ---------- ③ 跨站/跨源 POST 被挡（drive-by CSRF，唯一真威胁） ---------- */
+/* ---------- ③ 浏览器跨站/跨源读写均被挡 ---------- */
 const csrf = checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://evil.example.com' } });
 assert(!csrf.ok && csrf.status === 403, '③a 跨源 Origin POST 拒绝（drive-by CSRF）', csrf);
 const sfs = checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', 'sec-fetch-site': 'cross-site' } });
@@ -32,6 +33,10 @@ assert(!badOrigin.ok && /bad origin/.test(badOrigin.error), '③c 非法 Origin 
 // same-site（子域/跨端口发起）不算同源：Origin.host 不等 → 拒
 const sameSite = checkRequest({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:9999' } });
 assert(!sameSite.ok, '③d 回环跨端口（Origin≠Host）拒绝');
+const crossSiteRead = checkRequest({ method: 'GET', headers: { host: '127.0.0.1:3080', 'sec-fetch-site': 'cross-site' } });
+assert(!crossSiteRead.ok && /cross-site/.test(crossSiteRead.error), '③e Core 媒体等 GET 不接受明确跨站浏览器请求');
+const crossOriginHead = checkRequest({ method: 'HEAD', headers: { host: '127.0.0.1:3080', origin: 'http://evil.example.com' } });
+assert(!crossOriginHead.ok && /cross-origin/.test(crossOriginHead.error), '③f HEAD 同样执行 Origin 守卫');
 
 /* ---------- ④ Origin/Host 大小写与端口敏感 ---------- */
 assert(checkRequest({ method: 'POST', headers: { host: 'LOCALHOST:3080', origin: 'http://localhost:3080' } }).ok, '④a Host 大小写归一后同源放行');
@@ -46,11 +51,14 @@ const wrapped = guarded(() => { called++; });
 const r403 = fakeRes();
 wrapped({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://evil.example.com' } }, r403);
 assert(r403.status === 403 && called === 0 && JSON.parse(r403.body).error, '⑤a 跨源 POST 403 且不进 handler');
+const rGet403 = fakeRes();
+wrapped({ method: 'GET', headers: { host: '127.0.0.1:3080', 'sec-fetch-site': 'cross-site' } }, rGet403);
+assert(rGet403.status === 403 && called === 0, '⑤b 跨站 GET 403 且不进 handler');
 const r200 = fakeRes();
 wrapped({ method: 'GET', headers: { host: 'localhost:3080' } }, r200);
-assert(called === 1 && r200.status === 0, '⑤b 读请求透传 handler');
+assert(called === 1 && r200.status === 0, '⑤c 无浏览器来源头的受信 Host 读请求透传 handler');
 const dead = { headersSent: true, writeHead() { throw new Error('boom'); }, end() {} };
 wrapped({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://evil' } }, dead);
-assert(true, '⑤c 已发送头的连接静默跳过');
+assert(true, '⑤d 已发送头的连接静默跳过');
 
-console.log('ALL OK —— 请求守卫 5 组断言全部通过：默认回环 / 显式 trusted hosts / 跨站 CSRF / 端口敏感 / 包装器');
+console.log('ALL OK —— 请求守卫 5 组断言全部通过：默认回环 / 显式 trusted hosts / 浏览器跨站读写 / 端口敏感 / 包装器');

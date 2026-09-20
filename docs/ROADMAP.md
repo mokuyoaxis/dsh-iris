@@ -1,110 +1,78 @@
 # 路线图
 
-dsh-iris 已具备媒体生成、视觉处理和任务管理主流程。长期方向是宿主无关的多模态生产运行时，DSH 是首个受支持宿主。当前仍通过 DSH 插件使用，独立 Core、CLI 和工作台尚未实现。
-
-变更详情见[变更记录](../CHANGELOG.md)，完整工具清单见[README](../README.md)。
+Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿主的媒体生产核心。本文只列当前状态与后续方向；历史版本的具体改动见[变更记录](../CHANGELOG.md)，内部实现顺序不在公开路线图中展开。
 
 ## 当前状态
 
-现有功能包括：
+当前稳定版本为 `0.1.4`，以 `@mokuyoaxis/dsh-iris` 安装到 DeepSeek Harness。它提供：
 
-- 图像、视频、语音生成和音频转写
-- 看图问答、OCR、定位、裁剪与像素比较
-- 视频抽帧和多模态摘要
-- 多供应商模型池与复合模型身份
-- 浏览器上传、会话附件和宿主路径输入
-- 异步任务恢复、取消传播、SSE 状态更新和授权媒体链接
-- 独立作品库 v0：清任务历史后仍可浏览媒体，并可重新索引旧 `outputs/`
-- 面向 Agent 与用户的统一视频生成实现
-- 两个随包 Agent Skills：UI 视觉验收与多步骤媒体编排；0.1.2 会在插件启用时自动注册
+- 图片、视频和语音生成，音频转写；
+- 看图问答、OCR、目标定位、裁剪、像素比较、视频抽帧和摘要；
+- 多供应商模型池与能力分配；
+- 可恢复的异步任务、受理边界和人工接管；
+- 独立作品库、Iris 工作台、🫧 提示词优化入口；
+- 两项随包 Agent Skill；
+- Host/Provider Adapter、离线 Doctor 和零网络一致性测试。
 
-当前发布版本为 `v0.1.3`。0.1.1 完成配置独立、安全与工程收口，并把 Web loader 适配固定到已验证的 DSH `0.1.2-rc.1` 接口；0.1.4 把已验证支持窗口扩展为 `>=0.1.2-rc.1 <0.1.3-0` 与 `0.1.5-rc.1`，其余预览版在进入支持范围前仍需重新运行宿主 canary。
+稳定版仍以 DSH 为主要入口。开发分支已经建立实例化 Core Runtime，打通无 DSH 的 crop、四种媒体生成提交、Task 观察与 Artifact 管理，并完成带内容哈希、关系边、可重建 Index 和孤儿恢复的 Artifact Manifest v0。crop 与图片、视频、语音、转写的新任务全部落到共享 Core Task/Attempt/Artifact：Host 只负责有界观察、启动接管和 attachment/UI 投影；统一作品区与五类用户状态投影覆盖四种媒体工作，CLI、DSH API 和 UI 共用同一 Command Service 的人工控制面（重新观察、重新取回、取消、重试为新任务）。四种媒体各有真实 Provider canary 证据。s2v 数字人视频、视觉理解与提示词优化仍走稳定链路；Core 公开 API 未冻结，这些接口尚未随稳定版发布，详见 [Headless CLI](HEADLESS_CLI.md)、[FakeProvider 生命周期验收器](PROVIDER_RUNTIME_HARNESS.md)、[Artifact Manifest](ARTIFACT_MANIFEST.md)和 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。
 
-## 已完成：0.1.1
+当前源码是 `0.2.0-rc.1` 的开发检查点，不改变 npm 或 DSH 市场中的 `0.1.4` 稳定版本。检查点可用于源码审阅和 CI，不代表已经发布、冻结公共接口或完成全部平台验收。
 
-### 配置独立与工程收口
-
-- 对齐公开文档和已发布标签，明确当前能力与未来方向。
-- Iris 独立保存配置；ai-paint 仅作为维护者未公开的本地前身和可选迁移来源，不是用户依赖。停止默认读取，仅保留显式指定本地来源的一次性安全导入。
-- 用 Node.js 调度测试，去除对 POSIX Shell 循环的依赖。
-- 绑定供应商凭据与协议端点，统一私有存储权限和流式原子落盘，并验证损坏配置恢复。
-- 将付费能力实测改为单项显式确认，视频与转写不做空样本自动探针。
-- 默认将 Iris HTTP 路由限制在回环 Host，为反代提供显式信任列表和认证部署说明。
-- 增加 Linux/Windows 与 Node.js 20.10/22 CI 矩阵、发布前测试护栏，并以当前 DSH 预览版完成宿主烟测。
-- 核对打包清单，记录真实环境和未验证平台。
-
-## 已完成：0.1.2
-
-### 可见、可达与唯一身份
-
-- 保留 npm 包名 `@mokuyoaxis/dsh-iris`，以 “Iris Media for DSH” 作为展示名，并使用唯一 Cordis 行 ID 避免与另一款 `dsh-iris` 同装冲突。
-- 插件启用时自动注册两项随包 Skill，不要求用户克隆仓库、切换 cwd 或修改默认 Skill 搜索目录。
-- 中英文 README 直接展示已脱敏的 Android 真机截图与代表性生成图，完整流程保留独立画廊；根目录 `screenshots.json` 控制插件市场展示顺序。
-- 在 DSH 对话输入框提供可独立关闭的无框 🫧 提示词优化入口：使用半透明玻璃悬浮窗和窄屏底部面板，支持当前会话/固定模型路由、独立 thinking 策略与保守输出预算、预览写回，以及 JSON 导入导出和恢复默认。
-- 泡泡快捷历史只展示运行中任务与成功产物；功能状态灯不再依赖用户逐张点开卡片。
-- 本版不新增供应商分支，也不声称已完成独立 Core、任务语义 v2 或离线诊断。
+已验证的 DSH 范围为 `>=0.1.2-rc.1 <0.1.3-0` 和 `0.1.5-rc.1`。其他预览版只有通过 Host canary 后才会加入支持范围。
 
 ## 下一步
 
-### 已完成：0.1.3 可信任务
+### 0.2.0：Core、CLI 与 Artifact
 
-- 图片、视频、转写与 TTS 已接入 Task/Attempt v2；只有明确未受理才允许自动 failover。
-- 零网络故障矩阵已覆盖受理未知、轮询耗尽、取消、重启、交付、SSE 与人工接管。
-- 提供重新观察、重新交付、提醒已读/恢复和知情重试，并防止重复提醒与错误旧任务标记。
-- 提供零网络离线 Doctor、公开任务/架构/安全契约，以及 Linux/Windows CI 与 Android 真机短验。
+`0.2.0-rc.1` 用于验证功能独立，不包含 standalone Web 服务。主要工作是：
 
-### 当前开发：0.1.4 适配边界与 Agent 易用性
+1. 让 Core 显式管理数据根、单写者租约、生命周期和取消；
+2. 让 CLI 与 DSH 共用 Command、Task、Attempt 和 Artifact 语义；
+3. 用 FakeProvider 覆盖提交、受理、轮询、交付、重启和取消；
+4. 完成 Artifact Manifest、内容哈希、关系边、索引重建和崩溃一致性；
+5. 通过无 DSH 安装、跨平台测试和真实 DSH canary。
 
-- 冻结 [Host Adapter v0](HOST_ADAPTER_CONTRACT.md) 与 Command × Host Port 矩阵，提供无 DSH 的 Local Host fixture；DSH Adapter 已收口工具、路由、附件、会话、Browser、模型、Skill 与客户端 Slot 消费者，并通过 `0.1.2-rc.1` 隔离 canary 与 `0.1.5-rc.1` 日常宿主实测。
-- 已实现 [Provider Adapter v0 完整生命周期](PROVIDER_ADAPTER_CONTRACT.md) 和零网络 conformance runner；现有 DashScope/OpenAI Images 兼容实现、Task 恢复与重新交付均消费统一契约，本版不新增 Provider。
-- 已实现 [Host Doctor](HOST_DOCTOR.md)：观察插件、14 个工具、2 项 Skill、4 组路由、Browser/附件/模型能力、客户端版本与 UI Slot；只读取安全快照和注册证据，默认零网络、零计费。
-- 已实现 [Provider 与能力健康状态](PROVIDER_HEALTH.md)：按 Provider × Model × Capability 持久化实测/真实任务证据，以灰、蓝、绿、暗红四色及时间呈现，并按当前 failover 候选保守汇总；不增加后台探测。
-- 深化现有 `iris-verify-ui`、`iris-compose-media` 两项 Skill：对齐 Task v2、增加显式调用示例、渐进资源与行为 eval；不以增加 Skill 数量为目标。
-- 增加最小作品库索引，但继续采用渐进迁移；本版不引入完整 Artifact Manifest、standalone 服务、完整 headless 命令集或大规模目录重写。
+正式版只在 rc 升级、回退和双入口验证通过后发布。无用户反馈不会替代这些门槛。
 
-### 0.2.0：独立 Core 与产物记录
+### 后续 0.2.x
 
-- 统一 Agent、工作台与 CLI 的命令执行核心，将 DSH 集成集中到宿主适配器。
-- 将作品库 v0 升级为经安全评审的 Artifact Manifest，为产物保存内容哈希、来源和派生关系，支持检查与导出。
-- 在完整 Manifest 上增加收藏、标签、搜索、筛选和批量导出，不把这些字段塞回任务历史。
-- 在未安装 DSH 的干净环境完成本地动作和供应商任务验收。
-- 建立 Iris 正式产品视觉身份：以简约鸢尾花和泡泡为核心母题，完成可缩放 Logo、图标、单色版与深浅色适配，并替换临时字标。
-- 在统一 Provider Adapter 与 conformance 测试稳定后，依次接入 Gemini、Fal，并把 Replicate 排入后续 0.2.x。
+- 收藏、标签、搜索、筛选和批量导出；
+- Artifact 关系边冻结 `retried-from` 类型，补全重试谱系（0.2.0 仅有 Task 级 `retriedFrom`）；
+- Core Task/Artifact 删除、清理与孤儿 purge（0.2.0 的 Headless CLI 和 DSH 工作台都保持 Core 只读；工作台现有删除、清空与孤儿清理只作用于 legacy `outputs/`）；
+- 鸢尾花与泡泡视觉身份；
+- Gemini、Fal 和后续 Replicate Provider；
+- 将提示词优化收口为 Core Prompt Engine 与共享 `prompt.optimize` Command，由 CLI 和 DSH 入口共同消费；DSH 只负责草稿读取、预览和写回；
+- 冻结中立 TextModel Port，把 Ollama、兼容文本端点及其他文本模型后端与媒体 Provider Catalog 分离，避免通用文本模型淹没 Iris 媒体模型界面；
+- 接入 ComfyUI、本地 TTS 等本地媒体 Provider，并补齐 `auth: none`、`billing: none`、同步完成语义和本地/远程 UI 区分；
+- 有可信价格来源后的成本与策略展示。
 
-### 后续方向
+### 0.3 及以后
 
-- 0.3：有界、可恢复的媒体工作流，以及用户显式启动的本地 API 和最小独立工作台。
-- 0.4：根据真实消费者需要开放供应商和宿主适配契约。
-- 1.0：冻结经过验证的公共契约和升级策略。版本表示目标聚合点，不代表发布日期承诺。
+- `0.3`：Recipe、可恢复 Flow、显式启动的本地 API 和最小独立工作台；
+- `0.4`：在有真实消费者后公开 Provider/Host SDK；
+- `1.0`：冻结经过多宿主和升级验证的公共契约。
 
 ## 兼容性与限制
 
-- Node.js 最低版本为 20.10。
-- 图片处理依赖 `sharp`，非标准 libc 或移动终端环境可能没有可用的预编译包。
-- 视频抽帧与视频摘要依赖 `ffmpeg` 和 `ffprobe`。
-- WSL、远程浏览器和容器部署应优先使用上传或会话附件，避免混淆浏览器路径与宿主路径。
-- HTML 截图运行在离线沙箱中，远程资源和页面脚本不可用。
-- 模型发现只能列出候选项，具体能力需要通过实际请求确认。
-- Node 测试调度器不依赖 Bash，Linux/Windows × Node.js 20.10/22 自动化矩阵已经通过；原生 Windows/WSL 的 DSH 宿主实机冒烟仍待补充。
+- Node.js 最低版本为 20.10；DSH 要求更高版本时以 DSH 为准。
+- 图片处理依赖 `sharp`；视频抽帧和摘要依赖 `ffmpeg`、`ffprobe`。
+- DSH 仍处于快速演进期。单个 Host Port 可以降级，但 DSH 若改变插件加载协议，仍需更新 DSH Adapter。
+- 模型发现只列出候选项；真实能力必须由用户显式验证。
+- 原生 Windows/WSL 的完整 DSH 宿主冒烟仍待补充。
+- Headless CLI 当前开放 crop、图片/视频/语音/转写提交、Task 查询/单步观察与 Artifact 检查/导出；必须显式指定绝对数据根，且不会自动循环观察。0.2.0 的 Headless CLI 与 DSH 工作台都不提供 Core Task/Artifact 删除或清理能力；工作台现有破坏性动作只处理 legacy `outputs/`。Core 删除能力计划在 0.2.x 开放。
 
 ## 质量要求
 
-计划中的改动应满足以下条件：
-
-- `npm test` 通过，并为新增行为补充有针对性的测试。
-- 不泄露供应商密钥、宿主绝对路径或未授权媒体内容。
-- 不在远端任务受理后自动重提生成请求。
-- 不让局部配置更新覆盖未修改字段。
-- 在支持的平台上保持 Agent 工具与工作台行为一致。
-- 发布前检查 npm 包内容和公开文档中的相对链接。
+- 已受理或受理未知的远端任务不得自动重提。
+- 同一数据根不得出现两个写者；reader 不产生隐式写入。
+- Core/CLI 在 DSH/Cordis 不可解析时仍能装载和运行本地动作。
+- Task、Attempt 和 Artifact 不保存凭据、私有 URL 或不必要的宿主绝对路径。
+- 每项新增行为需有失败路径测试；发布前执行打包、敏感信息和仓库外安装检查。
 
 ## 暂不计划
 
-- 在插件内实现账号、权限或多租户系统。
-- 接管 DeepSeek Harness 的通用聊天模型配置。
-- 由 DSH 插件隐式启动独立后台服务或额外监听端口。
-- 在本地工作台阶段建设公网 SaaS、组织账号和多租户系统。
-- 自动探测全部模型能力并触发可能计费的请求。
-- 仅为未来可能使用的供应商预建没有调用方的适配层。
-- 为 0.1.2 临时接入尚无统一契约与测试基线的新供应商。
-- 为展示效果伪造实机截图、生成结果或短视频证据。
+- 在插件中建设账号、多租户、计费或公网 SaaS；
+- 由 DSH 插件隐式启动 daemon 或额外监听端口；
+- 自动探测全部模型并产生不可见费用；
+- 为没有真实调用方的 Provider 或 Host 预建空适配器；
+- 在 Core 稳定前拆分多个 npm 包或重写技术栈。

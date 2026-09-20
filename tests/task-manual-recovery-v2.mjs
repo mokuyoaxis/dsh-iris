@@ -12,6 +12,7 @@ const tasks = await import('../lib/tasks.js');
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const { runAction, listActions } = await import('../lib/actions.js');
+const { inspectProviderTaskForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
 
 const provider = config.upsert({ name: 'Manual Provider', enabled: true,
   baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: 'test-secret',
@@ -60,10 +61,12 @@ try {
     task_id: unknown.id, confirm_duplicate_charge: true
   });
   tasks.stopWatchAll();
-  const retryTask = tasks.get(retried.taskId);
+  stopProviderTaskWatchesForDsh();
+  const retryTask = await inspectProviderTaskForDsh(retried.taskId);
   const linked = tasks.get(unknown.id);
-  assert(fetchCalls.length === 1 && retryTask.retryOf === unknown.id, '知情重试只提交一次并记录来源', { fetchCalls, retryTask });
-  assert(linked.manualRetries.some((item) => item.taskId === retryTask.id), '原任务记录新任务反向关系', linked.manualRetries);
+  assert(fetchCalls.length === 1 && retryTask.attempts.length === 1
+    && retryTask.acceptance === 'accepted', '知情重试只提交一次并进入 Core', { fetchCalls, retryTask });
+  assert(linked.manualRetries.some((item) => item.taskId === retryTask.id), '原 legacy 任务记录 Core 新任务关系', linked.manualRetries);
   const retryDisposition = tasks.attentionDisposition(linked);
   assert(retryDisposition.status === 'acknowledged' && retryDisposition.reason === 'retried'
     && retryDisposition.relatedTaskId === retryTask.id, '知情重试原子归档原提醒并保留关联', retryDisposition);
@@ -147,6 +150,7 @@ try {
   assert(/无法无损重建/.test(unsupportedError), '无法还原输入的能力拒绝伪重试', unsupportedError);
 } finally {
   tasks.stopWatchAll();
+  stopProviderTaskWatchesForDsh();
   globalThis.fetch = originalFetch;
 }
 

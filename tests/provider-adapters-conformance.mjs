@@ -99,6 +99,7 @@ const dashReport = await runProviderConformance(dash, {
       operation: 'submit',
       input: { capability: 'image', model: 'wan-sync', input: { prompt: 'p' } },
       expect: (result) => result.kind === 'completed' && result.value.kind === 'urls'
+        && result.artifacts[0].kind === 'remote-url'
     },
     {
       name: 'submit-video',
@@ -234,6 +235,9 @@ const openAiReport = await runProviderConformance(openAi, {
       operation: 'submit',
       input: { capability: 'image', model: 'gpt-image-1', input: { prompt: 'p' } },
       expect: (result) => result.kind === 'completed' && result.value.kind === 'openai'
+        && result.artifacts[0].kind === 'inline-base64'
+        && result.artifacts[0].data === 'YWJj'
+        && !JSON.stringify(result).includes('YWJj')
     },
     {
       name: 'download',

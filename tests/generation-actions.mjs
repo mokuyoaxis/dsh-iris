@@ -78,15 +78,21 @@ global.fetch = async (input, init = {}) => {
 };
 
 try {
+  const legacyBefore = tasks.all().length;
   const first = await runAction({}, 'video', { prompt: 'failover test' });
   tasks.stopWatchAll();
-  assert(first.providerId === providerIds.good, '首 provider 429 后提交到第二 provider', first);
+  const { stopProviderTaskWatchesForDsh, inspectProviderTaskForDsh } = await import('../lib/dsh-core-adapter.js');
+  stopProviderTaskWatchesForDsh();
+  assert(first.storage === 'core' && first.providerId === providerIds.good,
+    't2v 必须走 Core 链路且首 provider 429 后提交到第二 provider', first);
   assert(submitCalls.slice(0, 2).map((c) => c.auth).join(',') === 'Bearer bad-key,Bearer good-key',
     '提交按复合引用顺序 failover', submitCalls);
-  const firstTask = tasks.get(first.taskId);
-  assert(firstTask.schemaVersion === 2 && firstTask.attempts.length === 2, '视频 failover 只创建一个 Task v2', firstTask);
+  const firstTask = await inspectProviderTaskForDsh(first.taskId);
+  assert(firstTask.attempts.length === 2 && firstTask.capability === 'video',
+    '视频 failover 只创建一个 Core Task', firstTask);
   assert(firstTask.attempts[0].acceptance === 'not_accepted' && firstTask.attempts[1].acceptance === 'accepted',
-    '视频 Attempt 保存明确拒绝与受理事实', firstTask.attempts);
+    'Core Attempt 保存明确拒绝与受理事实', firstTask.attempts);
+  assert(tasks.all().length === legacyBefore, 'Core 视频任务零 legacy 双写', tasks.all().length);
 
   // 后续明确只把 good 放首位；自动池补齐项不会被触发，因为首项提交成功。
   config.setAssignmentOrder('video-gen', [goodRef]);
@@ -94,9 +100,11 @@ try {
   fs.writeFileSync(frame, Buffer.from('fake-png'));
   const i2v = await runAction({}, 'video', { prompt: 'move', first_frame_path: frame, size: '640*480' });
   tasks.stopWatchAll();
+  stopProviderTaskWatchesForDsh();
   const i2vBody = submitCalls.at(-1).body;
-  assert(i2v.mode === 'i2v' && String(i2vBody.input.img_url).startsWith('data:image/png;base64,'),
-    'i2v 通过共享动作发送首帧 data URL', i2vBody);
+  assert(i2v.storage === 'core' && i2v.mode === 'i2v' && String(i2vBody.input.img_url).startsWith('data:image/png;base64,'),
+    'i2v 走 Core 链路并通过共享动作发送首帧 data URL', i2vBody);
+  assert(tasks.all().length === legacyBefore, 'i2v 零 legacy 双写', tasks.all().length);
 
   // 让 attachment 记录落到最近 50 条之外，验证全历史查找。
   const old = tasks.create({ cap: 'image', providerId: providerIds.good, model: 'm', prompt: 'old attachment' });
@@ -128,18 +136,23 @@ try {
     models: [{ id: 'qwen-audio-3.0-asr-flash-filetrans', capabilities: ['transcribe'] }]
   });
   config.setAssignmentOrder('transcribe', [models.modelRef(asrProvider.id, 'qwen-audio-3.0-asr-flash-filetrans')]);
+  const legacyBeforeAsr = tasks.all().length;
   const asr = await runAction({}, 'transcribe', { audio_path: audio });
   tasks.stopWatchAll();
-  assert(asr.providerId === asrProvider.id && asr.model === 'qwen-audio-3.0-asr-flash-filetrans', '转写只走独立 transcribe capability', asr);
-  const asrTask = tasks.get(asr.taskId);
-  assert(asrTask.schemaVersion === 2 && asrTask.attempts.length === 1 && asrTask.acceptance === 'accepted',
-    '转写上传与提交纳入 Task v2', asrTask);
+  stopProviderTaskWatchesForDsh();
+  assert(asr.storage === 'core' && asr.providerId === asrProvider.id && asr.model === 'qwen-audio-3.0-asr-flash-filetrans', '转写只走独立 transcribe capability 的 Core 链路', asr);
+  const asrTask = await inspectProviderTaskForDsh(asr.taskId);
+  assert(asrTask.capability === 'transcribe' && asrTask.attempts.length === 1 && asrTask.acceptance === 'accepted',
+    '转写上传与提交纳入 Core Task', asrTask);
+  assert(tasks.all().length === legacyBeforeAsr, '转写零 legacy 双写（s2v 段落属 legacy，不影响本断言基线）', tasks.all().length);
 
   const indexSrc = fs.readFileSync(new URL('../lib/index.js', import.meta.url), 'utf8');
   assert(indexSrc.includes("runAction(dshHost(ctx), 'video', args, { signal: exec.signal })"),
     'Agent 视频工具复用 GUI 的 video action');
 } finally {
   tasks.stopWatchAll();
+  const { stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+  stopProviderTaskWatchesForDsh();
   global.fetch = originalFetch;
 }
 

@@ -12,6 +12,12 @@ const assert = (condition, message, extra) => {
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
+const { coreSnapshotForDsh, dshCoreDataRoot, inspectProviderTaskForDsh, readCoreArtifactMediaForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+function coreTaskRecords() {
+  const directory = path.join(dshCoreDataRoot(), 'task-store/v0/tasks');
+  return fs.readdirSync(directory).map((name) => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8')));
+}
+
 const { runAction } = await import('../lib/actions.js');
 
 const asyncProvider = config.upsert({
@@ -37,8 +43,8 @@ global.fetch = async (input, init = {}) => {
   const auth = init.headers && init.headers.Authorization;
   if (url.includes('/text2image/image-synthesis')) {
     asyncCalls++;
-    const disk = JSON.parse(fs.readFileSync(path.join(config.irisHome(), 'tasks.json'), 'utf8'));
-    if (disk.tasks.at(-1)?.attempts?.at(-1)?.acceptance === 'none') writeAhead++;
+    if (coreTaskRecords().some((task) => task.phase === 'submitting'
+      && task.attempts.at(-1)?.acceptance === 'none')) writeAhead++;
     if (mode === 'auth-fail') {
       return new Response(JSON.stringify({ code: 'InvalidApiKey', message: 'unauthorized' }), {
         status: 401, headers: { 'Content-Type': 'application/json' }
@@ -50,8 +56,8 @@ global.fetch = async (input, init = {}) => {
   }
   if (url === 'https://images.example.invalid/v1/images/generations') {
     syncCalls++;
-    const disk = JSON.parse(fs.readFileSync(path.join(config.irisHome(), 'tasks.json'), 'utf8'));
-    if (disk.tasks.at(-1)?.attempts?.at(-1)?.acceptance === 'none') writeAhead++;
+    if (coreTaskRecords().some((task) => task.phase === 'submitting'
+      && task.attempts.at(-1)?.acceptance === 'none')) writeAhead++;
     if (mode === 'delivery-fail') {
       return new Response(JSON.stringify({ data: [{ url: 'https://result.invalid/unavailable.png' }] }), {
         status: 200, headers: { 'Content-Type': 'application/json' }
@@ -69,14 +75,16 @@ global.fetch = async (input, init = {}) => {
 
 try {
   const action = await runAction({}, 'image', { prompt: 'mixed providers' });
-  const finished = tasks.get(action.taskId);
+  const finished = await inspectProviderTaskForDsh(action.taskId);
   assert(asyncCalls === 1 && syncCalls === 1 && writeAhead === 2, '异步拒绝后同步候选也先预写 Attempt', { asyncCalls, syncCalls, writeAhead });
-  assert(tasks.all().length === 1 && finished.attempts.length === 2, '混合协议仍只有一个 Task', finished);
+  const snapshot = await coreSnapshotForDsh();
+  assert(snapshot.tasks.total === 1 && tasks.all().length === 0 && finished.attempts.length === 2, '混合协议仍只有一个 Core Task，零 legacy 双写', finished);
   assert(finished.attempts[0].acceptance === 'not_accepted', '异步 429 明确未受理');
   assert(finished.attempts[1].resultKind === 'completed' && finished.attempts[1].acceptance === 'accepted', '同步成功记录为 completed/accepted');
   assert(finished.outcome === 'succeeded' && finished.deliveryState === 'ready' && finished.status === 'succeeded', '同步生成与交付完整收口', finished);
   assert(action.providerId === syncProvider.id && action.remoteTaskId === null, '动作返回实际同步候选');
-  assert(fs.existsSync(path.join(config.irisHome(), 'outputs', finished.files[0])), '同步 base64 产物已落盘');
+  const media = await readCoreArtifactMediaForDsh(finished.artifactIds[0]);
+  assert(media.bytes.toString() === 'sync-png' && !fs.existsSync(path.join(config.irisHome(), 'outputs')), '同步 base64 产物只落盘 Core Artifact');
   const health = config.providerHealthSnapshot();
   const imageHealth = health.capabilities['image-gen'];
   const rejectedHealth = imageHealth.candidates.find((item) => item.providerId === asyncProvider.id);
@@ -93,10 +101,11 @@ try {
     thrown = error;
   }
   assert(thrown && thrown.taskId && /已生成.*交付失败/.test(thrown.message), '同步交付失败返回准确错误与 Task ID', thrown && thrown.message);
-  const failedDelivery = tasks.get(thrown.taskId);
-  assert(failedDelivery.attempts.length === 1 && failedDelivery.attempts[0].resultKind === 'completed', '交付失败不创建第二 Attempt', failedDelivery);
-  assert(failedDelivery.outcome === 'succeeded' && failedDelivery.deliveryState === 'failed', '交付失败保留生成成功事实', failedDelivery);
-  assert(failedDelivery.status === 'running' && failedDelivery.lastError.stage === 'download', '旧 status 保守且错误阶段为 download', failedDelivery);
+  const failedDelivery = await inspectProviderTaskForDsh(thrown.taskId);
+  assert(failedDelivery.attempts.length === 1 && failedDelivery.attempts[0].resultKind === 'completed', 'Core 交付失败不创建第二 Attempt', failedDelivery);
+  assert(failedDelivery.outcome === 'succeeded' && failedDelivery.deliveryState === 'failed', 'Core 保留生成成功、交付失败事实', failedDelivery);
+  assert(failedDelivery.status === 'running' && failedDelivery.lastError.stage === 'download', '兼容 status 保守且错误阶段为 download', failedDelivery);
+  assert(tasks.all().length === 0, '显式同步任务不得双写 legacy Task');
   assert(asyncCalls === 1, '显式同步模型交付失败后不回到异步供应商');
 
   mode = 'auth-fail';
@@ -112,10 +121,11 @@ try {
     '真实动作的明确 401 应把对应候选标为暗红', { error: authThrown && authThrown.message, authHealth });
   assert(syncCalls === 2, '显式认证失败不得调用另一个候选');
 
-  const registry = fs.readFileSync(path.join(config.irisHome(), 'tasks.json'), 'utf8');
+  const registry = JSON.stringify(coreTaskRecords());
   assert(!registry.includes('async-secret') && !registry.includes('sync-secret'), '混合路径不持久化 API Key');
 } finally {
   tasks.stopWatchAll();
+  stopProviderTaskWatchesForDsh();
   global.fetch = originalFetch;
 }
 

@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/iris-wordmark.svg" width="520" alt="IRIS wordmark">
+  <img src="docs/assets/logo/iris-interim-flower.png" width="400" alt="IRIS line-art iris flower (interim logo)">
 </p>
 
 <h1 align="center">Iris Media for DSH</h1>
@@ -44,7 +44,23 @@ These captures come from an Android browser connected to DSH under Termux/PRoot 
 
 The project is at an early stage; interfaces and configuration formats may still change between releases.
 
-Iris's long-term direction is a media production core that can run on its own and plug into different agent hosts. DeepSeek Harness is the first supported host, and the current version still requires DSH — a standalone Core, CLI, and workbench are on the roadmap but not yet available.
+Iris is evolving toward a media production core that can run independently and plug into different agent hosts. Stable release 0.1.4 still uses DSH as its main entry point; the development branch now has a working headless CLI media path (crop, image/video/TTS/transcription submission, task observation, artifact export), but it is not yet a stable public interface.
+
+> Source status: this branch is a development checkpoint for `0.2.0-rc.1`. Core and the CLI can run without a DSH process, but their internal interfaces may still change. The stable npm and DSH marketplace release remains `0.1.4`; a source checkpoint is not a release.
+
+## Two ways to use Iris
+
+| | Path A: DSH plugin (current stable) | Path B: Headless CLI (0.2.0-rc.1, in development) |
+|---|---|---|
+| Who it's for | DeepSeek Harness users who want agent tools, the workbench, and in-chat prompt optimization | Users who want media generation, task tracking, and artifact export from the command line without DSH |
+| Entry point | `dsh plugin add @mokuyoaxis/dsh-iris` — see "Quickest start" below | `dsh-iris run ...` — see [Headless CLI](docs/HEADLESS_CLI.md) |
+| Data location | `$DSH_HOME/iris/v1/` (Core data root `core-v0`) | Any absolute path passed via `--data-root` |
+| Automatic observation | Yes (bounded DSH host ticks + restart takeover) | No — explicit single-step `task observe` |
+| Dependencies | A supported DSH version | Node.js ≥ 20.10 and `sharp` only (`ffmpeg` for video frames) |
+
+Both paths read and write the same Core Task/Artifact facts: point the CLI at the `core-v0` data root of a DSH profile to inspect/export DSH-generated artifacts, and vice versa. Only one writer is allowed per data root.
+
+> Install size note: image processing depends on `sharp` and its prebuilt binaries (~27 MB). On uncommon platforms (e.g. some ARM proot environments) a failed sharp install is detected by `dsh-iris doctor`; image actions become unavailable while everything else keeps working.
 
 ## Relationship with ai-paint
 
@@ -102,11 +118,16 @@ After installing the plugin, add a provider in the Iris workbench and assign mod
 
 ## DeepSeek Harness adaptation
 
-dsh-iris ships as a native DSH plugin with a server side and a web client. The server registers 14 agent tools and reuses the host's tool, routing, and lifecycle services; the client hooks into the settings page, the conversation input area, and the global floating layer through DSH's module loader. The plugin never starts a separate service or listens on an extra port.
+dsh-iris remains a native DSH plugin. Its server registers 14 agent tools and uses host-provided routing, attachment, model, and lifecycle services. The web client contributes settings, composer, and global-overlay UI. Iris does not start another service or listen on an extra port.
 
-Automated tests currently cover plugin loading, tool registration, client seats, and routing behavior. Version 0.1.1 completed host smoke tests on Linux ARM64 — in both a clean and a real web profile — against DSH `0.1.2-rc.1` on Node.js `22.23.2`: the browser startup graph, the full combined bundle, the Iris client factory, and the three UI seats present at that time were verified. The fourth prompt-optimizer seat added in 0.1.2 has now been rendered in a live Android browser; configuration loading, a real session-model optimization with thinking actually `off`, preview write-back, independent disabling and re-enabling, and the loop from a short draft to a succeeded image-generation task are verified. Browser-side cancellation and JSON operations have automated HTTP/configuration coverage; a step-by-step live-device record is still pending. Iris itself keeps Node.js `>=20.10` as its own floor. Version 0.1.4 additionally completed a live host load of 14 tools, two Skills, four route groups, and four UI slots on a daily DSH `0.1.5-rc.1` host.
+| DSH range | Verification |
+|---|---|
+| `>=0.1.2-rc.1 <0.1.3-0` | Clean and daily Web profiles on Linux ARM64 |
+| `0.1.5-rc.1` | Daily Android/Linux profile with 14 tools, two Skills, four route groups, and four UI slots |
 
-Iris 0.1.4 explicitly supports the two verified DSH windows `>=0.1.2-rc.1 <0.1.3-0` and `0.1.5-rc.1`, and no longer works with the legacy client runtime of DSH 0.1.0/0.1.1. Other preview versions have no host canary and are not claimed as compatible; the range widens only after verification passes, and the compatibility badge is not an official certification. If DSH requires a newer Node.js, DSH wins.
+Other preview versions are outside the current compatibility claim. Automated checks cover server loading, tool and Skill registration, routes, the client bundle, and UI slots separately so Doctor can identify which boundary failed.
+
+Core and the DSH Adapter are being separated without changing installation: DSH will keep loading the same npm package, while the Adapter maps host capabilities into Core. A DSH API change should require an Adapter or client-bridge fix, not a rewrite of Task or Artifact semantics. The development-only headless CLI has not shipped in the stable release; see the [roadmap](docs/ROADMAP.md).
 
 ## Tools
 
@@ -157,9 +178,9 @@ By default, the optimizer uses the model selected for the current session and fa
 
 ## Model assignment and failover
 
-Capability assignment uses `providerId::modelId` as the model identity. The same model name from a different provider or account counts as two independent options.
+Capability assignment uses `providerId::modelId` as the model identity. The same model name from a different provider or account counts as two independent options. Discovery prefers provider capability metadata, falls back to name rules, and preserves explicit user overrides. Alibaba Cloud media calls may use a separate Workspace `mediaBaseUrl`.
 
-Generation capabilities accept multiple candidate models. Iris tries the next candidate only when the provider explicitly proves that the request was not accepted. A 500 response, timeout, disconnect, missing response, polling failure, or local persistence failure never authorizes automatic resubmission. Once accepted, Iris may only resume observation or delivery.
+Generation capabilities accept multiple candidate models. Every request starts at the head of the ordered list; this is safe failover, not round-robin. Iris tries the next candidate only when the provider explicitly proves that the request was not accepted. A 500 response, timeout, disconnect, missing response, polling failure, or local persistence failure never authorizes automatic resubmission. Once accepted, Iris may only resume observation or delivery.
 
 The workbench lists paused observation, unknown acceptance/outcome, and successful generation with failed delivery under “Needs attention.” Re-observe never submits; re-deliver never regenerates; acknowledge/restore only changes the local reminder queue; only an explicitly confirmed informed retry creates a linked new task and may incur duplicate charges. Creating that task archives the original reminder while preserving its unknown facts and audit link. See [Task semantics](docs/TASK_SEMANTICS.md), [Architecture](docs/ARCHITECTURE.md), [Security](docs/SECURITY.md), and the [Fault-injection matrix](docs/FAULT_INJECTION.md).
 
@@ -218,7 +239,7 @@ Audio and video are served through Iris media links that carry random capability
 ## Security notes
 
 - Provider keys are never returned by status endpoints.
-- The DashScope media protocol only sends keys to official Alibaba Cloud HTTPS domains; any other base URL defaults to the OpenAI Images–compatible protocol.
+- The DashScope media protocol only sends keys to official Alibaba Cloud HTTPS, regional, or Workspace domains. A separate `mediaBaseUrl` may split media from vision/chat traffic; other addresses default to the OpenAI Images–compatible protocol.
 - `/iris/*` accepts loopback Host headers only by default; LAN or reverse-proxy deployments must set `IRIS_TRUSTED_HOSTS` explicitly, and state-changing requests are also checked against cross-site origins.
 - `IRIS_TRUSTED_HOSTS` is not an authentication mechanism. When exposing DSH to the public internet or an untrusted network, configure authentication and HTTPS at the reverse proxy or host layer.
 - Paid model probes run one capability at a time and always confirm before a real provider call; video and transcription never submit empty-sample paid probes automatically.

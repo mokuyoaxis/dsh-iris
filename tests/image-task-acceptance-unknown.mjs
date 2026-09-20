@@ -13,6 +13,12 @@ const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
 const { runAction } = await import('../lib/actions.js');
+const { dshCoreDataRoot, inspectProviderTaskForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+function coreTaskRecords() {
+  const directory = path.join(dshCoreDataRoot(), 'task-store/v0/tasks');
+  return fs.readdirSync(directory).map((name) => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8')));
+}
+
 
 const first = config.upsert({
   name: 'ambiguous-first', apiKey: 'ambiguous-secret', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', enabled: true,
@@ -35,8 +41,8 @@ let scenario = 'server';
 global.fetch = async (input, init = {}) => {
   const url = String(input);
   if (!url.includes('/text2image/image-synthesis')) throw new Error('unexpected fetch: ' + url);
-  const persisted = JSON.parse(fs.readFileSync(path.join(config.irisHome(), 'tasks.json'), 'utf8'));
-  writeAhead = persisted.tasks.at(-1)?.attempts?.at(-1)?.acceptance === 'none';
+  writeAhead = coreTaskRecords().some((task) => task.phase === 'submitting'
+    && task.attempts.at(-1)?.acceptance === 'none');
   const auth = init.headers && init.headers.Authorization;
   if (auth === 'Bearer ambiguous-secret') {
     firstCalls++;
@@ -65,7 +71,7 @@ async function expectUnknown(kind) {
   }
   assert(thrown && thrown.taskId && /受理状态未知/.test(thrown.message), kind + ' 以受理未知错误返回 Task ID', thrown && { message: thrown.message, taskId: thrown.taskId });
   assert(writeAhead && firstCalls === beforeCalls + 1 && secondCalls === 0, kind + ' 时禁止调用下一候选', { writeAhead, firstCalls, secondCalls });
-  const task = tasks.get(thrown.taskId);
+  const task = await inspectProviderTaskForDsh(thrown.taskId);
   assert(task.attempts.length === 1 && task.acceptance === 'unknown' && task.outcome === 'unknown', kind + ' 保留未知事实而非失败', task);
   assert(task.phase === 'terminal' && task.status === 'running', kind + ' 的兼容状态不伪造确定终态', task);
   return task;
@@ -78,10 +84,11 @@ try {
   assert(networkTask.lastError.category === 'network', '原生 fetch 失败分类为网络错误', networkTask.lastError);
   const missingTask = await expectUnknown('missing-id');
   assert(missingTask.lastError.category === 'protocol', '200 缺 task_id 分类为协议错误', missingTask.lastError);
-  const registry = fs.readFileSync(path.join(config.irisHome(), 'tasks.json'), 'utf8');
+  const registry = JSON.stringify(coreTaskRecords());
   assert(!registry.includes('ambiguous-secret') && !registry.includes('unused-secret'), '未知错误记录不泄露 API Key');
 } finally {
   tasks.stopWatchAll();
+  stopProviderTaskWatchesForDsh();
   global.fetch = originalFetch;
 }
 

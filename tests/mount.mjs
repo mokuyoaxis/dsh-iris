@@ -9,6 +9,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import sharp from 'sharp';
 import { useTempDshHome } from './test-env.js';
 
 useTempDshHome('iris-mount-home');
@@ -25,6 +26,7 @@ const assert = (cond, msg, extra) => {
  */
 function stubCtx({ registerThrows }) {
   const registeredSkills = [];
+  const savedImages = [];
   const services = {
     skills: {
       register(skill) {
@@ -43,7 +45,13 @@ function stubCtx({ registerThrows }) {
     },
     webServer: { register: () => () => {} },
     httpServer: { register: () => () => {} },
-    attachments: { saveImage: async () => ({}), readImage: async () => ({}) },
+    attachments: {
+      async saveImage(input) {
+        savedImages.push(input);
+        return { attachmentId: 'saved-' + savedImages.length, mediaType: input.mediaType, name: input.name };
+      },
+      readImage: async () => ({})
+    },
     llm: { stream: async function* () {} },
     sessionQuery: { readSession: async () => ({ events: [] }) }
   };
@@ -52,6 +60,7 @@ function stubCtx({ registerThrows }) {
   const stub = {
     _registered: registered,
     _registeredSkills: registeredSkills,
+    _savedImages: savedImages,
     _disposers: disposers,
     get(name) {
       return services[name];
@@ -84,6 +93,16 @@ const names = ctx1._registered.map((d) => d.name);
 for (const want of ['iris_draw_image', 'iris_generate_video', 'iris_speak_text', 'iris_transcribe_audio', 'iris_look_at_image', 'iris_relook_attachment', 'iris_task_status', 'iris_crop', 'iris_pixel_diff', 'iris_locate', 'iris_html_screenshot', 'iris_long_ocr', 'iris_video_frames', 'iris_media_summarize']) {
   assert(names.includes(want), '缺少工具: ' + want + '（实际: ' + names.join(', ') + '）');
 }
+const cropSource = path.join(process.env.DSH_HOME, 'mount-crop-source.png');
+await sharp({ create: { width: 6, height: 5, channels: 4, background: '#5165cf' } }).png().toFile(cropSource);
+const cropTool = ctx1._registered.find((definition) => definition.name === 'iris_crop');
+const cropResult = await cropTool.execute({ image_path: cropSource, left: 1, top: 1, width: 3, height: 2 }, {});
+assert(ctx1._savedImages.length === 1 && ctx1._savedImages[0].mediaType === 'image/png'
+  && ctx1._savedImages[0].data instanceof Uint8Array,
+  'iris_crop 必须把 Core Artifact 投影给 DSH attachments.saveImage');
+assert(cropResult.blocks[0].text.includes('3x2') && cropResult.blocks[0].text.includes('saved-1')
+  && cropResult.blocks[1].attachment.attachmentId === 'saved-1',
+  'iris_crop 必须保持文字与图片 block 输出形状', cropResult);
 assert(ctx1._registeredSkills.map((skill) => skill.name).join(',') === 'iris-verify-ui,iris-compose-media',
   '插件启用时应注册两项随包 Skill：' + ctx1._registeredSkills.map((skill) => skill.name).join(','));
 const { hostRuntimeEvidence } = await import('../lib/host-runtime.js');
@@ -147,4 +166,4 @@ const dV = pollDeps(fixtureProvider, 'video');
 assert(dI.intervalMs === 2500 && dV.intervalMs === 6000, '⑤ image/video 间隔不回归');
 
 console.error = origError;
-console.log('ALL OK —— apply 装载鲁棒性 5 场景断言全部通过（单工具失败/路由缺失/坏任务恢复/转写接管均不炸宿主）');
+console.log('ALL OK —— apply 装载鲁棒性与 DSH crop Host 投影通过（单工具失败/路由缺失/坏任务恢复/转写接管均不炸宿主）');

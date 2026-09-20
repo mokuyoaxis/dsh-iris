@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/iris-wordmark.svg" width="520" alt="IRIS 彩色字标">
+  <img src="docs/assets/logo/iris-interim-flower.png" width="400" alt="IRIS 线稿鸢尾花（临时标志）">
 </p>
 
 <h1 align="center">Iris Media for DSH</h1>
@@ -44,7 +44,23 @@ dsh-iris 为 Agent 和 Iris 工作台提供图像、视频、语音与视觉理�
 
 项目目前处于早期版本，接口和配置格式仍可能随版本迭代调整。
 
-Iris 的长期方向是可独立运行、可接入不同 Agent 宿主的媒体生产核心。DeepSeek Harness 是首个受支持宿主；当前版本仍需要 DSH，独立 Core、CLI 和工作台属于后续路线，尚未提供。
+Iris 的长期方向是可独立运行、可接入不同 Agent 宿主的媒体生产核心。稳定版 0.1.4 仍以 DSH 为主要入口；开发分支已打通无 DSH 的 CLI 媒体链路（crop、图片/视频/语音/转写提交、任务观察、作品导出），但尚未作为稳定接口发布。
+
+> 源码状态：当前分支是 `0.2.0-rc.1` 的开发检查点，Core/CLI 已可在无 DSH 进程中运行，但内部接口仍可能调整。npm 与 DSH 市场的稳定版本仍为 `0.1.4`；源码检查点不等于发布。
+
+## 两条使用路径
+
+| | 路径 A：DSH 插件（当前稳定） | 路径 B：Headless CLI（0.2.0-rc.1 开发中） |
+|---|---|---|
+| 适合谁 | 已在使用 DeepSeek Harness，想要 Agent 工具、工作台和对话内提示词优化 | 想在无 DSH 环境用命令行完成媒体生成、任务跟踪和作品导出 |
+| 入口 | `dsh plugin add @mokuyoaxis/dsh-iris`，见下文「最快开始」 | `dsh-iris run ...`，见 [Headless CLI](docs/HEADLESS_CLI.md) |
+| 数据位置 | `$DSH_HOME/iris/v1/`（Core 数据根 `core-v0`） | 显式 `--data-root` 指定的任意绝对路径 |
+| 自动观察 | 有（DSH Host 有界节拍 + 重启接管） | 无，显式单步 `task observe` |
+| 依赖 | 受支持的 DSH 版本 | 仅 Node.js ≥ 20.10 与 `sharp`（视频抽帧另需 `ffmpeg`） |
+
+两条路径读写同一份 Core Task/Artifact 事实：CLI 指向 DSH profile 的 `core-v0` 数据根即可 inspect/export DSH 生成的作品，反之亦然。同一数据根只允许一个写者。
+
+> 安装体积提示：图像处理依赖 `sharp` 及其预编译二进制（约 27MB）。冷门平台（如部分 ARM proot 环境）安装失败时 `dsh-iris doctor` 可检出，图像类动作不可用，其余能力不受影响。
 
 ## 与 ai-paint 的关系
 
@@ -102,11 +118,16 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 
 ## DeepSeek Harness 适配
 
-dsh-iris 按 DeepSeek Harness 插件形态提供服务端与 Web 客户端入口：服务端注册 14 个 Agent 工具，并复用宿主的工具、路由和生命周期服务；客户端通过 DSH 模块加载器接入设置页、会话输入区和全局悬浮层。插件不会启动独立服务或额外监听端口。
+dsh-iris 仍按 DSH 原生插件装载。服务端注册 14 个 Agent 工具，并使用宿主提供的路由、附件、模型和生命周期能力；Web 客户端接入设置页、会话输入区与全局悬浮层。插件不会启动额外服务或监听端口。
 
-当前自动化测试覆盖插件装载、工具注册、客户端槽位和路由行为。0.1.1 已在 Linux ARM64 的干净与真实 Web profile 中，使用 DSH `0.1.2-rc.1`、Node.js `22.23.2` 完成宿主烟测；浏览器启动图、完整组合 bundle、Iris 客户端工厂和当时的三个 UI 座位均已验证。0.1.2 新增的第四个提示词优化座位已在 Android 浏览器真机确认渲染，配置读取、真实会话模型优化（实际 thinking `off`）、预览写回、独立关闭与重新启用，以及从短草稿到图片生成任务成功的闭环均已验证；浏览器端取消和 JSON 操作已有自动化 HTTP/配置覆盖，尚待补充真机逐项记录。Iris 自身仍以 Node.js `>=20.10` 为最低基线。0.1.4 另在 Android/Linux 日常 DSH `0.1.5-rc.1` 上完成 14 工具、2 项 Skill、4 组路由与 4 个 UI Slot 的实机装载验证。
+| DSH 范围 | 验证记录 |
+|---|---|
+| `>=0.1.2-rc.1 <0.1.3-0` | Linux ARM64 的干净与日常 Web profile |
+| `0.1.5-rc.1` | Android/Linux 日常 profile；14 个工具、2 项 Skill、4 组路由和 4 个 UI Slot |
 
-Iris 0.1.4 明确支持 DSH `>=0.1.2-rc.1 <0.1.3-0` 与 `0.1.5-rc.1` 这两个已实测窗口，不再兼容 0.1.0/0.1.1 的旧客户端 Runtime。其余预览版未经宿主 canary，不宣称兼容，验证通过后再扩大范围；兼容徽章不代表官方认证。若 DSH 要求更高 Node 版本，以 DSH 为准。
+其余预览版不在当前兼容声明内。自动化测试分别检查服务端装载、工具与 Skill 注册、路由、客户端 bundle 和 Slot；其中一层失效时，Doctor 应指出具体边界。
+
+Core 与 DSH Adapter 正在分离，但安装方式不变：DSH 继续加载同一个 npm 包，Adapter 把宿主能力映射给 Core。若 DSH 修改 API，修复应限制在 Adapter 和客户端桥接；Core 的任务和产物语义不随宿主版本改变。当前开发中的无 DSH CLI 尚未随稳定版发布，见[路线图](docs/ROADMAP.md)。
 
 ## 工具
 
@@ -157,9 +178,9 @@ Iris 会在 DSH 对话输入区提供一个无边框、无文字的“🫧”入
 
 ## 模型分配与故障转移
 
-能力分配使用 `providerId::modelId` 作为模型身份。同名模型如果来自不同供应商或不同账号，会被视为两个独立选项。
+能力分配使用 `providerId::modelId` 作为模型身份。同名模型如果来自不同供应商或不同账号，会被视为两个独立选项。模型发现优先采用供应商返回的能力元数据，名称规则只作兜底，用户手工标注最终生效；阿里云百炼可为媒体请求单独配置 Workspace `mediaBaseUrl`。
 
-生成类能力可以配置多个候选模型。Iris 只有在供应商明确证明未受理时才会尝试下一个候选；500、超时、断网、响应缺失、轮询失败和本地落盘失败都不会授权自动重提。远端服务一旦受理任务，Iris 只会恢复观察或交付，以免产生重复任务或重复计费。
+生成类能力可以配置多个候选模型。每次请求都从有序列表首项开始，并非 round-robin；Iris 只有在供应商明确证明未受理时才会尝试下一个候选；500、超时、断网、响应缺失、轮询失败和本地落盘失败都不会授权自动重提。远端服务一旦受理任务，Iris 只会恢复观察或交付，以免产生重复任务或重复计费。
 
 工作台把观察暂停、受理/结果未知和生成成功但交付失败单列为“需要处理”。“重新观察”不会提交；“重新交付”不会重新生成；“标为已读/恢复提醒”只改变本地提醒队列；只有“知情重试”会创建新任务，并要求用户逐次确认潜在重复费用。新任务创建后，原提醒自动归档但保留未知事实和新旧任务关联。任务语义、架构、安全边界与故障证据分别见 [`TASK_SEMANTICS.md`](docs/TASK_SEMANTICS.md)、[`ARCHITECTURE.md`](docs/ARCHITECTURE.md)、[`SECURITY.md`](docs/SECURITY.md) 和 [`FAULT_INJECTION.md`](docs/FAULT_INJECTION.md)。
 
@@ -218,7 +239,7 @@ Iris 自带两个 Agent Skills（`iris-verify-ui` 与 `iris-compose-media`），
 ## 安全说明
 
 - 供应商密钥不会通过状态接口返回。
-- DashScope 媒体协议只允许把密钥发送到阿里云官方 HTTPS 域名；其他 Base URL 默认推断为 OpenAI Images 兼容协议。
+- DashScope 媒体协议只允许把密钥发送到阿里云官方 HTTPS、地域或 Workspace 域名；可用独立 `mediaBaseUrl` 与视觉/对话端点分流，其他地址默认推断为 OpenAI Images 兼容协议。
 - `/iris/*` 默认只接受回环 Host；LAN 或反向代理必须显式设置 `IRIS_TRUSTED_HOSTS`，修改状态的请求还会检查跨站来源。
 - `IRIS_TRUSTED_HOSTS` 不是认证机制。对公网或不可信网络开放 DSH 时，必须在反向代理或宿主层配置身份认证与 HTTPS。
 - 模型实测只按单项能力运行，并在真实供应商调用前确认；视频和转写不会用空样本自动提交付费探针。

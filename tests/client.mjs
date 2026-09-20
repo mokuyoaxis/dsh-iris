@@ -205,10 +205,22 @@ assert(src.includes("fetch('/iris/api/artifacts?offset='") && src.includes("Reac
 for (const action of ['artifacts_reindex', 'artifacts_delete', 'artifacts_clear']) {
   assert(src.includes("'" + action + "'"), '作品库缺少动作调用 ' + action);
 }
-assert(src.includes('清任务历史不会删除') && src.includes('永久删除作品库中的全部媒体文件'),
-  '作品与任务分离语义或独立删除确认不完整');
-assert(src.includes("var works = (state && state.artifacts && state.artifacts.recent) || []"),
-  '泡泡最近作品仍依赖任务历史');
+assert(src.includes('清任务历史不会删除') && src.includes('永久删除旧版 outputs 作品')
+  && src.includes('内容哈希保护') && src.includes("artifact.kind !== 'host-input'"),
+  '统一作品区的生命周期、Core 保护或输入排除语义不完整');
+assert(/function\s+coreTaskState\s*\(/.test(src)
+  && src.includes('已完成，作品可用')
+  && src.includes("var openPair = React.useState(false)")
+  && src.includes("var selectedCoreTask = selectedPair[0]")
+  && src.includes("'复制 Task ID'")
+  && src.includes("'打开作品'")
+  && src.includes('不会重新提交、删除或修改既有任务'),
+  'Core 任务事实缺少默认收起、任务详情、作品入口或只读边界');
+assert(src.includes('var coreWorks = useCoreWorks(6)')
+  && src.includes("dispatchEvent(new CustomEvent('iris-core-refresh-tick'))")
+  && src.includes('coreWorks.concat(legacyWorks)')
+  && src.includes("addEventListener('iris-core-artifacts-changed'"),
+  '泡泡与统一作品区未消费 Core 作品或缺少完成后刷新');
 assert(src.includes("works.length ? works.map(artifactRowMini)"), '泡泡未展示独立作品索引');
 assert(!src.includes("t.status === 'succeeded' && Array.isArray(t.media) && t.media.length > 0"),
   '泡泡不得继续从任务记录推导作品');
@@ -270,7 +282,7 @@ assert(src.includes('providers_discover'), '缺少发现模型调用');
 assert(/verBadge|verified/.test(src), '模型池缺少 verified 状态标记');
 assert(src.includes('confirm_paid') && src.includes('可能产生费用'), '真实模型实测缺少费用确认');
 assert(src.includes("capability === 'video-gen' || capability === 'transcribe'"), '视频/转写应走不提交空样本的跳过路径');
-assert(src.includes("mediaProtocol: 'auto'") && src.includes('自动（按 Base URL 安全判断）'), '供应商表单缺少媒体协议安全自动判断');
+assert(src.includes("mediaProtocol: 'auto'") && src.includes('自动（按媒体 Base URL 安全判断）'), '供应商表单缺少媒体端点协议安全自动判断');
 
 /* ⑨ 阶段 10：文件选择器 FileField（看见并选文件，不手填路径） */
 assert(new RegExp('function\\s+FileField\\s*\\(').test(src), '缺少 FileField 组件');
