@@ -6,7 +6,7 @@
 
 Core Runtime 由调用方显式创建、启动和释放。数据根、操作权限、取消和清理都属于实例；存储缓存与观察器接入后也必须遵守同一归属。Core 不推断 DSH profile，不读取 `ctx`，不启动浏览器或监听端口，也不在启动、Doctor 或能力枚举时触发供应商请求。
 
-当前候选已包含 Runtime、首批 Command 和最小 Artifact v0。完整 Task/Attempt 接入、Artifact Manifest 与 DSH 消费迁移仍在后续范围内；这些工作复用现有实现，不建立平行的 Actions。
+当前开发检查点已包含 Runtime、Task/Attempt、Artifact Manifest、首批本地与媒体 Command，以及 DSH 对已迁移媒体任务的同源消费。s2v、视觉理解等未迁移能力仍走 legacy Host；这不是完整迁移或公开 Core API 已冻结的声明。
 
 ## 数据根和进程归属
 
@@ -14,7 +14,7 @@ Core Runtime 由调用方显式创建、启动和释放。数据根、操作权�
 - 每个数据根只允许一个写者。写者必须在读取、初始化、规范化配置、接回旧作品、重建索引或启动任务观察器之前取得数据根租约，并持有到实例完成释放。
 - 其他进程可以用 `reader` 打开同一数据根，但只能执行无副作用的检查。DSH 正在使用该数据根时，CLI 写操作返回 `IRIS_CORE_DATA_ROOT_BUSY`；用户可以停止现有写者，或显式选择另一数据根。
 - 只读不是隐式写入：不得创建缺失文件、修改权限、隔离损坏文件、修复/迁移记录、接回 `outputs/`、更新健康时间或启动任务观察器。
-- 写者冲突必须 fail-fast。不得自动夺取租约，不得仅凭 PID 不存在或超时就判断旧写者已经安全退出；显式恢复流程需在后续实现阶段单独设计和测试。
+- 写者冲突必须 fail-fast，普通 Runtime **不得自动夺取**租约。开发分支已有独立的 `runtime recover` 显式流程：先由只读 Doctor 报告 owner，再要求用户回显陈旧 PID，并在接管时复核证据、写私有审计；活跃、未知或损坏状态拒绝。PID 不存在本身仍不是跨主机安全证明。
 - 路径别名必须在取得租约前解析为同一物理数据根。不能只依赖字符串规范化或原子 `rename`：后者可以防止半写文件，不能阻止两个带缓存的进程互相覆盖。
 
 初版租约优先使用 Node 标准库和本地文件系统能力，不新增生产依赖。Android 共享存储、网络文件系统和异常退出后的恢复只有拿到真实证据后才声明支持；实现不得假设 systemd 或常驻 daemon 存在。
@@ -27,6 +27,8 @@ Core Runtime 由调用方显式创建、启动和释放。数据根、操作权�
 | `writer` | 允许 | 允许 | 允许 |
 
 `inspect` 只读取已有事实并返回中性的可序列化结果。`execute` 包含本地动作、远端提交和任何持久化变化。`recover` 包含显式迁移、索引重建、损坏隔离和租约恢复；它不是普通读取的自动副作用。
+
+上表是 Core 操作的权限分类。CLI 的 `runtime recover` 是租约外的独立、需人工确认的接管入口；它不能先取得被陈旧 owner 占用的普通 writer 租约，也不能由 reader 或 Doctor 隐式触发。
 
 启动、释放、Doctor、Provider 列表与 capability 列表本身不触发供应商请求、不产生费用，也不偷偷恢复远端任务。真实验证和生成必须由用户显式执行，并继续遵守现有受理、重试、取消和预算规则。
 
@@ -69,9 +71,9 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 - `normalizeCoreOptions()`：规范化显式数据根和 reader/writer 模式；
 - `createCoreRuntime()`：管理写者租约、状态、`AbortSignal`、在途操作和 cleanup；
 - `createCommandService()`：提供 `crop`、只读 `task.list/task.inspect`、显式单步 `task.observe`/`task.reobserve`（同一份实现，`reobserve` 是人工触发观察的对外命令名）、人工重新交付 `task.redeliver`（只开放 outcome=succeeded / deliveryState=failed，一次带 redelivery 标志的 re-poll + 下载，绝不 submit、绝不重新生成）、人工取消 `task.cancel`（只开放已受理未终态任务，只有 Provider 明确确认才写 canceled，不支持/无法确认保持真实状态）、人工重试为新任务 `task.retry`（只开放终态未成功交付任务；必须显式 confirm_billing 确认重复计费；新 Task 记录单向 retriedFrom 关系，候选链按宿主实况重新解析；Core 不持久化 Prompt，prompt 必须由调用方重新提供），以及 Artifact inspect/list/export/rebuild；Task reader 返回既有安全事实，不读取 Provider 配置，也不创建、修复或迁移记录；`observe/reobserve/redeliver/cancel` 只接受宿主注入的 Adapter resolver，`retry` 只接受宿主注入的候选链 resolver，Core 不读取配置路径；Task capability 现已覆盖 image、video、tts 与 transcribe——交付按 `provider-task-runner.js` 的 DELIVERY_PROFILES 冻结（video：`video/mp4` + `generated-video`；tts：`audio/mpeg`/`audio/wav` + `generated-audio`，同步 completed 同次调用内交付；transcribe：`text/plain` + `transcript`，正文物化为 UTF-8 Artifact），不共用不准确的图片交付语义；
-- Artifact v0：保存受控文件与最小记录，可跨 CLI 进程检查和导出。
+- Artifact Manifest v0：保存受控对象、SHA-256、关系边和可重建 Index，可跨 CLI 进程检查、导出和显式重建；Doctor 只报告孤立/未解析条目，不自动删除或修复。
 
-[Headless CLI](HEADLESS_CLI.md) 记录了当前开发接口。下一阶段将用 FakeProvider 验证远端任务生命周期，再扩展完整 Artifact Manifest、哈希、关系、重建与崩溃一致性。DSH 消费者在这些语义稳定后迁移。
+[Headless CLI](HEADLESS_CLI.md) 记录了当前开发接口，包括只读配置查询、Core Doctor 与陈旧租约显式恢复。FakeProvider 与各媒体 Profile 的离线生命周期测试已经存在；真实 Provider、Android 目视、跨平台 CI 和发布门禁仍须分别举证。未迁移能力保持 legacy 路径，不冒充 Core 事实。
 
 ## 非目标
 

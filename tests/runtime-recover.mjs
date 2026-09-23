@@ -96,6 +96,26 @@ try {
   assert.equal(fs.readFileSync(staleOwnerFile, 'utf8'), staleBefore);
   assert.equal(fs.existsSync(path.join(staleRoot, '.iris-runtime-recovery-audit-v0')), false);
 
+  // 接管中途的普通 I/O 错误必须映射为稳定恢复错误，并保留原租约供重试。
+  const originalReadFileSync = fs.readFileSync;
+  let injected = false;
+  fs.readFileSync = (...args) => {
+    if (!injected && String(args[0]).includes('.owner.stale-')) {
+      injected = true;
+      throw new Error('fixture: stale owner read failed');
+    }
+    return originalReadFileSync(...args);
+  };
+  try {
+    assert.throws(() => recoverCoreWriterLease(staleRoot, { confirmStalePid: staleOwner.pid }),
+      { code: 'IRIS_CORE_LEASE_RECOVERY_FAILED' });
+  } finally {
+    fs.readFileSync = originalReadFileSync;
+  }
+  assert.equal(injected, true, '故障必须发生在接管开始之后');
+  assert.equal(fs.readFileSync(staleOwnerFile, 'utf8'), staleBefore, '失败后原租约必须保留');
+  assert.equal(fs.existsSync(path.join(staleRoot, '.iris-runtime-recovery-audit-v0')), false);
+
   const recovered = cli(['runtime', 'recover', '--data-root', staleRoot, '--confirm-stale-pid', String(staleOwner.pid)]);
   assert.equal(recovered.status, 0, recovered.stderr);
   const result = JSON.parse(recovered.stdout);

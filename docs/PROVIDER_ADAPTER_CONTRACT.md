@@ -1,6 +1,6 @@
 # Provider Adapter v0 生命周期契约
 
-状态：**v0.1.4 内部契约已实现。** 这是 Iris Core 候选模块与供应商协议实现之间的稳定边界，不是面向第三方承诺兼容性的公开 SDK。当前 DashScope 与 OpenAI Images 兼容实现已经通过同一套零网络 conformance runner。
+状态：**v0.1.4 的六操作内部契约已实现；0.2.0-rc.1 开发分支增加可选输入准备能力。** 这是 Iris Core 候选模块与供应商协议实现之间的边界，不是面向第三方承诺兼容性的公开 SDK。当前 DashScope 与 OpenAI Images 兼容实现已经通过同一套零网络 conformance runner。
 
 ## 目标与依赖方向
 
@@ -38,11 +38,15 @@ Action / Task watcher / recovery / model discovery
   protocol: 'dashscope',
   capabilities: ['image', 'video', 'tts', 'transcribe'],
   operations: { discover, submit, poll, download, mapError },
-  unsupported: { cancel: '经过验证的原因' }
+  unsupported: { cancel: '经过验证的原因' },
+  // 可选扩展：prepareInput 或 unsupportedPreparation，二者不能同时声明
+  prepareInput: async ({ model, filePath, signal, timeoutMs }) => ({ url: '临时地址' })
 }
 ```
 
 六个操作必须**恰好**出现在 `operations` 或 `unsupported` 之一。方法缺失不能被解释为临时故障；调用显式不支持的方法会得到稳定的 `IRIS_PROVIDER_OPERATION_UNSUPPORTED`。v0 要求所有 Adapter 实现 `submit` 与 `mapError`，其余操作可根据协议事实显式声明不支持。
+
+`prepareInput` 不属于这六个生命周期操作。未提供该扩展的旧 Adapter 仍有效，能力快照中的 `inputPreparation` 会标为 unsupported；具体协议也可以用 `unsupportedPreparation` 给出受控原因。快照不包含凭据、端点或临时地址。
 
 ## 生命周期操作
 
@@ -70,7 +74,11 @@ Core Attempt 持久化 `providerId::modelId` 复合身份，具体 Provider Adap
 
 `download` 物化已经确认成功的产物：`remote-url` 执行下载，OpenAI Images 的 `inline-base64` 直接写入私有 staging。inline 正文只作为 non-enumerable 的短生命周期字段传给 Runner，不进入 JSON、Task 或 Manifest。物化失败只能改变交付状态，不能触发生成重提。OpenAI Images 当前同步返回图片，所以 `poll` 与 `cancel` 显式 unsupported；DashScope 当前没有经过验证的远端取消接口，因此 `cancel` 同样显式 unsupported，而不是伪装取消成功。
 
-上传错误经统一脱敏，固定为 `stage=upload / acceptance=not_accepted`；这组字段属于返回调用方的安全错误分类，不等于已经持久化的 Core Attempt stage。上传属于 Host/CLI 输入准备，只有随后真正调用 `submit` 才跨越可能计费的受理边界。当前 s2v legacy Attempt 可保存上传错误；Core 转写入口在 Task 创建前上传，失败会直接返回且不创建 Core Task。
+## 可选输入准备与上传边界
+
+Host 和 CLI 通过 `prepareProviderInput(adapter, { model, filePath, signal?, timeoutMs? })` 调用可选准备能力，不能自行绕过 Adapter 上传。DashScope 的 Adapter 闭包持有实际凭据与媒体端点并实现临时上传；OpenAI Images 明确不支持。未实现时在网络调用前抛 `IRIS_PROVIDER_INPUT_PREPARATION_UNSUPPORTED`。返回的 `{url}` 只供紧随其后的提交读取，属性不参与 JSON 序列化，不能进入 Task、日志或能力快照。
+
+上传错误经 Adapter 映射与脱敏，固定为 `stage=upload / acceptance=not_accepted`；这组字段属于返回调用方的安全错误分类，**不等于已持久化的 Core Attempt stage**。上传属于 Host/CLI 输入准备，只有随后真正调用 `submit` 才跨越可能计费的受理边界。当前 s2v 仍走 legacy 链，其 Attempt 可保存上传错误；Core 转写的 `audio_path` 在创建 Task 前上传，失败会直接返回且不创建 Core Task，也不会调用 submit。这是 D-12 当前采用的路径 B；若未来要求把准备失败纳入 Core 事实，须另行评审路径 A，不能由错误字段反推已经落盘。
 
 ## 错误与取消传播
 
@@ -108,9 +116,10 @@ Core Attempt 持久化 `providerId::modelId` 复合身份，具体 Provider Adap
 | `submitTranscription` | `audioUrl` | 远端任务 ID |
 | `synthesizeTts` | `text/voice` | `{audioUrl}` 或 `{audioB64}` |
 | `pollTask/pollTranscriptionTask` | `remoteTaskId` | 协议结果，由 Adapter 归一化为 canonical poll 结果 |
+| `uploadTempFile` | `model/filePath` | 临时输入 URL；仅由支持该扩展的协议 Adapter 调用 |
 | `downloadTo` | URL、目标路径、选项（位置参数） | 写入字节数 |
 
-transport 抛出的原始错误必须经 Adapter 的错误映射；提交异常不能直接授权重提。可选临时上传的调用边界仍待 T-02b 收口，不属于上述六个 canonical 操作。
+transport 抛出的原始错误必须经 Adapter 的错误映射；提交异常不能直接授权重提。`uploadTempFile` 经过 `prepareProviderInput` 归一化错误，但仍不属于六个 canonical 操作。
 
 ### 验证方式
 
@@ -125,3 +134,5 @@ transport 抛出的原始错误必须经 Adapter 的错误映射；提交异常�
 7. 同步多图片进入同一 Core Task，坏同步响应保持受理未知并停止 failover。
 
 runner 本身不访问网络；具体 Adapter 构造时注入 fake transport。新增 Provider 前，必须先通过同一 runner，再进行用户明确授权的真实供应商短验。0.1.4 不发布 Provider SDK，也不把测试 runner 当成第三方兼容性承诺。
+
+可选准备能力另由 `tests/provider-input-preparation.mjs` 和调用方的转写/s2v 测试覆盖：包括未支持协议零网络拒绝、临时 URL 不序列化、上传错误脱敏及上传前后受理边界。

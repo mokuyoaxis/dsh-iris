@@ -2,6 +2,28 @@
 
 当前开发分支已具备无 DSH 的本地裁剪、图片 diff、视频抽帧，以及 Provider 媒体任务闭环。结果保存为 Core Artifact，并可在后续进程中检查或导出。该接口尚未随正式版本发布；命令名和 Artifact v0 记录在 rc 阶段仍可能调整。
 
+## 配置查询与离线诊断
+
+```bash
+dsh-iris providers list --provider-config /absolute/path/to/providers.json
+dsh-iris capabilities list --provider-config /absolute/path/to/providers.json
+dsh-iris doctor --data-root /absolute/path/to/iris-data --json
+```
+
+前两项只读取显式提供的私有配置文件，不创建 Core Runtime 或数据根，也不请求 Provider。`providers list` 输出供应商身份、启用/配置状态、认证方式、媒体协议及其推断标记、配置能力与模型数；不输出 API Key 或端点。`capabilities list` 按五种配置能力列出 `providerId::modelId` 候选链，沿用 DSH 的“手工分配优先、模型池顺序补齐”规则；空链标为 `gap: no_configured_model`。这些只是配置事实，不证明远端模型或协议可调用。
+
+显式 `doctor --data-root` 是只读 Core 盘点：检查 Task/Artifact 结构、Index 一致性、孤立/未解析条目和写者租约；不创建缺失的根、不执行写入探针、不重建索引，也不释放租约。活跃写者可能使盘点在读取期间变化。省略 `--data-root` 时仍检查 DSH profile，保留原有写入探针，并纳入该 profile 的 `core-v0`。两种模式都返回 legacy/Core 计数对照，显式模式只统计指定根同层的 legacy 文件。退出码为 `0` 正常、`1` 警告、`2` 硬错误；诊断不会调用 Provider。
+
+## 异常退出后的写者租约
+
+SIGINT/SIGTERM 可被 CLI 捕获并释放运行中的租约；SIGKILL、OOM 或断电可能留下租约。后续写操作返回 `IRIS_CORE_DATA_ROOT_BUSY` 时，先用 `doctor --data-root <absolute-path> --json` 只读查看 `core-writer-lease`。仅当报告中的 owner PID 为 `missing`，并且你已确认没有跨主机或其他仍在写入的进程，才可显式回显该 PID：
+
+```bash
+dsh-iris runtime recover --data-root /absolute/path/to/iris-data --confirm-stale-pid 12345
+```
+
+此命令会再次核对租约证据和 PID，写入私有恢复审计记录后释放陈旧租约；活跃、无法确认、损坏或 PID 不匹配时拒绝。它不是 Doctor 的自动副作用，也不会修复 Task/Artifact。不要手动删除 `.iris-runtime-writer-v0` 或把“PID 不存在”单独当作安全证明。
+
 ## 裁剪并保存 Artifact
 
 ```bash
@@ -168,7 +190,7 @@ dsh-iris artifact rebuild --data-root /absolute/path/to/iris-data
 
 ## 当前边界
 
-- 必须显式提供绝对 `--data-root`，避免在 DSH Runtime 尚未接管租约前误写日常 profile。
+- Core 的 `run`、`media`、`task`、`artifact` 和 `runtime recover` 操作必须显式提供绝对 `--data-root`，避免误写日常 profile；配置查询只要求 `--provider-config`，Doctor 省略数据根时按上述默认范围检查。
 - 该路径只使用 Node.js、`sharp` 和 Iris Core，不加载 DSH/Cordis，也不启动服务；只有显式 `run image`、`run video`、`run tts`、`run transcribe`、`task observe`、`task redeliver`、`task cancel` 和 `task retry` 会访问供应商。
 - Artifact Manifest v0 已包含 SHA-256、关系边、可重建 Index 和进程崩溃窗口恢复；格式与限制见 [Artifact Manifest v0](ARTIFACT_MANIFEST.md)。
 - 当前开放 `crop`、同步/异步图片提交、视频 t2v/i2v 提交、语音同步合成（`run tts`）、音频转写（`run transcribe`）、图片/视频/转写单步观察（CLI `task observe` 与工作台「重新观察」共用）、失败产物重新取回（CLI `task redeliver` 与工作台「重新取回作品」共用）、人工取消（CLI `task cancel` 与工作台「取消任务」共用，只有供应商明确确认才记为已取消）、重试为新任务（CLI `task retry` 与工作台「重试为新任务」共用，必须显式确认计费且重新提供 prompt/文本/音频地址）、Task 只读查询与 Artifact 管理；自动观察、其他媒体能力和其余 Command 会按相同事实语义逐项迁入。

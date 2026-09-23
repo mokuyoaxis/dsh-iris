@@ -94,7 +94,7 @@ Iris 当前支持两类调用路径：
 
 | 颜色 | 状态 | 如何得到 |
 |---|---|---|
-| 灰色 | 未配置 | 没有启用且带 API Key 的当前候选；移除 Key 后也回到灰色 |
+| 灰色 | 未配置 | 没有可用的当前候选；默认 bearer 认证缺 Key 时会回到灰色，`auth:'none'` 不要求 Key |
 | 蓝色 | 已配置，待验证 | 配置可用于路由，但尚无 7 天内成功证据，或旧成功已经过期 |
 | 绿色 | 近期验证成功 | 显式实测或真实任务在 7 天内成功 |
 | 暗红色 | 认证失败 | 最近出现明确 401、403 或认证/权限错误 |
@@ -171,6 +171,8 @@ $DSH_HOME/iris/v1/providers.json
 ```
 
 `mediaBaseUrl` 可以省略或留空，此时媒体调用沿用 `baseUrl`。`assignments` 可以省略；省略后使用模型池顺序。包含特殊字符的 provider 或模型引用会经过 URL 编码，复杂引用建议在工作台中生成，不要手写。
+
+当前开发分支允许为明确不需要认证的本地端点设置 `"auth": "none"` 并省略 `apiKey`；缺省或 `"auth": "bearer"` 仍要求 Key，保持旧配置行为。无认证模式不会发送 Authorization 头，已有的旧 Key 也不会被带入该模式的媒体请求。工作台尚无专门的无认证开关，需要按上述停机原则编辑私有配置；不要对需要认证的公网端点使用 `auth:none`。
 
 API Key 以明文保存在宿主侧的 `providers.json` 中。POSIX 上 Iris 目录为 `0700`、文件为 `0600`，0.1.1 首次启动会收紧既有 Iris 树但不修改内容或跟随符号链接；Windows 的 mode 不能替代 ACL。状态接口和界面只返回掩码，不会显示完整 Key。不要把这个文件提交到版本库或发给他人。
 
@@ -316,6 +318,8 @@ npx @mokuyoaxis/dsh-iris doctor --json
 ```
 
 已安装包也可以直接运行 `dsh-iris doctor`。退出码为 `0`（正常）、`1`（警告）和 `2`（硬错误）。Doctor 会执行一个随后立即删除的本地写入探针，并检查配置、任务、能力分配、临时文件和产物引用；输出不含完整 API Key。离线模式无法检查 DSH 工具/客户端是否已经装载，也不会用付费请求验证 Provider。
+
+当前 **0.2.0-rc.1 源码开发分支**另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。上述开发命令尚未进入稳定版 `0.1.4`，请从当前源码运行 `node bin/dsh-iris.js`，不要把已发布包的 `npx` 命令当作此功能的验证。
 
 ## Host Doctor
 

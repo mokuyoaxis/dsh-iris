@@ -12,6 +12,7 @@
 - 增加 Core 任务的注意力处置（Host 偏好式，与 legacy 体验对齐）：工作台 attention 行（失败/取回失败/受理未知）提供「不再提醒」与「移除」，已受理行提供「恢复提醒」，高级诊断保留完整记录并标注处置状态、可「恢复显示」。处置存于 `$DSH_HOME/iris/v1/core-attention.json`（0600、原子写、损坏降级为无偏好），**零 Core 写入**——任务与产物记录绝不删除。重试成功自动静默：若某 attention 任务存在 `retriedFrom` 指向它的后继且后者已成功交付，则旧任务从任务区自动静默（纯事实派生，刷新不回归；后继后续失败则静默随之撤销）。CLI 无提醒概念，不受影响。
 
 - 增加开发中的 Headless CLI：无需加载 DSH 即可执行本地裁剪，并跨进程检查和导出 Artifact。
+- Headless CLI 增加只读的 `providers list`、`capabilities list` 与显式数据根 Core Doctor；异常退出后可经 Doctor 核对并回显陈旧 owner PID，使用 `runtime recover` 写私有审计后释放租约。活跃或证据不完整时拒绝恢复，不自动解锁。
 - 增加实例化 Core Runtime，提供显式数据根、单写者租约、reader、取消和有序释放。
 
 ### Changed
@@ -20,6 +21,7 @@
 - CLI 与 DSH 共用配置模型解析，均接受裸模型名与供应商复合引用；运行时不再注入厂商默认模型。旧裸账号的兼容目录改为在配置写入时物化，CLI 读取不迁移配置；显式空模型池仍保持为空。
 - 模型发现改为合并更新：手工项优先、保留远端未再返回的旧项、按 ID 去重，编辑已有模型也会标记为手工配置。
 - CLI 与 DSH 的供应商可用性及旧分配对象解析共用规则：未声明 `enabled` 时默认启用，缺少端点或必要凭据时不进入候选链；旧 `{providerId, id}` 分配格式在两入口一致生效。
+- 临时文件上传统一经过 Provider Adapter 的可选 `prepareInput` 能力；DashScope 由协议闭包持有凭据与端点，OpenAI Images 在上传前明确拒绝。上传错误统一脱敏为未受理分类，但 Core 转写的准备失败不伪造已落盘的 Task/Attempt。
 
 - 精简 README、路线图和 Core/Host 契约，把版本施工记录留在 CHANGELOG 与验收文档。
 - DSH 继续加载同一个 npm 插件入口；Core 与 Host Adapter 分离，不引入额外 daemon。
@@ -29,6 +31,8 @@
 
 - 关闭 Runtime 时，已接纳的操作会先收到取消信号并完成收束，避免操作尚未建立上下文就被释放。
 - Artifact 导出不覆盖已有文件，检查会拒绝缺失或大小不一致的对象。
+- CLI 对可捕获的 SIGINT/SIGTERM 会中止在途请求并释放写者租约；`auth:'none'` 的媒体请求不再发送空的 Bearer 头或沿用旧 Key，缺省 bearer 配置仍要求 Key。
+- 修复显式租约恢复在中途 I/O 失败时引用未定义状态变量的问题；失败仍返回稳定的恢复错误码，并尽力保留原租约与审计证据。
 
 - 明确 0.2.0 的 Core 生命周期末端边界：DSH 工作台现有删除、清空与孤儿清理只作用于 legacy `outputs/`，DSH 与 Headless CLI 都不删除 Core Task/Artifact；Doctor 只报告孤立对象、未提交 Manifest 和未解析条目。Core 删除与清理继续列入 0.2.x，不建议手工改动 `core-v0`。
 

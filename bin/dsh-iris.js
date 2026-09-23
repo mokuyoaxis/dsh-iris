@@ -77,14 +77,44 @@ function jsonInput(value) {
   }
 }
 
-async function withRuntime(mode, dataRoot, callback, ports = {}) {
+/** C-8: catchable signals dispose active runtimes before the CLI exits. */
+const activeRuntimes = new Set();
+let shuttingDown = false;
+
+function registerRuntime(runtime) {
+  activeRuntimes.add(runtime);
+  return () => activeRuntimes.delete(runtime);
+}
+
+async function disposeActiveRuntimes() {
+  await Promise.allSettled([...activeRuntimes].map((runtime) => runtime.dispose().catch(() => {})));
+  activeRuntimes.clear();
+}
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    const exitCode = signal === 'SIGINT' ? 130 : 143;
+    if (shuttingDown) process.exit(exitCode);
+    shuttingDown = true;
+    disposeActiveRuntimes()
+      .catch(() => {})
+      .finally(() => process.exit(exitCode));
+  });
+}
+
+async function withRawRuntime(mode, dataRoot, callback) {
   const runtime = createCoreRuntime({ dataRoot: required(dataRoot, 'data-root'), mode });
-  runtime.start();
+  const unregister = registerRuntime(runtime);
   try {
-    return await callback(createCommandService(runtime, ports));
+    runtime.start();
+    return await callback(runtime);
   } finally {
-    await runtime.dispose();
+    try { await runtime.dispose(); } finally { unregister(); }
   }
+}
+
+async function withRuntime(mode, dataRoot, callback, ports = {}) {
+  return withRawRuntime(mode, dataRoot, (runtime) => callback(createCommandService(runtime, ports)));
 }
 
 async function main(args) {
@@ -155,9 +185,7 @@ async function main(args) {
     if (size !== undefined && (!size || size.length > 64)) throw new CliUsageError('size 格式无效');
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     const routes = imageCandidatesFromCatalog(catalog, input.model_ref);
-    const runtime = createCoreRuntime({ dataRoot: required(options['data-root'], 'data-root'), mode: 'writer' });
-    runtime.start();
-    try {
+    await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
         adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
         selectionReason: route.selectionReason,
@@ -168,9 +196,7 @@ async function main(args) {
         providerInput: { prompt, n, ...(size ? { size } : {}) }
       });
       console.log(JSON.stringify(result, null, 2));
-    } finally {
-      await runtime.dispose();
-    }
+    });
     return 0;
   }
 
@@ -197,9 +223,7 @@ async function main(args) {
     }
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     const routes = videoCandidatesFromCatalog(catalog, input.model_ref);
-    const runtime = createCoreRuntime({ dataRoot: required(options['data-root'], 'data-root'), mode: 'writer' });
-    runtime.start();
-    try {
+    await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
         adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
         selectionReason: route.selectionReason,
@@ -215,9 +239,7 @@ async function main(args) {
         }
       });
       console.log(JSON.stringify(result, null, 2));
-    } finally {
-      await runtime.dispose();
-    }
+    });
     return 0;
   }
 
@@ -236,9 +258,7 @@ async function main(args) {
     }
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     const routes = ttsCandidatesFromCatalog(catalog, input.model_ref);
-    const runtime = createCoreRuntime({ dataRoot: required(options['data-root'], 'data-root'), mode: 'writer' });
-    runtime.start();
-    try {
+    await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
         adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
         selectionReason: route.selectionReason,
@@ -252,9 +272,7 @@ async function main(args) {
         }
       });
       console.log(JSON.stringify(result, null, 2));
-    } finally {
-      await runtime.dispose();
-    }
+    });
     return 0;
   }
 
@@ -286,9 +304,7 @@ async function main(args) {
       });
       audioUrl = prepared.url;
     }
-    const runtime = createCoreRuntime({ dataRoot: required(options['data-root'], 'data-root'), mode: 'writer' });
-    runtime.start();
-    try {
+    await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
         adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
         selectionReason: route.selectionReason,
@@ -299,9 +315,7 @@ async function main(args) {
         providerInput: { audioUrl }
       });
       console.log(JSON.stringify(result, null, 2));
-    } finally {
-      await runtime.dispose();
-    }
+    });
     return 0;
   }
 
