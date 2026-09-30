@@ -47,6 +47,8 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 
 /* Core 候选不得反向导入 DSH/Cordis 运行时。 */
 for (const rel of [
+  'lib/model-port-contract.js', 'lib/model-invoker.js',
+  'lib/generation-input.js',
   'lib/task-semantics.js', 'lib/provider-contract.js', 'lib/provider-adapter.js',
   'lib/provider-adapters.js', 'lib/provider-task-runner.js', 'lib/host-contract.js', 'lib/host-runtime.js', 'lib/core-contract.js', 'lib/core-runtime.js', 'lib/core-tasks.js', 'lib/core-artifacts.js', 'lib/core-artifact-store.js', 'lib/command-service.js', 'lib/doctor.js', 'lib/core-user-projection.js'
 ]) {
@@ -56,12 +58,25 @@ for (const rel of [
   }
 }
 
+// Model Port 共享层只能依赖本轮纯契约，不可反向读取 Host、配置、Store 或协议。
+for (const rel of ['lib/model-port-contract.js', 'lib/model-invoker.js']) {
+  const source = read(rel);
+  const imports = [...source.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)].map(match => match[1]);
+  const expected = rel.endsWith('model-invoker.js') ? ['./model-port-contract.js'] : [];
+  if (JSON.stringify(imports) !== JSON.stringify(expected)
+      || /\b(?:require|import)\s*\(|\bimport\s*['"]/.test(source)
+      || /\bprocess\.(?:env|cwd)|\bfetch\s*\(/.test(source)) {
+    failures.push(rel + ' 不得引入 Host、配置、Store、动态依赖或网络副作用');
+  }
+}
+
 const actionSource = read('lib/actions.js');
 const vendorName = /\b(?:dashscope|aliyun|wan\d|qwen-|gpt-image|gemini|grok|Cherry)/i;
 const codeLines = (source) => source.split('\n').filter((line) => !/^\s*(?:\/\/|\/\*|\*)/.test(line));
 for (const rel of [
   ...fs.readdirSync(path.join(root, 'lib')).filter((name) => /^core-.*\.js$/.test(name)).map((name) => 'lib/' + name),
-  'lib/command-service.js', 'lib/provider-contract.js', 'lib/provider-adapter.js'
+  'lib/command-service.js', 'lib/generation-input.js', 'lib/provider-contract.js', 'lib/provider-adapter.js',
+  'lib/model-port-contract.js', 'lib/model-invoker.js'
 ]) {
   const lines = codeLines(read(rel)).filter((line) =>
     // Credential redaction recognizes vendor prefixes; it never selects a provider or model.
@@ -210,6 +225,26 @@ const dshCoreAdapter = read('lib/dsh-core-adapter.js');
 if (/cropImage\s*\(/.test(actionSource) || /cropImage\s*\(/.test(index)
     || !/cropForDsh\s*\(/.test(actionSource) || !/cropForDsh\s*\(/.test(index)) {
   failures.push('DSH crop 消费者必须经 dsh-core-adapter，而不是直接调用像素层');
+}
+if (/pixelDiff\s*\(/.test(actionSource) || /pixelDiff\s*\(/.test(index)
+    || !/diffForDsh\s*\(/.test(actionSource) || !/diffForDsh\s*\(/.test(index)) {
+  failures.push('DSH diff 消费者必须经 dsh-core-adapter 调用 Core Command');
+}
+for (const [source, start, end] of [
+  [actionSource, "register('video_frames',", "register('media_summarize',"],
+  [index, "name: 'iris_video_frames'", "name: 'iris_media_summarize'"]
+]) {
+  const section = source.slice(source.indexOf(start), source.indexOf(end));
+  if (!/framesForDsh\s*\(/.test(section) || /(?:extractFrames|probeVideo)\s*\(/.test(section)) {
+    failures.push('DSH 独立抽帧消费者必须经 Core Command，摘要链保持原有边界');
+  }
+}
+for (const rel of ['bin/dsh-iris.js', 'lib/actions.js', 'lib/command-service.js']) {
+  const source = read(rel);
+  if (!/from ['"][.\/]+(?:lib\/)?generation-input\.js['"]/.test(source)
+      || !/normalizeGenerationInput\s*\(/.test(source)) {
+    failures.push(rel + ' 的生成/重试参数必须消费共享规范化边界');
+  }
 }
 if (!/createCommandService/.test(dshCoreAdapter) || !/dshCoreDataRoot/.test(dshCoreAdapter)
     || /@deepseek-ai\/|from ['"](?:cordis|dsh)/.test(dshCoreAdapter)) {
@@ -517,8 +552,10 @@ if (!/userState/.test(clientSource) || !/useCoreUserTasks/.test(clientSource)) {
       || !/audio_url/.test(actionsSrc)) {
     failures.push('lib/actions.js 转写动作必须走 submitCoreTranscribe（legacy submitTranscriptionV2 已移除）');
   }
-  if (!/audio_url/.test(read('lib/command-service.js'))) {
-    failures.push('lib/command-service.js retry 必须对转写要求 audio_url');
+  if (!/normalizeGenerationInput\(before\.capability, input\.provider_input\)/.test(read('lib/command-service.js'))
+      || !/providerInput\.audioUrl = audioUrl/.test(read('lib/generation-input.js'))
+      || !/providerInput\.imgDataUrl = imgDataUrl/.test(read('lib/generation-input.js'))) {
+    failures.push('retry 必须经共享边界保留转写地址与视频首帧，不得直接透传外部字段');
   }
   if (!cliSource.includes('run transcribe') || !/capability: 'transcribe'/.test(cliSource)) {
     failures.push('bin/dsh-iris.js 缺少 run transcribe（E3 阶段转写 CLI）');
@@ -1026,8 +1063,8 @@ if (tasksLib) {
   if (!pkg.engines || pkg.engines.node !== '>=20.10.0') {
     failures.push('package.json 必须声明 JSON import attributes 所需 Node >=20.10.0');
   }
-  if (pkg.dsh?.engines?.dsh !== '>=0.1.2-rc.1 <0.1.3-0 || 0.1.5-rc.1') {
-    failures.push('package.json 必须声明已实测的 DSH 兼容窗口（0.1.2 线 + 0.1.5-rc.1）');
+  if (pkg.dsh?.engines?.dsh !== '>=0.1.2-rc.1 <0.1.3-0 || 0.1.5-rc.1 || 0.2.0-rc.2') {
+    failures.push('package.json 必须声明已验证的 DSH 窗口（0.1.2 线 + 0.1.5-rc.1 + 0.2.0-rc.2）');
   }
   const expectedClientPeers = [
     '@deepseek-ai/dsh-client-locale',
@@ -1037,8 +1074,11 @@ if (tasksLib) {
     '@deepseek-ai/dsh-client-ui-settings'
   ];
   for (const name of expectedClientPeers) {
-    if (pkg.peerDependencies?.[name] !== '^0.1.2-rc.1') {
+    if (pkg.peerDependencies?.[name] !== '^0.1.2-rc.1 || 0.2.0-rc.2') {
       failures.push(`package.json ${name} 必须作为显式覆盖 rc 分支的 peer dependency`);
+    }
+    if (lock.packages?.['']?.peerDependencies?.[name] !== pkg.peerDependencies?.[name]) {
+      failures.push(`package-lock.json ${name} peer 范围必须与 package.json 一致`);
     }
     if (pkg.dependencies?.[name]) {
       failures.push(`package.json 不得把 DSH 官方包 ${name} 放入 dependencies`);

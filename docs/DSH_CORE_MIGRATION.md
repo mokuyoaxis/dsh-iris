@@ -2,7 +2,7 @@
 
 本文描述 0.2.0 候选工作树，不代表已发布版本。迁移逐条切换消费者，不原地改写 0.1.4 数据；未迁移能力继续使用稳定版实现。
 
-## 已切换的执行链：crop 与新图片任务
+## 已切换的执行链：本地媒体处理与新生成任务
 
 - `iris_crop` 和工作台 crop 共用 Command Service 与 Artifact Manifest。attachment 输入先成为 `host-input` Artifact，裁剪结果用 `derived-from` 保存关系；工具名、参数和附件输出不变。
 - 新图片任务的同步、异步与混合候选均使用同一 Core Task/Attempt/Artifact。每个候选先落盘 Attempt，只有明确 `not_accepted` 才允许切换；收到远端 ID 或受理未知后停止候选提交。
@@ -67,7 +67,17 @@ TTS 是同步完成型，与视频的长轮询不同：一次 submit 内 complet
 
 Core Command Service 已纳入两项确定性、零 Provider 的本地能力：`media.diff` 用 Sharp 生成指标与 `pixel-diff` 热力图 Artifact；`media.frames` 用本机 ffmpeg/ffprobe 返回视频元数据并生成 `video-frame` Artifact。两者均可读取宿主绝对路径；读取既有 Core Artifact 时分别写入 `derived-from` 或 `frame-of` 关系，Manifest 不保存宿主或临时路径。Headless CLI 的 `media diff` / `media frames` 直接消费同一 Command Service，不读取 Provider 配置、不发起网络请求。
 
+DSH 的 `iris_pixel_diff`、`iris_video_frames` 与工作台对应动作也消费上述 Command：Host 只解析图片附件/本地来源，并将已落盘的 Artifact 字节投影为附件或首帧预览。diff 的附件输入先形成 `host-input` Artifact，热力图保存 `derived-from` 关系；本地视频路径不伪造来源关系。结果提供 `artifactIds`，CLI 可从同一 Core 根检查和导出相同字节，DSH 不再为这两项另写 legacy Task 或 `outputs/`。
+
+图片、t2v/i2v 视频、TTS 与转写的正常提交和知情重试共用 `generation-input.js`：统一文本修剪、数量/时长/长度校验，并把 `img_data_url`、`audio_url` 转为 Adapter 的 `imgDataUrl`、`audioUrl`。非法输入在 Provider 提交和新 Task 创建前拒绝；CLI 仍返回 usage 退出码，Command 仍返回 `IRIS_COMMAND_INPUT_INVALID`。工作台清空可选文本框仍由 Host 解释为使用默认值。音频路径与签名地址不落 Core，上传和附件解析仍属于入口；S2V 的 legacy 参数链保持原边界。
+
 依赖视觉模型或 Host Browser 的 `locate`、长图 OCR、媒体摘要和 HTML 渲染不进入这条本地命令链；它们留到中立 Text/Vision Port 冻结后再迁移，避免把网络模型或浏览器对象塞进 Core。
+
+## Text/Vision 下一步（M1 完成，消费者未迁移）
+
+[Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 固定目标请求、完整结果、错误、取消/预算与 DSH 图片桥接边界。后续顺序为纯契约/Fake Port → 提示词优化 → look/relook → 定位/OCR/拼图摘要，逐个消费者举证。取消后 fallback、缺终态的部分文字成功、OCR 吞取消继续分块均列为待修行为，现有测试通过不能算作新契约已通过。
+
+纯契约、调用控制与 Fake Port 已完成 M1，共用有限调用预算、严格结果验证与取消语义；真实 HTTP/DSH 适配器尚未接入。提示词优化继续讨论主动提示词组装与不可信输入隔离，本轮不迁移该消费者。M1 不增加 Task/Artifact 写入，不修改 v1 配置或公开 export。HTML/Browser、S2V 与自持文本能力目录独立处理；媒体摘要复用 Core 抽帧也需后续单独接线。
 
 ## 尚未迁移或开放
 
@@ -81,6 +91,7 @@ Core Command Service 已纳入两项确定性、零 Provider 的本地能力：`
 
 ## 验证证据与限制
 
+- 2026-09-30 当前开发工作树已完成仓库外真实 tarball 安装验收：空项目安装当前包和 Sharp，不含 DSH/Cordis，也不复用仓库依赖。安装后的 CLI 实际完成 crop/diff/抽帧和四类 Provider fixture 生成，13 份 Artifact 的导出字节及 SHA-256 一致；跨进程 reader/导出零 Core 写入、零额外 Provider 请求。可在源码仓库执行 `node scripts/verify-headless-package.mjs` 复现，缓存完整时支持 `--offline`。本机为 Linux ARM64/PRoot、Node 22；这项证据不替代真实 Provider、DSH 异步重启或其他平台验收。
 - 完整离线回归为 96 个测试文件，lint 覆盖 151 个 JS/MJS 文件。同步、多产物、混合 failover、受理未知、交付失败、跨进程观察、零 legacy 双写、用户侧只读投影（五类真值表、零写入、局部降级、窄屏断言）与 D1 reobserve、D2 redeliver、D3 cancel、D4 retry（Command 门真值表零网络零写入、幂等矩阵、redelivery 标志、取消三分支如实语义与竞态防护、计费确认三层门、retriedFrom 关系与 prompt 零持久化、失败回落显式收敛、API 状态码/脱敏、CLI↔API 同一 Task 事实连续性、客户端投影门）均有 fixture；E 阶段视频、语音、转写迁移各有独立 conformance（视频长轮询多拍/mp4 Profile、语音同步双产物形态/音频 Profile、转写上传通道/文本物化 Profile）与 CLI/DSH 端到端 fixture。
 - 2026-09-19 最新完整门禁为 113 个测试文件、lint 173 个 JS/MJS 文件；新增证据包括 T-09 七阶段时间戳与旧记录兼容，以及 T-12 本地 diff/抽帧 CLI、Artifact 关系和路径脱敏。上一条 96/151 为早期迁移阶段的历史计数。
 - DSH 异步工具 fixture 实际执行注册后的工具，贯通 submit → poll → download → Core Artifact → attachment；另验证 active 崩溃接管、唯一 Attempt、端点漂移零 poll/零 Task 写入。
@@ -90,6 +101,6 @@ Core Command Service 已纳入两项确定性、零 Provider 的本地能力：`
 
 ## 接下来与候选门禁
 
-Core 任务到工作台进度/提醒的只读安全投影已完成（五类状态、合并任务区、会话内一次性完成提示、损坏/缺媒体局部降级），人工控制面四个动作已全部开放（reobserve/redeliver/cancel/retry，CLI/API/UI 同一 Command Service，retry 三层强制计费确认）。接下来补真实会话附件、浏览器与异步重启证据，验证停止 DSH 后 CLI 仍可 inspect/observe/export。之后才按 0.2.0 计划推进旧 ID 映射与视频 → TTS/转写迁移。
+Core 任务到工作台进度/提醒的只读安全投影已完成（五类状态、合并任务区、会话内一次性完成提示、损坏/缺媒体局部降级），人工控制面四个动作已全部开放（reobserve/redeliver/cancel/retry，CLI/API/UI 同一 Command Service，retry 三层强制计费确认）。图片、t2v/i2v、TTS、转写以及本地 crop/diff/抽帧已有 Core 执行链；接下来补恢复后真实会话附件、浏览器与异步重启证据，验证停止 DSH 后 CLI 仍可 inspect/observe/export。旧 ID 映射和尚未迁移能力按后续计划单独处理。
 
 发布前还需重新审计 tarball、无 DSH 安装闭包、Linux/Windows CI、0.1.4 数据不改写和实际 DSH 版本矩阵。未验证的宿主版本与 Provider 路径不得写成已支持；提交、推送和发布需另行授权。

@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
-import path from 'node:path';
 import { createCommandService } from '../lib/command-service.js';
 import { createCoreRuntime } from '../lib/core-runtime.js';
 import { recoverCoreWriterLease } from '../lib/core-lease-recovery.js';
@@ -9,6 +8,7 @@ import { loadProviderCatalog, providerCatalogSnapshot, catalogCapabilitySnapshot
 import { createConfiguredProviderAdapter } from '../lib/provider-adapters.js';
 import { prepareProviderInput } from '../lib/provider-adapter.js';
 import { createProviderTaskRunner } from '../lib/provider-task-runner.js';
+import { GenerationInputError, normalizeGenerationInput } from '../lib/generation-input.js';
 
 class CliUsageError extends Error {
   constructor(message) {
@@ -74,6 +74,14 @@ function jsonInput(value) {
   } catch (error) {
     if (error instanceof CliUsageError) throw error;
     throw new CliUsageError('--input 必须是 JSON 对象');
+  }
+}
+
+function generationInput(capability, input, options) {
+  try { return normalizeGenerationInput(capability, input, options); }
+  catch (error) {
+    if (error instanceof GenerationInputError) throw new CliUsageError(error.message);
+    throw error;
   }
 }
 
@@ -172,19 +180,9 @@ async function main(args) {
 
   if (args[0] === 'run' && args[1] === 'image') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
-    const input = jsonInput(options.input);
-    const allowed = new Set(['prompt', 'size', 'n', 'model_ref']);
-    for (const key of Object.keys(input)) {
-      if (!allowed.has(key)) throw new CliUsageError('图片输入不支持字段：' + key);
-    }
-    const prompt = String(input.prompt || '').trim();
-    if (!prompt || prompt.length > 20000) throw new CliUsageError('prompt 必须为 1–20000 字符');
-    const n = input.n === undefined ? 1 : Number(input.n);
-    if (!Number.isSafeInteger(n) || n < 1 || n > 4) throw new CliUsageError('n 必须为 1–4 的整数');
-    const size = input.size === undefined ? undefined : String(input.size).trim();
-    if (size !== undefined && (!size || size.length > 64)) throw new CliUsageError('size 格式无效');
+    const { providerInput, modelRef } = generationInput('image', jsonInput(options.input));
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
-    const routes = imageCandidatesFromCatalog(catalog, input.model_ref);
+    const routes = imageCandidatesFromCatalog(catalog, modelRef);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
         adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
@@ -193,7 +191,7 @@ async function main(args) {
       }));
       const result = await createProviderTaskRunner(runtime).submit({
         capability: 'image', candidates,
-        providerInput: { prompt, n, ...(size ? { size } : {}) }
+        providerInput
       });
       console.log(JSON.stringify(result, null, 2));
     });
@@ -204,25 +202,9 @@ async function main(args) {
   // s2v 上传流程不在 headless 面开放。
   if (args[0] === 'run' && args[1] === 'video') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
-    const input = jsonInput(options.input);
-    const allowed = new Set(['prompt', 'size', 'duration', 'img_data_url', 'model_ref']);
-    for (const key of Object.keys(input)) {
-      if (!allowed.has(key)) throw new CliUsageError('视频输入不支持字段：' + key);
-    }
-    const prompt = String(input.prompt || '').trim();
-    if (!prompt || prompt.length > 20000) throw new CliUsageError('prompt 必须为 1–20000 字符');
-    if (input.size !== undefined && (!String(input.size).trim() || String(input.size).length > 64)) {
-      throw new CliUsageError('size 格式无效');
-    }
-    if (input.duration !== undefined) {
-      const duration = Number(input.duration);
-      if (!Number.isFinite(duration) || duration < 1 || duration > 60) throw new CliUsageError('duration 必须为 1–60 的数字');
-    }
-    if (input.img_data_url !== undefined && !String(input.img_data_url).startsWith('data:image/')) {
-      throw new CliUsageError('img_data_url 必须是 data:image/ 开头的 data URL');
-    }
+    const { providerInput, modelRef } = generationInput('video', jsonInput(options.input));
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
-    const routes = videoCandidatesFromCatalog(catalog, input.model_ref);
+    const routes = videoCandidatesFromCatalog(catalog, modelRef);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
         adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
@@ -231,12 +213,7 @@ async function main(args) {
       }));
       const result = await createProviderTaskRunner(runtime).submit({
         capability: 'video', candidates,
-        providerInput: {
-          prompt,
-          ...(input.size !== undefined ? { size: String(input.size) } : {}),
-          ...(input.duration !== undefined ? { duration: Number(input.duration) } : {}),
-          ...(input.img_data_url !== undefined ? { imgDataUrl: String(input.img_data_url) } : {})
-        }
+        providerInput
       });
       console.log(JSON.stringify(result, null, 2));
     });
@@ -246,18 +223,9 @@ async function main(args) {
   // 语音合成输入冻结（E2 Profile）：同步完成型，一次命令内完成 Task → Artifact。
   if (args[0] === 'run' && args[1] === 'tts') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
-    const input = jsonInput(options.input);
-    const allowed = new Set(['text', 'voice', 'model_ref']);
-    for (const key of Object.keys(input)) {
-      if (!allowed.has(key)) throw new CliUsageError('语音输入不支持字段：' + key);
-    }
-    const text = String(input.text || '').trim();
-    if (!text || text.length > 20000) throw new CliUsageError('text 必须为 1–20000 字符');
-    if (input.voice !== undefined && (!String(input.voice).trim() || String(input.voice).length > 64)) {
-      throw new CliUsageError('voice 格式无效');
-    }
+    const { providerInput, modelRef } = generationInput('tts', jsonInput(options.input));
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
-    const routes = ttsCandidatesFromCatalog(catalog, input.model_ref);
+    const routes = ttsCandidatesFromCatalog(catalog, modelRef);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
         adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
@@ -266,10 +234,7 @@ async function main(args) {
       }));
       const result = await createProviderTaskRunner(runtime).submit({
         capability: 'tts', candidates,
-        providerInput: {
-          text,
-          ...(input.voice !== undefined ? { voice: String(input.voice) } : {})
-        }
+        providerInput
       });
       console.log(JSON.stringify(result, null, 2));
     });
@@ -280,29 +245,16 @@ async function main(args) {
   // audio_path（本地文件，经首选候选 Provider 的临时存储上传，签名 URL 不落 Core）。
   if (args[0] === 'run' && args[1] === 'transcribe') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
-    const input = jsonInput(options.input);
-    const allowed = new Set(['audio_url', 'audio_path', 'model_ref']);
-    for (const key of Object.keys(input)) {
-      if (!allowed.has(key)) throw new CliUsageError('转写输入不支持字段：' + key);
-    }
-    const audioUrlArg = String(input.audio_url || '').trim();
-    const audioPath = String(input.audio_path || '').trim();
-    if (Boolean(audioUrlArg) === Boolean(audioPath)) {
-      throw new CliUsageError('转写必须且只能提供 audio_url 或 audio_path 之一');
-    }
-    if (audioUrlArg && !/^(https:\/\/|oss:\/\/)/.test(audioUrlArg)) {
-      throw new CliUsageError('audio_url 必须是 https:// 或 oss:// 地址');
-    }
+    const normalized = generationInput('transcribe', jsonInput(options.input), { allowAudioPath: true });
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
-    const routes = transcribeCandidatesFromCatalog(catalog, input.model_ref);
-    let audioUrl = audioUrlArg;
-    if (!audioUrl) {
-      if (!path.isAbsolute(audioPath)) throw new CliUsageError('audio_path 必须是绝对路径');
-      if (!fs.existsSync(audioPath)) throw new CliUsageError('音频文件不存在');
+    const routes = transcribeCandidatesFromCatalog(catalog, normalized.modelRef);
+    let providerInput = normalized.providerInput;
+    if (normalized.audioPath) {
+      if (!fs.existsSync(normalized.audioPath)) throw new CliUsageError('音频文件不存在');
       const prepared = await prepareProviderInput(createConfiguredProviderAdapter(routes[0].provider), {
-        model: routes[0].model, filePath: audioPath
+        model: routes[0].model, filePath: normalized.audioPath
       });
-      audioUrl = prepared.url;
+      providerInput = generationInput('transcribe', { audio_url: prepared.url }).providerInput;
     }
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
@@ -312,7 +264,7 @@ async function main(args) {
       }));
       const result = await createProviderTaskRunner(runtime).submit({
         capability: 'transcribe', candidates,
-        providerInput: { audioUrl }
+        providerInput
       });
       console.log(JSON.stringify(result, null, 2));
     });

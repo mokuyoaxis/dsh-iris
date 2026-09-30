@@ -173,6 +173,10 @@ dsh-iris task retry task_0123456789abcdef01234567 \
 
 缺 `--confirm-billing` 时在网络与创建之前拒绝。候选链按当前 assignments/池实况重新解析（不绑定旧 Provider/binding——旧配置可能正是失败原因），`--model-ref` 可显式指定。新 Task 有全新 id、attempts 与提交时实况 binding，并记录单向 `retriedFrom` 指向旧 Task；旧 Task 零变化。**Core 记录不持久化 Prompt**，所以生成指令必须由 `--input` 重新提供，绝不从旧任务恢复。DSH 侧同构开放：`POST /iris/api/core/task/:id/retry`（请求体必须 `confirmBilling:true`）与工作台「重试为新任务」按钮（重新输入指令 + 重复计费确认弹窗）。
 
+重试输入按旧 Task 的能力校验：图片为 `{prompt, size?, n?}`，视频为 `{prompt, size?, duration?, img_data_url?}`，TTS 为 `{text, voice?}`，转写为 `{audio_url}`。视频首帧和转写地址会转换为 Provider 所需字段；原任务中的媒体输入不会自动恢复。转写 retry 要求重新提供 HTTPS/OSS 地址，本地 `audio_path` 上传仍通过正常提交入口处理；模型覆盖使用外层 `--model-ref`，不放在 retry 的 `--input` 中。
+
+CLI、DSH 正常生成与 retry 共用输入规范：Prompt/文本修剪后为 1–20000 字符，图片 `n` 为 1–4 的整数（缺省 1），视频时长为 1–60 的数字，规范化后的显式 size/voice 为 1–64 字符。转写地址修剪后最多 20000 字符。数字字符串会转为数字；非法生成参数在提交前拒绝，不创建新的计费 Task。CLI 和 retry 还会拒绝未知输入字段；DSH 保留自己的宿主参数，由入口提取生成参数，工作台清空可选文本框仍使用默认值。
+
 ```bash
 dsh-iris artifact inspect artifact_0123456789abcdef01234567 \
   --data-root /absolute/path/to/iris-data
@@ -195,3 +199,17 @@ dsh-iris artifact rebuild --data-root /absolute/path/to/iris-data
 - Artifact Manifest v0 已包含 SHA-256、关系边、可重建 Index 和进程崩溃窗口恢复；格式与限制见 [Artifact Manifest v0](ARTIFACT_MANIFEST.md)。
 - 当前开放 `crop`、同步/异步图片提交、视频 t2v/i2v 提交、语音同步合成（`run tts`）、音频转写（`run transcribe`）、图片/视频/转写单步观察（CLI `task observe` 与工作台「重新观察」共用）、失败产物重新取回（CLI `task redeliver` 与工作台「重新取回作品」共用）、人工取消（CLI `task cancel` 与工作台「取消任务」共用，只有供应商明确确认才记为已取消）、重试为新任务（CLI `task retry` 与工作台「重试为新任务」共用，必须显式确认计费且重新提供 prompt/文本/音频地址）、Task 只读查询与 Artifact 管理；自动观察、其他媒体能力和其余 Command 会按相同事实语义逐项迁入。
 - CLI 暂不提供 Core Task/Artifact 删除能力（`task`/`artifact` 的 `inspect/list` 均为纯 reader）；DSH 工作台的删除、清空与孤儿清理也只处理 legacy `outputs/`，Core 作品同样只读。不要手动删除 `core-v0` 中的记录、Manifest 或对象；Core 删除与清理能力计划在 0.2.x 开放。
+
+## 源码仓库的包外验收
+
+在源码仓库运行以下开发验收命令，需要 Node/npm 与本机 ffmpeg/ffprobe：
+
+```bash
+node scripts/verify-headless-package.mjs
+# npm 缓存完整时也可让依赖安装离线执行：
+node scripts/verify-headless-package.mjs --offline
+```
+
+脚本在仓库外的独立临时目录打包、安装 tarball，通过 npm 安装的 `dsh-iris` 入口验证 help、crop、diff、抽帧以及图片、视频、TTS、转写的 Task/Artifact 闭环。安装树不含 DSH/Cordis，不链接仓库依赖；Provider 请求全部由复制到包外的 fixture 接管，本地 Sharp/ffmpeg 则实际处理媒体。报告检查每次 observe 只有一次 poll、无重提，Artifact 导出字节与 Manifest SHA-256 一致，reader 和导出保持 Core 零写入且不请求 Provider。
+
+每次运行保留独立目录内的 tarball、安装日志、fixture 数据、导出产物和 `report.json`，终端输出验收目录和报告位置。该脚本属于源码开发工具，不随 npm 包发布；没有真实 Provider、DSH 重启或其他平台的验收结果时，不据此声明那些路径已通过。

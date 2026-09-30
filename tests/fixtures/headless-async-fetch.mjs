@@ -49,6 +49,7 @@ globalThis.fetch = async (input, init = {}) => {
     const isVideo = url.includes('video-generation');
     state.submit += 1;
     state.lastModel = body.model;
+    state.lastRequest = body;
     state.submitHadAuthorization = Boolean(new Headers(init.headers).get('authorization'));
     state.tasks[remoteTaskId] = { poll: 0, ...(isVideo ? { video: true } : {}) };
     if (state.failNextSubmitAfterAcceptance) {
@@ -123,6 +124,7 @@ globalThis.fetch = async (input, init = {}) => {
     const remoteTaskId = 'remote-' + (state.submit + 1);
     state.submit += 1;
     state.lastModel = body.model;
+    state.lastRequest = body;
     state.submitHadAuthorization = Boolean(new Headers(init.headers).get('authorization'));
     state.tasks[remoteTaskId] = { poll: 0, asr: true };
     writeState(state);
@@ -134,6 +136,7 @@ globalThis.fetch = async (input, init = {}) => {
     const body = JSON.parse(String(init.body || '{}'));
     state.tts = (state.tts || 0) + 1;
     state.lastModel = body.model;
+    state.lastRequest = body;
     state.ttsHadAuthorization = Boolean(new Headers(init.headers).get('authorization'));
     writeState(state);
     return json({ output: { audio: { data: WAV.toString('base64') } } });

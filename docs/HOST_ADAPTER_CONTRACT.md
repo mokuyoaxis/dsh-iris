@@ -88,8 +88,15 @@ Iris 继续作为普通 DSH/Cordis 插件装载：`cordis.patch.yml` 只把 npm 
 - Local Host fixture 覆盖 crop/diff、Task 查询与提醒操作，并验证缺失能力的错误；
 - Host Doctor 对服务端注册账本、客户端版本和 Slot 握手分别给出结果；
 - DSH `0.1.2-rc.1` 与 `0.1.5-rc.1` 已有宿主验证记录。
+- 当前开发工作树增加 DSH `0.2.0-rc.2` 的真实安装服务隔离验收，保留附件完整引用、绑定明确图片模型路由并适配客户端主视图选择；边界与尚未完成的浏览器实机检查见 [rc.2 适配说明](DSH_RC2_ADAPTATION.md)。
 
 Local Host 不模拟 Browser、会话或附件。测试需要这些能力时必须显式注入，缺失行为也属于契约。
+
+## Text/Vision 后续共享契约
+
+[Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 已实现独立纯契约、调用控制与 test-only Fake Port，不替换本契约已有的 `textModel.stream()` / `visionModel.analyze()` 方法。后续由 DSH 模型适配器把 Host 方法映射为共享 `complete()`：解析原始流和正常终态、传递取消、桥接同一张图片，并隔离 Host 引用与会话上下文。
+
+普通能力快照仍为零模型调用。显式视觉实测属于可能计费的模型操作，不能用于 `describe()` 或自动 Doctor；缺图片桥接时必须在模型调用前失败。新共享版本不代表 Host Adapter v0 已升级、公开 SDK 已冻结或现有消费者已迁移。
 
 ## 范围
 

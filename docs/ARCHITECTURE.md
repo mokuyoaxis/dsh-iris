@@ -43,6 +43,8 @@ DSH Host / Cordis                         Headless CLI
 |---|---|---:|
 | `core-contract.js` / `core-runtime.js` | 显式数据根、reader/writer 权限、单写者租约、取消与释放 | 无 |
 | `command-service.js` | 本地媒体命令、Task 控制面和 Artifact 查询/导出 | 无 |
+| `generation-input.js` | CLI、DSH 与重试共用的生成参数校验和 Provider 字段转换 | 无 |
+| `model-port-contract.js` / `model-invoker.js` | Text/Vision 内部契约、有限调用预算与取消；真实消费者尚未接入 | 无 |
 | `core-tasks.js` | Core Task/Attempt 持久事实、受理与交付状态 | 无 |
 | `core-artifacts.js` / `core-artifact-store.js` | 对象、Manifest、SHA-256、关系边与可重建 Index | 无 |
 | `provider-contract.js` / `provider-adapter.js` | canonical 结果、错误脱敏、受理边界与 Provider v0 操作 | 无 |
@@ -74,6 +76,12 @@ Provider Adapter v0 固定 discovery、submit、poll、cancel、download 与 err
 Core Runner 不拥有后台 timer。Headless `task observe` 每次最多 poll 一次；DSH 的有界自动观察属于 Host，插件释放时停止 timer 并中止在途观察，但不会把“停止本地观察”写成“远端已取消”。端点或协议 binding 漂移时恢复在联网前拒绝。
 
 每个操作必须明确声明 supported 或 unsupported。当前 DashScope 与 OpenAI Images 媒体协议没有经过验证的远端取消实现，因此取消请求如实返回 not-supported，而不是伪造 canceled。完整受理与错误规则见 [Provider 提交契约 v0](PROVIDER_SUBMISSION_CONTRACT.md)。
+
+## Text/Vision 共享边界（M1 已实现）
+
+[Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 的纯契约、调用控制与 test-only Fake Port 已实现，尚未接入真实消费者。它以 `describe()` 和单轮 `complete()` 统一文本/视觉输入、正常终态、预算、取消与安全错误；图片以字节和 MIME 进入共享层，模型选择、会话与附件桥接保留在入口/适配器。
+
+提示词优化与视觉理解不创建媒体生成 Task，不进入 Provider Task Runner。提示词优化的功能定位与输入隔离正在讨论，其接入待后续确定；look/relook、定位、OCR 与摘要仍按独立切片迁移。现有 Host 方法、配置与 CLI 均未因 M1 改变；自持文本目录和独立入口需要另行审查。
 
 ## Host Port 与 Headless 边界
 

@@ -70,7 +70,7 @@ Early versions read models and credentials from the maintainer's local ai-paint 
 
 ## Quickest start
 
-With a supported DeepSeek Harness (`>=0.1.2-rc.1 <0.1.3-0` or `0.1.5-rc.1`) installed and `pnpm` on your PATH, add Iris to the Web profile:
+With a supported DeepSeek Harness installed and `pnpm` on your PATH, add Iris to the Web profile. The published package supports `>=0.1.2-rc.1 <0.1.3-0` or `0.1.5-rc.1`; the current unpublished source also adapts `0.2.0-rc.2`:
 
 ```bash
 dsh plugin --profile web add @mokuyoaxis/dsh-iris
@@ -124,6 +124,9 @@ dsh-iris remains a native DSH plugin. Its server registers 14 agent tools and us
 |---|---|
 | `>=0.1.2-rc.1 <0.1.3-0` | Clean and daily Web profiles on Linux ARM64 |
 | `0.1.5-rc.1` | Daily Android/Linux profile with 14 tools, two Skills, four route groups, and four UI slots |
+| `0.2.0-rc.2` | Unpublished source: isolated checks against installed services, Core diff, and SlotRegistry; user-profile browser interactions remain unverified |
+
+See the [rc.2 adaptation notes](docs/DSH_RC2_ADAPTATION.md) for scope. The published npm 0.1.4 package does not contain these later changes.
 
 Other preview versions are outside the current compatibility claim. Automated checks cover server loading, tool and Skill registration, routes, the client bundle, and UI slots separately so Doctor can identify which boundary failed.
 

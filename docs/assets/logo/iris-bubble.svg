@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Iris" focusable="false">
+  <title>Iris — 曲线鸢尾花</title>
+  <desc>悬浮泡泡的概念图标：三片旗瓣、舒展垂瓣、金色花心与青绿叶片，透明背景。</desc>
+  <path fill="#7db9a4" d="M30.5 39h3v18h-3z"/>
+  <path fill="#7db9a4" d="M32 55C24 55 20 50 19 44C26 45 31 48 32 55Z"/>
+  <path fill="#9cd1b7" d="M32 54C40 53 44 49 45 43C38 44 33 48 32 54Z"/>
+  <path fill="#b5a0f3" d="M29 31C18 30 11 22 15 14C24 13 30 20 29 31Z"/>
+  <path fill="#b5a0f3" d="M35 31C46 30 53 22 49 14C40 13 34 20 35 31Z"/>
+  <path fill="#e0d4ff" d="M32 7C24 13 23 23 32 34C41 23 40 13 32 7Z"/>
+  <path fill="#9b80df" d="M31 31C22 24 11 28 8 36C12 45 24 47 31 34Z"/>
+  <path fill="#9b80df" d="M33 31C42 24 53 28 56 36C52 45 40 47 33 34Z"/>
+  <path fill="#c4aff6" d="M32 29C24 35 23 44 32 50C41 44 40 35 32 29Z"/>
+  <path fill="#f2ce83" d="M32 31C29 32 28 34 29 36L32 40L35 36C36 34 35 32 32 31Z"/>
+</svg>

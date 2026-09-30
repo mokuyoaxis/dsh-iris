@@ -70,7 +70,7 @@ Iris 的长期方向是可独立运行、可接入不同 Agent 宿主的媒体�
 
 ## 最快开始
 
-已经安装受支持的 DeepSeek Harness（`>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1`）且 `pnpm` 在 PATH 中时，把 Iris 加入 Web profile：
+已经安装受支持的 DeepSeek Harness（已发布包：`>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1`；当前开发源码另含 `0.2.0-rc.2` 适配）且 `pnpm` 在 PATH 中时，把 Iris 加入 Web profile：
 
 ```bash
 dsh plugin --profile web add @mokuyoaxis/dsh-iris
@@ -124,6 +124,9 @@ dsh-iris 仍按 DSH 原生插件装载。服务端注册 14 个 Agent 工具，�
 |---|---|
 | `>=0.1.2-rc.1 <0.1.3-0` | Linux ARM64 的干净与日常 Web profile |
 | `0.1.5-rc.1` | Android/Linux 日常 profile；14 个工具、2 项 Skill、4 组路由和 4 个 UI Slot |
+| `0.2.0-rc.2` | 未发布开发工作树：真实安装服务隔离验收、Core diff 与 SlotRegistry；用户 profile 的浏览器交互待验 |
+
+rc.2 修正与验证范围见[适配说明](docs/DSH_RC2_ADAPTATION.md)；已发布 npm 0.1.4 包不包含这项后续适配。
 
 其余预览版不在当前兼容声明内。自动化测试分别检查服务端装载、工具与 Skill 注册、路由、客户端 bundle 和 Slot；其中一层失效时，Doctor 应指出具体边界。
 
