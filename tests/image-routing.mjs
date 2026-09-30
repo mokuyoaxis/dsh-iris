@@ -1,7 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHook } from 'node:async_hooks';
 import { useTempDshHome } from './test-env.js';
 useTempDshHome('iris-image-routing');
+const liveResources = new Map();
+const resourceHook = createHook({
+  init(id, type, _trigger, resource) {
+    if (!['PROMISE', 'TickObject', 'Timeout'].includes(type)) {
+      liveResources.set(id, { type, resource: new WeakRef(resource), stack: new Error().stack });
+    }
+  },
+  destroy(id) { liveResources.delete(id); }
+});
+resourceHook.enable();
 const assert = (cond, msg, extra) => {
   if (!cond) { console.log('FAIL:', msg, extra === undefined ? '' : (' | ' + JSON.stringify(extra))); process.exit(1); }
 };
@@ -77,3 +88,13 @@ try {
   global.fetch = originalFetch;
 }
 console.log('ALL OK —— DashScope 图像新旧协议分流 + choices 解析 + 同步动作落盘通过');
+process.once('beforeExit', () => console.log('image-routing: beforeExit'));
+process.prependOnceListener('exit', () => console.log('image-routing: exit cleanup begins'));
+process.once('exit', () => console.log('image-routing: exit cleanup complete'));
+setTimeout(() => {
+  console.log('image-routing: active resources', process.getActiveResourcesInfo());
+  console.log('image-routing: referenced resources', [...liveResources.values()]
+    .filter(item => item.resource.deref()?.hasRef?.())
+    .map(item => ({ type: item.type, stack: item.stack })));
+  resourceHook.disable();
+}, 1000).unref();
