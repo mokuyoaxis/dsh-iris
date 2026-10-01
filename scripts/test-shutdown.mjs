@@ -15,6 +15,8 @@ const hook = createHook({
 hook.enable();
 
 process.once('beforeExit', () => {
+  hook.disable();
+  resources.clear();
   console.log(`${label}: beforeExit`);
   process.once('exit', () => console.log(`${label}: exit cleanup complete`));
 });
