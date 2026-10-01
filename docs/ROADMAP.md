@@ -4,7 +4,7 @@ Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿
 
 ## 当前状态
 
-当前稳定版本为 `0.1.4`，以 `@mokuyoaxis/dsh-iris` 安装到 DeepSeek Harness。它提供：
+当前版本为 `0.2.0`，保留包名 `@mokuyoaxis/dsh-iris`，同时提供 DeepSeek Harness 插件和 Headless CLI。它提供：
 
 - 图片、视频和语音生成，音频转写；
 - 看图问答、OCR、目标定位、裁剪、像素比较、视频抽帧和摘要；
@@ -14,25 +14,13 @@ Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿
 - 两项随包 Agent Skill；
 - Host/Provider Adapter、离线 Doctor 和零网络一致性测试。
 
-稳定版仍以 DSH 为主要入口。开发分支已经建立实例化 Core Runtime，打通无 DSH 的 crop、四种媒体生成提交、Task 观察与 Artifact 管理，并完成带内容哈希、关系边、可重建 Index 和孤儿恢复的 Artifact Manifest v0。crop 与图片、视频、语音、转写的新任务全部落到共享 Core Task/Attempt/Artifact：Host 只负责有界观察、启动接管和 attachment/UI 投影；统一作品区与五类用户状态投影覆盖四种媒体工作，CLI、DSH API 和 UI 共用同一 Command Service 的人工控制面（重新观察、重新取回、取消、重试为新任务）。四种媒体各有真实 Provider canary 证据。s2v 数字人视频、视觉理解与提示词优化仍走稳定链路；Core 公开 API 未冻结，这些接口尚未随稳定版发布，详见 [Headless CLI](HEADLESS_CLI.md)、[FakeProvider 生命周期验收器](PROVIDER_RUNTIME_HARNESS.md)、[Artifact Manifest](ARTIFACT_MANIFEST.md)和 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。
+0.2.0 建立实例化 Core Runtime，打通无 DSH 的 crop、四种媒体生成提交、Task 观察与 Artifact 管理，并提供带内容哈希、关系边、可重建 Index 和孤儿恢复的 Artifact Manifest v0。crop 与图片、视频、语音、转写的新任务全部落到共享 Core Task/Attempt/Artifact：Host 负责有界观察、启动接管和 attachment/UI 投影；统一作品区与五类用户状态投影覆盖四种媒体工作，CLI、DSH API 和 UI 共用同一 Command Service 的人工控制面（重新观察、重新取回、取消、重试为新任务）。迁移过程中积累了真实 Provider canary 记录，详细范围与后续待验项以验收文档为准。s2v 数字人视频、视觉理解与提示词优化仍走原有链路；Core 公开 API 未冻结，详见 [Headless CLI](HEADLESS_CLI.md)、[FakeProvider 生命周期验收器](PROVIDER_RUNTIME_HARNESS.md)、[Artifact Manifest](ARTIFACT_MANIFEST.md)和 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。
 
-当前源码面向 `0.2.0` 候选，不改变 npm 或 DSH 市场中的 `0.1.4` 稳定版本。检查点可用于源码审阅和 CI，不代表已经发布、冻结公共接口或完成全部平台验收。
+第二个真实 Host Adapter 实现并验收后，计划将现有 GitHub 仓库更名为 Iris，并新建 `@mokuyoaxis/iris` npm 包，复用发布工作流。当前 0.2.0 保留名称；旧包后续单独维护另行决定。CLI、测试 fixture 与媒体 Provider 不算第二个 Host Adapter。
 
-已发布 Iris `0.1.4` 的历史 DSH 范围为 `>=0.1.2-rc.1 <0.1.3-0` 和 `0.1.5-rc.1`，旧宿主应固定安装 `@mokuyoaxis/dsh-iris@0.1.4`。当前 `0.2.0` 候选只声明支持准确的 DSH `0.2.0-rc.2`，已通过真实安装服务隔离验收；历史旧版验收不继承到当前源码。修正与实机待验项见 [rc.2 适配说明](DSH_RC2_ADAPTATION.md)。其他版本需先通过独立 Host canary 才会加入支持范围，具体安装与下载方式见 [README](../README.md#最快开始)。
+已发布 Iris `0.1.4` 的历史 DSH 范围为 `>=0.1.2-rc.1 <0.1.3-0` 和 `0.1.5-rc.1`，旧宿主应固定安装 `@mokuyoaxis/dsh-iris@0.1.4`。Iris `0.2.0` 只声明支持准确的 DSH `0.2.0-rc.2`，已通过真实安装服务隔离验收；历史旧版验收不继承到当前版本。修正与实机待验项见 [rc.2 适配说明](DSH_RC2_ADAPTATION.md)。其他版本需先通过独立 Host canary 才会加入支持范围，具体安装与市场版本选择见 [README](../README.md#最快开始)。
 
 ## 下一步
-
-### 0.2.0：Core、CLI 与 Artifact
-
-`0.2.0-rc.1` 用于验证功能独立，不包含 standalone Web 服务。主要工作是：
-
-1. 让 Core 显式管理数据根、单写者租约、生命周期和取消；
-2. 让 CLI 与 DSH 共用 Command、Task、Attempt 和 Artifact 语义；
-3. 用 FakeProvider 覆盖提交、受理、轮询、交付、重启和取消；
-4. 完成 Artifact Manifest、内容哈希、关系边、索引重建和崩溃一致性；
-5. 通过无 DSH 安装、跨平台测试和真实 DSH canary。
-
-正式版只在 rc 升级、回退和双入口验证通过后发布。无用户反馈不会替代这些门槛。
 
 ### 后续 0.2.x
 
@@ -54,7 +42,7 @@ Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿
 
 ## 兼容性与限制
 
-- 当前候选的 Node.js 最低版本为 22.0.0；DSH 要求更高版本时以 DSH 为准。
+- Iris 0.2.0 的 Node.js 最低版本为 22.0.0；DSH 要求更高版本时以 DSH 为准。
 - 图片处理依赖 `sharp`；视频抽帧和摘要依赖 `ffmpeg`、`ffprobe`。
 - DSH 仍处于快速演进期。单个 Host Port 可以降级，但 DSH 若改变插件加载协议，仍需更新 DSH Adapter。
 - 模型发现只列出候选项；真实能力必须由用户显式验证。

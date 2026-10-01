@@ -44,19 +44,19 @@ These captures come from an Android browser connected to DSH under Termux/PRoot 
 
 The project is at an early stage; interfaces and configuration formats may still change between releases.
 
-Iris is evolving toward a media production core that can run independently and plug into different agent hosts. Stable release 0.1.4 still uses DSH as its main entry point; the development branch now has a working headless CLI media path (crop, image/video/TTS/transcription submission, task observation, artifact export), but it is not yet a stable public interface.
+Iris is evolving toward a media production core that can run independently and plug into different agent hosts. Version 0.2.0 provides both a DSH plugin and a headless CLI media path (crop, image/video/TTS/transcription submission, task observation, artifact export). Core internals have not been frozen as a public SDK.
 
-> Source status: this source targets an Iris `0.2.0` candidate, whose DSH plugin supports only the exact host version `0.2.0-rc.2`. Core and the CLI can run without DSH, but their internal interfaces may still change. The stable npm and DSH marketplace release remains `0.1.4` for the older DSH versions listed below. The source package version has not been bumped yet; a source checkpoint is not an npm release.
+> Version support: Iris `0.2.0` requires Node.js `>=22.0.0` and its DSH plugin supports only the exact host version `0.2.0-rc.2`. Older DSH hosts should pin `@mokuyoaxis/dsh-iris@0.1.4` as described below instead of following npm latest. Iris and DSH have independent version numbers.
 
 ## Two ways to use Iris
 
-| | Path A: DSH plugin (0.2.0 candidate) | Path B: Headless CLI (0.2.0, in development) |
+| | Path A: DSH plugin (0.2.0) | Path B: Headless CLI (0.2.0) |
 |---|---|---|
 | Who it's for | DeepSeek Harness users who want agent tools, the workbench, and in-chat prompt optimization | Users who want media generation, task tracking, and artifact export from the command line without DSH |
-| Entry point | Choose source or a pinned release under "Quickest start" below | `dsh-iris run ...` — see [Headless CLI](docs/HEADLESS_CLI.md) |
+| Entry point | Choose a pinned release under "Quickest start" below | `dsh-iris run ...` — see [Headless CLI](docs/HEADLESS_CLI.md) |
 | Data location | `$DSH_HOME/iris/v1/` (Core data root `core-v0`) | Any absolute path passed via `--data-root` |
 | Automatic observation | Yes (bounded DSH host ticks + restart takeover) | No — explicit single-step `task observe` |
-| Dependencies | The current candidate requires DSH `0.2.0-rc.2` | Node.js ≥ 22 and `sharp` only (`ffmpeg` for video frames) |
+| Dependencies | DSH `0.2.0-rc.2` and Node.js ≥ 22 | Node.js ≥ 22 and `sharp` only (`ffmpeg` for video frames) |
 
 Both paths read and write the same Core Task/Artifact facts: point the CLI at the `core-v0` data root of a DSH profile to inspect/export DSH-generated artifacts, and vice versa. Only one writer is allowed per data root.
 
@@ -74,7 +74,7 @@ Check the host with `dsh --version` and ensure `pnpm` is on your PATH. Iris and 
 
 | Your DSH | Iris choice | Source |
 |---|---|---|
-| `0.2.0-rc.2` | Current Iris `0.2.0` candidate source | Local checkout; npm 0.2.0 has not been published |
+| `0.2.0-rc.2` | `0.2.0` | Pinned npm release |
 | `>=0.1.2-rc.1 <0.1.3-0` or `0.1.5-rc.1` | Stable `0.1.4` | Pinned npm release |
 | Other versions | No current support claim | Check host adaptation before installing |
 
@@ -93,19 +93,22 @@ To download the published npm package separately:
 npm pack @mokuyoaxis/dsh-iris@0.1.4
 ```
 
-This writes a `.tgz` to the current directory. Use `npm install @mokuyoaxis/dsh-iris@0.1.4` if you only want a regular npm dependency; that does not add a DSH profile layer. Pinning `@0.1.4` keeps selecting the old stable release after latest changes. See [npm pack](https://docs.npmjs.com/cli/v11/commands/npm-pack/). Version 0.1.4 does not contain the development Core media CLI or the later DSH rc.2 adaptation.
+This writes a `.tgz` to the current directory. Use `npm install @mokuyoaxis/dsh-iris@0.1.4` if you only want a regular npm dependency; that does not add a DSH profile layer. Pinning `@0.1.4` keeps selecting the old stable release after latest changes. See [npm pack](https://docs.npmjs.com/cli/v11/commands/npm-pack/). Version 0.1.4 does not contain the 0.2.0 Core media CLI or the later DSH rc.2 adaptation.
 
-### DSH 0.2.0-rc.2: try the current candidate
+### DSH 0.2.0-rc.2: install 0.2.0
 
-From a checkout of the current candidate, install dependencies and add it to the Web profile:
+Install the pinned npm release into the Web profile:
 
 ```bash
-npm ci
-dsh plugin --profile web add .
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.0
 dsh web
 ```
 
-Use the candidate checkout for this host. The plugin loads the next time DSH starts; the web UI defaults to `http://127.0.0.1:3080`. The current source metadata admits only DSH rc.2; retained legacy interface code does not constitute an older-host support promise.
+The plugin loads the next time DSH starts; the web UI defaults to `http://127.0.0.1:3080`. Open the complete URL if startup output includes authentication parameters. Version 0.2.0's compatibility metadata admits only DSH rc.2.
+
+### Choosing a version in dsh-market
+
+The marketplace entry should resolve to the full package name `@mokuyoaxis/dsh-iris`. Check both its displayed Iris version and your local `dsh --version` before installing: 0.2.0 is for DSH rc.2; older hosts should use the pinned `@0.1.4` commands above. Catalog and npm information may be cached. The actual npm package's `dsh.engines.dsh` and Node engines determine its declared requirements; a visible listing does not imply support for every DSH release.
 
 > The unscoped `dsh-iris` on npm belongs to a different plugin. Always keep the fully scoped name `@mokuyoaxis/dsh-iris` when installing or updating Iris Media.
 
@@ -139,7 +142,7 @@ For a copyable installation and usage prompt, see [Agent quickstart prompt](docs
 
 ## Prerequisites
 
-- A Node.js version that satisfies your DeepSeek Harness release's requirement; the current candidate requires at least 22.0.0, while the published npm 0.1.4 historically requires 20.10.0
+- A Node.js version that satisfies your DeepSeek Harness release's requirement; Iris 0.2.0 requires at least 22.0.0, while the published npm 0.1.4 historically requires 20.10.0
 - A working DeepSeek Harness environment with `pnpm` on the PATH
 - At least one supported media or vision provider
 - `ffmpeg` and `ffprobe` on the system, for video frame extraction and video summaries
@@ -154,13 +157,13 @@ dsh-iris remains a native DSH plugin. Its server registers 14 agent tools and us
 |---|---|---|
 | Published stable `0.1.4` | `>=0.1.2-rc.1 <0.1.3-0` | Historical clean and daily Web profiles on Linux ARM64 |
 | Published stable `0.1.4` | `0.1.5-rc.1` | Historical daily Android/Linux profile checks |
-| Current Iris `0.2.0` candidate source | Only `0.2.0-rc.2` | Installed-service isolation checks, Core diff, and SlotRegistry; user demonstration reported successful, with detailed browser actions and asynchronous restart/rollback verification continuing |
+| `0.2.0` | Only `0.2.0-rc.2` | Installed-service isolation checks, Core diff, and SlotRegistry; user demonstration reported successful, with detailed browser actions and asynchronous restart/rollback verification continuing |
 
 See the [rc.2 adaptation notes](docs/DSH_RC2_ADAPTATION.md) for scope. The published npm 0.1.4 package does not contain these later changes.
 
-The current candidate no longer claims older DSH support; historical validation does not automatically cover this source. DSH `0.2.0` stable and other rc versions are also outside its support range. Automated checks cover server loading, tool and Skill registration, routes, the client bundle, and UI slots separately so Doctor can identify which boundary failed.
+Iris 0.2.0 no longer claims older DSH support; historical validation does not automatically cover this version. DSH `0.2.0` stable and other rc versions are also outside its support range. Automated checks cover server loading, tool and Skill registration, routes, the client bundle, and UI slots separately so Doctor can identify which boundary failed.
 
-Core and the DSH Adapter are being separated without changing installation: DSH will keep loading the same npm package, while the Adapter maps host capabilities into Core. A DSH API change should require an Adapter or client-bridge fix, not a rewrite of Task or Artifact semantics. The development-only headless CLI has not shipped in the stable release; see the [roadmap](docs/ROADMAP.md).
+Core and the DSH Adapter are being separated: DSH keeps loading the same npm package, while the Adapter maps host capabilities into Core. A DSH API change should require an Adapter or client-bridge fix, not a rewrite of Task or Artifact semantics. Version 0.2.0 includes the headless CLI. The `dsh` prefix will be removed after a second real Host Adapter is implemented and accepted, with a new npm package at that point; see the [roadmap](docs/ROADMAP.md).
 
 ## Tools
 

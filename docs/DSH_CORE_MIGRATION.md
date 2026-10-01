@@ -1,6 +1,6 @@
 # DSH → Core 渐进迁移
 
-本文描述 0.2.0 候选工作树，不代表已发布版本。迁移逐条切换消费者，不原地改写 0.1.4 数据；未迁移能力继续使用稳定版实现。
+本文描述 Iris 0.2.0 的实现与迁移边界。迁移逐条切换消费者，不原地改写 0.1.4 数据；未迁移能力继续使用原有实现。
 
 ## 已切换的执行链：本地媒体处理与新生成任务
 
@@ -99,8 +99,8 @@ DSH 的 `iris_pixel_diff`、`iris_video_frames` 与工作台对应动作也消�
 - 最近一次真实对话验收在进入 Iris 前被 DSH 主模型的 429 限流阻断，未新增 Core Task/Artifact，也未调用媒体 Provider。未改动用户全局模型设置。
 - 早期候选 tarball 已在仓库外、无 DSH 包的临时项目安装并完成 crop/inspect；后续新增代码仍需最终候选重新打包审计。Windows CI 和安卓浏览器目视未以离线测试替代。
 
-## 接下来与候选门禁
+## 后续验收
 
 Core 任务到工作台进度/提醒的只读安全投影已完成（五类状态、合并任务区、会话内一次性完成提示、损坏/缺媒体局部降级），人工控制面四个动作已全部开放（reobserve/redeliver/cancel/retry，CLI/API/UI 同一 Command Service，retry 三层强制计费确认）。图片、t2v/i2v、TTS、转写以及本地 crop/diff/抽帧已有 Core 执行链；接下来补恢复后真实会话附件、浏览器与异步重启证据，验证停止 DSH 后 CLI 仍可 inspect/observe/export。旧 ID 映射和尚未迁移能力按后续计划单独处理。
 
-发布前还需重新审计 tarball、无 DSH 安装闭包、Linux/Windows CI、0.1.4 数据不改写和实际 DSH 版本矩阵。未验证的宿主版本与 Provider 路径不得写成已支持；提交、推送和发布需另行授权。
+发行验证覆盖最终 tarball、无 DSH 安装闭包、Linux/Windows CI 和真实安装的 rc.2 服务隔离检查；这些检查不替代付费 Provider、个人 profile 的停机接管/回退与逐项浏览器验收。上述剩余范围继续跟踪；未验证的宿主版本与 Provider 路径不作为支持声明。

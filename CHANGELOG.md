@@ -4,26 +4,30 @@
 
 ## [Unreleased]
 
-> 本节对应 `0.2.0` 候选源码；npm 与 DSH 市场稳定版本仍为 `0.1.4`。普通源码提交或 main 合并不构成发布。
+暂无。
+
+## [0.2.0] - 2026-10-01
+
+Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿主继续固定安装 `@mokuyoaxis/dsh-iris@0.1.4`。包名与仓库名保留，第二个真实 Host Adapter 完成后再更名。
 
 ### Added
 
-- 增加中英文 [Agent 简要 Prompt](docs/AGENT_QUICKSTART.md)，按宿主版本选择候选源码或固定 npm 0.1.4，并明确 CLI、profile 与任务观察的使用边界。
+- 增加中英文 [Agent 简要 Prompt](docs/AGENT_QUICKSTART.md)，按宿主版本选择固定 npm 0.2.0 或 0.1.4，并明确 CLI、profile 与任务观察的使用边界。
 - 增加 [Text/Vision Model Port v0 内部契约](docs/MODEL_PORT_CONTRACT.md)，约定共享输入、完整终态、取消/预算、安全错误与逐项迁移门禁；真实 DSH/CLI 消费者尚未切换。
 - 实现 Text/Vision M1 纯契约与调用控制，包含单次/整体预算、显式候选策略、取消与晚到结果处理，并补 test-only Fake Port 和共用离线 conformance；真实适配器、提示词优化及视觉消费者尚未接入，未新增公开 export。
 - 增加像素块几何母题的 IRIS 标志与图形标（彩色/单色/反白共 6 个 SVG），由 `scripts/gen-logo.mjs` 从设计矩阵可复现生成，含最小尺寸、留白与配色规范（`docs/assets/logo/`）；初始泡泡采用同源内联像素图形标，后续曲线替换见下方 Changed；0.1.x 渐变临时字标不再使用，源码文件暂留作历史兼容。
 - 增加 Core 任务的注意力处置（Host 偏好式，与 legacy 体验对齐）：工作台 attention 行（失败/取回失败/受理未知）提供「不再提醒」与「移除」，已受理行提供「恢复提醒」，高级诊断保留完整记录并标注处置状态、可「恢复显示」。处置存于 `$DSH_HOME/iris/v1/core-attention.json`（0600、原子写、损坏降级为无偏好），**零 Core 写入**——任务与产物记录绝不删除。重试成功自动静默：若某 attention 任务存在 `retriedFrom` 指向它的后继且后者已成功交付，则旧任务从任务区自动静默（纯事实派生，刷新不回归；后继后续失败则静默随之撤销）。CLI 无提醒概念，不受影响。
 
-- 增加开发中的 Headless CLI：无需加载 DSH 即可执行本地裁剪，并跨进程检查和导出 Artifact。
+- 发布 Headless CLI：无需加载 DSH 即可执行本地裁剪、图片 diff、视频抽帧及图片/视频/语音/转写任务，并跨进程观察任务、检查和导出 Artifact。
 - Headless CLI 增加只读的 `providers list`、`capabilities list` 与显式数据根 Core Doctor；异常退出后可经 Doctor 核对并回显陈旧 owner PID，使用 `runtime recover` 写私有审计后释放租约。活跃或证据不完整时拒绝恢复，不自动解锁。
 - 增加实例化 Core Runtime，提供显式数据根、单写者租约、reader、取消和有序释放。
 
 ### Changed
 
-- 当前 0.2.0 候选的 Node.js 最低要求统一为 22.0.0，npm 元数据、Doctor、README、用户指南与 CI 同步。Node 22 已包含上游退出阶段 FinalizationRegistry 无限循环修复（nodejs/node#51290）；补充确定性退出回归及最低版本重复退出验证，移除临时 GDB 取证步骤。已发布 0.1.4 的历史要求不变。
-- 当前 0.2.0 候选的 DSH engines、五项可选客户端 peers 和 Host Doctor 收敛到准确的 `0.2.0-rc.2`，不再声明旧 DSH 支持；已发布 Iris 0.1.4 的历史范围不变，README 和用户指南补充 `@mokuyoaxis/dsh-iris@0.1.4` 固定安装与 npm tarball 下载方式。
+- 0.2.0 的 Node.js 最低要求统一为 22.0.0，npm 元数据、Doctor、README、用户指南与 CI 同步。Node 22 已包含上游退出阶段 FinalizationRegistry 无限循环修复（nodejs/node#51290）；补充确定性退出回归及最低版本重复退出验证，移除临时 GDB 取证步骤。已发布 0.1.4 的历史要求不变。
+- 0.2.0 的 DSH engines、五项可选客户端 peers 和 Host Doctor 收敛到准确的 `0.2.0-rc.2`，不再声明旧 DSH 支持；已发布 Iris 0.1.4 的历史范围不变，README 和用户指南补充 `@mokuyoaxis/dsh-iris@0.1.4` 固定安装与 npm tarball 下载方式。
 - 悬浮泡泡以曲线鸢尾花 SVG 替换像素块剪影，采用紫色花瓣、金色花心与青绿叶片；提供透明矢量源和按钮概念预览，保留现有健康状态与交互。
-- 当前开发工作树适配 DSH `0.2.0-rc.2`，通过真实安装服务隔离验收；未推定其他 0.2 版本兼容，已发布 npm 0.1.4 包不包含这些后续修改。验证范围见 [rc.2 适配说明](docs/DSH_RC2_ADAPTATION.md)。
+- 适配 DSH `0.2.0-rc.2`，通过真实安装服务隔离验收；未推定其他 0.2 版本兼容，已发布 npm 0.1.4 包不包含这些后续修改。验证范围见 [rc.2 适配说明](docs/DSH_RC2_ADAPTATION.md)。
 - CLI、DSH 与知情重试共用四类生成的参数规范化：文本修剪、图片数量、视频时长及 size/voice 长度使用同一规则，非法参数在提交前拒绝。DSH 的 diff/抽帧工具和工作台动作消费已有 Core Command，结果保存为 Artifact 并可经 CLI 导出；宿主继续负责附件展示。
 - 协议工厂改用内部注册表；媒体协议与视觉类型分别处理。导入和重载保留用户显式配置，未知协议在联网前返回稳定错误；未知端点的自动 OpenAI Images 兼容回退带 `protocolInferred` 标记，并在供应商管理区提示确认。
 - CLI 与 DSH 共用配置模型解析，均接受裸模型名与供应商复合引用；运行时不再注入厂商默认模型。旧裸账号的兼容目录改为在配置写入时物化，CLI 读取不迁移配置；显式空模型池仍保持为空。
@@ -219,7 +223,8 @@
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.1...v0.1.2

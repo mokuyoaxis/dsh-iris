@@ -1,6 +1,6 @@
 # Artifact Manifest v0
 
-Artifact Manifest v0 是 0.2.0-rc.1 的内部候选格式，尚未作为公开 package API 冻结。它不替换 0.1.4 的 `outputs/` 与 `artifacts.json`；后续 Host 迁移只能显式、逐件复制旧作品，失败时保留原文件。
+Artifact Manifest v0 是 Iris 0.2.0 使用的内部格式，尚未作为公开 package API 冻结。它不替换 0.1.4 的 `outputs/` 与 `artifacts.json`；后续 Host 迁移只能显式、逐件复制旧作品，失败时保留原文件。
 
 ## 存储与提交顺序
 

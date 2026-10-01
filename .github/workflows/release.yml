@@ -2,7 +2,7 @@ name: Release
 
 # 推送 vX.Y.Z 标签即发布：跑测试 → 打包 → 建 GitHub Release（附 tarball）→ 发布 npm。
 # GitHub Release 用工作流内置 GITHUB_TOKEN，无需本机凭据；
-# npm 发布需要仓库 secret NPM_TOKEN（缺失时跳过发布并给出警告，不阻塞 Release）。
+# npm 发布需要仓库 secret NPM_TOKEN；缺失时明确失败，避免将部分发行记作成功。
 
 on:
   push:
@@ -29,6 +29,15 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+
+      - name: Check npm credentials
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "::error::未配置 NPM_TOKEN，不能完成 npm 发布"
+            exit 1
+          fi
       - run: npm ci
       - run: npm test
 
@@ -52,22 +61,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # 确定性收敛：先清掉可能存在的旧/幽灵 release（如 tag 被删重建的残留，
-          # gh release view 会命中它并走 edit 分支，导致列表不可见），再全新创建。
-          gh release delete "$GITHUB_REF_NAME" --yes 2>/dev/null || true
-          gh release create "$GITHUB_REF_NAME" \
-            --title "Iris $GITHUB_REF_NAME" \
-            --notes-file /tmp/release-notes.md \
-            "$TARBALL#dsh-iris $GITHUB_REF_NAME tarball"
-
-      - name: Check npm credentials
-        id: npmcheck
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: echo "ready=$([ -n "$NPM_TOKEN" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+          # 重跑时保留已有 Release 和附件，不删除发行记录。
+          gh release list --limit 1000 --json tagName --jq '.[].tagName' > /tmp/iris-release-tags.txt
+          if grep -Fxq "$GITHUB_REF_NAME" /tmp/iris-release-tags.txt; then
+            echo "GitHub Release $GITHUB_REF_NAME 已存在，保留原记录"
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag \
+              --title "Iris $GITHUB_REF_NAME" \
+              --notes-file /tmp/release-notes.md \
+              "$TARBALL#dsh-iris $GITHUB_REF_NAME tarball"
+          fi
 
       - name: Publish to npm
-        if: steps.npmcheck.outputs.ready == 'yes'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -76,9 +81,15 @@ jobs:
           if npm view "$PKG_FULL" version >/dev/null 2>&1; then
             echo "::warning::$PKG_FULL 已存在于 npm，跳过发布"
           else
-            npm publish --access public --provenance
+            npm publish "$TARBALL" --access public --provenance
           fi
 
-      - name: npm publish skipped
-        if: steps.npmcheck.outputs.ready != 'yes'
-        run: echo "::warning::未配置 NPM_TOKEN secret，GitHub Release 已创建但 npm 发布已跳过。"
+      - name: Verify npm publication
+        run: |
+          PKG_NAME="$(node -p "require('./package.json').name")"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          PUBLISHED_VERSION="$(npm view "$PKG_NAME@$PKG_VERSION" version)"
+          if [ "$PUBLISHED_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::npm registry 未返回本次发行版本 $PKG_VERSION"
+            exit 1
+          fi

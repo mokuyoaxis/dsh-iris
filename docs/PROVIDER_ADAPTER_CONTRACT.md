@@ -1,6 +1,6 @@
 # Provider Adapter v0 生命周期契约
 
-状态：**v0.1.4 的六操作内部契约已实现；0.2.0-rc.1 开发分支增加可选输入准备能力。** 这是 Iris Core 候选模块与供应商协议实现之间的边界，不是面向第三方承诺兼容性的公开 SDK。当前 DashScope 与 OpenAI Images 兼容实现已经通过同一套零网络 conformance runner。
+状态：**v0.1.4 的六操作内部契约已实现；0.2.0 增加可选输入准备能力。** 这是 Iris Core 模块与供应商协议实现之间的内部边界，尚未冻结为第三方公开 SDK。当前 DashScope 与 OpenAI Images 兼容实现已经通过同一套零网络 conformance runner。
 
 ## 目标与依赖方向
 
@@ -23,7 +23,7 @@ Action / Task watcher / recovery / model discovery
 
 ## 描述结构
 
-开发分支的协议工厂由内部注册表选择，当前仍只有 `dashscope` 和 `openai-images` 两项，不提供公开注册 API。未知的显式 `mediaProtocol` 保留原值，调用时以 `IRIS_PROVIDER_PROTOCOL_UNSUPPORTED` 在联网前拒绝；错误只包含合法协议标识，不回显端点或凭据。
+0.2.0 的协议工厂由内部注册表选择，当前仍只有 `dashscope` 和 `openai-images` 两项，不提供公开注册 API。未知的显式 `mediaProtocol` 保留原值，调用时以 `IRIS_PROVIDER_PROTOCOL_UNSUPPORTED` 在联网前拒绝；错误只包含合法协议标识，不回显端点或凭据。
 
 未配置协议或选择 `auto` 时，官方端点可识别为对应协议；其他端点继续使用 OpenAI Images 兼容路径，并标记 `protocolInferred:true`。该标记表示尚待用户确认兼容性，不代表已经验证成功。显式选择协议会清除标记；旧记录中已保存的明确协议不追溯猜测其来源。CLI 与 DSH 共用选择逻辑，Task binding 绑定最终实际协议与端点。
 

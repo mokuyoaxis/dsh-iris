@@ -1,6 +1,6 @@
 # Iris 架构与边界
 
-状态：`0.1.4` 是 npm 与 DSH 市场的当前稳定版本；当前源码分支是 `0.2.0-rc.1` 开发检查点，不是发布。该检查点已经建立可在无 DSH 进程中运行的实例化 Core Runtime、Headless CLI、共享 Provider 生命周期、Core Task/Attempt 与 Artifact Manifest，并让 DSH 逐项消费同一套事实；发布门禁和稳定 Core API 仍未冻结。
+状态：Iris `0.2.0` 提供可在无 DSH 进程中运行的实例化 Core Runtime、Headless CLI、共享 Provider 生命周期、Core Task/Attempt 与 Artifact Manifest，并让 DSH 逐项消费同一套事实。DSH 插件仅支持 `0.2.0-rc.2`，Node.js 最低为 22.0.0；旧宿主固定使用 npm `0.1.4`。Core 内部 API 尚未冻结为公共 SDK。
 
 ## 当前形态
 
@@ -37,7 +37,7 @@ DSH Host / Cordis                         Headless CLI
 
 未迁移能力仍走 0.1.4 legacy 链。当前主要包括 s2v 数字人视频、视觉理解、长图 OCR、媒体摘要、HTML 渲染和提示词优化；它们不会被伪装成 Core 能力。
 
-## 0.2.0-rc.1 候选核心
+## 0.2.0 核心
 
 | 模块 | 职责 | DSH 运行时依赖 |
 |---|---|---:|
@@ -104,7 +104,7 @@ Core 媒体路由按随机 Artifact ID 读取并逐次验证 SHA-256；它没有
 
 ## 非目标与发布边界
 
-- `0.2.0-rc.1` 不启动独立常驻服务，也不复制 DSH 聊天界面。
+- `0.2.0` 不启动独立常驻服务，也不复制 DSH 聊天界面。
 - 不迁移到 SQLite/JSONL，不原地改写 0.1.4 数据，不自动接管不确定的写者租约。
 - 不在本候选新增 Gemini、Fal、Replicate 或本地模型协议；注册表只是后续接入点。
 - 不把离线测试、一次 canary 或 Headless 可运行等同于公开 Core API 已冻结。

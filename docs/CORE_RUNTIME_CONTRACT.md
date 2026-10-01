@@ -1,12 +1,12 @@
 # Core Runtime v0 候选契约
 
-本文定义 0.2.0 的 Core Runtime 候选接口。rc 阶段仍可能调整，当前 npm 包尚未把它作为公开 API 导出；现有 `config.js`、`tasks.js` 和 `artifacts.js` 也尚未迁移。
+本文定义 0.2.0 的 Core Runtime 内部接口。内部接口在后续版本仍可能调整，npm 包不把它作为公开 API 导出；现有 `config.js`、`tasks.js` 和 `artifacts.js` 也尚未迁移。
 
 ## 目标与范围
 
 Core Runtime 由调用方显式创建、启动和释放。数据根、操作权限、取消和清理都属于实例；存储缓存与观察器接入后也必须遵守同一归属。Core 不推断 DSH profile，不读取 `ctx`，不启动浏览器或监听端口，也不在启动、Doctor 或能力枚举时触发供应商请求。
 
-当前开发检查点已包含 Runtime、Task/Attempt、Artifact Manifest、首批本地与媒体 Command，以及 DSH 对已迁移媒体任务的同源消费。s2v、视觉理解等未迁移能力仍走 legacy Host；这不是完整迁移或公开 Core API 已冻结的声明。
+0.2.0 包含 Runtime、Task/Attempt、Artifact Manifest、本地与媒体 Command，以及 DSH 对已迁移媒体任务的同源消费。s2v、视觉理解等未迁移能力仍走 legacy Host；完整迁移与公开 Core API 冻结留待后续版本。
 
 ## 数据根和进程归属
 
@@ -14,7 +14,7 @@ Core Runtime 由调用方显式创建、启动和释放。数据根、操作权�
 - 每个数据根只允许一个写者。写者必须在读取、初始化、规范化配置、接回旧作品、重建索引或启动任务观察器之前取得数据根租约，并持有到实例完成释放。
 - 其他进程可以用 `reader` 打开同一数据根，但只能执行无副作用的检查。DSH 正在使用该数据根时，CLI 写操作返回 `IRIS_CORE_DATA_ROOT_BUSY`；用户可以停止现有写者，或显式选择另一数据根。
 - 只读不是隐式写入：不得创建缺失文件、修改权限、隔离损坏文件、修复/迁移记录、接回 `outputs/`、更新健康时间或启动任务观察器。
-- 写者冲突必须 fail-fast，普通 Runtime **不得自动夺取**租约。开发分支已有独立的 `runtime recover` 显式流程：先由只读 Doctor 报告 owner，再要求用户回显陈旧 PID，并在接管时复核证据、写私有审计；活跃、未知或损坏状态拒绝。PID 不存在本身仍不是跨主机安全证明。
+- 写者冲突必须 fail-fast，普通 Runtime **不得自动夺取**租约。0.2.0 提供独立的 `runtime recover` 显式流程：先由只读 Doctor 报告 owner，再要求用户回显陈旧 PID，并在接管时复核证据、写私有审计；活跃、未知或损坏状态拒绝。PID 不存在本身仍不是跨主机安全证明。
 - 路径别名必须在取得租约前解析为同一物理数据根。不能只依赖字符串规范化或原子 `rename`：后者可以防止半写文件，不能阻止两个带缓存的进程互相覆盖。
 
 初版租约优先使用 Node 标准库和本地文件系统能力，不新增生产依赖。Android 共享存储、网络文件系统和异常退出后的恢复只有拿到真实证据后才声明支持；实现不得假设 systemd 或常驻 daemon 存在。

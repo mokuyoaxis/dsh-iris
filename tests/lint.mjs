@@ -1046,8 +1046,8 @@ if (tasksLib) {
     failures.push('docs/releases/0.1.4.md 必须存在且使用英文 Release 文案');
   }
   if (!/^## \[0\.1\.4\] - 2026-09-10$/m.test(changelog)) failures.push('CHANGELOG.md 缺少 0.1.4 候选章节');
-  if (!changelog.includes('[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.4...HEAD')) {
-    failures.push('CHANGELOG.md Unreleased 比较链接必须从 v0.1.4 开始');
+  if (!changelog.includes(`[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v${pkg.version}...HEAD`)) {
+    failures.push('CHANGELOG.md Unreleased 比较链接必须从当前包版本开始');
   }
   if (!fs.existsSync(path.join(root, 'lib', 'bundled-skills.js'))) {
     failures.push('缺少随插件启用的嵌入式 Skill 注册器 lib/bundled-skills.js');

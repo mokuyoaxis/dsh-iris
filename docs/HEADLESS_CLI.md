@@ -1,6 +1,8 @@
-# Headless CLI（0.2.0-rc.1 开发中）
+# Headless CLI（0.2.0）
 
-当前开发分支已具备无 DSH 的本地裁剪、图片 diff、视频抽帧，以及 Provider 媒体任务闭环。结果保存为 Core Artifact，并可在后续进程中检查或导出。该接口尚未随正式版本发布；命令名和 Artifact v0 记录在 rc 阶段仍可能调整。
+Iris 0.2.0 提供无 DSH 的本地裁剪、图片 diff、视频抽帧，以及 Provider 媒体任务闭环。结果保存为 Core Artifact，并可在后续进程中检查或导出。Core 内部接口与 Artifact v0 尚未冻结为跨版本公共 SDK。
+
+需要 Node.js ≥ 22.0.0。在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.0` 后，通过 `npx dsh-iris ...` 使用命令；也可临时运行 `npx --package @mokuyoaxis/dsh-iris@0.2.0 dsh-iris --help`。下文的 `dsh-iris` 指该版本提供的可执行入口，不需要安装 DSH。
 
 ## 配置查询与离线诊断
 
