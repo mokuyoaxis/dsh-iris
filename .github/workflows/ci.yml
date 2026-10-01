@@ -29,6 +29,9 @@ jobs:
       # npm 10.5.1's PowerShell wrapper can select a missing global npm CLI.
       # The Windows cmd wrapper checks that path and falls back to bundled npm.
       - run: ${{ runner.os == 'Windows' && 'npm.cmd' || 'npm' }} ci
+      - name: Compare Windows shutdown instrumentation
+        if: runner.os == 'Windows' && matrix.node == '22.0.0'
+        run: node scripts/verify-test-hook-isolation.mjs
       - run: ${{ runner.os == 'Windows' && 'npm.cmd' || 'npm' }} test
       - name: Repeat minimum Node shutdown regression
         if: matrix.node == '22.0.0'

@@ -1,8 +1,8 @@
 import { createHook } from 'node:async_hooks';
 import path from 'node:path';
 
-// Loaded before each test: retain only weak references so diagnostics cannot
-// keep a resource alive or turn a shutdown leak into a successful forced exit.
+// Phase logging is always on. Resource stack collection is opt-in because
+// async_hooks and WeakRef change GC scheduling, including during shutdown.
 const label = path.basename(process.argv[1] || '<inline>');
 const resources = new Map();
 const hook = createHook({
@@ -12,7 +12,7 @@ const hook = createHook({
   },
   destroy(id) { resources.delete(id); }
 });
-hook.enable();
+if (process.env.IRIS_TEST_TRACE_RESOURCES === '1') hook.enable();
 
 process.once('beforeExit', () => {
   hook.disable();
