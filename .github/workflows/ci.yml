@@ -28,4 +28,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Repeat minimum Node shutdown regression
+        if: matrix.node == '20.10.0'
+        run: node scripts/verify-test-shutdown.mjs
       - run: npm pack --dry-run

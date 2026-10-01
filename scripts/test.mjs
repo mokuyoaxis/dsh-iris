@@ -2,20 +2,19 @@ import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { testNodeArgs, testProcessArgs } from './test-process.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const tests = readdirSync(path.join(root, 'tests')).filter((name) => name.endsWith('.mjs')).sort();
 const testTimeoutMs = 120000;
+console.log(`Test runtime: Node ${process.versions.node}; extra args: ${testNodeArgs.join(' ') || '(none)'}`);
 if (!tests.length) {
   console.error('未找到测试文件');
   process.exit(1);
 }
 for (const name of tests) {
   console.log(`\n▶ ${name}`);
-  const result = spawnSync(process.execPath, [
-    '--import', new URL('./test-shutdown.mjs', import.meta.url).href,
-    path.join(root, 'tests', name)
-  ], {
+  const result = spawnSync(process.execPath, testProcessArgs(path.join(root, 'tests', name)), {
     cwd: root, stdio: 'inherit', shell: false,
     timeout: testTimeoutMs,
     // 测试装载插件时不能继承用户真实的凭据导入请求。
