@@ -12,7 +12,10 @@ if (!tests.length) {
 }
 for (const name of tests) {
   console.log(`\n▶ ${name}`);
-  const result = spawnSync(process.execPath, [path.join(root, 'tests', name)], {
+  const result = spawnSync(process.execPath, [
+    '--import', new URL('./test-shutdown.mjs', import.meta.url).href,
+    path.join(root, 'tests', name)
+  ], {
     cwd: root, stdio: 'inherit', shell: false,
     timeout: testTimeoutMs,
     // 测试装载插件时不能继承用户真实的凭据导入请求。
