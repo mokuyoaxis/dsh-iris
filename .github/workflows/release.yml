@@ -88,8 +88,14 @@ jobs:
         run: |
           PKG_NAME="$(node -p "require('./package.json').name")"
           PKG_VERSION="$(node -p "require('./package.json').version")"
-          PUBLISHED_VERSION="$(npm view "$PKG_NAME@$PKG_VERSION" version)"
-          if [ "$PUBLISHED_VERSION" != "$PKG_VERSION" ]; then
-            echo "::error::npm registry 未返回本次发行版本 $PKG_VERSION"
-            exit 1
-          fi
+          # 新版可见性可能晚于 publish 成功；在线重验，最多等待五轮间隔。
+          for attempt in 1 2 3 4 5 6; do
+            if PUBLISHED_VERSION="$(npm view "$PKG_NAME@$PKG_VERSION" version --prefer-online --fetch-retries=0 --fetch-timeout=15000)" \
+                && [ "$PUBLISHED_VERSION" = "$PKG_VERSION" ]; then
+              exit 0
+            fi
+            echo "::notice::npm registry 尚未确认 $PKG_VERSION（$attempt/6）"
+            if [ "$attempt" -lt 6 ]; then sleep 10; fi
+          done
+          echo "::error::npm registry 未返回本次发行版本 $PKG_VERSION"
+          exit 1
