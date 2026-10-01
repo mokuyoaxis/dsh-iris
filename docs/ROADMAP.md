@@ -16,9 +16,9 @@ Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿
 
 稳定版仍以 DSH 为主要入口。开发分支已经建立实例化 Core Runtime，打通无 DSH 的 crop、四种媒体生成提交、Task 观察与 Artifact 管理，并完成带内容哈希、关系边、可重建 Index 和孤儿恢复的 Artifact Manifest v0。crop 与图片、视频、语音、转写的新任务全部落到共享 Core Task/Attempt/Artifact：Host 只负责有界观察、启动接管和 attachment/UI 投影；统一作品区与五类用户状态投影覆盖四种媒体工作，CLI、DSH API 和 UI 共用同一 Command Service 的人工控制面（重新观察、重新取回、取消、重试为新任务）。四种媒体各有真实 Provider canary 证据。s2v 数字人视频、视觉理解与提示词优化仍走稳定链路；Core 公开 API 未冻结，这些接口尚未随稳定版发布，详见 [Headless CLI](HEADLESS_CLI.md)、[FakeProvider 生命周期验收器](PROVIDER_RUNTIME_HARNESS.md)、[Artifact Manifest](ARTIFACT_MANIFEST.md)和 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。
 
-当前源码是 `0.2.0-rc.1` 的开发检查点，不改变 npm 或 DSH 市场中的 `0.1.4` 稳定版本。检查点可用于源码审阅和 CI，不代表已经发布、冻结公共接口或完成全部平台验收。
+当前源码面向 `0.2.0` 候选，不改变 npm 或 DSH 市场中的 `0.1.4` 稳定版本。检查点可用于源码审阅和 CI，不代表已经发布、冻结公共接口或完成全部平台验收。
 
-已发布包验证的 DSH 范围为 `>=0.1.2-rc.1 <0.1.3-0` 和 `0.1.5-rc.1`。当前开发工作树另通过 `0.2.0-rc.2` 的真实安装服务隔离验收，修正与实机待验项见 [rc.2 适配说明](DSH_RC2_ADAPTATION.md)。其他预览版需先通过独立 Host canary 才会加入支持范围。
+已发布 Iris `0.1.4` 的历史 DSH 范围为 `>=0.1.2-rc.1 <0.1.3-0` 和 `0.1.5-rc.1`，旧宿主应固定安装 `@mokuyoaxis/dsh-iris@0.1.4`。当前 `0.2.0` 候选只声明支持准确的 DSH `0.2.0-rc.2`，已通过真实安装服务隔离验收；历史旧版验收不继承到当前源码。修正与实机待验项见 [rc.2 适配说明](DSH_RC2_ADAPTATION.md)。其他版本需先通过独立 Host canary 才会加入支持范围，具体安装与下载方式见 [README](../README.md#最快开始)。
 
 ## 下一步
 

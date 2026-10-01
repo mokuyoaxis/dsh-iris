@@ -46,17 +46,17 @@ dsh-iris 为 Agent 和 Iris 工作台提供图像、视频、语音与视觉理�
 
 Iris 的长期方向是可独立运行、可接入不同 Agent 宿主的媒体生产核心。稳定版 0.1.4 仍以 DSH 为主要入口；开发分支已打通无 DSH 的 CLI 媒体链路（crop、图片/视频/语音/转写提交、任务观察、作品导出），但尚未作为稳定接口发布。
 
-> 源码状态：当前分支是 `0.2.0-rc.1` 的开发检查点，Core/CLI 已可在无 DSH 进程中运行，但内部接口仍可能调整。npm 与 DSH 市场的稳定版本仍为 `0.1.4`；源码检查点不等于发布。
+> 源码状态：当前源码面向 `0.2.0` 候选，DSH 插件仅支持准确版本 `0.2.0-rc.2`。Core/CLI 已可在无 DSH 进程中运行，但内部接口仍可能调整。npm 与 DSH 市场的稳定版本仍为 `0.1.4`，适用于下文列出的旧 DSH 范围；当前源码中的包版本暂未提升，源码检查点不等于 npm 发布。
 
 ## 两条使用路径
 
-| | 路径 A：DSH 插件（当前稳定） | 路径 B：Headless CLI（0.2.0-rc.1 开发中） |
+| | 路径 A：DSH 插件（0.2.0 候选） | 路径 B：Headless CLI（0.2.0 开发中） |
 |---|---|---|
 | 适合谁 | 已在使用 DeepSeek Harness，想要 Agent 工具、工作台和对话内提示词优化 | 想在无 DSH 环境用命令行完成媒体生成、任务跟踪和作品导出 |
-| 入口 | `dsh plugin add @mokuyoaxis/dsh-iris`，见下文「最快开始」 | `dsh-iris run ...`，见 [Headless CLI](docs/HEADLESS_CLI.md) |
+| 入口 | 按下文「最快开始」选择源码或固定版本 | `dsh-iris run ...`，见 [Headless CLI](docs/HEADLESS_CLI.md) |
 | 数据位置 | `$DSH_HOME/iris/v1/`（Core 数据根 `core-v0`） | 显式 `--data-root` 指定的任意绝对路径 |
 | 自动观察 | 有（DSH Host 有界节拍 + 重启接管） | 无，显式单步 `task observe` |
-| 依赖 | 受支持的 DSH 版本 | 仅 Node.js ≥ 20.10 与 `sharp`（视频抽帧另需 `ffmpeg`） |
+| 依赖 | 当前候选需要 DSH `0.2.0-rc.2` | 仅 Node.js ≥ 20.10 与 `sharp`（视频抽帧另需 `ffmpeg`） |
 
 两条路径读写同一份 Core Task/Artifact 事实：CLI 指向 DSH profile 的 `core-v0` 数据根即可 inspect/export DSH 生成的作品，反之亦然。同一数据根只允许一个写者。
 
@@ -70,16 +70,44 @@ Iris 的长期方向是可独立运行、可接入不同 Agent 宿主的媒体�
 
 ## 最快开始
 
-已经安装受支持的 DeepSeek Harness（已发布包：`>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1`；当前开发源码另含 `0.2.0-rc.2` 适配）且 `pnpm` 在 PATH 中时，把 Iris 加入 Web profile：
+先用 `dsh --version` 核对宿主版本，并确认 `pnpm` 在 PATH 中。Iris 版本与 DSH 版本独立，按以下组合选择：
+
+| 你的 DSH | Iris 选择 | 安装来源 |
+|---|---|---|
+| `0.2.0-rc.2` | 当前 `0.2.0` 候选源码 | 本地源码目录；npm 0.2.0 尚未发布 |
+| `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` | 稳定版 `0.1.4` | 固定 npm 版本 |
+| 其他版本 | 暂无当前支持声明 | 先核对宿主适配，不能按相邻版本推定兼容 |
+
+### 旧 DSH：安装稳定版 0.1.4
+
+在上述旧 DSH 范围内，将固定版本加入 Web profile：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.1.4
 dsh web
 ```
 
-> npm 上无 scope 的 `dsh-iris` 属于另一款插件。安装和更新 Iris Media 时必须保留完整包名 `@mokuyoaxis/dsh-iris`。
+需要单独下载 npm 发布包时：
 
-从当前源码目录试用时，把第一条命令中的 `@mokuyoaxis/dsh-iris` 换成 `.`。插件会在下一次 DSH 启动时装载，Web UI 默认位于 `http://127.0.0.1:3080`。
+```bash
+npm pack @mokuyoaxis/dsh-iris@0.1.4
+```
+
+命令会在当前目录生成 `.tgz`。只需安装为普通 npm 依赖时可使用 `npm install @mokuyoaxis/dsh-iris@0.1.4`；这不会自动把插件加入 DSH profile。固定 `@0.1.4` 可在将来 latest 更新后继续取得旧稳定版本，见 [npm pack 文档](https://docs.npmjs.com/cli/v11/commands/npm-pack/)。0.1.4 不包含当前开发中的 Core 媒体 CLI，也不包含 DSH rc.2 的后续适配。
+
+### DSH 0.2.0-rc.2：试用当前候选
+
+从已检出当前候选的源码目录安装依赖，再加入 Web profile：
+
+```bash
+npm ci
+dsh plugin --profile web add .
+dsh web
+```
+
+此时不要用 npm `@0.1.4` 代替候选源码。插件会在下一次 DSH 启动时装载，Web UI 默认位于 `http://127.0.0.1:3080`。当前源码的兼容元数据仅放行 DSH rc.2；保留的旧接口代码不构成旧宿主支持承诺。
+
+> npm 上无 scope 的 `dsh-iris` 属于另一款插件。安装和更新 Iris Media 时必须保留完整包名 `@mokuyoaxis/dsh-iris`。
 
 首次启动后，打开“设置 → Iris 工作台 → + 添加供应商”，填入 DashScope Base URL 和 API Key，再点“发现模型”。单供应商可以先使用自动能力分配。完整步骤、OpenAI Images 兼容配置和故障转移说明见[用户指南](user_guide.md)。
 
@@ -92,6 +120,8 @@ dsh web
 ```
 
 DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)定义。生成图片、视频或语音可能产生供应商费用。
+
+给 AI Agent 的可复制安装与使用提示见 [Agent 简要 Prompt](docs/AGENT_QUICKSTART.md)。
 
 ## 功能概览
 
@@ -120,15 +150,15 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 
 dsh-iris 仍按 DSH 原生插件装载。服务端注册 14 个 Agent 工具，并使用宿主提供的路由、附件、模型和生命周期能力；Web 客户端接入设置页、会话输入区与全局悬浮层。插件不会启动额外服务或监听端口。
 
-| DSH 范围 | 验证记录 |
-|---|---|
-| `>=0.1.2-rc.1 <0.1.3-0` | Linux ARM64 的干净与日常 Web profile |
-| `0.1.5-rc.1` | Android/Linux 日常 profile；14 个工具、2 项 Skill、4 组路由和 4 个 UI Slot |
-| `0.2.0-rc.2` | 未发布开发工作树：真实安装服务隔离验收、Core diff 与 SlotRegistry；用户 profile 的浏览器交互待验 |
+| Iris 范围 | DSH 范围 | 验证记录 |
+|---|---|---|
+| 已发布稳定版 `0.1.4` | `>=0.1.2-rc.1 <0.1.3-0` | 历史 Linux ARM64 干净与日常 Web profile 验收 |
+| 已发布稳定版 `0.1.4` | `0.1.5-rc.1` | 历史 Android/Linux 日常 profile 验收 |
+| 当前 `0.2.0` 候选源码 | 仅 `0.2.0-rc.2` | 真实安装服务隔离验收、Core diff 与 SlotRegistry；已有用户实机演示反馈，逐项浏览器操作与异步重启/回退继续验收 |
 
 rc.2 修正与验证范围见[适配说明](docs/DSH_RC2_ADAPTATION.md)；已发布 npm 0.1.4 包不包含这项后续适配。
 
-其余预览版不在当前兼容声明内。自动化测试分别检查服务端装载、工具与 Skill 注册、路由、客户端 bundle 和 Slot；其中一层失效时，Doctor 应指出具体边界。
+当前候选不再声明支持旧 DSH；旧版的历史验收不自动覆盖当前源码。DSH `0.2.0` 正式版及其他 rc 同样未列入支持范围。自动化测试分别检查服务端装载、工具与 Skill 注册、路由、客户端 bundle 和 Slot；其中一层失效时，Doctor 应指出具体边界。
 
 Core 与 DSH Adapter 正在分离，但安装方式不变：DSH 继续加载同一个 npm 包，Adapter 把宿主能力映射给 Core。若 DSH 修改 API，修复应限制在 Adapter 和客户端桥接；Core 的任务和产物语义不随宿主版本改变。当前开发中的无 DSH CLI 尚未随稳定版发布，见[路线图](docs/ROADMAP.md)。
 

@@ -1,12 +1,14 @@
 # DSH 0.2.0-rc.2 适配
 
-本适配属于当前未发布开发工作树。Iris 包版本仍为 `0.1.4`，已发布的 npm 0.1.4 包不包含这些后续修正。兼容声明仅增加准确版本 `0.2.0-rc.2`，不推定其他 0.2 预览版或正式版兼容。
+本适配属于当前未发布的 `0.2.0` 候选源码。源码 package 版本暂留 `0.1.4`，已发布的 npm 0.1.4 包不包含这些后续修正。当前候选的 DSH engines、五项客户端 peers 与 Host Doctor 仅放行准确版本 `0.2.0-rc.2`，不再沿用旧版支持窗口，也不推定其他 0.2 预览版或正式版兼容。
+
+旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 按历史验证范围使用稳定包 `@mokuyoaxis/dsh-iris@0.1.4`。安装与 npm tarball 下载方式见 [README](../README.md#最快开始)。保留的旧桥接与 fixture 测试不构成当前候选的旧宿主支持承诺。
 
 ## 宿主边界的修正
 
 | 边界 | 问题与修正 |
 |---|---|
-| 加载器与诊断 | rc.2 加载器检查 `peerDependencies`，原五项客户端范围会被拒绝。客户端 peers、DSH engines、锁文件和 Host Doctor 均加入准确 rc.2 范围，无需版本豁免。 |
+| 加载器与诊断 | rc.2 加载器检查 `peerDependencies`，原旧版客户端范围会被拒绝。当前客户端 peers、DSH engines、锁文件和 Host Doctor 均收敛到准确 rc.2，无需版本豁免。 |
 | 会话附件 | 扫描引用时曾丢弃 `bytes/width/height`，真实 `readImage()` 因完整性不匹配拒绝读取。适配器保留这些已知事实及 `originalDimensions` 的独立副本，不猜测缺失值，不复制额外 Host 字段。 |
 | 宿主视觉 | rc.2 的 `llm.stream()` 需要明确 Provider/模型路由。默认选择仅在精确模型元数据确认接受 `image` 时成为视觉候选；文本模型、未知能力和身份漂移在生成前拒绝，错误事件以及 `finish.reason.kind` 的 `error/aborted` 不再被当作空回答或部分成功。 |
 | 客户端会话 | rc.2 列表没有旧 `current` 字段。适配器使用唯一的 `retainedBy.mainView` 持有者，通知时回读 `getSnapshot()`，卸载时释放订阅；保留旧接口，有歧义或无选择时不取任意列表项。 |
@@ -15,7 +17,7 @@
 
 ## 验证方式与证据范围
 
-常规 `npm test` 包含 rc.2 附件/视觉边界、客户端真实附件请求和 Doctor 的准确版本判定，保留旧宿主回归。
+常规 `npm test` 包含 rc.2 附件/视觉边界、客户端真实附件请求和 Doctor 的准确版本判定；Doctor 对旧 DSH 返回不在当前支持范围，并提示固定 Iris 0.1.4。旧接口 fixture 回归保留，但不作为旧宿主实际验收。
 
 若本机已安装 DSH rc.2，可在仓库运行以下手动验收，无需为 Iris 添加 DSH/React 生产依赖：
 

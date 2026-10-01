@@ -1063,8 +1063,8 @@ if (tasksLib) {
   if (!pkg.engines || pkg.engines.node !== '>=20.10.0') {
     failures.push('package.json 必须声明 JSON import attributes 所需 Node >=20.10.0');
   }
-  if (pkg.dsh?.engines?.dsh !== '>=0.1.2-rc.1 <0.1.3-0 || 0.1.5-rc.1 || 0.2.0-rc.2') {
-    failures.push('package.json 必须声明已验证的 DSH 窗口（0.1.2 线 + 0.1.5-rc.1 + 0.2.0-rc.2）');
+  if (pkg.dsh?.engines?.dsh !== '0.2.0-rc.2') {
+    failures.push('当前候选 package.json 必须只声明已验证的 DSH 0.2.0-rc.2');
   }
   const expectedClientPeers = [
     '@deepseek-ai/dsh-client-locale',
@@ -1074,8 +1074,8 @@ if (tasksLib) {
     '@deepseek-ai/dsh-client-ui-settings'
   ];
   for (const name of expectedClientPeers) {
-    if (pkg.peerDependencies?.[name] !== '^0.1.2-rc.1 || 0.2.0-rc.2') {
-      failures.push(`package.json ${name} 必须作为显式覆盖 rc 分支的 peer dependency`);
+    if (pkg.peerDependencies?.[name] !== '0.2.0-rc.2') {
+      failures.push(`package.json ${name} 必须锁定准确 rc.2 的 peer dependency`);
     }
     if (lock.packages?.['']?.peerDependencies?.[name] !== pkg.peerDependencies?.[name]) {
       failures.push(`package-lock.json ${name} peer 范围必须与 package.json 一致`);

@@ -37,9 +37,7 @@ const fullPorts = {
   tools: { register: never },
   visionModel: { analyze: never }
 };
-const fullHost = defineHostAdapter({ id: 'deepseek-harness', version: '0.1.2-rc.1', ports: fullPorts });
-/* 0.1.5-rc.1 是第二个已实测窗口，必须与 0.1.2 线一起被判为受支持。 */
-const host015 = defineHostAdapter({ id: 'deepseek-harness', version: '0.1.5-rc.1', ports: fullPorts });
+const fullHost = defineHostAdapter({ id: 'deepseek-harness', version: '0.2.0-rc.2', ports: fullPorts });
 
 const version = '9.8.7-test';
 const evidence = {
@@ -61,17 +59,19 @@ assert(healthy.summary.errors === 0 && healthy.summary.warnings === 0, '完整�
 assert(portCalls === 0, 'Host Doctor 只能读取能力快照，不能调用端口', portCalls);
 assert(!JSON.stringify(healthy).includes('Host Doctor 不得调用端口'), '报告不得序列化 live 方法或错误闭包');
 assert(formatDoctorReport(healthy).includes('Iris Doctor ' + version + ' · host'), '文本报告应复用统一格式');
-const supported015 = hostDoctor(host015, evidence, { packageVersion: version });
-assert(supported015.checks.some((item) => item.id === 'dsh-version' && item.status === 'ok'),
-  '0.1.5-rc.1 应位于已验证支持范围', supported015.checks.find((item) => item.id === 'dsh-version'));
-assert(portCalls === 0, '版本判定不得调用端口', portCalls);
 for (const [dshVersion, expected] of [['0.2.0-rc.2', 'ok'], ['0.2.0-rc.2+fixture', 'ok'],
+  ['0.1.2-rc.1', 'error'], ['0.1.2-rc.9', 'error'], ['0.1.2', 'error'], ['0.1.5-rc.1', 'error'],
   ['0.2.0-rc.1', 'error'], ['0.2.0-rc.3', 'error'], ['0.2.0', 'error']]) {
   const report = hostDoctor(defineHostAdapter({ id: 'deepseek-harness', version: dshVersion, ports: fullPorts }),
     evidence, { packageVersion: version });
   assert(report.checks.some((item) => item.id === 'dsh-version' && item.status === expected),
-    'DSH 新窗口必须只放行已验证的 rc.2：' + dshVersion);
+    '当前候选只放行已验证的 rc.2，不能继承 0.1.4 的旧宿主范围：' + dshVersion);
+  if (dshVersion.startsWith('0.1.')) {
+    assert(report.checks.find((item) => item.id === 'dsh-version').suggestion.includes('@mokuyoaxis/dsh-iris@0.1.4'),
+      '旧宿主诊断应给出固定 0.1.4 的安装选择');
+  }
 }
+assert(portCalls === 0, '版本判定不得调用端口', portCalls);
 
 const noClient = hostDoctor(fullHost, { ...evidence, client: null }, { packageVersion: version });
 assert(noClient.exitCode === 1 && noClient.checks.some((item) => item.id === 'client' && item.status === 'warn'),

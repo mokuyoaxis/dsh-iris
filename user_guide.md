@@ -4,25 +4,30 @@
 
 ## 安装
 
-已发布包需要 DeepSeek Harness `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1`；当前未发布开发工作树另增加 `0.2.0-rc.2` 适配，真实安装服务隔离检查已通过，浏览器交互仍待实机验收（见[适配说明](docs/DSH_RC2_ADAPTATION.md)）。还需要 PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。dsh-iris 自身要求 Node.js 20.10 或更高版本；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 及后续 0.1.x 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
+先运行 `dsh --version`。当前 `0.2.0` 候选源码仅声明支持 DSH `0.2.0-rc.2`；旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 使用已发布稳定版 Iris `0.1.4`。两者的代码与兼容元数据不同，源码暂留的 package 0.1.4 版本号不代表 npm 稳定包已有 rc.2 适配。当前候选尚未发布到 npm，验证边界见[适配说明](docs/DSH_RC2_ADAPTATION.md)。还需要 PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。dsh-iris 自身要求 Node.js 20.10 或更高版本；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 及后续 0.1.x 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
 
-从 npm 安装到 Web profile：
+在上述旧 DSH 范围内，从 npm 安装固定稳定版到 Web profile：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.1.4
 dsh web
 ```
 
 npm 上无 scope 的 `dsh-iris` 是另一款插件；安装或更新 Iris Media 时必须使用完整 scoped 包名。
 
-从源码目录试用：
+只下载旧稳定包可运行 `npm pack @mokuyoaxis/dsh-iris@0.1.4`，安装为普通 npm 依赖可运行 `npm install @mokuyoaxis/dsh-iris@0.1.4`；后者不会自动加入 DSH profile。固定版本仍可在 latest 更新后安装，0.1.4 不包含新的 Core 媒体 CLI。不要在 DSH rc.2 上用旧稳定包代替当前候选。
+
+在 DSH `0.2.0-rc.2` 上，从当前候选源码目录试用：
 
 ```bash
+npm ci
 dsh plugin --profile web add .
 dsh web
 ```
 
 浏览器默认打开 `http://127.0.0.1:3080`。插件安装后只会在下一次 DSH 启动时装载；如果 DSH 已经运行，请先停止再启动。启动输出包含一次性认证参数时，必须完整打开该 URL，不能只输入裸地址。
+
+其他 DSH 版本，包括 `0.2.0` 正式版与其他 rc，须另行验收。让 Agent 协助安装时，可使用[简要 Prompt](docs/AGENT_QUICKSTART.md)。
 
 可以在启动前检查组合配置：
 
@@ -319,7 +324,7 @@ npx @mokuyoaxis/dsh-iris doctor --json
 
 已安装包也可以直接运行 `dsh-iris doctor`。退出码为 `0`（正常）、`1`（警告）和 `2`（硬错误）。Doctor 会执行一个随后立即删除的本地写入探针，并检查配置、任务、能力分配、临时文件和产物引用；输出不含完整 API Key。离线模式无法检查 DSH 工具/客户端是否已经装载，也不会用付费请求验证 Provider。
 
-当前 **0.2.0-rc.1 源码开发分支**另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。上述开发命令尚未进入稳定版 `0.1.4`，请从当前源码运行 `node bin/dsh-iris.js`，不要把已发布包的 `npx` 命令当作此功能的验证。
+当前 **0.2.0 候选源码**另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。上述开发命令尚未进入稳定版 `0.1.4`，请从当前源码运行 `node bin/dsh-iris.js`，不要把已发布包的 `npx` 命令当作此功能的验证。
 
 ## Host Doctor
 

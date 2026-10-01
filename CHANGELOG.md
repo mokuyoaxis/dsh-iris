@@ -4,10 +4,11 @@
 
 ## [Unreleased]
 
-> 本节对应 `0.2.0-rc.1` 源码开发检查点；npm 与 DSH 市场稳定版本仍为 `0.1.4`。普通源码提交不构成发布。
+> 本节对应 `0.2.0` 候选源码；npm 与 DSH 市场稳定版本仍为 `0.1.4`。普通源码提交或 main 合并不构成发布。
 
 ### Added
 
+- 增加中英文 [Agent 简要 Prompt](docs/AGENT_QUICKSTART.md)，按宿主版本选择候选源码或固定 npm 0.1.4，并明确 CLI、profile 与任务观察的使用边界。
 - 增加 [Text/Vision Model Port v0 内部契约](docs/MODEL_PORT_CONTRACT.md)，约定共享输入、完整终态、取消/预算、安全错误与逐项迁移门禁；真实 DSH/CLI 消费者尚未切换。
 - 实现 Text/Vision M1 纯契约与调用控制，包含单次/整体预算、显式候选策略、取消与晚到结果处理，并补 test-only Fake Port 和共用离线 conformance；真实适配器、提示词优化及视觉消费者尚未接入，未新增公开 export。
 - 增加像素块几何母题的 IRIS 标志与图形标（彩色/单色/反白共 6 个 SVG），由 `scripts/gen-logo.mjs` 从设计矩阵可复现生成，含最小尺寸、留白与配色规范（`docs/assets/logo/`）；初始泡泡采用同源内联像素图形标，后续曲线替换见下方 Changed；0.1.x 渐变临时字标不再使用，源码文件暂留作历史兼容。
@@ -19,8 +20,9 @@
 
 ### Changed
 
+- 当前 0.2.0 候选的 DSH engines、五项可选客户端 peers 和 Host Doctor 收敛到准确的 `0.2.0-rc.2`，不再声明旧 DSH 支持；已发布 Iris 0.1.4 的历史范围不变，README 和用户指南补充 `@mokuyoaxis/dsh-iris@0.1.4` 固定安装与 npm tarball 下载方式。
 - 悬浮泡泡以曲线鸢尾花 SVG 替换像素块剪影，采用紫色花瓣、金色花心与青绿叶片；提供透明矢量源和按钮概念预览，保留现有健康状态与交互。
-- 当前开发工作树的 DSH engines、五项可选客户端 peers 与 Host Doctor 精确加入 `0.2.0-rc.2`，通过真实安装服务隔离验收；未推定其他 0.2 版本兼容，已发布 npm 0.1.4 包不包含这些后续修改。验证范围见 [rc.2 适配说明](docs/DSH_RC2_ADAPTATION.md)。
+- 当前开发工作树适配 DSH `0.2.0-rc.2`，通过真实安装服务隔离验收；未推定其他 0.2 版本兼容，已发布 npm 0.1.4 包不包含这些后续修改。验证范围见 [rc.2 适配说明](docs/DSH_RC2_ADAPTATION.md)。
 - CLI、DSH 与知情重试共用四类生成的参数规范化：文本修剪、图片数量、视频时长及 size/voice 长度使用同一规则，非法参数在提交前拒绝。DSH 的 diff/抽帧工具和工作台动作消费已有 Core Command，结果保存为 Artifact 并可经 CLI 导出；宿主继续负责附件展示。
 - 协议工厂改用内部注册表；媒体协议与视觉类型分别处理。导入和重载保留用户显式配置，未知协议在联网前返回稳定错误；未知端点的自动 OpenAI Images 兼容回退带 `protocolInferred` 标记，并在供应商管理区提示确认。
 - CLI 与 DSH 共用配置模型解析，均接受裸模型名与供应商复合引用；运行时不再注入厂商默认模型。旧裸账号的兼容目录改为在配置写入时物化，CLI 读取不迁移配置；显式空模型池仍保持为空。
