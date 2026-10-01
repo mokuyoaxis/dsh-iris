@@ -13,7 +13,7 @@
 <p align="center">
   <a href="#deepseek-harness-适配"><img alt="DeepSeek Harness compatible" src="https://img.shields.io/badge/DeepSeek%20Harness-compatible-4D6BFE.svg?style=flat-square"></a>
   <a href="https://www.npmjs.com/package/@mokuyoaxis/dsh-iris"><img alt="npm version" src="https://img.shields.io/npm/v/%40mokuyoaxis%2Fdsh-iris.svg?style=flat-square"></a>
-  <a href="https://nodejs.org/"><img alt="Node.js 20.10 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D20.10-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
+  <a href="https://nodejs.org/"><img alt="Node.js 22 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
   <a href="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
@@ -56,7 +56,7 @@ Iris 的长期方向是可独立运行、可接入不同 Agent 宿主的媒体�
 | 入口 | 按下文「最快开始」选择源码或固定版本 | `dsh-iris run ...`，见 [Headless CLI](docs/HEADLESS_CLI.md) |
 | 数据位置 | `$DSH_HOME/iris/v1/`（Core 数据根 `core-v0`） | 显式 `--data-root` 指定的任意绝对路径 |
 | 自动观察 | 有（DSH Host 有界节拍 + 重启接管） | 无，显式单步 `task observe` |
-| 依赖 | 当前候选需要 DSH `0.2.0-rc.2` | 仅 Node.js ≥ 20.10 与 `sharp`（视频抽帧另需 `ffmpeg`） |
+| 依赖 | 当前候选需要 DSH `0.2.0-rc.2` | 仅 Node.js ≥ 22 与 `sharp`（视频抽帧另需 `ffmpeg`） |
 
 两条路径读写同一份 Core Task/Artifact 事实：CLI 指向 DSH profile 的 `core-v0` 数据根即可 inspect/export DSH 生成的作品，反之亦然。同一数据根只允许一个写者。
 
@@ -139,7 +139,7 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 
 ## 使用前准备
 
-- 满足所用 DeepSeek Harness 版本要求的 Node.js；dsh-iris 自身最低为 20.10
+- 满足所用 DeepSeek Harness 版本要求的 Node.js；当前候选最低为 22.0.0，旧 npm 0.1.4 的历史要求为 20.10.0
 - 一个可用的 DeepSeek Harness 环境，以及 PATH 中的 `pnpm`
 - 至少一个受支持的媒体或视觉服务供应商
 - 使用视频抽帧和视频摘要时，需要系统提供 `ffmpeg` 与 `ffprobe`
@@ -317,7 +317,7 @@ Iris 自带两个 Agent Skills（`iris-verify-ui` 与 `iris-compose-media`），
 
 测试覆盖配置合并、模型身份、任务生命周期、生成动作、HTTP/SSE 路由、客户端交互和安全边界。项目采用 ES Modules，不需要构建步骤。
 
-测试调度使用 Node.js，逐文件启动独立进程，首个失败即停止，不依赖 Bash；临时目录使用系统 API 并在退出时清理。GitHub Actions 定义 Linux/Windows × Node.js 20.10/22 矩阵，发布前钩子会重新运行完整测试。原生 Windows/WSL 的 DSH 宿主烟测仍待实机验证。
+测试调度使用 Node.js，逐文件启动独立进程，首个失败即停止，不依赖 Bash；临时目录使用系统 API 并在退出时清理。GitHub Actions 定义 Linux/Windows × Node.js 22.0.0/最新 22.x 矩阵，并在最低版本重复检查进程自然退出；发布前钩子会重新运行完整测试。原生 Windows/WSL 的 DSH 宿主烟测仍待实机验证。
 
 发布由 `v*` 标签触发 `.github/workflows/release.yml`：跑完整测试后打包，用工作流内置 `GITHUB_TOKEN` 创建 GitHub Release（附 tarball，发布说明取自 CHANGELOG 对应章节），并在配置了 `NPM_TOKEN` secret 时发布到 npm。本机无需任何 GitHub 凭据。
 

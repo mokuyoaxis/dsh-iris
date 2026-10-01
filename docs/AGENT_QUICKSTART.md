@@ -6,7 +6,7 @@
 
 ```text
 请根据本仓库 README，帮我安装并使用 Iris（@mokuyoaxis/dsh-iris）。
-先确认运行环境、目标 DSH profile，并用 dsh --version 核对宿主：
+先确认运行环境、目标 DSH profile，并用 dsh --version 核对宿主；当前 0.2 候选要求 Node.js >=22.0.0（旧 npm 0.1.4 的历史要求为 >=20.10.0）：
 - DSH 0.2.0-rc.2：选择 README 指定的 Iris 0.2 候选；尚未发布到 npm 时，从已安装依赖的候选源码目录运行 dsh plugin --profile web add .。
 - DSH >=0.1.2-rc.1 <0.1.3-0 或 0.1.5-rc.1：固定安装 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.1.4；只下载用 npm pack @mokuyoaxis/dsh-iris@0.1.4。
 - 其他 DSH 版本：先报告没有支持声明，不自行升级宿主或跳过版本检查。
@@ -21,7 +21,7 @@
 
 ```text
 Help me install and use Iris (@mokuyoaxis/dsh-iris) according to this repository's README.
-Check the environment, target DSH profile, and dsh --version first:
+Check the environment, target DSH profile, and dsh --version first; the current 0.2 candidate requires Node.js >=22.0.0 (the published npm 0.1.4 historically requires >=20.10.0):
 - DSH 0.2.0-rc.2: use the Iris 0.2 candidate named in README; before npm publication, run dsh plugin --profile web add . from its checkout with dependencies installed.
 - DSH >=0.1.2-rc.1 <0.1.3-0 or 0.1.5-rc.1: pin dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.1.4; download only with npm pack @mokuyoaxis/dsh-iris@0.1.4.
 - Other DSH versions: report the missing support claim; do not upgrade the host or bypass its version checks automatically.

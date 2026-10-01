@@ -1060,8 +1060,8 @@ if (tasksLib) {
       failures.push('README.md 必须链接仓库级 ' + skill + ' Skill');
     }
   }
-  if (!pkg.engines || pkg.engines.node !== '>=20.10.0') {
-    failures.push('package.json 必须声明 JSON import attributes 所需 Node >=20.10.0');
+  if (!pkg.engines || pkg.engines.node !== '>=22.0.0') {
+    failures.push('package.json 必须声明当前候选最低 Node >=22.0.0');
   }
   if (pkg.dsh?.engines?.dsh !== '0.2.0-rc.2') {
     failures.push('当前候选 package.json 必须只声明已验证的 DSH 0.2.0-rc.2');

@@ -20,6 +20,7 @@
 
 ### Changed
 
+- 当前 0.2.0 候选的 Node.js 最低要求统一为 22.0.0，npm 元数据、Doctor、README、用户指南与 CI 同步。Node 22 已包含上游退出阶段 FinalizationRegistry 无限循环修复（nodejs/node#51290）；补充确定性退出回归及最低版本重复退出验证，移除临时 GDB 取证步骤。已发布 0.1.4 的历史要求不变。
 - 当前 0.2.0 候选的 DSH engines、五项可选客户端 peers 和 Host Doctor 收敛到准确的 `0.2.0-rc.2`，不再声明旧 DSH 支持；已发布 Iris 0.1.4 的历史范围不变，README 和用户指南补充 `@mokuyoaxis/dsh-iris@0.1.4` 固定安装与 npm tarball 下载方式。
 - 悬浮泡泡以曲线鸢尾花 SVG 替换像素块剪影，采用紫色花瓣、金色花心与青绿叶片；提供透明矢量源和按钮概念预览，保留现有健康状态与交互。
 - 当前开发工作树适配 DSH `0.2.0-rc.2`，通过真实安装服务隔离验收；未推定其他 0.2 版本兼容，已发布 npm 0.1.4 包不包含这些后续修改。验证范围见 [rc.2 适配说明](docs/DSH_RC2_ADAPTATION.md)。

@@ -13,7 +13,7 @@
 <p align="center">
   <a href="#deepseek-harness-adaptation"><img alt="DeepSeek Harness compatible" src="https://img.shields.io/badge/DeepSeek%20Harness-compatible-4D6BFE.svg?style=flat-square"></a>
   <a href="https://www.npmjs.com/package/@mokuyoaxis/dsh-iris"><img alt="npm version" src="https://img.shields.io/npm/v/%40mokuyoaxis%2Fdsh-iris.svg?style=flat-square"></a>
-  <a href="https://nodejs.org/"><img alt="Node.js 20.10 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D20.10-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
+  <a href="https://nodejs.org/"><img alt="Node.js 22 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
   <a href="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
@@ -56,7 +56,7 @@ Iris is evolving toward a media production core that can run independently and p
 | Entry point | Choose source or a pinned release under "Quickest start" below | `dsh-iris run ...` — see [Headless CLI](docs/HEADLESS_CLI.md) |
 | Data location | `$DSH_HOME/iris/v1/` (Core data root `core-v0`) | Any absolute path passed via `--data-root` |
 | Automatic observation | Yes (bounded DSH host ticks + restart takeover) | No — explicit single-step `task observe` |
-| Dependencies | The current candidate requires DSH `0.2.0-rc.2` | Node.js ≥ 20.10 and `sharp` only (`ffmpeg` for video frames) |
+| Dependencies | The current candidate requires DSH `0.2.0-rc.2` | Node.js ≥ 22 and `sharp` only (`ffmpeg` for video frames) |
 
 Both paths read and write the same Core Task/Artifact facts: point the CLI at the `core-v0` data root of a DSH profile to inspect/export DSH-generated artifacts, and vice versa. Only one writer is allowed per data root.
 
@@ -139,7 +139,7 @@ For a copyable installation and usage prompt, see [Agent quickstart prompt](docs
 
 ## Prerequisites
 
-- A Node.js version that satisfies your DeepSeek Harness release's requirement; dsh-iris itself requires at least 20.10
+- A Node.js version that satisfies your DeepSeek Harness release's requirement; the current candidate requires at least 22.0.0, while the published npm 0.1.4 historically requires 20.10.0
 - A working DeepSeek Harness environment with `pnpm` on the PATH
 - At least one supported media or vision provider
 - `ffmpeg` and `ffprobe` on the system, for video frame extraction and video summaries
@@ -317,7 +317,7 @@ Run in the project directory:
 
 Tests cover config merging, model identity, task lifecycle, generation actions, HTTP/SSE routing, client interactions, and security boundaries. The project is pure ES Modules with no build step.
 
-The test scheduler runs on Node.js, launching one process per file and stopping at the first failure — no Bash involved. Temporary directories use system APIs and are cleaned up on exit. GitHub Actions defines a Linux/Windows × Node.js 20.10/22 matrix, and a pre-release hook re-runs the full suite. DSH host smoke tests on native Windows/WSL are still pending real-machine verification.
+The test scheduler runs on Node.js, launching one process per file and stopping at the first failure — no Bash involved. Temporary directories use system APIs and are cleaned up on exit. GitHub Actions defines a Linux/Windows × Node.js 22.0.0/latest 22.x matrix, with repeated natural-exit checks on the minimum version, and a pre-release hook re-runs the full suite. DSH host smoke tests on native Windows/WSL are still pending real-machine verification.
 
 Releases are triggered by `v*` tags through `.github/workflows/release.yml`: the full test suite runs first, then the tarball is packaged, a GitHub Release is created with the workflow's built-in `GITHUB_TOKEN` (tarball attached; release notes taken from the matching CHANGELOG section), and npm publish happens when an `NPM_TOKEN` secret is configured. No local GitHub credentials are needed.
 

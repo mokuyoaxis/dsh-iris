@@ -1,16 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
-
-function reportNativeShutdown(pid) {
-  if (!process.env.GITHUB_ACTIONS || process.platform !== 'linux' || !pid) return;
-  const available = spawnSync('gdb', ['--version'], { stdio: 'ignore', timeout: 3000 });
-  if (available.status !== 0) return;
-  console.error(`Native shutdown diagnostic for test process ${pid}:`);
-  // Hosted Linux runners provide passwordless sudo; inspect only this test's
-  // process. No packages are installed and no ptrace/security policy is changed.
-  spawnSync('sudo', ['-n', 'gdb', '--batch', '--quiet',
-    '-ex', 'set pagination off', '-ex', 'thread apply all bt', '-ex', 'detach',
-    '-p', String(pid)], { stdio: 'inherit', timeout: 10000 });
-}
+import { spawn } from 'node:child_process';
 
 export function testProcessArgs(testFile) {
   return [
@@ -31,7 +19,6 @@ export function runTestProcess(testFile, { cwd, timeoutMs }) {
     let error;
     const timer = setTimeout(() => {
       error = Object.assign(new Error(`Test process ${child.pid} timed out`), { code: 'ETIMEDOUT' });
-      reportNativeShutdown(child.pid);
       child.kill('SIGKILL');
     }, timeoutMs);
     child.once('error', (cause) => { error ??= cause; });

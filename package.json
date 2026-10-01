@@ -63,7 +63,7 @@
   ],
   "license": "MIT",
   "engines": {
-    "node": ">=20.10.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "test": "node scripts/test.mjs",

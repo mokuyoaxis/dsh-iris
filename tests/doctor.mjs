@@ -55,6 +55,15 @@ assert(!JSON.stringify(healthy).includes('secret-never-print'), 'Doctor JSON 不
 assert(!fs.readdirSync(dataDir).some((name) => name.startsWith('.iris-doctor-')), '写入探针必须清理');
 assert(/Iris Doctor test/.test(formatDoctorReport(healthy)), '文本与 JSON 共用结果模型');
 
+for (const nodeVersion of ['20.10.0', '20.12.0', '21.7.3', '22.0.0']) {
+  const report = await doctor({ dshHome: root, commandRunner: runner, sharpLoader, nodeVersion });
+  const node = report.checks.find((item) => item.id === 'node');
+  const supported = nodeVersion === '22.0.0';
+  assert(node.status === (supported ? 'ok' : 'error'), 'Doctor 按当前候选 Node 22 最低要求判定', node);
+  assert(report.exitCode === (supported ? 0 : 2), '不支持的 Node 必须返回硬错误', report.summary);
+  if (!supported) assert(node.summary.includes('22.0.0'), '错误应给出准确最低 Node 要求', node);
+}
+
 if (process.platform !== 'win32') {
   fs.chmodSync(path.join(dataDir, 'tasks.json'), 0o644);
   const exposed = await doctor({ dshHome: root, commandRunner: runner, sharpLoader });
