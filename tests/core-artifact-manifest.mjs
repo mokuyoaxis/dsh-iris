@@ -140,5 +140,11 @@ try {
 
   console.log('ALL OK —— Artifact Manifest hash、relations、Index 重建、孤儿恢复与崩溃一致性通过');
 } finally {
+  console.log('core-artifact-manifest.mjs: fixture cleanup begins');
+  // This fixture points back to root. Unlink the junction before recursive
+  // cleanup so Windows removal cannot traverse the fixture's directory cycle.
+  const unsafeLink = path.join(root, 'unsafe-list', 'artifact-store');
+  if (fs.existsSync(unsafeLink)) fs.unlinkSync(unsafeLink);
   fs.rmSync(root, { recursive: true, force: true });
+  console.log('core-artifact-manifest.mjs: fixture cleanup complete');
 }

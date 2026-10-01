@@ -4,8 +4,10 @@ import { runTestProcess } from './test-process.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 // These tests have previously completed their assertions but hung on native
-// shutdown. Repeat in fresh processes so a single green run cannot hide it.
+// shutdown or cyclic Windows fixture cleanup. Repeat in fresh processes so a
+// single green run cannot hide either problem.
 const tests = [
+  'core-artifact-manifest.mjs',
   'image-routing.mjs', 'image-task-v2.mjs',
   'provider-discovery-merge.mjs', 'video-s2v-routing.mjs'
 ];
@@ -22,4 +24,4 @@ for (let round = 1; round <= 5; round++) {
     }
   }
 }
-console.log('Shutdown regression: all 20 processes exited naturally');
+console.log(`Shutdown regression: all ${tests.length * 5} processes exited naturally`);
