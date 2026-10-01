@@ -90,16 +90,27 @@ try {
   }
 
   // 整体预算跨连续调用，不因下一块拥有更长单次 timeout 而重置。
+  // 用逻辑时钟推进已用预算，避免调度暂停导致第二次调用还未进入便已超时。
+  const originalBudgetClock = Object.getOwnPropertyDescriptor(globalThis, 'performance');
+  let elapsed = 0;
+  Object.defineProperty(globalThis, 'performance', { configurable: true, value: { now: () => elapsed } });
   const totalBudget = createModelOperation({ budget: { timeoutMs: 200, maxInvocations: 3 } });
-  const slow = createFakeModelPort({ steps: [{ delayMs: 15, text: 'first' }, { waitForAbort: true }] });
+  const slow = createFakeModelPort({ steps: [{ text: 'first' }, async ({ options: call }) => {
+    elapsed = 201;
+    await new Promise((_, reject) => call.signal.addEventListener('abort', () => reject(call.signal.reason), { once: true }));
+  }] });
   try {
     await totalBudget.invoke(slow.port, request, options);
+    elapsed = 100;
     await rejects(totalBudget.invoke(slow.port, request, options), 'IRIS_MODEL_TIMEOUT');
     assert.equal(slow.stats.invocations, 2);
     assert.equal(slow.stats.aborted, 1);
     await rejects(totalBudget.invoke(slow.port, request, options), 'IRIS_MODEL_TIMEOUT', 'not_invoked');
     assert.equal(slow.stats.invocations, 2);
-  } finally { totalBudget.dispose(); }
+  } finally {
+    totalBudget.dispose();
+    Object.defineProperty(globalThis, 'performance', originalBudgetClock);
+  }
 
   // 在途取消或单次超时停止整个操作，下一候选和下一块均不能再次调用。
   for (const reason of ['abort', 'timeout', 'dispose']) {
@@ -216,6 +227,16 @@ try {
   assert.equal(getEventListeners(parent.signal, 'abort').length, 0);
   assert.equal(normal.stats.aborted, 0);
   assert.equal(parent.signal.aborted, false);
+
+  // 半毫秒时钟稳定复现超大 deadline 的浮点舍入，端口仍须收到合法原始预算。
+  const originalClock = Object.getOwnPropertyDescriptor(globalThis, 'performance');
+  const rounded = createFakeModelPort();
+  try {
+    Object.defineProperty(globalThis, 'performance', { configurable: true, value: { now: () => 0.5 } });
+    await invokeModel(rounded.port, request, { budget: { ...options.budget, timeoutMs: Number.MAX_SAFE_INTEGER } });
+    assert.equal(rounded.calls[0].options.budget.timeoutMs, Number.MAX_SAFE_INTEGER);
+    assert.equal(rounded.stats.invocations, 1);
+  } finally { Object.defineProperty(globalThis, 'performance', originalClock); }
 
   for (const maxInvocations of [null, 0, -1, 0.5, Infinity]) {
     assert.throws(() => createModelOperation({ budget: { timeoutMs: 1000, maxInvocations } }), e => e.code === 'IRIS_MODEL_INPUT_INVALID');

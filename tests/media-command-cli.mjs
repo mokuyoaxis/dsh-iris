@@ -28,8 +28,8 @@ function cli(args) {
 }
 
 try {
-  const imageA = path.join(root, 'a.png');
-  const imageB = path.join(root, 'b.png');
+  const imageA = path.join(root, 'private-source-alpha.png');
+  const imageB = path.join(root, 'private-source-beta.png');
   await sharp({ create: { width: 16, height: 12, channels: 3, background: '#ff0000' } })
     .png().toFile(imageA);
   await sharp({ create: { width: 16, height: 12, channels: 3, background: '#0000ff' } })
@@ -50,7 +50,9 @@ try {
   const diffManifest = fs.readFileSync(
     path.join(dataRoot, 'artifact-store', 'v0', 'manifests', diff.artifact.id + '.json'), 'utf8'
   );
-  assert(!diffManifest.includes(root) && !diffManifest.includes('a.png') && !diffManifest.includes('b.png'),
+  // 输入名不能与随机 Artifact 对象名的十六进制尾字符碰撞。
+  assert(!diffManifest.includes(root) && !diffManifest.includes(path.basename(imageA))
+      && !diffManifest.includes(path.basename(imageB)),
     'media.diff Manifest 不得保存宿主输入路径', diffManifest);
 
   const invalidRun = cli(['media', 'diff', '--data-root', dataRoot, '--input', JSON.stringify({
