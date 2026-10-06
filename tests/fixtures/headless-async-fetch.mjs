@@ -43,10 +43,11 @@ globalThis.fetch = async (input, init = {}) => {
   const state = readState();
 
   if (method === 'POST' && (url.endsWith('/services/aigc/text2image/image-synthesis')
-      || url.endsWith('/services/aigc/video-generation/video-synthesis'))) {
+      || url.endsWith('/services/aigc/video-generation/video-synthesis')
+      || url.endsWith('/services/aigc/image2video/video-synthesis'))) {
     const body = JSON.parse(String(init.body || '{}'));
     const remoteTaskId = 'remote-' + (state.submit + 1);
-    const isVideo = url.includes('video-generation');
+    const isVideo = url.endsWith('/video-synthesis');
     state.submit += 1;
     state.lastModel = body.model;
     state.lastRequest = body;

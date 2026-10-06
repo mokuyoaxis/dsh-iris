@@ -133,6 +133,93 @@ try {
     noDshOrCordis: true, noExternalModuleLinks: true
   };
 
+  // 直接消费安装副本中的内部核心；不增加公共 export/CLI，也不引用仓库 fixture。
+  const promptConsumer = path.join(work, 'prompt-consumer.mjs');
+  fs.writeFileSync(promptConsumer, [
+    "import assert from 'node:assert/strict';",
+    'import { assemblePrompt, preparePromptOptimization, runPromptOptimization } from ' + JSON.stringify(pathToFileURL(path.join(installed, 'lib/prompt-optimizer-core.js')).href) + ';',
+    "globalThis.fetch = () => { throw new Error('禁止网络'); };",
+    "const rule = { id: 'end', label: '约束', kind: 'output', position: 'suffix', text: '不要水印' };",
+    "assert.equal(assemblePrompt({ text: '  原稿  ', rules: [rule] }).optimized, '  原稿  \\n\\n不要水印');",
+    'let calls = 0;',
+    "const identity = { origin: 'provider', backendId: 'fixture:text', providerId: 'fixture', modelId: 'text' };",
+    "const port = { describe() { return { contractVersion: 0, kind: 'text', identity, availability: 'available', features: { system: 'supported', temperature: 'supported', maxOutputTokens: 'supported', reasoning: 'unknown' } }; },",
+    "  async complete(request, options) { calls++; assert(request.prompt.includes('原稿')); assert(options.signal); return { contractVersion: 0, text: '独立优化正文', finishReason: 'stop', identity }; } };",
+    "const plan = preparePromptOptimization({ text: '原稿', rules: [rule] }, { systemPrompt: '保留原意', targets: { general: '保持语言' }, generation: { temperature: 0.3, timeoutMs: 1000, maxOutputTokens: 1200 } });",
+    "assert.equal((await runPromptOptimization(port, plan)).optimized, '独立优化正文\\n\\n不要水印');",
+    "assert.equal(calls, 1); console.log('PASS 无 DSH 的实际安装副本共享优化与零网络组装');", ''
+  ].join('\n'), { mode: 0o600 });
+  const consumerBefore = snapshot(consumer);
+  run(process.execPath, [promptConsumer], { env: { DSH_HOME: unusedDsh }, label: 'installed shared prompt optimizer' });
+  assert.deepEqual(snapshot(consumer), consumerBefore, '提示词共享核心不得写消费者配置/Task/Artifact');
+  assert(!fs.existsSync(unusedDsh), '共享核心不得使用 DSH_HOME');
+  report.promptOptimizer = { installedCore: true, noDshOrCordis: true, noNetwork: true, modelInvocations: 1, assemblyInvocations: 0, noWrites: true };
+
+  const visionConsumer = path.join(work, 'vision-consumer.mjs');
+  fs.writeFileSync(visionConsumer, [
+    "import assert from 'node:assert/strict';",
+    'import { completeVision } from ' + JSON.stringify(pathToFileURL(path.join(installed, 'lib/vision-core.js')).href) + ';',
+    'import { createHttpVisionModelPort } from ' + JSON.stringify(pathToFileURL(path.join(installed, 'lib/http-vision-model-adapter.js')).href) + ';',
+    "globalThis.fetch = () => { throw new Error('禁止网络'); };",
+    'let calls = 0;',
+    "const image = { bytes: new Uint8Array([1, 2, 3]), mediaType: 'image/png' };",
+    "const port = createHttpVisionModelPort({ providerId: 'fixture', modelId: 'vision', baseUrl: 'https://fixture.invalid/v1', fetch: async (_url, options) => {",
+    "  calls++; const body = JSON.parse(options.body); assert.equal(body.messages[0].content[1].image_url.url, 'data:image/png;base64,AQID');",
+    "  return new Response('data: {\"choices\":[{\"delta\":{\"content\":\"完整正文\"},\"finish_reason\":\"stop\"}]}\\n\\ndata: [DONE]\\n\\n', { headers: { 'Content-Type': 'text/event-stream' } }); } });",
+    "assert.equal((await completeVision([port], { prompt: 'fixture', image })).text, '完整正文');",
+    "assert.equal(calls, 1); console.log('PASS 无 DSH 的实际安装副本视觉核心和 HTTP 协议');", ''
+  ].join('\n'), { mode: 0o600 });
+  run(process.execPath, [visionConsumer], { env: { DSH_HOME: unusedDsh }, label: 'installed shared vision core' });
+  assert.deepEqual(snapshot(consumer), consumerBefore, '视觉共享核心不得写配置/Task/Artifact');
+  assert(!fs.existsSync(unusedDsh), '视觉共享核心不得使用 DSH_HOME');
+  report.vision = { installedCore: true, noDshOrCordis: true, noNetwork: true, modelInvocations: 1, noWrites: true };
+
+  const ocrConsumer = path.join(work, 'ocr-consumer.mjs');
+  fs.writeFileSync(ocrConsumer, [
+    "import assert from 'node:assert/strict';", "import { createRequire } from 'node:module';",
+    'import { longOcr } from ' + JSON.stringify(pathToFileURL(path.join(installed, 'lib/ocr.js')).href) + ';',
+    'import { createHttpVisionModelPort } from ' + JSON.stringify(pathToFileURL(path.join(installed, 'lib/http-vision-model-adapter.js')).href) + ';',
+    'const sharp = createRequire(' + JSON.stringify(installedJson) + ")('sharp');",
+    "globalThis.fetch = () => { throw new Error('禁止网络'); };", 'let calls = 0;',
+    "const bytes = await sharp({ create: { width: 128, height: 300, channels: 3, background: '#ff0000' } }).png().toBuffer();",
+    "const port = createHttpVisionModelPort({ providerId: 'fixture', modelId: 'vision', baseUrl: 'https://fixture.invalid/v1', fetch: async (_url, options) => {",
+    "  calls++; const body = JSON.parse(options.body); const png = Buffer.from(body.messages[0].content[1].image_url.url.split(',')[1], 'base64');",
+    "  assert.equal((await sharp(png).metadata()).height, 100);",
+    "  return new Response('data: {\"choices\":[{\"delta\":{\"content\":\"完整 OCR 正文\"},\"finish_reason\":\"stop\"}]}\\n\\ndata: [DONE]\\n\\n', { headers: { 'Content-Type': 'text/event-stream' } }); } });",
+    "const result = await longOcr({ image: { bytes: new Uint8Array(bytes), mediaType: 'image/png' }, ports: [port], chunkHeight: 100, overlap: 0 });",
+    "assert.equal(result.status, 'complete'); assert.equal(result.totalChunks, 3); assert.equal(result.invocations, 3);",
+    "assert(result.fullText.includes('[第3段 y=200]')); assert.equal(calls, 3); console.log('PASS 无 DSH 的实际安装副本多块 OCR 与零网络');", ''
+  ].join('\n'), { mode: 0o600 });
+  run(process.execPath, [ocrConsumer], { env: { DSH_HOME: unusedDsh }, label: 'installed shared OCR' });
+  assert.deepEqual(snapshot(consumer), consumerBefore, 'OCR 共享业务不得写配置/Task/Artifact');
+  assert(!fs.existsSync(unusedDsh), 'OCR 共享业务不得使用 DSH_HOME');
+  report.ocr = { installedCore: true, noDshOrCordis: true, noNetwork: true, modelInvocations: 3, chunks: 3, noWrites: true };
+
+  const compositeConsumer = path.join(work, 'composite-consumer.mjs');
+  fs.writeFileSync(compositeConsumer, [
+    "import assert from 'node:assert/strict';", "import { createRequire } from 'node:module';",
+    'import { locateObject } from ' + JSON.stringify(pathToFileURL(path.join(installed, 'lib/locate.js')).href) + ';',
+    'import { summarizeMedia } from ' + JSON.stringify(pathToFileURL(path.join(installed, 'lib/summarize.js')).href) + ';',
+    'import { describeGeneratedImage } from ' + JSON.stringify(pathToFileURL(path.join(installed, 'lib/composite-vision-routing.js')).href) + ';',
+    'const sharp = createRequire(' + JSON.stringify(installedJson) + ")('sharp');",
+    'let calls = 0;',
+    "const bytes = await sharp({ create: { width: 160, height: 100, channels: 3, background: '#ff0000' } }).png().toBuffer();",
+    "const identity = { origin: 'provider', backendId: 'fixture:vision', providerId: 'fixture', modelId: 'vision' };",
+    "const port = { describe() { return { contractVersion: 0, kind: 'vision', identity, availability: 'available', features: { system: 'unknown', temperature: 'unknown', maxOutputTokens: 'unknown', reasoning: 'unknown' } }; },",
+    "  async complete(request) { calls++; return { contractVersion: 0, identity, text: calls === 1 ? '{\"x1\":1,\"y1\":2,\"x2\":40,\"y2\":50}' : 'red sheet', finishReason: 'stop' }; } };",
+    "globalThis.fetch = () => { throw new Error('禁止网络'); };",
+    "const image = { bytes: new Uint8Array(bytes), mediaType: 'image/png' };",
+    "assert.equal((await locateObject([port], { image, target: 'red', width: 160, height: 100 })).bbox.x2, 40);",
+    "const result = await summarizeMedia({ ports: [port], frames: [0, 1, 2].map(atSec => ({ buffer: bytes, width: 160, height: 100, atSec })) });",
+    "assert.equal(result.text, 'red sheet'); assert.equal(calls, 2); assert.equal(result.sheet.cols, 3);",
+    "const canceled = new AbortController(); canceled.abort(); assert.equal(await describeGeneratedImage({}, { image, signal: canceled.signal }), '');",
+    "console.log('PASS 无 DSH 的安装副本定位/拼图与预取消自述');", ''
+  ].join('\n'), { mode: 0o600 });
+  run(process.execPath, [compositeConsumer], { env: { DSH_HOME: unusedDsh }, label: 'installed shared composite vision' });
+  assert.deepEqual(snapshot(consumer), consumerBefore, '复合视觉业务不得写配置/Task/Artifact');
+  assert(!fs.existsSync(unusedDsh), '复合视觉业务不得使用 DSH_HOME');
+  report.compositeVision = { installedCore: true, noDshOrCordis: true, noNetwork: true, modelInvocations: 2, noWrites: true };
+
   // Fixture 自身只导入 node:fs；副本置于包外，CLI 不引用仓库源码或 node_modules。
   const fixture = path.join(work, 'provider-fixture.mjs');
   fs.copyFileSync(path.join(repo, 'tests', 'fixtures', 'headless-async-fetch.mjs'), fixture);
@@ -214,6 +301,7 @@ try {
   await verifyArtifact(diff.artifact, 'diff');
   report.environment.ffmpeg = run('ffmpeg', ['-version'], { label: 'ffmpeg version' }).split('\n')[0];
   run('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'testsrc=duration=1:size=96x64:rate=8',
+    '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1', '-shortest',
     '-pix_fmt', 'yuv420p', videoPath], { label: 'create local video' });
   const framesInput = { video_path: videoPath, max_frames: 3, target_width: 48, format: 'png' };
   const frames = cli(['media', 'frames', ...rootArgs, '--input', JSON.stringify(framesInput)]);
@@ -224,6 +312,55 @@ try {
     await verifyArtifact(artifact, 'local-frame-' + index);
   }
   assert(!fs.existsSync(stateFile), '本地媒体命令不得请求 Provider');
+
+  // 四个独立视觉命令也必须通过 npm 安装的可执行入口，而不是源码导入。
+  const visionFixture = path.join(work, 'headless-vision-fetch.mjs');
+  fs.copyFileSync(path.join(repo, 'tests/fixtures/headless-vision-fetch.mjs'), visionFixture);
+  fs.copyFileSync(path.join(repo, 'tests/fixtures/headless-async-fetch.mjs'), path.join(work, 'headless-async-fetch.mjs'));
+  const visionStateFile = path.join(work, 'vision-state.json'), visionConfigFile = path.join(work, 'vision-providers.json');
+  fs.writeFileSync(visionStateFile, JSON.stringify({ submit: 0, poll: 0, download: 0, tasks: {} }), { mode: 0o600 });
+  fs.writeFileSync(visionConfigFile, JSON.stringify({ providers: [{ id: 'vision-fixture', type: 'openai', enabled: true,
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', mediaProtocol: 'dashscope', apiKey: 'fixture-key',
+    models: [{ id: 'vision', capabilities: ['vision'] }, { id: 'asr', capabilities: ['transcribe'] }] }],
+    assignments: { vision: ['vision-fixture::vision'] } }), { mode: 0o600 });
+  const visionConfigBefore = digest(fs.readFileSync(visionConfigFile));
+  const coreBeforeVision = snapshot(dataRoot);
+  const visionEnv = { DSH_HOME: unusedDsh, NODE_OPTIONS: '--import=' + pathToFileURL(visionFixture).href,
+    IRIS_ASYNC_FIXTURE_STATE: visionStateFile };
+  function visionCli(command, input, extra = [], status = 0) {
+    const stdout = run(bin, ['vision', command, '--provider-config', visionConfigFile, '--input', JSON.stringify(input), ...extra],
+      { env: visionEnv, status, label: 'installed CLI vision ' + command });
+    assert(!stdout.includes('fixture-key')); assert(!fs.existsSync(unusedDsh));
+    return JSON.parse(stdout);
+  }
+  const visionImage = path.join(inputs, 'vision.png');
+  await sharp({ create: { width: 40, height: 200, channels: 3, background: 'red' } }).png().toFile(visionImage);
+  const looked = visionCli('look', { image_path: visionImage });
+  assert.equal(looked.modelRef, 'vision-fixture::vision'); assert.equal(looked.selectionReason, 'assignment');
+  const located = visionCli('locate', { image_path: visionImage, target: 'red' }, ['--model-ref', 'vision-fixture::vision']);
+  assert.equal(located.bbox.found, true); assert.equal(located.selectionReason, 'explicit');
+  const recognized = visionCli('ocr', { image_path: visionImage, chunk_height: 100, overlap: 0 });
+  assert.equal(recognized.status, 'complete'); assert.equal(recognized.totalChunks, 2);
+  const partialOcr = visionCli('ocr', { image_path: visionImage, chunk_height: 100, overlap: 0, max_invocations: 1 }, [], 1);
+  assert.equal(partialOcr.status, 'partial');
+  const savedSummary = path.join(exportsDir, 'vision-summary.json'), savedSheet = path.join(exportsDir, 'vision-sheet.png');
+  const summarized = visionCli('summarize', { video_path: videoPath, max_frames: 3 }, ['--output', savedSummary, '--sheet-output', savedSheet]);
+  assert.equal(summarized.transcription.status, 'disabled'); assert.deepEqual(readJson(savedSummary), summarized);
+  assert.equal(digest(fs.readFileSync(savedSheet)), summarized.contactSheet.sha256);
+  assert.equal(readJson(visionStateFile).vision.at(-1).imageSha256, summarized.contactSheet.sha256);
+  assert.deepEqual(snapshot(dataRoot), coreBeforeVision, '纯视觉不得写已有 Core 数据根');
+  const visionRoot = path.join(work, 'vision-core');
+  const audioSummary = visionCli('summarize', { video_path: videoPath, max_frames: 2, transcribe: true,
+    transcribe_model_ref: 'vision-fixture::asr' }, ['--data-root', visionRoot]);
+  assert.equal(audioSummary.transcription.status, 'complete'); assert.equal(readJson(visionStateFile).submit, 1);
+  const asrTask = readJson(path.join(visionRoot, 'task-store/v0/tasks', audioSummary.transcription.taskId + '.json'));
+  assert.equal(asrTask.attempts.length, 1); assert.equal(asrTask.deliveryState, 'ready');
+  assert(!fs.existsSync(path.join(visionRoot, '.iris-runtime-writer-v0')));
+  assert.equal(digest(fs.readFileSync(visionConfigFile)), visionConfigBefore);
+  report.visionCli = { installedBin: true, noDshOrCordis: true, commands: 6, pureVisionNoCoreWrites: true,
+    strictExplicitSelection: true, ocrPartialExitCode: 1, sameContactSheetBytes: true, coreAsrTaskId: asrTask.id,
+    coreAsrArtifactIds: asrTask.artifactIds, coreAsrSubmits: 1 };
+  saveReport();
 
   console.log('4/5 四类生成经已安装 CLI 完成 submit → observe → Artifact（全部离线）');
   const configFile = path.join(work, 'fixture-providers.json');
@@ -319,6 +456,59 @@ try {
       && !content.includes('package video fixture') && !content.includes('package tts fixture')
       && !content.includes('oss://'), 'Core 不得持久化凭据、生成输入或签名地址');
   }
+  console.log('补验开发版 CLI 六项：S2V、HTML、配置、wait、批量、隔离/恢复');
+  const completionRoot = path.join(work, 'completion-core'), completionConfig = path.join(work, 'completion-providers.json');
+  const completionRootArgs = ['--data-root', completionRoot], completionConfigArgs = ['--provider-config', completionConfig];
+  cli(['config', 'init', ...completionConfigArgs]);
+  const completionProviderInput = path.join(inputs, 'completion-provider.json');
+  fs.writeFileSync(completionProviderInput, JSON.stringify({ id: 'completion', apiKey: 'fixture-key-package', type: 'openai', mediaProtocol: 'dashscope',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: [
+      { id: 'wan2.2-s2v', capabilities: ['video-gen'] }, { id: 'qwen3-tts-flash', capabilities: ['tts'] }
+    ] }), { mode: 0o600 });
+  cli(['providers', 'add', ...completionConfigArgs, '--input-file', completionProviderInput]);
+  cli(['models', 'add', 'completion::qwen3-vl-flash', ...completionConfigArgs, '--input', '{"capabilities":["vision"]}']);
+  cli(['models', 'caps', 'completion::qwen3-vl-flash', ...completionConfigArgs, '--input', '{"capabilities":["vision"]}']);
+  cli(['assignments', 'set', ...completionConfigArgs, '--input', '{"capability":"video-gen","model_refs":["completion::wan2.2-s2v"]}']);
+  assert.equal(cli(['config', 'check', ...completionConfigArgs]).valid, true);
+  assert.equal(cli(['models', 'list', ...completionConfigArgs]).models.length, 3);
+  const s2vBefore = state();
+  const s2v = cli(['run', 'video', ...completionRootArgs, ...completionConfigArgs, '--input', JSON.stringify({ first_frame_path: path.join(inputs, 'image-0.png'), audio_path: audioPath })]);
+  assert.equal(s2v.task.modelRef, 'completion::wan2.2-s2v');
+  const s2vReady = cli(['task', 'wait', s2v.taskId, ...completionRootArgs, ...completionConfigArgs, '--timeout-ms', '5000', '--poll-interval-ms', '50']);
+  assert.equal(s2vReady.ready, true); assert.equal(s2vReady.task.attempts.length, 1);
+  assert.equal(state().submit, s2vBefore.submit + 1); assert.equal(state().uploadFile, s2vBefore.uploadFile + 2);
+  const readyBefore = state(); cli(['task', 'wait', s2v.taskId, ...completionRootArgs]); assert.deepEqual(state(), readyBefore);
+  assert.equal(cli(['task', 'list', ...completionRootArgs, '--capability', 'video', '--limit', '1']).total, 1);
+  const s2vArtifact = s2vReady.task.artifactIds[0];
+  assert.equal(cli(['artifact', 'list', ...completionRootArgs, '--kind', 'generated-video']).total, 1);
+  const bulkDirectory = path.join(work, 'bulk-exports'); fs.mkdirSync(bulkDirectory);
+  const bulkInput = path.join(inputs, 'bulk.json'); fs.writeFileSync(bulkInput, JSON.stringify({ artifact_ids: [s2vArtifact] }));
+  cli(['artifact', 'inspect-many', ...completionRootArgs, '--input-file', bulkInput]);
+  const bulk = cli(['artifact', 'export-many', ...completionRootArgs, '--input-file', bulkInput, '--output', bulkDirectory]);
+  assert.equal(bulk.results[0].exported, true);
+  const s2vMediaHash = digest(fs.readFileSync(path.join(bulkDirectory, s2vArtifact + '.mp4')));
+  assert.equal(s2vMediaHash, bulk.results[0].artifact.digest.value);
+  const deletionSelection = { task_ids: [s2v.taskId], artifact_ids: [s2vArtifact] };
+  assert.equal(cli(['core', 'delete', ...completionRootArgs, '--input', JSON.stringify(deletionSelection)]).preview, true);
+  const isolated = cli(['core', 'delete', ...completionRootArgs, '--input', JSON.stringify(deletionSelection), '--confirm-delete']);
+  assert.equal(cli(['artifact', 'list', ...completionRootArgs]).total, 0);
+  cli(['core', 'transactions', ...completionRootArgs]); cli(['core', 'restore', isolated.transactionId, ...completionRootArgs]);
+  assert.equal(cli(['artifact', 'inspect', s2vArtifact, ...completionRootArgs]).artifact.digest.value, s2vMediaHash);
+  const cleanup = cli(['core', 'cleanup', ...completionRootArgs]); assert.equal(cleanup.candidates.length, 0);
+  const testedTts = cli(['models', 'test', 'completion::qwen3-tts-flash', ...completionConfigArgs, ...completionRootArgs, '--capability', 'tts']);
+  assert.equal(testedTts.passed, true); assert(testedTts.taskId);
+  cli(['config', 'show', ...completionConfigArgs]);
+  let htmlArtifact;
+  if (process.env.IRIS_TEST_BROWSER_EXECUTABLE) {
+    const rendered = cli(['media', 'html', ...completionRootArgs, '--browser-executable', process.env.IRIS_TEST_BROWSER_EXECUTABLE,
+      '--browser-no-sandbox', String(process.env.IRIS_TEST_BROWSER_NO_SANDBOX === 'true'), '--input', '{"html":"<style>body{margin:0;background:red}</style>","width":320,"height":200,"full_page":false}',
+      '--output', path.join(work, 'completion-html.png')]);
+    assert.deepEqual(rendered.artifact.metadata, { width: 320, height: 200 }); htmlArtifact = rendered.artifact.id;
+  }
+  report.cliCompletion = { s2vTaskId: s2v.taskId, s2vSubmits: 1, s2vUploads: 2, waitNoResubmit: true, bulkExportHash: s2vMediaHash,
+    configurationPrivateBackups: true, filtering: true, quarantineRestored: true, cleanupReadOnly: true, ttsProbeTaskId: testedTts.taskId,
+    htmlRealBrowser: Boolean(htmlArtifact), ...(htmlArtifact ? { htmlArtifactId: htmlArtifact } : {}) };
+  assert(!fs.existsSync(unusedDsh));
   report.checks = {
     installedFileBytesMatchSource: true, npmBinWorks: true, localSharpAndFfmpeg: true,
     artifactExportBytesAndManifestHashesMatch: true, readersZeroCoreWritesAndProviderCalls: true,

@@ -47,8 +47,11 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 
 /* Core 候选不得反向导入 DSH/Cordis 运行时。 */
 for (const rel of [
-  'lib/model-port-contract.js', 'lib/model-invoker.js',
-  'lib/generation-input.js',
+  'lib/model-port-contract.js', 'lib/model-invoker.js', 'lib/prompt-optimizer-core.js', 'lib/vision-core.js',
+  'lib/model-call-runtime.js', 'lib/http-vision-model-adapter.js', 'lib/dsh-vision-model-adapter.js', 'lib/vision-model-routing.js',
+  'lib/ocr.js', 'lib/ocr-model-routing.js',
+  'lib/locate.js', 'lib/summarize.js', 'lib/composite-vision-routing.js',
+  'lib/generation-input.js', 'lib/headless-vision.js', 'lib/video-input.js', 'lib/chromium-browser.js', 'lib/provider-config-service.js', 'lib/task-wait.js', 'lib/core-maintenance.js',
   'lib/task-semantics.js', 'lib/provider-contract.js', 'lib/provider-adapter.js',
   'lib/provider-adapters.js', 'lib/provider-task-runner.js', 'lib/host-contract.js', 'lib/host-runtime.js', 'lib/core-contract.js', 'lib/core-runtime.js', 'lib/core-tasks.js', 'lib/core-artifacts.js', 'lib/core-artifact-store.js', 'lib/command-service.js', 'lib/doctor.js', 'lib/core-user-projection.js'
 ]) {
@@ -58,11 +61,20 @@ for (const rel of [
   }
 }
 
+// 已迁移消费者不能重新进入 legacy 视觉模型链。
+for (const rel of ['lib/index.js', 'lib/actions.js', 'lib/locate.js', 'lib/summarize.js', 'lib/ocr.js']) {
+  if (/\b(?:askWithBackends|buildVisionBackends)\s*\(/.test(read(rel))) {
+    failures.push(rel + ' 不得调用 legacy 视觉模型链');
+  }
+}
+
 // Model Port 共享层只能依赖本轮纯契约，不可反向读取 Host、配置、Store 或协议。
-for (const rel of ['lib/model-port-contract.js', 'lib/model-invoker.js']) {
+for (const rel of ['lib/model-port-contract.js', 'lib/model-invoker.js', 'lib/prompt-optimizer-core.js', 'lib/vision-core.js', 'lib/model-call-runtime.js']) {
   const source = read(rel);
   const imports = [...source.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)].map(match => match[1]);
-  const expected = rel.endsWith('model-invoker.js') ? ['./model-port-contract.js'] : [];
+  const expected = /(?:prompt-optimizer|vision)-core\.js$/.test(rel) ? ['./model-invoker.js', './model-port-contract.js']
+    : rel.endsWith('model-call-runtime.js') ? ['./model-port-contract.js']
+    : rel.endsWith('model-invoker.js') ? ['./model-port-contract.js'] : [];
   if (JSON.stringify(imports) !== JSON.stringify(expected)
       || /\b(?:require|import)\s*\(|\bimport\s*['"]/.test(source)
       || /\bprocess\.(?:env|cwd)|\bfetch\s*\(/.test(source)) {
@@ -76,7 +88,7 @@ const codeLines = (source) => source.split('\n').filter((line) => !/^\s*(?:\/\/|
 for (const rel of [
   ...fs.readdirSync(path.join(root, 'lib')).filter((name) => /^core-.*\.js$/.test(name)).map((name) => 'lib/' + name),
   'lib/command-service.js', 'lib/generation-input.js', 'lib/provider-contract.js', 'lib/provider-adapter.js',
-  'lib/model-port-contract.js', 'lib/model-invoker.js'
+  'lib/model-port-contract.js', 'lib/model-invoker.js', 'lib/prompt-optimizer-core.js', 'lib/vision-core.js'
 ]) {
   const lines = codeLines(read(rel)).filter((line) =>
     // Credential redaction recognizes vendor prefixes; it never selects a provider or model.
@@ -86,7 +98,7 @@ for (const rel of [
 const modelLiteral = /\b(?:wan\d|qwen-|gpt-image|Cherry)/i;
 for (const [start, end] of [
   ['function selectProviders(', 'function taskActionError('],
-  ['function videoRoute(', 'async function submitVideoV2('],
+  ['function videoRoute(', 'function simpleModelRoute('],
   ['function simpleModelRoute(', '/** 重新观察'],
   ['async function submitCoreTts(', '/* ----------'],
   ["register('tts',", "register('"],
@@ -491,8 +503,8 @@ if (!/userState/.test(clientSource) || !/useCoreUserTasks/.test(clientSource)) {
   }
   const actionsSrc = read('lib/actions.js');
   if (!/submitCoreVideo/.test(actionsSrc) || !actionsSrc.includes("storage: 'core'")
-      || !/submitVideoV2\(routes/.test(actionsSrc) || !/audio_path/.test(actionsSrc)) {
-    failures.push('lib/actions.js 视频动作必须 t2v/i2v 走 Core、s2v 意图保留 legacy');
+      || !/videoTaskCandidates/.test(actionsSrc) || /await submitVideoV2\(/.test(actionsSrc)) {
+    failures.push('lib/actions.js 视频动作必须 t2v/i2v/s2v 走 Core，不得调用 legacy 提交');
   }
   if (!/capability: 'video'/.test(cliSource) || !cliSource.includes('run video')) {
     failures.push('bin/dsh-iris.js 缺少 run video（E 阶段视频 CLI）');
@@ -552,7 +564,7 @@ if (!/userState/.test(clientSource) || !/useCoreUserTasks/.test(clientSource)) {
       || !/audio_url/.test(actionsSrc)) {
     failures.push('lib/actions.js 转写动作必须走 submitCoreTranscribe（legacy submitTranscriptionV2 已移除）');
   }
-  if (!/normalizeGenerationInput\(before\.capability, input\.provider_input\)/.test(read('lib/command-service.js'))
+  if (!/normalizeGenerationInput\(before\.capability, input\.provider_input(?:,|\))/.test(read('lib/command-service.js'))
       || !/providerInput\.audioUrl = audioUrl/.test(read('lib/generation-input.js'))
       || !/providerInput\.imgDataUrl = imgDataUrl/.test(read('lib/generation-input.js'))) {
     failures.push('retry 必须经共享边界保留转写地址与视频首帧，不得直接透传外部字段');
@@ -636,7 +648,7 @@ if (!/register\('media_summarize'/.test(read('lib/actions.js'))) {
   failures.push('lib/actions.js 缺少阶段 7.3 动作（media_summarize）');
 }
 
-// 阶段 3B：OCR 后端必须存在且复用视觉后端链
+// M4 OCR：图片业务仅消费字节与共享 Vision Ports，不反向读取 Host/Store/网络。
 let ocr = '';
 try {
   ocr = read('lib/ocr.js');
@@ -646,8 +658,12 @@ try {
 if (ocr && !/export async function longOcr/.test(ocr)) {
   failures.push('lib/ocr.js 必须导出 longOcr');
 }
-if (ocr && !/askWithBackends/.test(ocr)) {
-  failures.push('lib/ocr.js 必须复用视觉后端链（askWithBackends），不直连供应商');
+if (ocr) {
+  const imports = [...ocr.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)].map(match => match[1]);
+  if (JSON.stringify(imports) !== JSON.stringify(['sharp', './vision-core.js', './model-invoker.js', './model-port-contract.js', './model-call-runtime.js'])
+      || /\b(?:require|import)\s*\(|\bprocess\.|\bfetch\s*\(|askWithBackends/.test(ocr)) {
+    failures.push('lib/ocr.js 只能依赖 Sharp 和共享模型模块，不得读取 Host/配置/Store/网络');
+  }
 }
 
 // 阶段 2：像素后端必须存在且不引入 TypeScript/打包器特性

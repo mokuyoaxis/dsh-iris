@@ -22,11 +22,21 @@ Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿
 
 ## 下一步
 
+当前开发工作树已完成提示词 M2：DSH 文本适配器、共享优化核心和按次规则/只组装/可编辑预览；**尚未发布**。v1 配置保持不变，CLI `prompt.optimize`、自持文本后端及规则持久化仍待后续切片。见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
+
+开发版视觉 M3 已接入单图 look/relook 和显式视觉实测：HTTP/DSH 正常终态检查、整体预算、取消停止切换与同图字节桥接已实现，**尚未发布**。单图范围与限制见 [单图视觉调用](VISION_MODEL.md)。
+
+开发版 M4 已完成长图 OCR、定位、拼图摘要及图片生成后自述的共享端口迁移。整体预算覆盖准备和候选，取消/超时终止后续生成；OCR 明确部分结果，摘要一张拼图一次候选调用，可选转写读取 Core 文本 Artifact。尚未发布，详见 [长图 OCR](OCR_MODEL.md) 和 [复合视觉调用](COMPOSITE_VISION.md)。
+
+M5 的独立视觉入口已实现 `vision look / locate / ocr / summarize`，支持严格显式选型、JSON/文本和文件输出；默认画面摘要，主动转写才要求 Core 数据根。尚未发布，详见 [视觉 CLI](VISION_CLI.md)。提示词优化后续由用户另行安排，本次未扩展其入口或配置。
+
+开发版已按顺序补齐 S2V Core 迁移与 CLI、HTML 截图、模型/配置管理、异步任务等待、查询与批量操作、Core 可恢复删除和清理。仍沿用原包入口与配置结构，没有新增生产依赖、发布或扩展提示词系统。详见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。
+
 ### 后续 0.2.x
 
-- 收藏、标签、搜索、筛选和批量导出；
+- 收藏、标签和工作台搜索/分页/批量管理（CLI 过滤、分页与显式批量导出已完成）；
 - Artifact 关系边冻结 `retried-from` 类型，补全重试谱系（0.2.0 仅有 Task 级 `retriedFrom`）；
-- Core Task/Artifact 删除、清理与孤儿 purge（0.2.0 的 Headless CLI 和 DSH 工作台都保持 Core 只读；工作台现有删除、清空与孤儿清理只作用于 legacy `outputs/`）；
+- Core 隔离内容的永久 purge 与工作台删除入口（开发版 CLI 已开放可恢复隔离/恢复，DSH 工作台现有删除、清空与孤儿清理仍只作用于 legacy `outputs/`）；
 - 鸢尾花与泡泡视觉身份；
 - Gemini、Fal 和后续 Replicate Provider；
 - 将提示词优化收口为 Core Prompt Engine 与共享 `prompt.optimize` Command，由 CLI 和 DSH 入口共同消费；DSH 只负责草稿读取、预览和写回；
@@ -47,7 +57,7 @@ Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿
 - DSH 仍处于快速演进期。单个 Host Port 可以降级，但 DSH 若改变插件加载协议，仍需更新 DSH Adapter。
 - 模型发现只列出候选项；真实能力必须由用户显式验证。
 - 原生 Windows/WSL 的完整 DSH 宿主冒烟仍待补充。
-- Headless CLI 当前开放 crop、图片/视频/语音/转写提交、Task 查询/单步观察与 Artifact 检查/导出；必须显式指定绝对数据根，且不会自动循环观察。0.2.0 的 Headless CLI 与 DSH 工作台都不提供 Core Task/Artifact 删除或清理能力；工作台现有破坏性动作只处理 legacy `outputs/`。Core 删除能力计划在 0.2.x 开放。
+- Headless CLI 开发版的媒体、视觉、S2V、HTML、配置、查询、批量、有界等待与 Core 隔离/恢复见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。需要存储时显式指定绝对数据根，观察不重新提交；DSH 工作台的破坏性动作仍只处理 legacy `outputs/`，永久 purge 留待 0.2.x。
 
 ## 质量要求
 

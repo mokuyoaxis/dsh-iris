@@ -4,11 +4,13 @@
  * 覆盖（不依赖真实网络/模型，纯结构 + stub）：
  *   ① buildContactSheet：网格尺寸、行数列数、帧数溢出、空帧报错；
  *   ② buildSummaryPrompt：默认问题、含转写文本、截断；
- *   ③ summarizeMedia：stub 后端返回文本、无后端报错；
+ *   ③ summarizeMedia：Fake Port 返回文本、无端口报错；
  *   ④ 参数校验与错误路径。
  */
 import fs from 'node:fs';
 import sharp from 'sharp';
+import { createFakeModelPort } from './fixtures/fake-model-port.mjs';
+import { ModelPortError } from '../lib/model-port-contract.js';
 
 const assert = (cond, msg, extra) => {
   if (!cond) {
@@ -55,47 +57,33 @@ assert(withTrans.includes('大家好'), '含转写文本');
 assert(withTrans.includes('转写'), '含转写来源说明');
 
 /* ---------- ③ summarizeMedia（stub 后端） ---------- */
-class StubBackend {
-  get id() { return 'stub'; }
-  get kind() { return 'selfstack'; }
-  get model() { return 'test-model'; }
-  async analyze({ question }) {
-    if (question.includes('fail')) throw new Error('模拟失败');
-    return '这是一段测试视频摘要。';
-  }
-}
+const fake = text => createFakeModelPort({ kind: 'vision', steps: [{ text }] });
 // 单后端成功
 let r = await summarize.summarizeMedia({
-  backends: [new StubBackend()],
+  ports: [fake('这是一段测试视频摘要。').port], frames: testFrames,
   question: '视频讲了什么',
   transcript: '测试文本',
-  imageDataUrl: 'data:image/png;base64,FAKE'
 });
-assert(r.answer === '这是一段测试视频摘要。', 'stub 后端返回摘要', r.answer);
-assert(r.via === 'selfstack' && r.model === 'test-model', 'via/model 正确', r);
+assert(r.text === '这是一段测试视频摘要。', 'Fake Port 返回摘要', r.text);
+assert(r.identity.modelId === 'vision-v0', '模型身份正确', r);
 
 // 无后端报错
-try { await summarize.summarizeMedia({ backends: [], imageDataUrl: 'data:,' }); } catch (e) { err = e; }
-assert(err && /没有可用的视觉后端/.test(err.message), '无后端报错', err && err.message);
+try { await summarize.summarizeMedia({ ports: [], frames: testFrames }); } catch (e) { err = e; }
+assert(err && err.code === 'IRIS_MODEL_UNAVAILABLE', '无端口报错', err && err.message);
 
 // 双后端 failover：第一个失败，第二个成功
-class StubBackend2 {
-  get id() { return 'stub2'; }
-  get kind() { return 'selfstack'; }
-  get model() { return 'm2'; }
-  async analyze() { return '摘要2'; }
-}
+const reject = createFakeModelPort({ kind: 'vision', steps: [{ error: new ModelPortError('IRIS_MODEL_RATE_LIMITED',
+  { stage: 'invoke', invocation: 'rejected', status: 429 }) }] });
 r = await summarize.summarizeMedia({
-  backends: [new StubBackend(), new StubBackend2()],
+  ports: [reject.port, fake('摘要2').port], frames: testFrames,
   question: 'fail',
-  imageDataUrl: 'data:,'
 });
-assert(r.answer === '摘要2', 'failover 到第二个后端', r.answer);
+assert(r.text === '摘要2', '明确拒绝后切换第二候选', r.text);
 assert(Array.isArray(r.errors) && r.errors.length > 0, '有失败现场', r.errors);
 
 /* ---------- ④ 参数校验 ---------- */
 // summarizeMedia 无后端
 try { await summarize.summarizeMedia({}); } catch (e) { err = e; }
-assert(err && /没有可用的视觉后端/.test(err.message), '缺后端报错', err && err.message);
+assert(err && err.code === 'IRIS_MODEL_UNAVAILABLE', '缺端口报错', err && err.message);
 
 console.log('ALL OK —— 多模态视频摘要 6 组断言全部通过（contact sheet 网格/行数/空帧/提示词/后端 stub/failover）');

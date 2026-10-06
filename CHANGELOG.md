@@ -4,7 +4,18 @@
 
 ## [Unreleased]
 
-暂无。
+- 按用户指定顺序补齐 CLI：S2V 数字人迁入共享 Core Attempt 上传链，HTML 经独立 Chromium Browser Port 或 DSH 宿主保存 Core PNG；增加账号/模型/能力分配管理、发现与显式实测、私有备份与竞争写保护、有界 `task wait`、分页过滤、批量查询/导出及 JSON 文件/stdin 输入。
+- 新增 `core delete/cleanup/transactions/restore`：默认预览、引用和活跃任务保护、明确选择后隔离、哈希核对恢复与失败补偿；DSH 工作台仍只删除 legacy 作品，隔离数据不永久 purge。真实阿里云 `wan2.2-s2v` 480P/2 秒视频与 ARM64 Chromium 截图测试通过，详见 [CLI 管理与补齐](docs/CLI_MANAGEMENT.md)。尚未发布。
+
+- 新增独立视觉 CLI：`dsh-iris vision look / locate / ocr / summarize`，复用共享视觉业务；显式 `--model-ref providerId::modelId` 只调用该项，省略时按配置分配/模型池选型。支持 JSON/文本、排他保存结果与同一张摘要拼图；纯视觉不创建 Task/Artifact，主动音轨转写才使用 Core。整体预算、取消和 OCR 部分完成状态保持一致。详见 [视觉 CLI](docs/VISION_CLI.md)。尚未发布。
+
+- 完成视觉 M4：定位、视频拼图摘要与生成后自述改为共享 Vision Ports，准备与候选共用整体预算；截断、取消和协议错误停止后续生成。摘要的一张拼图与输出一致，可选音轨转写读取 Core 文本 Artifact；修复时间戳标签未绘制和十帧以上时序错乱。真实 `dsh` CLI 下定位、摘要、自述及流式取消七项实测通过。详见 [复合视觉调用](docs/COMPOSITE_VISION.md)。尚未发布。
+- 长图 OCR 接入共享 Vision Ports：图片准备、全部分块与候选共用 120 秒整体预算和最多 64 次生成；取消/超时立即停止后续块，失败/截断正文不拼入全文。结果区分完成、部分完成和失败，保留失败后的原段号，修复显式 `overlap: 0` 被入口默认值覆盖的问题；最多 32 块，超限生成前拒绝。详见 [长图 OCR](docs/OCR_MODEL.md)。尚未发布。
+- 修复视觉能力探针的图片尺寸：用 128×128 纯红 PNG 替换 1×1 图片，避免模型因输入图片过小返回 400 而被误判为不支持视觉。
+- 单图视觉 M3：Agent/工作台的看图与重看、显式视觉实测接入共享 VisionModel Port；HTTP/DSH 严格验证正常终态，取消/超时不再切换候选，截断和部分正文不返回成功。DSH 图片桥接保存后读回核对字节，整体 120 秒预算覆盖准备与候选链，正文 6,000 字上限改为超限失败。详见 [单图视觉调用](docs/VISION_MODEL.md)。尚未发布。
+- 提示词优化迁入共享业务核心与 DSH TextModel Port：元数据和生成共用预算，严格检查终态/正文上限，取消清理底层流；不产生 Task/Artifact。
+- 泡泡增加本次改写规则、原样输出前缀/后缀、“只组装”、可编辑结果、原文/改动对照与参与规则预览；写回保护新草稿、忙碌状态及结构化引用，旧请求迟到结果不能覆盖新操作。v1 配置保持不变，规则仅按次传入。
+- 显式 reasoning effort（含 inherit）在模型元数据未声明对应档位时改为生成前拒绝；默认 off-if-supported 仍在关闭能力未知时使用供应商默认。详见 [提示词优化系统](docs/PROMPT_OPTIMIZER.md)。以上尚未发布。
 
 ## [0.2.0] - 2026-10-01
 

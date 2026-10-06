@@ -33,4 +33,4 @@ node scripts/verify-dsh-host.mjs --dsh-root /absolute/path/to/@deepseek-ai/dsh
 
 真实用户 profile 若禁用 Iris，路由不存在属于预期状态，不据此判定适配失败。启用后仍需实机验证工作台、会话附件选择、提示词预览/写回和媒体展示。验证脚本不自动启用、安装、重载或重启用户插件，也不运行付费探针。
 
-这次修正保留现有 `textModel.stream()` / `visionModel.analyze()` 消费链；没有将真实适配器或业务接入 [Model Port M1](MODEL_PORT_CONTRACT.md)。视觉完整终态、统一输出预算、候选控制和 OCR 取消的进一步收口仍按该契约的后续阶段验收，不能把 rc.2 桥接测试当作迁移完成证据。
+已发布 0.2.0 的 rc.2 修正保留原 `textModel.stream()` / `visionModel.analyze()` 消费链，没有将真实消费者接入 Model Port。后续开发工作树已完成提示词 M2、单图视觉 M3 和复合视觉 M4（尚未发布），见 [Model Port](MODEL_PORT_CONTRACT.md)、[单图视觉调用](VISION_MODEL.md)、[OCR](OCR_MODEL.md) 和 [定位/摘要/自述](COMPOSITE_VISION.md)。安装 rc.2 离线检查覆盖真实 Runtime/Attachments/ToolRuntime/WebServer；2026-10-05 另由真正 `dsh` CLI 加载隔离 profile，原生模型定位、摘要、自述与流式取消七项检查通过。各业务分别验收，不能仅由 rc.2 桥接测试推断完成。

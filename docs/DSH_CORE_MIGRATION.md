@@ -23,7 +23,7 @@ Core runner 不拥有 timer，单次 observe 最多执行一次 poll，绝不 re
 - 启动扫描全部 Task 页，保守恢复 submitting、active、取消响应和交付中断窗口；仅接管仍有远端受理证据、且在自动窗口内的图片。旧无 binding Task 不猜测恢复配置。
 - timer 使用 unref，随插件 Fiber 清理；在途观察收到取消信号，旧回调不能清掉同一 Task 的新观察器。停止本地观察不宣称已取消远端任务。
 
-Headless CLI 使用同一控制面，但不自动循环：`task observe` 每次显式调用只 poll 一次，Provider 配置路径由 CLI 边界提供。
+Headless CLI 使用同一控制面：`task observe` 每次显式调用只 poll 一次；开发版 `task wait` 对原 Task 有界循环，超时中断在途请求、释放租约，绝不重提。Provider 配置路径由 CLI 边界提供。
 
 DSH 工作台现也开放同一份显式单步观察（D1 reobserve）：`POST /iris/api/core/task/:id/reobserve` 经 Command Service 命令 `task.reobserve`（与 `task.observe` 同实现），adapter/binding 恢复与 Host 观察节拍共用同一 resolver。用户任务区的 Core 投影行在服务端的行 DTO 标记 `observable`（已受理、有远端 ID、结果未定论、非终态）时显示「重新观察」按钮，点击后单次调用、禁用期间防重复，完成后复用刷新节拍重拉快照；高级诊断卡对符合同一受理事实门的任务提供同一动作。每次调用至多一次 poll，绝不 submit；终态、未受理、无远端 ID 或 binding 漂移的任务在网络与写入前被拒绝并返回稳定错误码。
 
@@ -53,7 +53,7 @@ Core 任务的提醒处置属于 **Host 偏好**（计划铁律：提醒已读/�
 
 ## 视频迁移（E 阶段第一项）
 
-t2v/i2v 视频已迁到 Core，与图片共用 Task/Attempt 事实轴但**不共用图片状态机**：交付走冻结的视频 Profile（`lib/provider-task-runner.js` 的 `DELIVERY_PROFILES.video`：媒体白名单 `video/mp4`、Artifact kind `generated-video`、metadata 带 `capability`），观察用视频长轮询档（默认 6s/拍），受理、取消（当前真实协议不支持远端取消，not_supported 如实回落）、redeliver/retry 与 CLI/API/UI 控制面全部对视频生效。Agent 工具与工作台视频动作经 `submitCoreVideo` 落到 Core，**零 legacy 双写**（不再写 `tasks.json`/`outputs/`；旧视频任务继续 legacy 只读兼容）。同源媒体路由按 ID 播放 mp4；视频作品在任务区行内给出链接，不进入图片画廊网格。s2v 数字人（受理边界前需上传首帧与音频到临时存储）暂留 legacy 链路，后续单独迁移。真实 Provider 视频 canary 待验收。
+t2v/i2v 视频已迁到 Core，与图片共用 Task/Attempt 事实轴但**不共用图片状态机**：交付走冻结的视频 Profile（`lib/provider-task-runner.js` 的 `DELIVERY_PROFILES.video`：媒体白名单 `video/mp4`、Artifact kind `generated-video`、metadata 带 `capability`），观察用视频长轮询档（默认 6s/拍），受理、取消（当前真实协议不支持远端取消，not_supported 如实回落）、redeliver/retry 与 CLI/API/UI 控制面全部对视频生效。Agent 工具与工作台视频动作经 `submitCoreVideo` 落到 Core，**零 legacy 双写**（不再写 `tasks.json`/`outputs/`；旧视频任务继续 legacy 只读兼容）。同源媒体路由按 ID 播放 mp4；视频作品在任务区行内给出链接，不进入图片画廊网格。开发版 S2V 已迁入同一 Core：Attempt 写前落盘后，按实际候选上传首帧与音频。真实阿里云 wan2.2-s2v 的 480P/2 秒视频生成与导出哈希验收通过。
 
 ## 语音合成迁移（E 阶段第二项）
 
@@ -71,23 +71,31 @@ DSH 的 `iris_pixel_diff`、`iris_video_frames` 与工作台对应动作也消�
 
 图片、t2v/i2v 视频、TTS 与转写的正常提交和知情重试共用 `generation-input.js`：统一文本修剪、数量/时长/长度校验，并把 `img_data_url`、`audio_url` 转为 Adapter 的 `imgDataUrl`、`audioUrl`。非法输入在 Provider 提交和新 Task 创建前拒绝；CLI 仍返回 usage 退出码，Command 仍返回 `IRIS_COMMAND_INPUT_INVALID`。工作台清空可选文本框仍由 Host 解释为使用默认值。音频路径与签名地址不落 Core，上传和附件解析仍属于入口；S2V 的 legacy 参数链保持原边界。
 
-依赖视觉模型或 Host Browser 的 `locate`、长图 OCR、媒体摘要和 HTML 渲染不进入这条本地命令链；它们留到中立 Text/Vision Port 冻结后再迁移，避免把网络模型或浏览器对象塞进 Core。
+依赖视觉模型或 Host Browser 的 `locate`、长图 OCR、媒体摘要和 HTML 渲染不进入这条本地命令链。开发版视觉业务通过独立的共享 Model Port 迁移；纯视觉业务不取得 Core writer，摘要的可选转写沿用既有 Core Task，不把网络模型或浏览器对象塞进本地命令链。
 
-## Text/Vision 下一步（M1 完成，消费者未迁移）
+## Text/Vision 迁移（已发布 M1，开发版 M2/M3/M4）
 
-[Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 固定目标请求、完整结果、错误、取消/预算与 DSH 图片桥接边界。后续顺序为纯契约/Fake Port → 提示词优化 → look/relook → 定位/OCR/拼图摘要，逐个消费者举证。取消后 fallback、缺终态的部分文字成功、OCR 吞取消继续分块均列为待修行为，现有测试通过不能算作新契约已通过。
+[Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 固定目标请求、完整结果、错误、取消/预算与 DSH 图片桥接边界。迁移顺序为纯契约/Fake Port → 提示词优化 → look/relook → OCR/定位/拼图摘要，逐个消费者举证。新链逐项修正取消后 fallback、缺终态的部分文字成功和 OCR 吞取消继续分块；旧链测试通过不能算作新契约已通过。
 
-纯契约、调用控制与 Fake Port 已完成 M1，共用有限调用预算、严格结果验证与取消语义；真实 HTTP/DSH 适配器尚未接入。提示词优化继续讨论主动提示词组装与不可信输入隔离，本轮不迁移该消费者。M1 不增加 Task/Artifact 写入，不修改 v1 配置或公开 export。HTML/Browser、S2V 与自持文本能力目录独立处理；媒体摘要复用 Core 抽帧也需后续单独接线。
+M1 已包含纯契约、调用控制与 Fake Port。当前开发工作树（尚未发布）完成提示词 M2：DSH TextModel Port、共享优化核心、显式规则/确定性输出拼接和泡泡预览。Fake 与 DSH 事件 fixture 复用 conformance，已安装 rc.2 Runtime/WebServer 使用离线源适配器单独验收。v1 配置及公共 export 保持不变，无 Task/Artifact 写入；来源分离不代表模型语义注入防护完全解决。见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
+
+当前开发版 M3 已实现 HTTP/DSH Vision Port 并接入 Agent/工作台 look/relook 与显式视觉实测。完整终态、候选链总预算、取消停止切换和图片字节桥接分别验收，不写 Core Task/Artifact；DSH 保存后归一化导致字节变化会在生成前拒绝。见 [单图视觉调用](VISION_MODEL.md)。M4 的 [OCR](OCR_MODEL.md) 与 [定位、拼图摘要及自述](COMPOSITE_VISION.md) 已全部接入同一端口：OCR 普通块失败形成明确部分结果，定位保留原像素 bbox，摘要每次候选发送同一张拼图，并从 Core 转写 Artifact 取正文。legacy 视觉兼容实现仍保留，业务入口不再调用。M5 独立视觉 CLI、显式模型选择、HTML/Browser 和 S2V 已实现；摘要复用既有 Core 抽帧 Artifact 仍待后续。
+
+## 开发版 CLI 补齐（尚未发布）
+
+S2V 数字人已迁移到共享 Core Task/Attempt/Artifact，DSH 与 CLI 在每个候选的 Attempt 内上传首帧和音频，受理未知停止切换，观察阶段不重新上传或提交。HTML 工具/action 共用 `media.html` Command；独立 CLI 显式提供 Chromium Browser Port，DSH 仍使用宿主浏览器，均保存 `html-screenshot` Artifact。
+
+账号/模型/分配管理、发现预览与合并、单模型实测、Task 有界等待、查询分页/过滤、显式批量查询/导出、JSON 文件/stdin 以及 Core 可恢复删除/清理均已实现，详见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。提示词优化后续由用户另行安排，本次未扩展。
 
 ## 尚未迁移或开放
 
-- s2v 数字人视频的 Core Command/Task 消费；
-- 依赖 Text/Vision Model Port 或 Host Browser 的 locate、长图 OCR、媒体摘要与 HTML 渲染；
+- Text 的公开独立入口和显式自持文本模型选择；
+- 媒体摘要消费既有 Core 抽帧 Artifact（当前抽帧仍在入口准备，视觉业务已共享）；
 - 旧任务、旧作品 ID 与 Core ID 的显式映射；
-- Core Task/Artifact 删除、清理、孤儿 purge 与完整作品分页（提醒处置和人工控制面 reobserve/redeliver/cancel/retry 已开放）；
+- Core 隔离内容的永久 purge、工作台完整作品分页与批量管理（CLI 分页、查询及可恢复删除已开放）；
 - 真实 DSH 对话 attachment、浏览器进度/作品区和异步重启 canary。
 
-旧作品重新索引、删除、清空和孤儿清理仍只操作 legacy `outputs/`；Core Task/Artifact 在 DSH 工作台和 Headless CLI 中都保持只读。Doctor 会报告 Core 孤立对象、未提交 Manifest 与未解析条目，但不会删除或修复它们。Core 删除与清理能力计划在 0.2.x 开放；不要手动移动或删除 `core-v0` 中的 object、Manifest、record 或租约文件。
+旧作品重新索引、删除、清空和孤儿清理仍只操作 legacy `outputs/`；Core 在 DSH 工作台保持只读，Headless CLI 的 `core delete/cleanup` 默认预览，明确确认后移入可恢复隔离，`core restore` 不覆盖原位置冲突。Doctor 会报告 Core 孤立对象、未提交 Manifest 与未解析条目，不删除或修复；永久 purge 留待 0.2.x。不要手动移动或删除 `core-v0` 中的 object、Manifest、record 或租约文件。
 
 ## 验证证据与限制
 

@@ -26,6 +26,7 @@ const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
 const { runAction } = await import('../lib/actions.js');
 const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { inspectCoreTask } = await import('../lib/core-tasks.js');
 
 const provider = config.upsert({
   name: 'video-provider', apiKey: 'video-fixture-secret',
@@ -123,11 +124,11 @@ try {
       audio_path: audio, first_frame_path: frame
     });
   } catch (error) { uploadRejected = error; }
-  assert(uploadRejected?.taskId, '提交拒绝保留 legacy Task 身份');
+  assert(uploadRejected?.taskId, '提交拒绝保留 Core Task 身份');
   assert(calls.join(',') === 'policy,upload,policy,upload,submit', '首帧与音频各上传一次后提交', calls);
   assert(submittedInput.image_url.startsWith('oss://') && submittedInput.audio_url.startsWith('oss://'),
     '准备结果传给协议提交', submittedInput);
-  assert(tasks.get(uploadRejected.taskId).acceptance === 'not_accepted', '上传成功不表示生成已受理');
+  assert(inspectCoreTask(dshCoreDataRoot(), uploadRejected.taskId).acceptance === 'not_accepted', '上传成功不表示生成已受理');
 
   calls.length = 0;
   global.fetch = async () => {
@@ -141,7 +142,7 @@ try {
       audio_path: audio, first_frame_path: frame
     });
   } catch (error) { failedUpload = error; }
-  const failedAttempt = tasks.get(failedUpload?.taskId)?.attempts.at(-1);
+  const failedAttempt = inspectCoreTask(dshCoreDataRoot(), failedUpload?.taskId)?.attempts.at(-1);
   assert(calls.join(',') === 'policy', '上传失败不得继续上传或提交');
   assert(failedAttempt?.error.stage === 'upload' && failedAttempt.error.acceptance === 'not_accepted'
     && failedAttempt.error.category === 'authentication', '上传失败保留规范化错误', failedAttempt);

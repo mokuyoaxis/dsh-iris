@@ -3,7 +3,7 @@ import { invokeModel } from '../../lib/model-invoker.js';
 import { modelPortSnapshot } from '../../lib/model-port-contract.js';
 
 /** 可供后续协议 fixture 复用的单次调用矩阵；factory 提供场景与调用计数。 */
-export async function runModelConformance(createFixture, { kind = 'text' } = {}) {
+export async function runModelConformance(createFixture, { kind = 'text', supportsReplace = true } = {}) {
   const request = { prompt: ' 中文原文 ', ...(kind === 'vision'
     ? { image: { bytes: new Uint8Array([1, 2, 3]), mediaType: 'image/png' } } : {}) };
   const options = { budget: { timeoutMs: 1000, maxInputTextBytes: 1024, maxOutputChars: 8,
@@ -53,10 +53,10 @@ export async function runModelConformance(createFixture, { kind = 'text' } = {})
     assert.equal(fixture.stats.invocations, 0);
     assert.equal(fixture.calls.length, 0);
   });
-  await check('stream.replace-not-duplicate', async () => {
+  await check(supportsReplace ? 'stream.replace-not-duplicate' : 'stream.append-not-duplicate', async () => {
     const fixture = createFixture({ kind, steps: [{ chunks: [
-      { type: 'append', text: 'part', blockId: 'a' },
-      { type: 'replace', text: '完成', blockId: 'a' },
+      ...(supportsReplace ? [{ type: 'append', text: 'part', blockId: 'a' },
+        { type: 'replace', text: '完成', blockId: 'a' }] : [{ type: 'append', text: '完成', blockId: 'a' }]),
       { type: 'append', text: '正文', blockId: 'b' },
       { type: 'finish', reason: 'stop' }
     ] }] });

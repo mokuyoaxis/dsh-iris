@@ -198,6 +198,16 @@ Core and the DSH Adapter are being separated: DSH keeps loading the same npm pac
 
 ## File inputs
 
+The development tree routes single-image look/relook and explicit vision probes through shared budgets, complete-result checks and cancellation control. This is unreleased; see [Single-image vision calls](docs/VISION_MODEL.md) for scope and DSH image-bridge limits.
+
+Development [long-image OCR](docs/OCR_MODEL.md) also shares one deadline and a finite call budget across all chunks. Cancellation stops later chunks, and incomplete recognition is marked as partial or failed. This is unreleased.
+
+M4 also migrates [locate, contact-sheet summaries and generated-image descriptions](docs/COMPOSITE_VISION.md) to shared ports. A summary sends one timestamped sheet per candidate invocation and reads optional transcription from its Core text Artifact. These changes are unreleased.
+
+The development tree now includes [standalone vision CLI](docs/VISION_CLI.md) commands: `dsh-iris vision look / locate / ocr / summarize`, with strict model overrides, JSON/text output and optional result/contact-sheet files. Pure vision needs no data root; explicitly requested audio transcription uses Core. This is unreleased.
+
+The development CLI also supports Core S2V video, HTML screenshots, provider/model/configuration management, bounded task waiting, filtered pagination and bulk export, and recoverable Core quarantine/restore. See [CLI management](docs/CLI_MANAGEMENT.md). These changes are unreleased and add no production dependencies.
+
 Iris accepts three file sources, in the recommended order:
 
 1. **Browser upload** — best for local files and cross-environment access; 64 MB per file.
@@ -207,6 +217,8 @@ Iris accepts three file sources, in the recommended order:
 Uploads are stored under `$DSH_HOME/iris/v1/uploads/` and kept for 7 days by default. For path-picking advice on different platforms, see [File access across environments](docs/file-access-across-environments.md) (Chinese).
 
 ## Conversation prompt optimization
+
+The development tree adds per-operation rules, assembly without a model call, and editable comparison previews. **These additions are not in npm 0.2.0 yet.** See the [prompt optimizer guide](docs/PROMPT_OPTIMIZER.md); the behavior below describes the published version.
 
 Iris adds a borderless, text-free “🫧” control directly to the DSH composer, so the workbench does not need to be open. It opens a translucent glass panel with background blur and soft depth; on narrow screens and Android browsers it becomes a safe-area-aware, internally scrollable bottom sheet to prevent overlap and overflow. It reads only the current unsent plain-text draft and offers general, image, video, and start-to-end-frame video targets. The result is previewed first and is written back only after confirmation; Iris never sends it automatically. Drafts containing structured `@` or `/` references are left untouched for now so their identities are not lost.
 

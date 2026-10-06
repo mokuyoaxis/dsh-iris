@@ -12,9 +12,12 @@ const assert = (condition, message, extra) => {
 
 const { serveApi } = await import('../lib/api.js');
 const { createDshHostAdapter } = await import('../lib/dsh-host-adapter.js');
+let modelCalls = 0;
+let available = true;
 const ctx = {
   get(name) {
-    if (name === 'llm') return { async *stream() {
+    if (name === 'llm' && available) return { async *stream() {
+      modelCalls++;
       yield { type: 'text-delta', index: 0, text: 'API 优化结果' };
       yield { type: 'finish', reason: { kind: 'stop' } };
     } };
@@ -29,6 +32,7 @@ try {
   let res = await fetch(base + '/iris/api/prompt-optimizer/config');
   let json = await res.json();
   assert(res.status === 200 && json.source === 'default' && json.config.route.mode === 'session', 'GET config 应返回默认配置', json);
+  assert(json.capabilities.rules && json.capabilities.assemble, 'GET config 声明规则与只组装能力');
 
   res = await fetch(base + '/iris/api/prompt-optimizer/import', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -44,6 +48,22 @@ try {
   json = await res.json();
   assert(res.status === 200 && json.optimized === 'API 优化结果', 'POST optimize 应调用 DSH LLM', json);
   assert(json.route.provider === 'api-p' && json.route.source === 'host-default', 'API 无会话模型时应使用宿主默认', json.route);
+
+  const before = modelCalls;
+  available = false;
+  res = await fetch(base + '/iris/api/prompt-optimizer/optimize', {
+    method: 'POST', body: JSON.stringify({ text: '  原稿  ', mode: 'assemble', rules: [
+      { id: 'end', label: '约束', kind: 'output', position: 'suffix', text: '不要水印' }
+    ] })
+  });
+  json = await res.json();
+  assert(res.status === 200 && json.optimized === '  原稿  \n\n不要水印' && json.route === null, '没有模型服务仍可只组装', json);
+  assert(modelCalls === before, '只组装不能进入生成入口');
+  available = true;
+  res = await fetch(base + '/iris/api/prompt-optimizer/optimize', {
+    method: 'POST', body: JSON.stringify({ text: '原稿', rules: [{ id: 'bad', label: '坏规则', kind: 'output', text: '规则' }] })
+  });
+  assert(res.status === 400 && modelCalls === before, '非法规则在模型调用前返回 400');
 
   res = await fetch(base + '/iris/api/prompt-optimizer/enabled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: false }) });
   json = await res.json();
@@ -67,4 +87,4 @@ try {
   await new Promise((resolve) => server.close(resolve));
 }
 
-console.log('ALL OK —— 提示词优化器 config/import/optimize/disable/enable/reset HTTP API 通过');
+console.log('ALL OK —— 提示词优化器 config/import/optimize/disable/enable/reset、能力声明与无模型只组装 HTTP API 通过');

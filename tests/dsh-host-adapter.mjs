@@ -1,6 +1,7 @@
 /** DSH capability detection and DTO mapping; no DSH package, network, or paid request. */
 import fs from 'node:fs';
 import path from 'node:path';
+import sharp from 'sharp';
 import { createDshHostAdapter, detectDshVersion } from '../lib/dsh-host-adapter.js';
 import { defineHostAdapter, hostCapabilitySnapshot } from '../lib/host-contract.js';
 import { useTempDshHome } from './test-env.js';
@@ -89,12 +90,14 @@ try {
 } catch (error) { malformedAdapterError = error; }
 assert(malformedAdapterError instanceof TypeError && /有效的 Host Adapter/.test(malformedAdapterError.message),
   'Action 必须拒绝只伪造版本字段的不完整 Adapter');
+const htmlPng = await sharp({ create: { width: 20, height: 10, channels: 3, background: 'red' } }).png().toBuffer();
 const browserActionHost = defineHostAdapter({
   id: 'browser-action-test',
-  ports: { browser: { async renderHtml() { return { bytes: new Uint8Array([1, 2]), mediaType: 'image/png' }; } } }
+  ports: { browser: { async renderHtml() { return { bytes: htmlPng, mediaType: 'image/png' }; } } }
 });
 const html = await runAction(browserActionHost, 'html', { html: '<h1>x</h1>' });
-assert(html.ok && html.imageDataUrl === 'data:image/png;base64,AQI=', 'HTML action 必须只消费 browser port', html);
+assert(html.ok && html.storage === 'core' && html.artifactIds.length === 1
+  && html.imageDataUrl === 'data:image/png;base64,' + htmlPng.toString('base64'), 'HTML action 必须通过 browser port 交付 Core Artifact', html);
 
 const slotCalls = [];
 const clientHost = createDshHostAdapter({

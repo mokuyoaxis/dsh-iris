@@ -35,7 +35,7 @@ DSH Host / Cordis                         Headless CLI
 
 `lib/index.js` 是 DSH 插件装配入口，`lib/dsh-host-adapter.js` 是原始 DSH/Cordis 对象进入 Iris 的服务端边界；`lib/dsh-core-adapter.js` 只负责选择 DSH profile 的 Core 数据根、恢复 Provider 配置和投影 Host DTO。`bin/dsh-iris.js` 不启动 DSH，也不推断 profile。`lib/api.js` 与 `lib/client.js` 是 Host 投影，不是真相来源。
 
-未迁移能力仍走 0.1.4 legacy 链。当前主要包括 s2v 数字人视频、视觉理解、长图 OCR、媒体摘要、HTML 渲染和提示词优化；它们不会被伪装成 Core 能力。
+已发布 0.2.0 中，s2v 数字人视频、视觉理解、长图 OCR、媒体摘要、HTML 渲染和提示词优化仍走 legacy 链。开发工作树已完成 Text/Vision M2–M4 的共享业务迁移，见下文；S2V 和 Browser 独立处理。
 
 ## 0.2.0 核心
 
@@ -44,7 +44,7 @@ DSH Host / Cordis                         Headless CLI
 | `core-contract.js` / `core-runtime.js` | 显式数据根、reader/writer 权限、单写者租约、取消与释放 | 无 |
 | `command-service.js` | 本地媒体命令、Task 控制面和 Artifact 查询/导出 | 无 |
 | `generation-input.js` | CLI、DSH 与重试共用的生成参数校验和 Provider 字段转换 | 无 |
-| `model-port-contract.js` / `model-invoker.js` | Text/Vision 内部契约、有限调用预算与取消；真实消费者尚未接入 | 无 |
+| `model-port-contract.js` / `model-invoker.js` | Text/Vision 内部契约、有限调用预算与取消；开发版 M2–M4 消费 | 无 |
 | `core-tasks.js` | Core Task/Attempt 持久事实、受理与交付状态 | 无 |
 | `core-artifacts.js` / `core-artifact-store.js` | 对象、Manifest、SHA-256、关系边与可重建 Index | 无 |
 | `provider-contract.js` / `provider-adapter.js` | canonical 结果、错误脱敏、受理边界与 Provider v0 操作 | 无 |
@@ -65,7 +65,7 @@ DSH Host / Cordis                         Headless CLI
 - 生成结果与本地交付是两类事实。远端成功后下载失败仍保持 `outcome=succeeded / deliveryState=failed`，可显式重新交付而不重新生成。
 - 新 Attempt 可选保存阶段时间戳与模型选择来源；旧记录缺少这些字段仍可读取。
 - Artifact Manifest v0 保存内容哈希、媒体类型、中性元数据和关系边；不保存 Prompt、API Key、签名 URL、Provider 端点或宿主绝对路径。
-- Core Task/Artifact 的删除与清理能力在 0.2.0 中保持封闭：DSH 与 CLI 都不提供 delete、clear 或 orphan purge。Doctor 只报告，不自动修复。
+- 开发版 Core/CLI 已提供默认只读预览、明确选择与确认、文件隔离和恢复的删除/清理 Command，保护活跃 Task 和引用；索引更新只使用已提交记录，不升级或接回孤儿。DSH 作品区仍只读，永久 purge 未开放。Doctor 只报告，不自动修复。见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。
 
 0.1.4 的 `tasks.json`、`artifacts.json`、`outputs/` 与上传目录继续作为 legacy 数据存在；Core 使用隔离的 `core-v0`。已迁移的新图片、视频、TTS 与转写任务不双写 legacy，回退到 0.1.4 时也不删除或改写 Core 数据。
 
@@ -77,11 +77,17 @@ Core Runner 不拥有后台 timer。Headless `task observe` 每次最多 poll �
 
 每个操作必须明确声明 supported 或 unsupported。当前 DashScope 与 OpenAI Images 媒体协议没有经过验证的远端取消实现，因此取消请求如实返回 not-supported，而不是伪造 canceled。完整受理与错误规则见 [Provider 提交契约 v0](PROVIDER_SUBMISSION_CONTRACT.md)。
 
-## Text/Vision 共享边界（M1 已实现）
+## Text/Vision 共享边界（已发布 M1，开发版 M2/M3/M4）
 
-[Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 的纯契约、调用控制与 test-only Fake Port 已实现，尚未接入真实消费者。它以 `describe()` 和单轮 `complete()` 统一文本/视觉输入、正常终态、预算、取消与安全错误；图片以字节和 MIME 进入共享层，模型选择、会话与附件桥接保留在入口/适配器。
+[Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 的纯契约、调用控制与 test-only Fake Port 已发布于 0.2.0。它以 `describe()` 和单轮 `complete()` 统一文本/视觉输入、正常终态、预算、取消与安全错误；图片以字节和 MIME 进入共享层，模型选择、会话与附件桥接保留在入口/适配器。
 
-提示词优化与视觉理解不创建媒体生成 Task，不进入 Provider Task Runner。提示词优化的功能定位与输入隔离正在讨论，其接入待后续确定；look/relook、定位、OCR 与摘要仍按独立切片迁移。现有 Host 方法、配置与 CLI 均未因 M1 改变；自持文本目录和独立入口需要另行审查。
+当前开发工作树（尚未发布）已通过 `prompt-optimizer-core.js` → `model-invoker.js` → `dsh-text-model-adapter.js` 接入首个提示词消费者；`prompt-optimizer.js` 继续拥有 v1 配置、模型选择、reasoning 策略和 Host 投影。共享核心不读取 Host/配置/Store，不取得 writer，也不创建媒体 Task/Attempt/Artifact。规则与预览见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
+
+开发版 M3 将 Agent/工作台 look/relook 和显式视觉实测接入 `vision-core.js` 与 HTTP/DSH Vision Port：共享 120 秒整体预算、完整终态与候选策略，图片桥接读回核对同一字节。DSH 附件保存属于宿主副作用，不是 Core Artifact；rc.2 保存不可取消的限制如实保留。见 [单图视觉调用](VISION_MODEL.md)。M2–M4 未增加持久配置字段或公共 SDK export；自持文本目录和 CLI 入口另行处理。
+
+开发版 M4 的 OCR 切片通过 `ocr-model-routing.js` 在入口解引用前建立整体 operation，`ocr.js` 仅接收图片字节和模型端口，使用现有 Sharp 做有限分块；全部块复用 `completeVision`，没有每块重置计时或调用额度。普通块失败可以产生明确部分结果，取消/超时终止整次操作；不取得 Core writer 或写入 Task/Artifact。见 [长图 OCR](OCR_MODEL.md)。
+
+M4 的定位、拼图摘要与生成后自述复用 `runVisionOperation`，`locate.js` / `summarize.js` 消费共享端口；入口处理附件、抽帧和可选 Core 转写，摘要读取已成功转写的文本 Artifact。纯视觉业务不写 Task/Artifact。legacy 视觉兼容实现保留，现有入口不再调用。见 [复合视觉调用](COMPOSITE_VISION.md)。
 
 ## Host Port 与 Headless 边界
 

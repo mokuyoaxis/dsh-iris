@@ -6,6 +6,8 @@ Iris 0.2.0 提供无 DSH 的本地裁剪、图片 diff、视频抽帧，以及 P
 
 ## 配置查询与离线诊断
 
+当前开发工作树另提供 `vision look / locate / ocr / summarize`，尚未发布。纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；只有主动音轨转写才使用 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)。
+
 ```bash
 dsh-iris providers list --provider-config /absolute/path/to/providers.json
 dsh-iris capabilities list --provider-config /absolute/path/to/providers.json
@@ -82,7 +84,7 @@ dsh-iris run video \
   --input '{"prompt":"海浪拍岸","size":"1280*720","duration":5}'
 ```
 
-输入冻结为 `{prompt, size?, duration?, img_data_url?, model_ref?}`：`img_data_url` 是首帧的 `data:image/` data URL（i2v）；s2v 数字人上传流程不在 headless 面开放。视频交付走独立 Profile：远端成功后下载为 `video/mp4`，Artifact kind 为 `generated-video`。受理后由显式 `task observe` 逐拍推进（DashScope 视频通常需要数拍）。
+普通视频输入为 `{prompt, size?, duration?, img_data_url?, first_frame_path?, model_ref?}`：首帧可用 data URL 或绝对本地路径，二者互斥。开发版已开放 S2V 的 `first_frame_path + audio_path + resolution?`，共用 Core Attempt 的按候选上传，见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。视频产物为 `video/mp4` / `generated-video`。显式 `task observe` 每次推进一拍；开发版 `task wait` 提供有界等待，不重新提交。
 
 语音合成是同步完成型，一次命令内完成 Task → Attempt → 交付：
 
@@ -200,7 +202,7 @@ dsh-iris artifact rebuild --data-root /absolute/path/to/iris-data
 - 该路径只使用 Node.js、`sharp` 和 Iris Core，不加载 DSH/Cordis，也不启动服务；只有显式 `run image`、`run video`、`run tts`、`run transcribe`、`task observe`、`task redeliver`、`task cancel` 和 `task retry` 会访问供应商。
 - Artifact Manifest v0 已包含 SHA-256、关系边、可重建 Index 和进程崩溃窗口恢复；格式与限制见 [Artifact Manifest v0](ARTIFACT_MANIFEST.md)。
 - 当前开放 `crop`、同步/异步图片提交、视频 t2v/i2v 提交、语音同步合成（`run tts`）、音频转写（`run transcribe`）、图片/视频/转写单步观察（CLI `task observe` 与工作台「重新观察」共用）、失败产物重新取回（CLI `task redeliver` 与工作台「重新取回作品」共用）、人工取消（CLI `task cancel` 与工作台「取消任务」共用，只有供应商明确确认才记为已取消）、重试为新任务（CLI `task retry` 与工作台「重试为新任务」共用，必须显式确认计费且重新提供 prompt/文本/音频地址）、Task 只读查询与 Artifact 管理；自动观察、其他媒体能力和其余 Command 会按相同事实语义逐项迁入。
-- CLI 暂不提供 Core Task/Artifact 删除能力（`task`/`artifact` 的 `inspect/list` 均为纯 reader）；DSH 工作台的删除、清空与孤儿清理也只处理 legacy `outputs/`，Core 作品同样只读。不要手动删除 `core-v0` 中的记录、Manifest 或对象；Core 删除与清理能力计划在 0.2.x 开放。
+- 开发版 Headless CLI 已提供 `core delete/cleanup/transactions/restore`：默认只读预览，明确选择和确认后隔离文件，引用保护和恢复哈希检查均生效，详见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。DSH 工作台的删除、清空与孤儿清理仍只处理 legacy `outputs/`，Core 作品保持只读；永久 purge 和工作台管理留待 0.2.x。不要手动删除 `core-v0` 中的记录、Manifest 或对象。
 
 ## 源码仓库的包外验收
 

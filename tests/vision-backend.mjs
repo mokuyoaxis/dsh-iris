@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import sharp from 'sharp';
 import { useTempDshHome } from './test-env.js';
 
 useTempDshHome('iris-vb-home');
@@ -126,6 +127,14 @@ try {
 
 /* ---------- ⑧ 视觉能力测试（capability test，固定红色图 + 超时 + 取消） ---------- */
 const { testVisionCapability, RED_TEST_IMAGE } = await import('../lib/vision.js');
+
+// 真实模型曾拒绝 1x1 图片；探针必须可解码、尺寸正常且确实为纯红色。
+const probeBytes = Buffer.from(RED_TEST_IMAGE.split(',')[1], 'base64');
+const { data: probePixels, info: probeInfo } = await sharp(probeBytes).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+assert(probeInfo.width >= 32 && probeInfo.height >= 32 && probeInfo.width <= 256 && probeInfo.height <= 256,
+  '红图探针尺寸应适合模型输入且保持轻量', probeInfo);
+assert(probeInfo.channels === 3 && probePixels.every((value, index) => value === (index % 3 === 0 ? 255 : 0)),
+  '红图探针必须是可解码的纯红 RGB 图片');
 
 const redSrv = await listen((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/event-stream' });

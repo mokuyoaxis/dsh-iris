@@ -9,8 +9,9 @@ const roadmap = read('docs/ROADMAP.md');
 const migration = read('docs/DSH_CORE_MIGRATION.md');
 const headless = read('docs/HEADLESS_CLI.md');
 
-assert(!CORE_COMMANDS.some((name) => /(?:delete|clear|purge)/.test(name)),
-  '0.2.0 Core Command 不得在 D-14 路径 B 下开放删除或清理命令');
+assert(CORE_COMMANDS.includes('core.delete') && CORE_COMMANDS.includes('core.cleanup') && CORE_COMMANDS.includes('core.restore')
+  && !CORE_COMMANDS.some(name => /purge/.test(name)),
+  '用户授权的 Core CLI 必须开放可恢复删除/清理/恢复，保留永久 purge 的封闭边界');
 
 const galleryStart = client.indexOf('function ArtifactGallery');
 const galleryEnd = client.indexOf('function coreCapabilityLabel', galleryStart);
@@ -36,8 +37,8 @@ for (const [name, source] of [
   ['HEADLESS_CLI', headless]
 ]) {
   assert(source.includes('DSH 工作台') && source.includes('Headless CLI')
-      && source.includes('legacy `outputs/`') && source.includes('0.2.x'),
-  `${name} 必须说明 DSH/CLI 的 Core 只读边界与 0.2.x 归属`);
+      && source.includes('legacy `outputs/`') && source.includes('CLI_MANAGEMENT.md'),
+  `${name} 必须说明 DSH 的 legacy 删除边界与开发版 CLI 可恢复删除入口`);
   assert(!source.includes('删除请通过 DSH 工作台') && !source.includes('删除需经 DSH 工作台'),
     `${name} 不得再暗示 DSH 工作台可以删除 Core 作品`);
 }

@@ -29,6 +29,7 @@ const sseServer = createServer((req, res) => {
   res.write('data: {"choices":[{"delta":{"content":"这是一只"}}]}\n\n');
   res.write('data: {"choices":[{"delta":{"content":"像素小猫。"}}]}\n\n');
   res.write(': keep-alive 注释行\n\n');
+  res.write('data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n');
   res.write('data: [DONE]\n\n');
   res.end();
 });
@@ -112,12 +113,21 @@ assert(ra.answer === '这是一只像素小猫。' && ra.via === 'selfstack' && 
 writeProviders({ type: 'anthropic' });
 config.resetCache();
 const fakeLlm = {
+  async resolveModelInfo(provider, id) { return { provider, id, inputModalities: ['image'] }; },
   stream: async function* () {
-    yield { delta: '全局' };
-    yield { delta: '视觉回答' };
+    yield { type: 'text-delta', index: 0, text: '全局' };
+    yield { type: 'text-delta', index: 0, text: '视觉回答' };
+    yield { type: 'finish', reason: { kind: 'stop' } };
   }
 };
-const rb = await iris.askVision(host({ llm: fakeLlm }), {
+let bridgeBytes;
+const rb = await iris.askVision(host({ llm: fakeLlm,
+  agentDefaultModel: { currentSelection: () => ({ provider: 'fixture', model: 'vision' }) },
+  attachments: {
+    async saveImage(input) { bridgeBytes = input.data; return { attachmentId: 'bridge', mediaType: input.mediaType }; },
+    async readImage(ref) { return { data: bridgeBytes, mediaType: ref.mediaType }; }
+  }
+}), {
   question: '这是什么？', ref: { attachmentId: 'sess-img', mediaType: 'image/png' },
   dataUrl: 'data:image/png;base64,aGk=', signal: undefined
 });
@@ -133,7 +143,7 @@ try {
 } catch (err) {
   thrown = String(err.message || err);
 }
-assert(/视觉模型不可用/.test(thrown), 'askVision 双失败抛错: ' + thrown);
+assert(/模型能力不可用|模型端口或协议不兼容/.test(thrown), 'askVision 双失败抛受控错误: ' + thrown);
 
 // d) 恢复自持栈 provider（还原，供 runVisionTool 测试）
 writeProviders({});

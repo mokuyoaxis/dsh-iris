@@ -121,7 +121,8 @@ tasks.watch(tasks.get(t9.id), {
   poll: () => (++racePolls <= 3 ? { done: true, ok: true, urls: [] } : { done: true, ok: true, urls: ['http://x/d.mp4'] }),
   onSuccess: async () => ['d.mp4']
 });
-await sleep(800);
+const raceDeadline = Date.now() + 5000;
+while (tasks.get(t9.id).status === 'running' && Date.now() < raceDeadline) await sleep(20);
 assert(tasks.get(t9.id).status === 'succeeded' && racePolls > 3, '场景9 竞态重试后落袋');
 
 // 场景 10：submitGuard——提交抛错即标 failed 并原样重抛（不留 running 孤儿）

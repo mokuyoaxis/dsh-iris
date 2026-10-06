@@ -1,6 +1,6 @@
 # Text/Vision Model Port v0 契约设计
 
-状态：**2026-09-30，M1 纯契约、调用控制与 Fake Text/Vision Port 已实现；真实适配器及消费者尚未迁移。** 本文约定共享层与模型适配器的边界；现有 `textModel.stream()`、`visionModel.analyze()`、视觉后端与提示词优化器仍使用原实现。M1 不增加公开 export、CLI 命令、配置字段或生产依赖，也不改变 [Host Adapter v0](HOST_ADAPTER_CONTRACT.md) 的现有方法。
+状态：**已发布 0.2.0 包含 M1；开发工作树完成提示词 M2、单图视觉 M3 与复合视觉 M4，尚未发布。** DSH 文本适配器与共享优化消费者、HTTP/DSH Vision Port 与 look/relook、OCR、定位、拼图摘要及图片自述均已接入。上述切片不增加公开 export、CLI 命令、持久配置字段或生产依赖，不改变 [Host Adapter v0](HOST_ADAPTER_CONTRACT.md) 的现有方法。新增按次规则与 UI 见 [提示词优化系统](PROMPT_OPTIMIZER.md)，单图预算与宿主附件副作用见 [单图视觉调用](VISION_MODEL.md)，复合操作见 [长图 OCR](OCR_MODEL.md) 和 [定位与摘要](COMPOSITE_VISION.md)。
 
 ## 目标与范围
 
@@ -155,7 +155,7 @@ interface VisionModelPort {
 
 迁移保留已有业务预算：提示词草稿 32 KiB、输出 16,000 code units、默认 45 秒与 1,200 输出 token，原配置范围不变。草稿上限仍在业务层校验；端口的总文本上限需按草稿上限、JSON 转义的最坏增长与已验证模板上限计算，不能把带模板的整个请求限制为 32 KiB，导致原本合法的草稿被拒绝。
 
-视觉单次调用沿用 120 秒默认档，Host 原 6,000 字限制改为超限失败。其他入口需明确其文字/图片上限，不能直接套用生成任务的图片参数校验。v0 不为这些预算增加持久配置格式。显式 effort 在元数据未知时从直接透传变为调用前拒绝，是待实施的契约收紧；M2 必须覆盖配置与 inherit 路径，不能声称行为完全未变。
+视觉 M3 沿用 120 秒默认档，原 6,000 字限制改为超限失败；输入文字 32 KiB UTF-8，图片 20 MiB。其他入口需明确其文字/图片上限，不直接套用生成任务参数校验。v0 不为预算增加持久配置格式。开发版 M2 已将元数据未知时的显式 effort 从直接透传收紧为生成前拒绝，覆盖配置与 inherit；默认 off-if-supported 保留供应商默认回退，不能声称所有行为完全未变。
 
 ## 完整结果与底层流
 
@@ -251,17 +251,17 @@ Host 引用、session ID 与 source metadata 可存在于 DSH 适配器闭包，
 
 ## 实现切片与退出条件
 
-M1 已完成。以下其余切片仍为实施建议，不要求一次跨模块改造；提示词优化的功能定位与输入隔离继续讨论，M2 未获本轮实施授权。
+M1 已发布；M2/M3/M4 经用户授权，已在当前工作树完成（尚未发布）。M5 的独立视觉 CLI 已实现，详见 [视觉 CLI](VISION_CLI.md)；提示词优化后续由用户另行安排。
 
 | 切片 | 范围 | 退出条件 |
 |---|---|---|
 | M1：纯契约与调用控制（已实现） | `model-port-contract.js`、`model-invoker.js`、test-only Fake Text/Vision Port | 无 Host/配置/Store 依赖；请求、错误、预算与取消 conformance 通过 |
-| M2：首个文本消费者 | DSH 模型适配器与纯 `prompt-optimizer-core.js`；原优化入口保留配置/选择/投影 | 真实 DSH 流 fixture 与 Fake Port 结果一致；reasoning、预览/写回、取消、零 Task 写入回归通过 |
-| M3：视觉单次调用 | 自持协议适配器、DSH 图片桥接、look/relook | 真正检查终态；同图字节进入两后端；取消后零下一候选；Host 可选降级如实诊断 |
-| M4：复合视觉业务 | locate、OCR、contact-sheet summarize | bbox 与分块语义保持；整体预算有效；取消停止后续块；摘要仍默认一张拼图一次调用 |
-| M5：独立入口 | 再决定文本目录、显式 Headless 选择和产物交付 | 先审查配置/公开面；无 DSH tarball 消费者与真实 Provider 单独举证 |
+| M2：首个文本消费者（开发版已实现） | `dsh-text-model-adapter.js` 与纯 `prompt-optimizer-core.js`；原入口保留配置/选择/投影，泡泡加入按次规则/组装/预览 | DSH/Fake 共用 conformance、reasoning、点击/写回、取消和零 Task 写入回归，以及已安装 rc.2 Runtime 隔离验收通过；真实模型/浏览器另验 |
+| M3：视觉单次调用（开发版已实现） | `http-vision-model-adapter.js`、`dsh-vision-model-adapter.js`、`vision-core.js`，Agent/工作台 look/relook 与显式视觉实测 | HTTP/DSH 共用 conformance；同图字节、准备/整体预算、严格终态、取消后零下一候选；真实 rc.2 与阿里云隔离验收已通过；浏览器另验 |
+| M4：复合视觉业务（开发版已实现） | OCR、locate、contact-sheet summarize 和生成后自述接入共享端口 | 有限分块与明确 partial；总预算/次数；取消停止后续块/候选；bbox 解析；同一张拼图一次候选生成；Core 转写正文；真实 DSH CLI 与独立安装逐项验收 |
+| M5：独立视觉入口（开发版已实现） | CLI look/locate/ocr/summarize、严格显式选型和文件输出；主动转写才使用 Core | 实际 CLI 子进程、无 DSH tarball 安装副本与真实廉价 Provider 分别验收；文本目录与独立优化另行安排 |
 
-`model-http-adapter.js` 和 `dsh-model-adapter.js` 可作为协议映射的实现位置，最终命名由实施切片决定。现有 `vision.js` 的有序候选可以渐进接入共享调用策略；共享代码不反向导入旧 Host 实现。媒体摘要的 Core 抽帧接线与 S2V/Browser 迁移另行处理。
+实际协议实现为 `http-vision-model-adapter.js`、`dsh-vision-model-adapter.js` 和 `dsh-text-model-adapter.js`。视觉候选通过共享调用策略执行，业务入口不再调用 legacy `vision.js` 的模型链；共享代码不反向导入旧 Host 实现。开发版 S2V/Browser 已迁移至共享 Core，见 [CLI 管理与补齐](CLI_MANAGEMENT.md)；媒体摘要复用 Core 抽帧 Artifact 仍待后续。
 
 ## M1 内部调用方式
 
@@ -274,13 +274,13 @@ M1 已完成。以下其余切片仍为实施建议，不要求一次跨模块�
 
 `tests/fixtures/fake-model-port.mjs` 可复现正常正文、规范化流、准备失败、在途错误、等待取消与迟到结果；`model-conformance.mjs` 的同一组 17 项检查分别消费 Text/Vision。fixture 和输入记录只在测试进程存在，不进入 npm 包。
 
-所有共享调用通过调用控制执行；协议适配器负责将 abort 传递到真实源及清理资源。当前 M1 的完整性与取消证据来自 Fake Port，不代表现有 HTTP/DSH 协议已经符合新契约。
+所有共享调用通过调用控制执行；协议适配器负责向真实源传递 abort 和清理资源。M2 的 DSH 文本与 M3 的 HTTP/DSH 视觉 fixture 复用同组 conformance，已安装 Runtime 使用离线源适配器单独举证。M4 另验 OCR 多块、定位 bbox、摘要一张拼图、可选 Core 转写、自述及这些操作的取消，不能仅凭协议测试推断业务正确。
 
 现有配置版本、公开接口和全部消费者不应在一个提交中同时切换。M1 不提供对提示词内容的语义过滤或注入防护证明；优化系统的主动模板/约束加入和不可信输入隔离，需在后续业务设计中分别验证。
 
 ## 必须补齐的 conformance
 
-M1 已执行纯契约、调用控制与 Fake Port 路径。后续协议/业务测试仍需要执行真实适配/消费路径，不能仅比较 DTO 或检查源码字符串。
+M1 已执行纯契约、调用控制与 Fake Port；开发版 M2 执行 DSH 文本协议、业务/HTTP、实际组件点击及已安装 Runtime 隔离验收；开发版 M3 执行 HTTP/DSH Vision Port、单图入口与图片桥接。M4 在同一端口上逐项验证多块 OCR、定位、摘要与自述的整体 operation，并有实际 DSH CLI 和无 DSH 安装副本证据。
 
 | 场景 | 必须证明的结果 |
 |---|---|
@@ -297,4 +297,4 @@ M1 已执行纯契约、调用控制与 Fake Port 路径。后续协议/业务�
 | 错误、快照与自动记录 | 不包含输入、Key、端点、路径或 Host 对象；正文只作为显式结果返回，无隐式 Task/Artifact 写入 |
 | 两类适配器与业务入口 | Fake Port、HTTP 协议 fixture、DSH 流 fixture 消费同一组结果/错误规则 |
 
-当前 `tests/vision-backend.mjs` 明确允许预先取消后继续 Host fallback，当前 OCR 捕获取消后继续分块，视觉实测超时也只是 race。它们是待修行为，未来切换时应更新测试并留下先失败后修复的证据。M1/Fake Port 通过不等于这些消费者门禁已通过。
+legacy `tests/vision-backend.mjs` 仍验证旧兼容实现允许预先取消后继续 Host fallback。M3/M4 的现有业务入口已切换到新模块；旧 fixture 不代表新契约。OCR 额外证明取消/超时终止所有后续块、总次数有界和部分结果语义；定位、拼图摘要与自述另有完整终态、业务解析和取消验收。

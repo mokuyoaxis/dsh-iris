@@ -6,14 +6,15 @@
  *   ② 长图 → 多块，y 坐标按 step=chunkHeight-overlap 递增，重叠正确；
  *   ③ fullText 按顺序拼接（[第N段 y=..] 标记）；
  *   ④ 块内视觉调用失败 → 该块 error 标记，不整体崩溃；
- *   ⑤ 无后端 → OcrError；
+ *   ⑤ 无端口 → OcrError；
  *   ⑥ 宽图超 maxDimension → 等比缩放后仍能分块。
- * 全部用 mock 后端（返回固定文本），零网络、零费用。
+ * 全部用共享 Fake Vision Port，零网络、零费用。
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
 import { useTempDshHome } from './test-env.js';
+import { createFakeModelPort } from './fixtures/fake-model-port.mjs';
 
 useTempDshHome('iris-ocr-home');
 
@@ -27,20 +28,9 @@ const assert = (cond, msg, extra) => {
 const { longOcr, OcrError } = await import('../lib/ocr.js');
 
 /* ---------- mock 后端：按调用次数返回递增文本 ---------- */
-function mockBackend(answers) {
-  let n = 0;
-  return {
-    id: 'mock',
-    kind: 'mock',
-    model: 'mock-model',
-    async analyze() {
-      const a = answers[Math.min(n, answers.length - 1)];
-      n++;
-      if (a && a.error) throw new Error(a.error);
-      return a && a.text;
-    }
-  };
-}
+const mockPort = answers => createFakeModelPort({ kind: 'vision',
+  steps: answers.map(answer => answer.error ? { error: new Error(answer.error) } : answer) }).port;
+const image = bytes => ({ bytes: new Uint8Array(bytes), mediaType: 'image/png' });
 
 /* ---------- 造测试图 ---------- */
 async function makeImage(width, height, chunkCount) {
@@ -50,7 +40,7 @@ async function makeImage(width, height, chunkCount) {
 
 /* ---------- ① 小图 → 1 块 ---------- */
 const small = await makeImage(100, 500, 1);
-const r1 = await longOcr({ input: small, backends: [mockBackend([{ text: 'A' }])], chunkHeight: 1200, overlap: 120 });
+const r1 = await longOcr({ image: image(small), ports: [mockPort([{ text: 'A' }])], chunkHeight: 1200, overlap: 120 });
 assert(r1.totalChunks === 1, '小图 1 块', r1.totalChunks);
 assert(r1.fullText === '[第1段 y=0] A', '单块全文', r1.fullText);
 
@@ -58,8 +48,8 @@ assert(r1.fullText === '[第1段 y=0] A', '单块全文', r1.fullText);
 // 2500px 高，chunkHeight=1000, overlap=200 → step=800 → y: 0, 800, 1600, 2400 = 4 块
 const tall = await makeImage(200, 2500, 4);
 const r2 = await longOcr({
-  input: tall,
-  backends: [mockBackend([{ text: 'line1' }, { text: 'line2' }, { text: 'line3' }, { text: 'line4' }])],
+  image: image(tall),
+  ports: [mockPort([{ text: 'line1' }, { text: 'line2' }, { text: 'line3' }, { text: 'line4' }])],
   chunkHeight: 1000,
   overlap: 200
 });
@@ -69,28 +59,30 @@ assert(r2.fullText.includes('[第1段 y=0] line1') && r2.fullText.includes('[第
 assert(r2.height === 2500, '元数据高度', r2.height);
 
 /* ---------- ③ 重叠防切断文本行（断言 overlap 参与 step） ---------- */
-const noOverlap = await longOcr({ input: tall, backends: [mockBackend([{ text: 'x' }])], chunkHeight: 1000, overlap: 0 });
+const noOverlap = await longOcr({ image: image(tall), ports: [mockPort([{ text: 'x' }])], chunkHeight: 1000, overlap: 0 });
 assert(noOverlap.chunks.map((c) => c.y).join(',') === '0,1000,2000', 'overlap=0 → step=1000', JSON.stringify(noOverlap.chunks.map((c) => c.y)));
 
 /* ---------- ④ 单块失败 → error 标记不整体崩 ---------- */
 const r4 = await longOcr({
-  input: tall,
-  backends: [mockBackend([{ text: 'ok1' }, { error: '模拟失败' }, { text: 'ok2' }])],
+  image: image(tall),
+  ports: [mockPort([{ text: 'ok1' }, { error: '模拟失败' }, { text: 'ok2' }])],
   chunkHeight: 1000,
   overlap: 200
 });
 assert(r4.totalChunks === 4, '失败块仍计入', r4.totalChunks);
 assert(r4.chunks[1].error && r4.chunks[1].text === '', '第2块 error 标记', JSON.stringify(r4.chunks[1]));
+assert(r4.status === 'partial' && r4.failedChunks === 1, '部分结果明确标记');
+assert(r4.fullText.includes('[第3段 y=1600] ok2'), '失败块不导致段号重新编号', r4.fullText);
 assert(r4.fullText.includes('ok1') && r4.fullText.includes('ok2') && !r4.fullText.includes('模拟失败'), '失败块被跳过', r4.fullText);
 
 /* ---------- ⑤ 无后端 → OcrError ---------- */
 let err5 = null;
-try { await longOcr({ input: small, backends: [] }); } catch (e) { err5 = e; }
-assert(err5 instanceof OcrError && /没有可用的视觉后端/.test(err5.message), '无后端报错', err5 && err5.message);
+try { await longOcr({ image: image(small), ports: [] }); } catch (e) { err5 = e; }
+assert(err5 instanceof OcrError && err5.code === 'IRIS_MODEL_UNAVAILABLE', '无端口受控报错', err5 && err5.message);
 
 /* ---------- ⑥ 宽图超 maxDimension → 等比缩放 ---------- */
 const wide = await makeImage(3000, 1000, 6);
-const r6 = await longOcr({ input: wide, backends: [mockBackend([{ text: 'wide' }])], chunkHeight: 500, overlap: 0, maxDimension: 2048 });
+const r6 = await longOcr({ image: image(wide), ports: [mockPort([{ text: 'wide' }])], chunkHeight: 500, overlap: 0, maxDimension: 2048 });
 assert(r6.totalChunks >= 1, '宽图缩放后仍分块', r6.totalChunks);
 assert(r6.width === 2048, '宽度被缩到 maxDimension', r6.width);
 

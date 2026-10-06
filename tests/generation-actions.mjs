@@ -8,6 +8,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { defineHostAdapter } from '../lib/host-contract.js';
 import { useTempDshHome } from './test-env.js';
 
 useTempDshHome('iris-generation-actions');
@@ -118,6 +119,7 @@ try {
   }
   const audio = path.join(root, 'voice.wav');
   fs.writeFileSync(audio, Buffer.from('fake-wav'));
+  const legacyBeforeS2v = tasks.all().length;
   const s2v = await runAction({}, 'video', {
     prompt: '', model: models.modelRef(providerIds.good, 'wan2.2-s2v-flash'),
     first_frame_attachment_id: 'att-old-frame', audio_path: audio
@@ -129,6 +131,20 @@ try {
   assert(s2v.mode === 's2v' && s2vBody.parameters.resolution === '480P' && String(s2vBody.input.image_url).startsWith('oss://') && String(s2vBody.input.audio_url).startsWith('oss://'),
     'S2V 从全历史 attachment 解析首帧并上传图/音', s2vBody);
   assert(uploadCalls.filter((c) => c.phase === 'file').length === 2, 'S2V 恰好上传首帧和音频', uploadCalls);
+  const s2vTask = await inspectProviderTaskForDsh(s2v.taskId);
+  assert(s2v.storage === 'core' && s2vTask.acceptance === 'accepted' && s2vTask.attempts.length === 1, 'S2V 必须消费共享 Core Task', s2vTask);
+  assert(tasks.all().length === legacyBeforeS2v, 'S2V 不创建 legacy Task');
+  const frameHost = defineHostAdapter({ id: 'core-attachment-frame', ports: {
+    sessions: { async findImageAttachment(sessionId, attachmentId) {
+      assert(sessionId === 'frame-session' && attachmentId === 'core-projected-frame', '首帧只读取当前会话附件');
+      return { attachmentId, mediaType: 'image/png' };
+    } },
+    attachments: { async readImage() { return { data: new Uint8Array(fs.readFileSync(frame)), mediaType: 'image/png' }; } }
+  } });
+  const projectedS2v = await runAction(frameHost, 'video', { model: models.modelRef(providerIds.good, 'wan2.2-s2v-flash'),
+    first_frame_attachment_id: 'core-projected-frame', session_id: 'frame-session', audio_path: audio });
+  assert(projectedS2v.storage === 'core' && projectedS2v.mode === 's2v', 'Core 生成后投影的会话附件仍可作为数字人首帧');
+  assert(tasks.all().length === legacyBeforeS2v, '会话首帧 S2V 不创建 legacy Task');
 
   const asrProvider = config.upsert({
     name: 'asr', apiKey: 'asr-key',
@@ -144,10 +160,10 @@ try {
   const asrTask = await inspectProviderTaskForDsh(asr.taskId);
   assert(asrTask.capability === 'transcribe' && asrTask.attempts.length === 1 && asrTask.acceptance === 'accepted',
     '转写上传与提交纳入 Core Task', asrTask);
-  assert(tasks.all().length === legacyBeforeAsr, '转写零 legacy 双写（s2v 段落属 legacy，不影响本断言基线）', tasks.all().length);
+  assert(tasks.all().length === legacyBeforeAsr, '转写零 legacy 双写', tasks.all().length);
 
   const indexSrc = fs.readFileSync(new URL('../lib/index.js', import.meta.url), 'utf8');
-  assert(indexSrc.includes("runAction(dshHost(ctx), 'video', args, { signal: exec.signal })"),
+  assert(indexSrc.includes("runAction(dshHost(ctx), 'video', { ...args, session_id: exec.agent?.session?.id }, { signal: exec.signal })"),
     'Agent 视频工具复用 GUI 的 video action');
 } finally {
   tasks.stopWatchAll();

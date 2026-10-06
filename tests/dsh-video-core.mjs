@@ -4,7 +4,7 @@
  *
  * 关键断言：零 legacy 双写（tasks.json 无新视频任务、outputs/ 无新文件）、
  * 视频走独立交付 Profile（video/mp4）、Host 节拍接管与崩溃恢复、binding 漂移
- * 零 poll、s2v 仍走 legacy、工作台快照五类投影合理。
+ * 零 poll、s2v 上传失败保留 Core Attempt、工作台快照五类投影合理。
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -189,10 +189,11 @@ try {
   assert.equal(fs.readFileSync(driftFile, 'utf8'), driftBefore, '端点漂移不得改写 Task 事实');
   config.upsert({ id: provider.id, baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' });
 
-  /* s2v 意图仍走 legacy（本切片不迁移数字人上传流程） */
+  /* s2v 上传失败同样由 Core 记录；首帧缺失则在创建前拒绝。 */
   fs.mkdirSync(path.join(config.irisHome(), 'outputs'), { recursive: true });
   const audio = path.join(config.irisHome(), 'outputs', 'voice.wav');
   fs.writeFileSync(audio, Buffer.from('fake-wav'));
+  fs.writeFileSync(path.join(config.irisHome(), 'outputs', 'frame.png'), Buffer.from('fake-png'));
   const legacyCallsBefore = calls.submit;
   const legacyRoot = tasks.all().length;
   const s2vModel = config.upsert({
@@ -209,12 +210,13 @@ try {
       first_frame_path: audio.replace('voice.wav', 'frame.png'), audio_path: audio
     });
   } catch (error) { s2vError = error; }
-  assert(s2vError, 's2v 意图必须走 legacy 链路（首帧上传失败属预期）');
-  assert.equal(calls.submit, legacyCallsBefore, 's2v 不得进入 Core 提交');
-  fs.writeFileSync(path.join(config.irisHome(), 'outputs', 'frame.png'), Buffer.from('fake-png'));
-  void legacyRoot;
+  assert(s2vError && /^task_/.test(s2vError.taskId), 's2v 上传失败须保留 Core Task ID');
+  const failedS2v = await inspectProviderTaskForDsh(s2vError.taskId);
+  assert.equal(failedS2v.acceptance, 'not_accepted'); assert.equal(failedS2v.attempts.length, 1);
+  assert.equal(calls.submit, legacyCallsBefore, '上传失败不得提交生成');
+  assert.equal(tasks.all().length, legacyRoot, 's2v 零 legacy 双写');
 
-  console.log('ALL OK —— DSH 视频 → Core：长轮询接管、mp4 同源媒体、零 legacy 双写、漂移防护、s2v 保留 legacy');
+  console.log('ALL OK —— DSH 视频 → Core：长轮询接管、mp4 同源媒体、零 legacy 双写、漂移防护、s2v Core 上传失败事实');
 } finally {
   stopProviderTaskWatchesForDsh();
   tasks.stopWatchAll();
