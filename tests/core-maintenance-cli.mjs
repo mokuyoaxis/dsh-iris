@@ -58,12 +58,13 @@ try {
   const live = path.join(staging, 'download-' + process.pid + '-' + 'b'.repeat(16) + '.part');
   for (const file of [stale, live]) { fs.writeFileSync(file, 'temporary'); fs.utimesSync(file, 0, 0); }
   const unknown = path.join(staging, 'unknown-user-file'); fs.writeFileSync(unknown, 'keep');
+  const staleRelative = path.relative(dataRoot, stale).split(path.sep).join('/');
   const cleanPreview = cli(['core', 'cleanup']);
-  assert.equal(cleanPreview.candidates.length, 1); assert.equal(cleanPreview.candidates[0].path, path.relative(dataRoot, stale));
+  assert.equal(cleanPreview.candidates.length, 1); assert.equal(cleanPreview.candidates[0].path, staleRelative);
   assert.equal(fs.existsSync(stale), true);
   cli(['core', 'cleanup', '--confirm-delete'], 1);
   cli(['core', 'cleanup', '--input', '{"paths":["../../outside"]}', '--confirm-delete'], 1);
-  const cleaned = cli(['core', 'cleanup', '--input', JSON.stringify({ paths: [path.relative(dataRoot, stale)] }), '--confirm-delete']);
+  const cleaned = cli(['core', 'cleanup', '--input', JSON.stringify({ paths: [staleRelative] }), '--confirm-delete']);
   assert.equal(fs.existsSync(stale), false); assert.equal(fs.existsSync(live), true); assert.equal(fs.readFileSync(unknown, 'utf8'), 'keep');
   cli(['core', 'restore', cleaned.transactionId]); assert.equal(fs.existsSync(stale), true);
   const writer = createCoreRuntime({ dataRoot, mode: 'writer' }); writer.start();
@@ -72,7 +73,8 @@ try {
       const plan = planCoreDeletion(dataRoot, { artifact_ids: [ids.derived.id] });
       const original = fs.renameSync; let moves = 0;
       fs.renameSync = function(source, destination) {
-        if (String(destination).includes('/quarantine/') && !String(source).includes('/quarantine/') && !String(destination).endsWith('/transaction.json')) {
+        const quarantineSegment = path.sep + 'quarantine' + path.sep;
+        if (String(destination).includes(quarantineSegment) && !String(source).includes(quarantineSegment) && !String(destination).endsWith(path.sep + 'transaction.json')) {
           moves++; if (moves === 2) throw new Error('injected disk failure');
         }
         return original(source, destination);

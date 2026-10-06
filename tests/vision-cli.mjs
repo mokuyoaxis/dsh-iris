@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
+import { ffmpegAvailable } from '../lib/media-probe.js';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-vision-cli-'));
@@ -37,9 +38,6 @@ const json = (...args) => JSON.parse(cli(...args).stdout);
 try {
   await sharp({ create: { width: 40, height: 30, channels: 3, background: 'red' } }).png().toFile(image);
   await sharp({ create: { width: 40, height: 200, channels: 3, background: 'white' } }).png().toFile(screenshot);
-  const makeVideo = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=red:s=96x64:d=1:r=4',
-    '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1', '-shortest', '-pix_fmt', 'yuv420p', video], { encoding: 'utf8' });
-  assert.equal(makeVideo.status, 0, makeVideo.stderr);
   reset();
   const look = json('look', { image_path: image });
   assert.equal(look.modelRef, 'first::selected'); assert.equal(look.selectionReason, 'assignment');
@@ -63,7 +61,6 @@ try {
   cli('locate', { image_path: image, target: ' ' }, [], 1); assert(!state().vision);
   cli('look', { image_path: 'relative.png' }, [], 1); assert(!state().vision);
   cli('ocr', { image_path: image, max_invocations: 0 }, [], 1); assert(!state().vision);
-  cli('summarize', { video_path: video, transcribe_model_ref: 'first::asr' }, [], 1); assert(!state().vision);
   cli('look', { image_path: image }, ['--format', 'csv'], 2); assert(!state().vision);
   cli('look', { image_path: image }, ['--timeout-ms', '0'], 1); assert(!state().vision);
 
@@ -93,29 +90,44 @@ try {
   assert.equal(cli('look', { image_path: image }, ['--format', 'text', '--output', path.join(work, 'answer.txt')]).stdout, '图片是红色的。\n');
   assert.equal(fs.readFileSync(path.join(work, 'answer.txt'), 'utf8'), '图片是红色的。\n');
   reset();
-  const summary = json('summarize', { video_path: video, max_frames: 3 }, ['--output', output, '--sheet-output', sheet]);
-  assert.equal(summary.transcription.status, 'disabled'); assert.equal(summary.frames.length, 3); assert.equal(state().submit, 0);
-  assert.equal(state().vision.length, 1); assert.deepEqual(JSON.parse(fs.readFileSync(output)), summary);
-  const sheetHash = createHash('sha256').update(fs.readFileSync(sheet)).digest('hex');
-  assert.equal(sheetHash, summary.contactSheet.sha256); assert.equal(sheetHash, state().vision[0].imageSha256);
-  assert(!fs.existsSync(dataRoot));
-  const oldOutput = fs.readFileSync(output); reset();
-  cli('look', { image_path: image }, ['--output', output], 2); assert(!state().vision); assert.deepEqual(fs.readFileSync(output), oldOutput);
-  cli('summarize', { video_path: video }, ['--output', path.join(work, 'same'), '--sheet-output', path.join(work, 'same')], 2); assert(!state().vision);
-  reset();
-  json('summarize', { video_path: video, max_frames: 2, transcribe_text: '用户提供的音轨' });
-  assert(state().vision[0].prompt.includes('用户提供的音轨')); assert.equal(state().submit, 0);
+  const answerPath = path.join(work, 'answer.txt'), oldAnswer = fs.readFileSync(answerPath);
+  cli('look', { image_path: image }, ['--output', answerPath], 2); assert(!state().vision); assert.deepEqual(fs.readFileSync(answerPath), oldAnswer);
 
-  reset();
-  const audioSummary = json('summarize', { video_path: video, max_frames: 2, transcribe: true, transcribe_model_ref: 'first::asr' }, ['--data-root', dataRoot]);
-  assert.equal(audioSummary.transcription.status, 'complete'); assert.equal(state().submit, 1); assert.equal(state().poll, 2);
-  assert(state().vision[0].prompt.includes('fixture 转写正文')); assert(audioSummary.text.includes('音轨已结合'));
-  const taskFile = path.join(dataRoot, 'task-store/v0/tasks', audioSummary.transcription.taskId + '.json');
-  const task = JSON.parse(fs.readFileSync(taskFile)); assert.equal(task.attempts.length, 1); assert.equal(task.modelRef, 'first::asr');
-  assert.equal(task.deliveryState, 'ready'); assert.equal(task.artifactIds.length, 1);
-  reset({ asrFail: true });
-  const degraded = json('summarize', { video_path: video, max_frames: 2, transcribe: true }, ['--data-root', dataRoot]);
-  assert.equal(degraded.transcription.status, 'failed'); assert.equal(state().submit, 1); assert.equal(state().vision.length, 1);
+  if (ffmpegAvailable()) {
+    const makeVideo = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=red:s=96x64:d=1:r=4',
+      '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1', '-shortest', '-pix_fmt', 'yuv420p', video], { encoding: 'utf8' });
+    assert.ifError(makeVideo.error);
+    assert.equal(makeVideo.status, 0, makeVideo.stderr || makeVideo.signal);
+    reset();
+    cli('summarize', { video_path: video, transcribe_model_ref: 'first::asr' }, [], 1); assert(!state().vision);
+    const summary = json('summarize', { video_path: video, max_frames: 3 }, ['--output', output, '--sheet-output', sheet]);
+    assert.equal(summary.transcription.status, 'disabled'); assert.equal(summary.frames.length, 3); assert.equal(state().submit, 0);
+    assert.equal(state().vision.length, 1); assert.deepEqual(JSON.parse(fs.readFileSync(output)), summary);
+    const sheetHash = createHash('sha256').update(fs.readFileSync(sheet)).digest('hex');
+    assert.equal(sheetHash, summary.contactSheet.sha256); assert.equal(sheetHash, state().vision[0].imageSha256);
+    assert(!fs.existsSync(dataRoot));
+    reset();
+    cli('summarize', { video_path: video }, ['--output', path.join(work, 'same'), '--sheet-output', path.join(work, 'same')], 2); assert(!state().vision);
+    reset();
+    json('summarize', { video_path: video, max_frames: 2, transcribe_text: '用户提供的音轨' });
+    assert(state().vision[0].prompt.includes('用户提供的音轨')); assert.equal(state().submit, 0);
+
+    reset();
+    const audioSummary = json('summarize', { video_path: video, max_frames: 2, transcribe: true, transcribe_model_ref: 'first::asr' }, ['--data-root', dataRoot]);
+    assert.equal(audioSummary.transcription.status, 'complete'); assert.equal(state().submit, 1); assert.equal(state().poll, 2);
+    assert(state().vision[0].prompt.includes('fixture 转写正文')); assert(audioSummary.text.includes('音轨已结合'));
+    const taskFile = path.join(dataRoot, 'task-store/v0/tasks', audioSummary.transcription.taskId + '.json');
+    const task = JSON.parse(fs.readFileSync(taskFile)); assert.equal(task.attempts.length, 1); assert.equal(task.modelRef, 'first::asr');
+    assert.equal(task.deliveryState, 'ready'); assert.equal(task.artifactIds.length, 1);
+    reset({ asrFail: true });
+    const degraded = json('summarize', { video_path: video, max_frames: 2, transcribe: true }, ['--data-root', dataRoot]);
+    assert.equal(degraded.transcription.status, 'failed'); assert.equal(state().submit, 1); assert.equal(state().vision.length, 1);
+    reset({ asrHang: true });
+    assert(cli('summarize', { video_path: video, max_frames: 2, transcribe: true }, ['--data-root', dataRoot, '--timeout-ms', '3500'], 1).stderr.includes('IRIS_MODEL_TIMEOUT'));
+    assert(state().asrAborted); assert.equal(state().submit, 1); assert(!state().vision);
+  } else {
+    console.log('SKIP —— ffmpeg/ffprobe 不可用，仅跳过视觉 CLI 的真实视频摘要/音轨转写；看图、定位、OCR、输出与取消继续验证');
+  }
 
   for (const mode of ['length', 'unknown']) {
     reset({ mode });
@@ -126,12 +138,13 @@ try {
   reset({ mode: 'hang' });
   assert(cli('look', { image_path: image }, ['--timeout-ms', '100'], 1).stderr.includes('IRIS_MODEL_TIMEOUT'));
   assert(state().visionAborted); assert.equal(state().vision.length, 1);
-  reset({ mode: 'sigint' });
-  assert.equal(cli('look', { image_path: image }, [], 130).stdout, ''); assert(state().visionAborted);
-  reset({ asrHang: true });
-  assert(cli('summarize', { video_path: video, max_frames: 2, transcribe: true }, ['--data-root', dataRoot, '--timeout-ms', '3500'], 1).stderr.includes('IRIS_MODEL_TIMEOUT'));
-  assert(state().asrAborted); assert.equal(state().submit, 1); assert(!state().vision);
-  console.log(`ALL OK —— 视觉 CLI ${checks} 次实际子进程：四命令、默认/显式选型、保存、OCR 部分完成、Core ASR 与取消/超时`);
+  if (process.platform !== 'win32') {
+    reset({ mode: 'sigint' });
+    assert.equal(cli('look', { image_path: image }, [], 130).stdout, ''); assert(state().visionAborted);
+  } else {
+    console.log('SKIP —— Windows 不运行 POSIX SIGINT 自发信号；模型超时中断仍验证');
+  }
+  console.log(`ALL OK —— 视觉 CLI ${checks} 次实际子进程通过，条件跳过项已单独列出`);
 } finally {
   fs.rmSync(work, { recursive: true, force: true });
 }

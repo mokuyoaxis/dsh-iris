@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+- 修复跨平台 CLI 测试：预加载模块使用文件 URL，Core 管理路径断言区分平台路径与 POSIX 管理路径，私有文件权限和 SIGINT 按实际平台验证；缺少可选 ffmpeg/ffprobe 时明确跳过视觉 CLI 视频段，继续执行看图、定位、OCR、输出及模型超时测试。
+
 - 按用户指定顺序补齐 CLI：S2V 数字人迁入共享 Core Attempt 上传链，HTML 经独立 Chromium Browser Port 或 DSH 宿主保存 Core PNG；增加账号/模型/能力分配管理、发现与显式实测、私有备份与竞争写保护、有界 `task wait`、分页过滤、批量查询/导出及 JSON 文件/stdin 输入。
 - 新增 `core delete/cleanup/transactions/restore`：默认预览、引用和活跃任务保护、明确选择后隔离、哈希核对恢复与失败补偿；DSH 工作台仍只删除 legacy 作品，隔离数据不永久 purge。真实阿里云 `wan2.2-s2v` 480P/2 秒视频与 ARM64 Chromium 截图测试通过，详见 [CLI 管理与补齐](docs/CLI_MANAGEMENT.md)。尚未发布。
 

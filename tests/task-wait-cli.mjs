@@ -9,7 +9,7 @@ const config = path.join(root, 'providers.json'), stateFile = path.join(root, 's
 fs.writeFileSync(config, JSON.stringify({ providers: [{ id: 'cli', apiKey: 'fixture', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   models: [{ id: 'wan2.6-t2v', capabilities: ['video-gen'] }] }] }), { mode: 0o600 });
 const cli = (args, status = 0) => {
-  const result = spawnSync(process.execPath, ['--import', path.resolve('tests/fixtures/headless-vision-fetch.mjs'), 'bin/dsh-iris.js', ...args,
+  const result = spawnSync(process.execPath, ['--import', new URL('./fixtures/headless-vision-fetch.mjs', import.meta.url).href, 'bin/dsh-iris.js', ...args,
     '--data-root', dataRoot], { encoding: 'utf8', timeout: 10000, env: { ...process.env, IRIS_ASYNC_FIXTURE_STATE: stateFile, DSH_HOME: path.join(root, 'unused-dsh') } });
   assert.equal(result.status, status, result.stderr); return result.stdout ? JSON.parse(result.stdout) : null;
 };
