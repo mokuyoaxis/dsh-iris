@@ -28,9 +28,11 @@ Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿
 
 开发版 M4 已完成长图 OCR、定位、拼图摘要及图片生成后自述的共享端口迁移。整体预算覆盖准备和候选，取消/超时终止后续生成；OCR 明确部分结果，摘要一张拼图一次候选调用，可选转写读取 Core 文本 Artifact。尚未发布，详见 [长图 OCR](OCR_MODEL.md) 和 [复合视觉调用](COMPOSITE_VISION.md)。
 
-M5 的独立视觉入口已实现 `vision look / locate / ocr / summarize`，支持严格显式选型、JSON/文本和文件输出；默认画面摘要，主动转写才要求 Core 数据根。尚未发布，详见 [视觉 CLI](VISION_CLI.md)。提示词优化后续由用户另行安排，本次未扩展其入口或配置。
+M5 的独立视觉入口已实现 `vision look / locate / ocr / summarize`，支持严格显式选型、JSON/文本和文件输出；默认画面摘要，文件输入无需数据根，图片/帧 Artifact ID 输入使用显式 Core reader，主动转写使用 Core writer。尚未发布，详见 [视觉 CLI](VISION_CLI.md)。提示词优化后续由用户另行安排，本次未扩展其入口或配置。
 
 开发版已按顺序补齐 S2V Core 迁移与 CLI、HTML 截图、模型/配置管理、异步任务等待、查询与批量操作、Core 可恢复删除和清理。仍沿用原包入口与配置结构，没有新增生产依赖、发布或扩展提示词系统。详见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。
+
+开发版摘要现可直接复用既有 Core 抽帧 Artifact，CLI 和 DSH 共用只读帧输入，保留原帧序号/时间戳，无需原视频或 ffmpeg。看图/定位/OCR 也已支持 Core 图片 Artifact ID，无需原文件或临时导出。接下来可补真实 DSH 对话附件、浏览器与异步重启/CLI 接管验收；提示词优化仍由用户另行安排。
 
 ### 后续 0.2.x
 
@@ -53,7 +55,7 @@ M5 的独立视觉入口已实现 `vision look / locate / ocr / summarize`，支
 ## 兼容性与限制
 
 - Iris 0.2.0 的 Node.js 最低版本为 22.0.0；DSH 要求更高版本时以 DSH 为准。
-- 图片处理依赖 `sharp`；视频抽帧和摘要依赖 `ffmpeg`、`ffprobe`。
+- 图片处理依赖 `sharp`；视频文件抽帧依赖 `ffmpeg`、`ffprobe`，开发版摘要复用既有 Core 帧时无需这两个工具。
 - DSH 仍处于快速演进期。单个 Host Port 可以降级，但 DSH 若改变插件加载协议，仍需更新 DSH Adapter。
 - 模型发现只列出候选项；真实能力必须由用户显式验证。
 - 原生 Windows/WSL 的完整 DSH 宿主冒烟仍待补充。

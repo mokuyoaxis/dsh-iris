@@ -79,7 +79,7 @@ DSH 的 `iris_pixel_diff`、`iris_video_frames` 与工作台对应动作也消�
 
 M1 已包含纯契约、调用控制与 Fake Port。当前开发工作树（尚未发布）完成提示词 M2：DSH TextModel Port、共享优化核心、显式规则/确定性输出拼接和泡泡预览。Fake 与 DSH 事件 fixture 复用 conformance，已安装 rc.2 Runtime/WebServer 使用离线源适配器单独验收。v1 配置及公共 export 保持不变，无 Task/Artifact 写入；来源分离不代表模型语义注入防护完全解决。见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
 
-当前开发版 M3 已实现 HTTP/DSH Vision Port 并接入 Agent/工作台 look/relook 与显式视觉实测。完整终态、候选链总预算、取消停止切换和图片字节桥接分别验收，不写 Core Task/Artifact；DSH 保存后归一化导致字节变化会在生成前拒绝。见 [单图视觉调用](VISION_MODEL.md)。M4 的 [OCR](OCR_MODEL.md) 与 [定位、拼图摘要及自述](COMPOSITE_VISION.md) 已全部接入同一端口：OCR 普通块失败形成明确部分结果，定位保留原像素 bbox，摘要每次候选发送同一张拼图，并从 Core 转写 Artifact 取正文。legacy 视觉兼容实现仍保留，业务入口不再调用。M5 独立视觉 CLI、显式模型选择、HTML/Browser 和 S2V 已实现；摘要复用既有 Core 抽帧 Artifact 仍待后续。
+当前开发版 M3 已实现 HTTP/DSH Vision Port 并接入 Agent/工作台 look/relook 与显式视觉实测。完整终态、候选链总预算、取消停止切换和图片字节桥接分别验收，不写 Core Task/Artifact；DSH 保存后归一化导致字节变化会在生成前拒绝。见 [单图视觉调用](VISION_MODEL.md)。M4 的 [OCR](OCR_MODEL.md) 与 [定位、拼图摘要及自述](COMPOSITE_VISION.md) 已全部接入同一端口：OCR 普通块失败形成明确部分结果，定位保留原像素 bbox，摘要每次候选发送同一张拼图，并从 Core 转写 Artifact 取正文。legacy 视觉兼容实现仍保留，业务入口不再调用。M5 独立视觉 CLI、显式模型选择、HTML/Browser、S2V 及摘要复用既有 Core 抽帧 Artifact 均已实现。
 
 ## 开发版 CLI 补齐（尚未发布）
 
@@ -90,7 +90,6 @@ S2V 数字人已迁移到共享 Core Task/Attempt/Artifact，DSH 与 CLI 在每�
 ## 尚未迁移或开放
 
 - Text 的公开独立入口和显式自持文本模型选择；
-- 媒体摘要消费既有 Core 抽帧 Artifact（当前抽帧仍在入口准备，视觉业务已共享）；
 - 旧任务、旧作品 ID 与 Core ID 的显式映射；
 - Core 隔离内容的永久 purge、工作台完整作品分页与批量管理（CLI 分页、查询及可恢复删除已开放）；
 - 真实 DSH 对话 attachment、浏览器进度/作品区和异步重启 canary。
@@ -98,6 +97,10 @@ S2V 数字人已迁移到共享 Core Task/Attempt/Artifact，DSH 与 CLI 在每�
 旧作品重新索引、删除、清空和孤儿清理仍只操作 legacy `outputs/`；Core 在 DSH 工作台保持只读，Headless CLI 的 `core delete/cleanup` 默认预览，明确确认后移入可恢复隔离，`core restore` 不覆盖原位置冲突。Doctor 会报告 Core 孤立对象、未提交 Manifest 与未解析条目，不删除或修复；永久 purge 留待 0.2.x。不要手动移动或删除 `core-v0` 中的 object、Manifest、record 或租约文件。
 
 ## 验证证据与限制
+
+- 开发版看图、定位和 OCR 已支持 Core 图片 `artifact_id`，CLI 与 DSH 工具/动作共用只读读取器；直接核验原字节/MIME和内容哈希，不导出临时图片、不创建 Task/Artifact，文件路径与定位/OCR 会话附件仍可使用。见 [视觉 CLI](VISION_CLI.md)。
+
+- 当前开发版 CLI 与 DSH Agent/动作的摘要已支持 `frame_artifact_ids`，共用 Core 只读帧读取器，核对哈希、保留时间戳和原帧序号，无需原视频或 ffmpeg，不重抽帧或写入 Core。视频文件模式保留原行为；已有帧消费显式转写文本。见 [视觉 CLI](VISION_CLI.md) 和 [复合视觉调用](COMPOSITE_VISION.md)。
 
 - 2026-09-30 当前开发工作树已完成仓库外真实 tarball 安装验收：空项目安装当前包和 Sharp，不含 DSH/Cordis，也不复用仓库依赖。安装后的 CLI 实际完成 crop/diff/抽帧和四类 Provider fixture 生成，13 份 Artifact 的导出字节及 SHA-256 一致；跨进程 reader/导出零 Core 写入、零额外 Provider 请求。可在源码仓库执行 `node scripts/verify-headless-package.mjs` 复现，缓存完整时支持 `--offline`。本机为 Linux ARM64/PRoot、Node 22；这项证据不替代真实 Provider、DSH 异步重启或其他平台验收。
 - 完整离线回归为 96 个测试文件，lint 覆盖 151 个 JS/MJS 文件。同步、多产物、混合 failover、受理未知、交付失败、跨进程观察、零 legacy 双写、用户侧只读投影（五类真值表、零写入、局部降级、窄屏断言）与 D1 reobserve、D2 redeliver、D3 cancel、D4 retry（Command 门真值表零网络零写入、幂等矩阵、redelivery 标志、取消三分支如实语义与竞态防护、计费确认三层门、retriedFrom 关系与 prompt 零持久化、失败回落显式收敛、API 状态码/脱敏、CLI↔API 同一 Task 事实连续性、客户端投影门）均有 fixture；E 阶段视频、语音、转写迁移各有独立 conformance（视频长轮询多拍/mp4 Profile、语音同步双产物形态/音频 Profile、转写上传通道/文本物化 Profile）与 CLI/DSH 端到端 fixture。

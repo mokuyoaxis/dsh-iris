@@ -4,7 +4,9 @@
 
 ## 使用与变化
 
-Agent 的 `iris_look_at_image` / `iris_relook_attachment`、工作台的看图/重看，以及用户显式确认的视觉实测，改为消费共享 VisionModel Port。入口和参数保持原样，不自动生成媒体任务或保存 Core 产物。
+Agent 的 `iris_look_at_image` / `iris_relook_attachment`、工作台的看图/重看，以及用户显式确认的视觉实测，改为消费共享 VisionModel Port。不自动生成媒体任务或保存 Core 产物。
+
+开发版 `iris_look_at_image` 与看图动作现可用 `artifact_id` 代替 `image_path`，直接读取当前 DSH profile 的 Core 图片，二者必须二选一。图片的 MIME、原字节和内容哈希由共享读取器核对，不要求原文件或临时导出、不写入 Core；生成图片、HTML 截图、裁剪、视频帧均可使用。自持模型成功时无需为 Core 输入另存 DSH 附件；DSH 候选仍通过既有附件桥接。工具文字保留 Core ID，动作 JSON 带 `artifactId`。工作台原表单继续输入文件路径，动作 API 可直接传 ID。独立 CLI 的同一用法见 [视觉 CLI](VISION_CLI.md)。
 
 Iris 按已配置的视觉模型顺序选择自持后端，最后考虑 DSH 默认视觉模型。DSH 必须明确提供 Provider、模型及图片输入能力；默认文本模型、未知元数据和身份漂移在生成前拒绝。自持成功时不查询 DSH 元数据或为回退额外保存附件。
 
@@ -16,7 +18,7 @@ SSE `[DONE]`、EOF 或已经出现文字不代表完成。自持 Chat Completion
 
 | 限制 | 默认值 |
 |---|---|
-| 整体时间 | 120 秒，覆盖文件/附件读取、元数据、桥接及所有候选 |
+| 整体时间 | 120 秒，覆盖文件/Artifact/附件读取、元数据、桥接及所有候选 |
 | 输入文字 | 32 KiB UTF-8 |
 | 图片 | 20 MiB，PNG/JPEG/WebP/GIF 字节；本地看图工具沿用 PNG/JPEG/WebP 格式限制 |
 | 输出正文 | 6,000 个 UTF-16 code units，超限失败 |

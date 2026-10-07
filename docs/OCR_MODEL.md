@@ -2,7 +2,7 @@
 
 状态：开发工作树完成 M4 的 OCR 切片，**尚未发布**。其余定位、拼图摘要及自述已完成，见 [复合视觉调用](COMPOSITE_VISION.md)；已发布 npm 0.2.0 不包含这些变化。
 
-Agent 的 `iris_long_ocr` 与工作台 OCR 使用相同分块业务和 M3 Vision Ports。工具仍接受本地图片路径或会话附件，工作台仍接受本地图片路径；没有新增 CLI 命令、配置字段、公开 SDK export 或生产依赖。
+Agent 的 `iris_long_ocr` 与工作台 OCR 使用相同分块业务和 M3 Vision Ports。工具接受 `image_path`、`artifact_id` 或 `attachment_id` 三选一；工作台动作接受 `image_path` 或 `artifact_id` 二选一，现有表单继续输入文件路径。Core ID 读取当前 profile 的既有图片，核验内容哈希和 MIME，不依赖原文件、不导出临时图片、不写入 Core。工具文字保留 Core ID，动作 JSON 带 `artifactId`；CLI `vision ocr` 同样支持，详见 [视觉 CLI](VISION_CLI.md)。没有新增配置字段、公开 SDK export 或生产依赖。
 
 ## 分块与结果
 
@@ -24,7 +24,7 @@ Agent 的 `iris_long_ocr` 与工作台 OCR 使用相同分块业务和 M3 Vision
 
 | 限制 | 默认值 |
 |---|---|
-| 整体时间 | 120 秒，覆盖文件/附件读取、图片处理、模型元数据、所有块与候选 |
+| 整体时间 | 120 秒，覆盖文件/Artifact/附件读取、图片处理、模型元数据、所有块与候选 |
 | 最大分块数 | 32，超出时生成前拒绝 |
 | 总生成次数 | 64，候选切换也占用次数；本地确认未调用不占次数 |
 | 源图片 | 20 MiB 编码字节，最多 4000 万像素；单帧 PNG/JPEG/WebP/GIF，工具/工作台本地路径接受 PNG/JPEG/WebP |

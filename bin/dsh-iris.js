@@ -44,7 +44,7 @@ function usage() {
     '  dsh-iris models test <providerId::modelId> --capability <vision|tts|image-gen|video-gen|transcribe> --provider-config <absolute-path> [--data-root <absolute-path>]',
     '  dsh-iris assignments <list|set|clear> --provider-config <absolute-path> [--input <json>]',
     '  dsh-iris vision <look|locate|ocr|summarize> --provider-config <absolute-path> --input <json> [--model-ref <providerId::modelId>] [--format <json|text>] [--output <path>] [--timeout-ms <1..120000>]',
-    '    summarize also supports --sheet-output <path>; input.transcribe=true requires --data-root <absolute-path>.',
+    '    Core artifact_id / frame_artifact_ids inputs or transcribe=true require --data-root <absolute-path>; summarize supports --sheet-output <path>.',
     '  dsh-iris run crop --data-root <absolute-path> --input <json>',
     '  dsh-iris media diff --data-root <absolute-path> --input <json>',
     '  dsh-iris media frames --data-root <absolute-path> --input <json>',
@@ -280,7 +280,8 @@ async function main(args) {
       modelRef: options['model-ref'] || '', signal: cliAbortController.signal,
       ...(options['timeout-ms'] !== undefined ? { timeoutMs: Number(options['timeout-ms']) } : {}) });
     const completed = input.transcribe
-      ? await withRawRuntime('writer', options['data-root'], execute) : await execute();
+      ? await withRawRuntime('writer', options['data-root'], execute)
+      : input.artifact_id || input.frame_artifact_ids ? await withRawRuntime('reader', options['data-root'], execute) : await execute();
     if (cliAbortController.signal.aborted) return 130;
     const rendered = (format === 'text' ? completed.text : JSON.stringify(completed.result, null, 2)) + '\n';
     try {

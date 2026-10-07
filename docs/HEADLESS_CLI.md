@@ -6,7 +6,7 @@ Iris 0.2.0 提供无 DSH 的本地裁剪、图片 diff、视频抽帧，以及 P
 
 ## 配置查询与离线诊断
 
-当前开发工作树另提供 `vision look / locate / ocr / summarize`，尚未发布。纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；只有主动音轨转写才使用 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)。
+当前开发工作树另提供 `vision look / locate / ocr / summarize`，尚未发布。文件输入的纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；图片/帧 Artifact ID 输入需显式数据根，以 reader 读取既有 Core 产物，只有主动音轨转写才创建 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)。
 
 ```bash
 dsh-iris providers list --provider-config /absolute/path/to/providers.json

@@ -35,11 +35,11 @@ Do not add an analysis, transcription, or review step merely because a tool exis
 
 ## Resolve media inputs
 
-- Use `iris_look_at_image` for an absolute image path visible to the host.
+- Use `iris_look_at_image` for a host-visible absolute `image_path` or an existing Core image `artifact_id` (choose one).
 - Use `iris_relook_attachment` for an image attachment already present in the session or produced by Iris.
-- Use `iris_long_ocr` when exact text from an image matters more than a visual description.
-- Video and audio tools require host-visible absolute `video_path` or `audio_path` values. A browser-local path, `content://` URI, or ordinary web URL is not a host path; request an upload or exported host path.
-- Keep every returned attachment ID, task ID, and output path that a later step needs. Do not invent or reconstruct identifiers.
+- Use `iris_long_ocr` when exact text from an image matters more than a visual description; choose exactly one of `image_path`, Core `artifact_id`, or session `attachment_id`. `iris_locate` accepts the same three sources for original-pixel bounding boxes.
+- Video and audio file inputs require host-visible absolute `video_path` or `audio_path` values. Video summaries can instead consume existing Core `frame_artifact_ids`. A browser-local path, `content://` URI, or ordinary web URL is not a host path; request an upload or exported host path.
+- Keep every returned Core Artifact ID, attachment ID, task ID, and output path that a later step needs. Core `artifact_id` and session `attachment_id` are distinct; do not use either as a file path or invent identifiers.
 
 An attachment returned by `iris_draw_image` can be passed as `first_frame_attachment_id` to `iris_generate_video`. An existing host image uses `first_frame_path`. The local path returned by `iris_speak_text` can be passed as `audio_path` for S2V.
 
@@ -54,6 +54,8 @@ Choose the minimum chain, then read only the matching section of [references/wor
 - recognize, then create: `iris_long_ocr` or `iris_transcribe_audio` → the requested creation tool.
 
 Use `iris_video_frames` only for explicit frame extraction or a custom frame-level workflow. Do not load every workflow section when one route is sufficient.
+
+If frames are already saved by `iris_video_frames`, pass its returned `frame_artifact_ids` to `iris_media_summarize` instead of extracting again. This reads the original timestamps and frame order without the video file or ffmpeg. Omit `video_path`, `max_frames`, `target_width`, and `transcribe:true`; supply existing speech as `transcribe_text` when available.
 
 ## Control cost and iteration
 
@@ -72,7 +74,7 @@ When a generation tool returns a Task, or the user asks to retry, recover, cance
 - Observation failure resumes observation; delivery failure resumes delivery. Neither authorizes regeneration. If that recovery action is available only in the Iris workbench, say so and preserve the Task ID.
 - If the user cancels, stop the chain and do not launch downstream generation. Cancellation requested or unknown is not proof that no provider work occurred.
 - Preserve partial outputs. Report which step succeeded, which failed or became uncertain, and whether accepted work may remain active.
-- If an attachment is missing, request a re-upload or host path. If `ffmpeg`/`ffprobe` is unavailable, explain that frame extraction and video summarization cannot run.
+- If an attachment is missing, request a re-upload or host path. If `ffmpeg`/`ffprobe` is unavailable, new video frame extraction cannot run; summaries can still use existing Core frame IDs.
 - If vision is unavailable but the creation prompt is complete, skip source analysis only when the requested result still remains valid.
 
 ## Report the result

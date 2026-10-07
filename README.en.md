@@ -204,7 +204,7 @@ Development [long-image OCR](docs/OCR_MODEL.md) also shares one deadline and a f
 
 M4 also migrates [locate, contact-sheet summaries and generated-image descriptions](docs/COMPOSITE_VISION.md) to shared ports. A summary sends one timestamped sheet per candidate invocation and reads optional transcription from its Core text Artifact. These changes are unreleased.
 
-The development tree now includes [standalone vision CLI](docs/VISION_CLI.md) commands: `dsh-iris vision look / locate / ocr / summarize`, with strict model overrides, JSON/text output and optional result/contact-sheet files. Pure vision needs no data root; explicitly requested audio transcription uses Core. This is unreleased.
+The development tree now includes [standalone vision CLI](docs/VISION_CLI.md) commands: `dsh-iris vision look / locate / ocr / summarize`, with strict model overrides, JSON/text output and optional result/contact-sheet files. File-based vision needs no data root; image/frame Artifact IDs require an explicit Core data root in reader mode, and explicitly requested audio transcription uses a Core writer. This is unreleased.
 
 The development CLI also supports Core S2V video, HTML screenshots, provider/model/configuration management, bounded task waiting, filtered pagination and bulk export, and recoverable Core quarantine/restore. See [CLI management](docs/CLI_MANAGEMENT.md). These changes are unreleased and add no production dependencies.
 

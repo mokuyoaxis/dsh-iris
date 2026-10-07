@@ -6,9 +6,13 @@
 
 Agent 的 `iris_locate` 和工作台定位使用共享 Vision Ports。目标先修剪，空目标在图片读取前拒绝；模型返回原图像素 bbox，保留 `found:false`、边界钳制和裁剪指令。只有完整正常终态的回答才解析 JSON；格式错误不会触发另一次模型生成。定位仍依赖模型判断，不保证精确像素边界。
 
-`iris_media_summarize` 和工作台视频摘要先用 ffmpeg 抽帧，再用 Sharp 按时间顺序拼成一张带时间戳的 PNG。一次候选生成只发送这一张拼图，不逐帧请求模型；成功后提供同一张拼图供用户检查。修复时间戳标签缺少绘制空间，以及十帧以上按文件名字典序排列导致的时间顺序错误。
+开发版定位支持 Core 图片 `artifact_id`：Agent 的 `image_path`、`artifact_id`、`attachment_id` 三选一，动作和 CLI 使用路径或 Core ID 二选一。直接只读核验图片原字节/MIME，坐标按实际图片尺寸计算；不导出临时文件、不新增 Core 产物。Core 输入的工具结果注明 ID 和裁剪区域，避免把 ID 当成本机路径；工作台动作 JSON 保留 `artifactId`。现有文件/会话附件用法保留，CLI 示例见 [视觉 CLI](VISION_CLI.md)。
 
-工作台消费显式转写文字。Agent 保留原有 `transcribe` 选项：默认在视频有音轨且已配置转写供应商时提取音频，提交既有 Core 转写任务，观察成功后读取其文本 Artifact；失败时注明只分析画面。取消或超时直接终止摘要，不再进入视觉生成。已经提交的远端转写任务保留 Core 事实，可用任务工具继续查询。
+`iris_media_summarize` 和工作台视频摘要可用 `video_path` 先经 ffmpeg 抽帧，或用 `frame_artifact_ids` 直接读取当前 DSH profile 中既有 Core 抽帧 Artifact，再用 Sharp 按时间顺序拼成一张带时间戳的 PNG。一次候选生成只发送这一张拼图，不逐帧请求模型；成功后提供同一张拼图供用户检查。修复时间戳标签缺少绘制空间，以及十帧以上按文件名字典序排列导致的时间顺序错误。
+
+`iris_video_frames` 的文字结果会给出可复用的 `frame_artifact_ids` 数组；将这些 ID 交给 `iris_media_summarize` 即可，原视频无需再次可用。已有帧只读、核验内容哈希，按原 `atSec` / `frameIndex` 排序，最多选择 20 帧；不调用 ffmpeg、不重新导出或写入 Core，其他 writer 存在时仍可摘要。结果保留 ID、原帧序号、时间戳及尺寸，展示所选帧时间范围，不猜测完整视频时长。不得同时指定视频路径、抽帧选项或 `transcribe:true`；已有台词通过 `transcribe_text` 显式提供。CLI 使用同一读取器，见 [视觉 CLI](VISION_CLI.md)。工作台现有表单仍输入视频路径，动作 API 也接受帧 ID。
+
+工作台消费显式转写文字。Agent 的视频文件模式保留原有 `transcribe` 选项：默认在视频有音轨且已配置转写供应商时提取音频，提交既有 Core 转写任务，观察成功后读取其文本 Artifact；也可显式提供 `transcribe_text`，失败时注明只分析画面。取消或超时直接终止摘要，不再进入视觉生成。已经提交的远端转写任务保留 Core 事实，可用任务工具继续查询。
 
 图片生成后的可选自述也消费共享端口。自述失败或取消时不返回半截描述，已完成的图片交付仍按原流程处理；提示词上下文和描述长度沿用原限制。
 
@@ -26,4 +30,4 @@ Agent 的 `iris_locate` 和工作台定位使用共享 Vision Ports。目标先�
 
 验证覆盖原 bbox 解析、时间戳实际像素、十二帧时序、一张拼图一次生成、取消/超时、Core 转写正文接线、真实安装的 DSH rc.2 工具和 HTTP 入口，以及无 DSH/Cordis 的 tarball 安装副本。2026-10-05 另以真实 `dsh` CLI 启动隔离 profile，使用已有 DashScope `qwen3-vl-flash` 完成定位、三色视频摘要、自述和收到正文后的取消，共七次模型请求；这些合成样本不代表复杂视频或目标定位质量。
 
-M4 没有增加 CLI 命令、公开 SDK export、持久配置字段或生产依赖。未被业务入口调用的 legacy 视觉兼容实现仍保留。后续 M5 的 [独立视觉 CLI](VISION_CLI.md) 已复用这些共享业务并提供严格显式模型选择；摘要复用 Core 抽帧 Artifact、HTML/Browser 和 S2V 的迁移单独处理。
+M4 没有增加 CLI 命令、公开 SDK export、持久配置字段或生产依赖。未被业务入口调用的 legacy 视觉兼容实现仍保留。后续 M5 的 [独立视觉 CLI](VISION_CLI.md) 已复用这些共享业务并提供严格显式模型选择；开发版也已实现 Core 抽帧 Artifact 摘要、HTML/Browser 和 S2V 迁移。

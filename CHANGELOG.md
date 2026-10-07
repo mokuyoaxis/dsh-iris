@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+- 看图、定位和 OCR 支持 `artifact_id`：CLI 与 DSH 工具/动作直接只读 Core 图片，核验哈希、原字节和 MIME，保留来源 ID；不需要原文件或临时导出、不创建 Core Task/Artifact。文件路径和定位/OCR 会话附件用法保留，三项业务沿用模型选型、预算和结果语义。详见 [视觉 CLI](docs/VISION_CLI.md)。
+
+- 视频摘要支持 `frame_artifact_ids`：CLI 与 DSH 工具/动作共用 Core 帧读取器，按原时间戳和帧序号组成联系表，返回实际使用的 Artifact ID；无需原视频或 ffmpeg，不重复抽帧、导出或写入 Core。现有视频文件用法保留，已有帧可搭配显式转写文字。详见 [视觉 CLI](docs/VISION_CLI.md)。
+
 - 修复跨平台 CLI 测试：预加载模块使用文件 URL，Core 管理路径断言区分平台路径与 POSIX 管理路径，私有文件权限和 SIGINT 按实际平台验证；缺少可选 ffmpeg/ffprobe 时明确跳过视觉 CLI 视频段，继续执行看图、定位、OCR、输出及模型超时测试。
 
 - 按用户指定顺序补齐 CLI：S2V 数字人迁入共享 Core Attempt 上传链，HTML 经独立 Chromium Browser Port 或 DSH 宿主保存 Core PNG；增加账号/模型/能力分配管理、发现与显式实测、私有备份与竞争写保护、有界 `task wait`、分页过滤、批量查询/导出及 JSON 文件/stdin 输入。

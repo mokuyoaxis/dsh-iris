@@ -304,6 +304,51 @@ try {
       assert.deepEqual(Buffer.from((await ctx.get('attachments').readImage(image.attachment)).data), source);
     }
   });
+  await check('Core image Artifacts feed actual look/locate/OCR tools and WebServer with no Core writes', async () => {
+    const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+    const { createCoreRuntime } = await import('../lib/core-runtime.js');
+    const { createCoreArtifact } = await import('../lib/core-artifacts.js');
+    const runtime = createCoreRuntime({ dataRoot: dshCoreDataRoot(), mode: 'writer' }); runtime.start();
+    try {
+      const image = await runtime.run('execute', ({ dataRoot }) => createCoreArtifact(dataRoot, {
+        bytes: source, mediaType: 'image/png', kind: 'generated-image', metadata: {}
+      }));
+      const screenshot = await runtime.run('execute', ({ dataRoot }) => createCoreArtifact(dataRoot, {
+        bytes: ocrSource, mediaType: 'image/png', kind: 'html-screenshot', metadata: {}
+      }));
+      const fingerprints = directory => Object.fromEntries(fs.readdirSync(directory, { withFileTypes: true }).map(entry => {
+        const file = path.join(directory, entry.name);
+        return [entry.name, entry.isDirectory() ? fingerprints(file) : crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')];
+      }));
+      const before = fingerprints(dshCoreDataRoot()), beforeCalls = modelCalls;
+      for (const [name, action, input] of [
+        ['iris_look_at_image', 'look', { artifact_id: image.id, question: 'fixture' }],
+        ['iris_locate', 'locate', { artifact_id: image.id, target: 'red region' }],
+        ['iris_long_ocr', 'ocr', { artifact_id: screenshot.id, chunk_height: 100, overlap: 0 }]
+      ]) {
+        const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name, arguments: input,
+          agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
+        assert.equal(result.isError, false, JSON.stringify(result));
+        assert(result.content.some(block => block.text?.includes(input.artifact_id)));
+        const response = await fetch(allowedOrigin + '/iris/api/actions/' + action, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
+        const gui = await response.json(); assert.equal(response.status, 200); assert(gui.ok);
+        assert.equal(gui.artifactId, input.artifact_id);
+        if (action === 'ocr') {
+          for (const [index, request] of modelRequests.slice(-6).entries()) {
+            const ref = request.messages[0].content.find(block => block.type === 'image').attachment;
+            const expected = await sharp(ocrSource).extract({ left: 0, top: index % 3 * 100, width: 128, height: 100 }).png().toBuffer();
+            assert.deepEqual(Buffer.from((await ctx.get('attachments').readImage(ref)).data), expected);
+          }
+        } else for (const request of modelRequests.slice(-2)) {
+          const ref = request.messages[0].content.find(block => block.type === 'image').attachment;
+          assert.deepEqual(Buffer.from((await ctx.get('attachments').readImage(ref)).data), source);
+        }
+      }
+      assert.equal(modelCalls, beforeCalls + 10);
+      assert.deepEqual(fingerprints(dshCoreDataRoot()), before);
+    } finally { await runtime.dispose(); }
+  });
   await check('M4 actual Agent and WebServer summary invoke one same-byte sheet each', async () => {
     if (spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status !== 0) throw new Error('验收摘要需要现有 ffmpeg');
     const video = path.join(work, 'summary.mp4');
@@ -322,6 +367,41 @@ try {
     const modeledGui = modelRequests.at(-1).messages[0].content.find(block => block.type === 'image').attachment;
     assert.deepEqual(Buffer.from(gui.imageDataUrl.split(',')[1], 'base64'), Buffer.from((await ctx.get('attachments').readImage(modeledGui)).data));
     assert.equal(modelCalls, before + 2);
+  });
+  await check('Core frame Artifacts feed actual Agent and WebServer summaries without ffmpeg or Core writes', async () => {
+    const video = path.join(work, 'summary.mp4');
+    const extracted = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_video_frames',
+      arguments: { video_path: video, max_frames: 3 }, agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
+    assert.equal(extracted.isError, false);
+    const idsText = extracted.content.find(block => block.text?.includes('frame_artifact_ids:')).text;
+    const ids = JSON.parse(/frame_artifact_ids: (\[[^\n]+\])/.exec(idsText)[1]);
+    const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+    const { createCoreRuntime } = await import('../lib/core-runtime.js');
+    const runtime = createCoreRuntime({ dataRoot: dshCoreDataRoot(), mode: 'writer' }); runtime.start();
+    const fingerprints = directory => Object.fromEntries(fs.readdirSync(directory, { withFileTypes: true }).map(entry => {
+      const file = path.join(directory, entry.name);
+      return [entry.name, entry.isDirectory() ? fingerprints(file) : crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')];
+    }));
+    const beforeCore = fingerprints(dshCoreDataRoot()), beforeCalls = modelCalls;
+    const originalPath = process.env.PATH, emptyPath = path.join(work, 'no-media-tools'); fs.mkdirSync(emptyPath);
+    fs.renameSync(video, video + '.unavailable'); process.env.PATH = emptyPath;
+    try {
+      const input = { frame_artifact_ids: [...ids].reverse(), transcribe_text: '已有转写文字' };
+      const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_media_summarize',
+        arguments: input, agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
+      assert.equal(result.isError, false); assert(result.content.some(block => block.text?.includes('已选帧')));
+      const displayed = result.content.find(block => block.type === 'image').attachment;
+      const modeled = modelRequests.at(-1).messages[0].content.find(block => block.type === 'image').attachment;
+      assert.deepEqual((await ctx.get('attachments').readImage(displayed)).data, (await ctx.get('attachments').readImage(modeled)).data);
+      const response = await fetch(allowedOrigin + '/iris/api/actions/media_summarize', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
+      const gui = await response.json(); assert.equal(response.status, 200); assert(gui.ok);
+      assert.deepEqual(gui.frames.map(frame => frame.artifactId), ids);
+      const guiModeled = modelRequests.at(-1).messages[0].content.find(block => block.type === 'image').attachment;
+      assert.deepEqual(Buffer.from(gui.imageDataUrl.split(',')[1], 'base64'), Buffer.from((await ctx.get('attachments').readImage(guiModeled)).data));
+      assert.equal(modelCalls, beforeCalls + 2);
+      assert.deepEqual(fingerprints(dshCoreDataRoot()), beforeCore);
+    } finally { process.env.PATH = originalPath; await runtime.dispose(); }
   });
   await check('M4 generated-image description shares strict completion and cancellation', async () => {
     const { describeGeneratedImage } = await import('../lib/composite-vision-routing.js');

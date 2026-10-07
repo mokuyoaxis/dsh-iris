@@ -1,10 +1,10 @@
 # 独立视觉 CLI
 
-状态：当前开发工作树已实现，**尚未发布**；已发布 npm 0.2.0 尚不包含以下命令。从当前源码运行 `node bin/dsh-iris.js ...`，或安装该工作树打包的 tarball 后运行 `dsh-iris ...`。需要 Node.js ≥ 22、已有依赖 Sharp；视频摘要还需要 PATH 中的 ffmpeg、ffprobe。
+状态：当前开发工作树已实现，**尚未发布**；已发布 npm 0.2.0 尚不包含以下命令。从当前源码运行 `node bin/dsh-iris.js ...`，或安装该工作树打包的 tarball 后运行 `dsh-iris ...`。需要 Node.js ≥ 22、已有依赖 Sharp；从视频文件抽帧还需要 PATH 中的 ffmpeg、ffprobe，复用既有 Core 帧不需要。
 
 ## 四个命令
 
-所有命令必须显式提供私有配置文件和输入媒体的绝对路径。下面假设配置位于 `/absolute/path/providers.json`，图片和视频路径也需替换：
+所有命令必须显式提供私有配置文件，媒体文件使用绝对路径；看图/定位/OCR 也可指定 Core 图片 ID，摘要可指定 Core 帧 ID，并提供数据根。下面假设配置位于 `/absolute/path/providers.json`，图片和视频路径也需替换：
 
 ```bash
 dsh-iris vision look \
@@ -32,6 +32,48 @@ dsh-iris vision summarize \
 `ocr` 默认块高 1200、重叠 120、最大图片维度 2048，可用 `chunk_height`、`overlap`、`max_dimension`、`max_invocations` 调整；沿用 [OCR](OCR_MODEL.md) 的限制，最多 32 块和 64 次生成。返回 `complete` / `partial` / `failed`、成功/失败/未处理块数、每块状态与 `fullText`，保留原段号；失败块正文不会混入识别全文。
 
 `summarize` 默认均匀取 8 帧，`max_frames` 最多 20；`target_width` 默认 640，按源图比例缩放。每次视觉候选调用只发送一张带时间戳的 PNG 拼图，`--sheet-output` 保存的就是该图片。JSON 仅包含拼图尺寸、MIME 和 SHA-256，不包含图片 base64 或本机路径。
+
+## 直接使用 Core 图片
+
+`look`、`locate`、`ocr` 均接受 `artifact_id`，与 `image_path` 二选一。ID 可来自生成图片、裁剪、HTML 截图、视频抽帧等 Core 产物；用 `artifact list --data-root ... --media-type image/png` 查找，或从已有命令结果取得真实 ID。
+
+```bash
+dsh-iris vision look \
+  --provider-config /absolute/path/providers.json \
+  --data-root /absolute/path/iris-core \
+  --input '{"artifact_id":"artifact_0123456789abcdef01234567","question":"画面中有什么？"}'
+
+dsh-iris vision locate \
+  --provider-config /absolute/path/providers.json \
+  --data-root /absolute/path/iris-core \
+  --input '{"artifact_id":"artifact_0123456789abcdef01234567","target":"发送按钮"}'
+
+dsh-iris vision ocr \
+  --provider-config /absolute/path/providers.json \
+  --data-root /absolute/path/iris-core \
+  --input '{"artifact_id":"artifact_0123456789abcdef01234567","chunk_height":1200,"overlap":120}' \
+  --format text --output ./recognized.txt
+```
+
+示例 ID 需替换成实际 ID。读取核验 Core 内容哈希，直接使用 Manifest 的 MIME 和图片原字节，支持最多 20 MiB 的 PNG/JPEG/WebP/GIF，不限制图片的 `kind`。定位仍返回实际图片的原像素坐标；OCR 仍沿用单帧、像素/分块上限与部分完成语义。JSON 结果（含 OCR 部分结果）附 `artifactId`，文本输出保持原格式。
+
+这三个命令只以 reader 打开显式数据根，不需要原图片文件、不导出临时图片、不创建 Task/Artifact，也不取得 writer 租约。缺失、损坏、非图片或超限 Artifact 在调用模型前拒绝；缺失的数据根不会被创建。文件输入用法不变。
+
+## 复用已保存的 Core 帧
+
+先用 `media frames --data-root ... --input ...` 抽帧，从结果的 `artifacts[].id` 取 ID；也可用 `artifact list --data-root ... --kind video-frame` 查找。将同一视频中要分析的帧直接传给摘要：
+
+```bash
+dsh-iris vision summarize \
+  --provider-config /absolute/path/providers.json \
+  --data-root /absolute/path/iris-core \
+  --input '{"frame_artifact_ids":["artifact_0123456789abcdef01234567","artifact_89abcdef0123456789abcdef"],"question":"总结这些片段"}' \
+  --output ./summary.json --sheet-output ./contact-sheet.png
+```
+
+示例 ID 需替换成实际 ID。`video_path` 与 `frame_artifact_ids` 必须二选一；帧 ID 数组为 1–20 个不同的 `video-frame` Artifact，读取时核对其内容哈希、帧序号、时间戳和尺寸，按 `atSec`、`frameIndex` 排序。可以只选择部分帧，结果 `frames[]` 保留实际使用的 `artifactId`、原 `frameIndex`、`atSec`、尺寸；`meta.source` 为 `core-artifacts`，`startSec` / `endSec` 是所选帧覆盖的时间范围，不代表完整视频时长。
+
+此模式只读 Core，不要求原视频或 ffmpeg，不导出临时副本、不新增 Task/Artifact；其他进程持有 writer 租约时仍可读取。`max_frames`、`target_width` 只用于视频文件模式，已有帧需直接选择 ID。已有帧不自动提取音轨，可用 `transcribe_text` 提供已有文字；`transcribe:true` 需要视频文件模式。
 
 ## 配置和模型选择
 
@@ -87,4 +129,4 @@ dsh-iris vision summarize \
 
 配置需声明 `transcribe` 模型，并使用既有上传型转写协议（当前 DashScope）。省略 `transcribe_model_ref` 时沿用转写 assignment/模型池，显式指定时只使用该项；不能同时提供 `transcribe_text`。本次命令观察已受理的同一 Core Task，读取成功的文本 Artifact 后摘要；普通转写失败则返回画面摘要并将 `transcription.status` 标为 `failed`。无音轨标为 `no_audio`；取消/超时直接终止摘要，已经提交的转写任务保留事实，可按 [Headless CLI](HEADLESS_CLI.md) 的任务命令继续检查、观察或重新取回，不会自动重提。
 
-纯视觉命令不要求数据根，不创建 Core Runtime、Task 或 Artifact；只在主动转写时持有数据根写者租约。独立提示词优化入口不属于本次交付。
+文件输入的纯视觉命令不要求数据根，不创建 Core Runtime、Task 或 Artifact；使用图片/帧 Artifact ID 时只使用显式数据根的 reader，主动音轨转写时才持有 writer 租约。独立提示词优化入口不属于本次交付。

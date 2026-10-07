@@ -343,12 +343,30 @@ try {
   assert.equal(recognized.status, 'complete'); assert.equal(recognized.totalChunks, 2);
   const partialOcr = visionCli('ocr', { image_path: visionImage, chunk_height: 100, overlap: 0, max_invocations: 1 }, [], 1);
   assert.equal(partialOcr.status, 'partial');
+  const artifactInput = { artifact_id: images[0].id };
+  const artifactLook = visionCli('look', artifactInput, rootArgs);
+  assert.equal(artifactLook.artifactId, artifactInput.artifact_id);
+  assert.equal(readJson(visionStateFile).vision.at(-1).imageSha256, images[0].digest.value);
+  const artifactLocate = visionCli('locate', { ...artifactInput, target: 'red' }, rootArgs);
+  assert.equal(artifactLocate.artifactId, artifactInput.artifact_id);
+  assert.equal(artifactLocate.width, images[0].metadata.width);
+  const artifactOcr = visionCli('ocr', artifactInput, rootArgs);
+  assert.equal(artifactOcr.artifactId, artifactInput.artifact_id); assert.equal(artifactOcr.status, 'complete');
+  assert.deepEqual(snapshot(dataRoot), coreBeforeVision, '已安装 CLI 的看图/定位/OCR 只读 Core 图片');
   const savedSummary = path.join(exportsDir, 'vision-summary.json'), savedSheet = path.join(exportsDir, 'vision-sheet.png');
   const summarized = visionCli('summarize', { video_path: videoPath, max_frames: 3 }, ['--output', savedSummary, '--sheet-output', savedSheet]);
   assert.equal(summarized.transcription.status, 'disabled'); assert.deepEqual(readJson(savedSummary), summarized);
   assert.equal(digest(fs.readFileSync(savedSheet)), summarized.contactSheet.sha256);
   assert.equal(readJson(visionStateFile).vision.at(-1).imageSha256, summarized.contactSheet.sha256);
   assert.deepEqual(snapshot(dataRoot), coreBeforeVision, '纯视觉不得写已有 Core 数据根');
+  const artifactSheet = path.join(exportsDir, 'vision-artifact-sheet.png');
+  const reused = visionCli('summarize', { frame_artifact_ids: frames.artifacts.map(a => a.id).reverse(),
+    transcribe_text: '已有帧的显式转写' }, ['--data-root', dataRoot, '--sheet-output', artifactSheet]);
+  assert.deepEqual(reused.frames.map(f => f.artifactId), frames.artifacts.map(a => a.id));
+  assert.deepEqual(reused.frames.map(f => f.atSec), frames.artifacts.map(a => a.metadata.atSec));
+  assert.equal(reused.transcription.status, 'provided');
+  assert.equal(digest(fs.readFileSync(artifactSheet)), readJson(visionStateFile).vision.at(-1).imageSha256);
+  assert.deepEqual(snapshot(dataRoot), coreBeforeVision, '已安装 CLI 复用原帧，不改写 Core');
   const visionRoot = path.join(work, 'vision-core');
   const audioSummary = visionCli('summarize', { video_path: videoPath, max_frames: 2, transcribe: true,
     transcribe_model_ref: 'vision-fixture::asr' }, ['--data-root', visionRoot]);
@@ -357,7 +375,8 @@ try {
   assert.equal(asrTask.attempts.length, 1); assert.equal(asrTask.deliveryState, 'ready');
   assert(!fs.existsSync(path.join(visionRoot, '.iris-runtime-writer-v0')));
   assert.equal(digest(fs.readFileSync(visionConfigFile)), visionConfigBefore);
-  report.visionCli = { installedBin: true, noDshOrCordis: true, commands: 6, pureVisionNoCoreWrites: true,
+  report.visionCli = { installedBin: true, noDshOrCordis: true, commands: 10, pureVisionNoCoreWrites: true,
+    existingFrameArtifactsReadOnly: true, existingImageArtifactsReadOnly: true,
     strictExplicitSelection: true, ocrPartialExitCode: 1, sameContactSheetBytes: true, coreAsrTaskId: asrTask.id,
     coreAsrArtifactIds: asrTask.artifactIds, coreAsrSubmits: 1 };
   saveReport();

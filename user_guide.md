@@ -343,9 +343,9 @@ Host Doctor 显示通过，只代表“插件与宿主接口已正确装载”�
 
 ## 可选依赖
 
-当前开发工作树新增 [独立视觉 CLI](docs/VISION_CLI.md)：`vision look / locate / ocr / summarize`，可从当前源码或其 tarball 使用，尚未发布。必须显式指定私有 Provider 配置；可指定 `--model-ref providerId::modelId` 严格选型、保存 JSON/文本或摘要拼图。默认只分析画面，主动音轨转写才要求 Core 数据根。
+当前开发工作树新增 [独立视觉 CLI](docs/VISION_CLI.md)：`vision look / locate / ocr / summarize`，可从当前源码或其 tarball 使用，尚未发布。必须显式指定私有 Provider 配置；可指定 `--model-ref providerId::modelId` 严格选型、保存 JSON/文本或摘要拼图。默认只分析画面；文件输入不要求数据根，使用 `artifact_id` 或 `frame_artifact_ids` 时需显式数据根并只读 Core，主动音轨转写使用 Core writer。
 
-视频抽帧和视频摘要依赖 PATH 中的 `ffmpeg` 与 `ffprobe`。缺少它们只会禁用这两项能力，不影响生成、看图、OCR 或语音工具。
+视频文件抽帧依赖 PATH 中的 `ffmpeg` 与 `ffprobe`。缺少它们无法从视频文件生成新帧；开发版摘要可复用既有 Core 帧 ID，不需要这两个工具。生成、看图、OCR 或语音工具不受影响。
 
 HTML 截图依赖 DSH 提供 `dsh-builtin-browser`。截图页在离线沙箱中运行，不加载远程脚本、字体或图片；需要的资源应内联到 HTML。
 

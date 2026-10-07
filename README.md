@@ -202,7 +202,7 @@ Core 与 DSH Adapter 正在分离，DSH 继续加载同一个 npm 包，Adapter 
 
 开发版 M4 已完成 [长图 OCR](docs/OCR_MODEL.md) 和 [定位、拼图摘要与自述](docs/COMPOSITE_VISION.md) 的共享调用迁移：取消/超时停止后续生成，OCR 明确部分结果，摘要一次候选只发送一张拼图，并消费可选 Core 转写正文。以上尚未发布。
 
-当前工作树还提供 [独立视觉 CLI](docs/VISION_CLI.md)：`dsh-iris vision look / locate / ocr / summarize`，支持显式模型选择和 JSON/文本/拼图文件输出；纯视觉不要求数据根，主动音轨转写使用 Core。尚未发布。
+当前工作树还提供 [独立视觉 CLI](docs/VISION_CLI.md)：`dsh-iris vision look / locate / ocr / summarize`，支持显式模型选择和 JSON/文本/拼图文件输出；文件输入的纯视觉不要求数据根，图片/帧 Artifact ID 输入使用显式数据根的 Core reader，主动音轨转写使用 Core writer。尚未发布。
 
 开发版还补齐了 S2V、HTML 截图、账号/模型与配置管理、有界等待、分页过滤和批量导出、Core 可恢复隔离/恢复，见 [CLI 管理与补齐](docs/CLI_MANAGEMENT.md)。尚未发布，未新增生产依赖。
 

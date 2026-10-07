@@ -18,7 +18,7 @@ Read only the section matching the chosen workflow. Keep paid steps bounded by t
 
 ## Summarize a video, then narrate
 
-1. Call `iris_media_summarize` with `transcribe=true` unless the user wants visual-only analysis.
+1. Call `iris_media_summarize` with `video_path` and `transcribe=true` unless the user wants visual-only analysis. If Core frames already exist, use their `frame_artifact_ids` instead and optionally provide `transcribe_text`; omit `transcribe=true` and sampling options for existing frames.
 2. Do not also call `iris_video_frames` or `iris_transcribe_audio` by default; the summary action already samples frames and can transcribe audio.
 3. Write narration for the requested audience and length without presenting inference as visible fact.
 4. Call `iris_speak_text`; return the summary, contact-sheet attachment, and saved audio path.
