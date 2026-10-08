@@ -35,7 +35,7 @@ DSH 工作台现也开放同一份显式单步观察（D1 reobserve）：`POST /
 
 ## 作品与只读诊断
 
-工作台只有一个作品库：Core 图片与旧 outputs 作品一起显示，原始输入 Artifact 不进入作品视图。Core 媒体路由 `/iris/api/core/artifact/<artifact_id>/media` 没有独立 token：它按随机 96-bit Artifact ID 读取，每次验证 SHA-256，并由默认回环/显式 trusted Host 与浏览器 `Origin`/`Sec-Fetch-Site` 守卫拒绝明确跨站请求。Artifact ID 持有者在可达受信 Host 时即可读取；Host allowlist 不等于身份认证。Host URL 不写回 Core。
+工作台只有一个作品库：开发版统一展示 Core 与旧 outputs 的图片、视频、音频和文本，每页 24 个，支持媒体、来源及产物类型过滤；原始输入 Artifact 不进入作品视图。目录查询只读取已提交元数据和文件大小，图片卡直接按 Artifact ID 看图/OCR，详见 [工作台作品浏览与识别](WORKBENCH_ARTIFACTS.md)。Core 媒体路由 `/iris/api/core/artifact/<artifact_id>/media` 没有独立 token：它按随机 96-bit Artifact ID 读取，每次验证 SHA-256，并由默认回环/显式 trusted Host 与浏览器 `Origin`/`Sec-Fetch-Site` 守卫拒绝明确跨站请求。Artifact ID 持有者在可达受信 Host 时即可读取；Host allowlist 不等于身份认证。Host URL 不写回 Core。
 
 默认收起的“高级诊断 → Core 任务事实”展示同一批作品背后的 Task/Attempt，可展开、复制 ID 和打开图片，不是第二个作品库。`iris_task_status` 可查询同一 Core ID；CLI 指定同一 profile 数据根时可以 inspect/export，反向也成立。重复读取和附件投影不触发生成或修改 Core 事实。
 
@@ -53,7 +53,7 @@ Core 任务的提醒处置属于 **Host 偏好**（计划铁律：提醒已读/�
 
 ## 视频迁移（E 阶段第一项）
 
-t2v/i2v 视频已迁到 Core，与图片共用 Task/Attempt 事实轴但**不共用图片状态机**：交付走冻结的视频 Profile（`lib/provider-task-runner.js` 的 `DELIVERY_PROFILES.video`：媒体白名单 `video/mp4`、Artifact kind `generated-video`、metadata 带 `capability`），观察用视频长轮询档（默认 6s/拍），受理、取消（当前真实协议不支持远端取消，not_supported 如实回落）、redeliver/retry 与 CLI/API/UI 控制面全部对视频生效。Agent 工具与工作台视频动作经 `submitCoreVideo` 落到 Core，**零 legacy 双写**（不再写 `tasks.json`/`outputs/`；旧视频任务继续 legacy 只读兼容）。同源媒体路由按 ID 播放 mp4；视频作品在任务区行内给出链接，不进入图片画廊网格。开发版 S2V 已迁入同一 Core：Attempt 写前落盘后，按实际候选上传首帧与音频。真实阿里云 wan2.2-s2v 的 480P/2 秒视频生成与导出哈希验收通过。
+t2v/i2v 视频已迁到 Core，与图片共用 Task/Attempt 事实轴但**不共用图片状态机**：交付走冻结的视频 Profile（`lib/provider-task-runner.js` 的 `DELIVERY_PROFILES.video`：媒体白名单 `video/mp4`、Artifact kind `generated-video`、metadata 带 `capability`），观察用视频长轮询档（默认 6s/拍），受理、取消（当前真实协议不支持远端取消，not_supported 如实回落）、redeliver/retry 与 CLI/API/UI 控制面全部对视频生效。Agent 工具与工作台视频动作经 `submitCoreVideo` 落到 Core，**零 legacy 双写**（不再写 `tasks.json`/`outputs/`；旧视频任务继续 legacy 只读兼容）。同源媒体路由按 ID 播放 mp4；视频作品在任务区行内给出链接，开发版也进入统一作品库并可按视频筛选。开发版 S2V 已迁入同一 Core：Attempt 写前落盘后，按实际候选上传首帧与音频。真实阿里云 wan2.2-s2v 的 480P/2 秒视频生成与导出哈希验收通过。
 
 ## 语音合成迁移（E 阶段第二项）
 
@@ -91,7 +91,7 @@ S2V 数字人已迁移到共享 Core Task/Attempt/Artifact，DSH 与 CLI 在每�
 
 - Text 的公开独立入口和显式自持文本模型选择；
 - 旧任务、旧作品 ID 与 Core ID 的显式映射；
-- Core 隔离内容的永久 purge、工作台完整作品分页与批量管理（CLI 分页、查询及可恢复删除已开放）；
+- Core 隔离内容的永久 purge、工作台批量管理与 Core 删除/恢复入口（作品分页与过滤已实现，CLI 查询及可恢复删除已开放）；
 - 真实 DSH 对话 attachment、浏览器进度/作品区和异步重启 canary。
 
 旧作品重新索引、删除、清空和孤儿清理仍只操作 legacy `outputs/`；Core 在 DSH 工作台保持只读，Headless CLI 的 `core delete/cleanup` 默认预览，明确确认后移入可恢复隔离，`core restore` 不覆盖原位置冲突。Doctor 会报告 Core 孤立对象、未提交 Manifest 与未解析条目，不删除或修复；永久 purge 留待 0.2.x。不要手动移动或删除 `core-v0` 中的 object、Manifest、record 或租约文件。

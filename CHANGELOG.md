@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+- 工作台作品库统一 Core 与旧版的分页和媒体/来源/产物类型过滤，显示真实匹配总数，覆盖图片、视频、音频与文本。Core 图片卡可直接看图/OCR，结果支持取消、复制和浏览器下载文本，保留页码/筛选并区分 OCR 部分完成与失败；目录仅查元数据，实际媒体读取和识别保留完整哈希核验。详见 [工作台作品管理](docs/WORKBENCH_ARTIFACTS.md)。尚未发布。
+
 - 看图、定位和 OCR 支持 `artifact_id`：CLI 与 DSH 工具/动作直接只读 Core 图片，核验哈希、原字节和 MIME，保留来源 ID；不需要原文件或临时导出、不创建 Core Task/Artifact。文件路径和定位/OCR 会话附件用法保留，三项业务沿用模型选型、预算和结果语义。详见 [视觉 CLI](docs/VISION_CLI.md)。
 
 - 视频摘要支持 `frame_artifact_ids`：CLI 与 DSH 工具/动作共用 Core 帧读取器，按原时间戳和帧序号组成联系表，返回实际使用的 Artifact ID；无需原视频或 ffmpeg，不重复抽帧、导出或写入 Core。现有视频文件用法保留，已有帧可搭配显式转写文字。详见 [视觉 CLI](docs/VISION_CLI.md)。

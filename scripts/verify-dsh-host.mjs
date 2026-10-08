@@ -349,6 +349,44 @@ try {
       assert.deepEqual(fingerprints(dshCoreDataRoot()), before);
     } finally { await runtime.dispose(); }
   });
+  await check('workbench HTTP pages and filters all media and reads original PNG by card ID', async () => {
+    const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+    const { createCoreRuntime } = await import('../lib/core-runtime.js');
+    const { createCoreArtifact } = await import('../lib/core-artifacts.js');
+    const runtime = createCoreRuntime({ dataRoot: dshCoreDataRoot(), mode: 'writer' }); runtime.start();
+    try {
+      const ids = [];
+      for (let index = 0; index < 26; index++) {
+        const artifact = await runtime.run('execute', ({ dataRoot }) => createCoreArtifact(dataRoot,
+          { bytes: source, mediaType: 'image/png', kind: 'workbench-fixture', metadata: {} }));
+        ids.push(artifact.id);
+      }
+      for (const [type, mediaType] of [['video', 'video/mp4'], ['audio', 'audio/wav'], ['text', 'text/plain']]) {
+        await runtime.run('execute', ({ dataRoot }) => createCoreArtifact(dataRoot,
+          { bytes: Buffer.from('fixture media'), mediaType, kind: 'workbench-fixture-' + type, metadata: {} }));
+        const response = await fetch(allowedOrigin + '/iris/api/works?source=core&media_type=' + type + '&kind=workbench-fixture-' + type);
+        const page = await response.json(); assert.equal(response.status, 200); assert.equal(page.total, 1);
+        assert.equal(page.items[0].mime, mediaType); assert(!JSON.stringify(page).includes(dshCoreDataRoot()));
+      }
+      const first = await (await fetch(allowedOrigin + '/iris/api/works?kind=workbench-fixture&limit=24')).json();
+      const second = await (await fetch(allowedOrigin + '/iris/api/works?kind=workbench-fixture&limit=24&offset=24')).json();
+      assert.equal(first.total, 26); assert.equal(first.items.length, 24); assert.equal(second.items.length, 2);
+      assert.deepEqual([...first.items, ...second.items].map(item => item.id).sort(), ids.sort());
+      const before = modelCalls;
+      for (const action of ['look', 'ocr']) {
+        const response = await fetch(allowedOrigin + '/iris/api/actions/' + action, { method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ artifact_id: first.items[0].id }) });
+        const result = await response.json(); assert.equal(response.status, 200); assert(result.ok);
+        assert.equal(result.artifactId, first.items[0].id);
+        if (action === 'ocr') { assert.equal(result.status, 'complete'); assert.equal(result.successfulChunks, 1); }
+        const requestRef = modelRequests.at(-1).messages[0].content.find(block => block.type === 'image').attachment;
+        const sent = (await ctx.get('attachments').readImage(requestRef)).data;
+        const expected = action === 'look' ? source : await sharp(source).extract({ left: 0, top: 0, width: 8, height: 6 }).png().toBuffer();
+        assert.deepEqual(Buffer.from(sent), expected);
+      }
+      assert.equal(modelCalls, before + 2);
+    } finally { await runtime.dispose(); }
+  });
   await check('M4 actual Agent and WebServer summary invoke one same-byte sheet each', async () => {
     if (spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status !== 0) throw new Error('验收摘要需要现有 ffmpeg');
     const video = path.join(work, 'summary.mp4');

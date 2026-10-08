@@ -200,7 +200,7 @@ assert(new RegExp('function\\s+taskRowMini\\s*\\(').test(src), '缺少紧凑任�
 /* ⑥b 独立作品库、泡泡最近作品与功能状态灯的回归保护 */
 assert(/function\s+ArtifactGallery\s*\(/.test(src) && /function\s+artifactRowMini\s*\(/.test(src),
   '客户端缺少独立作品库组件');
-assert(src.includes("fetch('/iris/api/artifacts?offset='") && src.includes("React.createElement(ArtifactGallery"),
+assert(src.includes("'/iris/api/works?offset='") && src.includes("React.createElement(ArtifactGallery"),
   '工作台缺少作品分页 API 或作品库挂载');
 for (const action of ['artifacts_reindex', 'artifacts_delete', 'artifacts_clear']) {
   assert(src.includes("'" + action + "'"), '作品库缺少动作调用 ' + action);

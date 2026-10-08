@@ -80,7 +80,7 @@ try {
 
   const clientSource = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
   assert(clientSource.includes("'/iris/api/core/artifact/' + encodeURIComponent(artifact.id) + '/media'")
-      && clientSource.includes('galleryItems = coreItems.concat(items)')
+      && clientSource.includes("'/iris/api/works?offset='")
       && clientSource.includes("artifact.kind !== 'host-input'"),
   '工作台必须把可展示 Core 图片合入作品区，并排除原始输入 Artifact');
   const securityDoc = fs.readFileSync(new URL('../docs/SECURITY.md', import.meta.url), 'utf8');
