@@ -112,7 +112,7 @@ try {
   assert(!archived.get('works.json').toString().includes(root));
   assert(!archived.get('works.json').toString().includes('/iris/media/'), '下载清单不携带授权 token 链接');
   const zipFile = path.join(root, 'works.zip'); fs.writeFileSync(zipFile, zip);
-  const decoded = spawnSync('python3', ['-c', 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert len(z.namelist())==6; print("PASS Python zipfile 独立解码与全部 CRC")', zipFile], { encoding: 'utf8' });
+  const decoded = spawnSync('python3', ['-c', 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert len(z.namelist())==6; print("PASS Python zipfile decoding and CRC checks")', zipFile], { encoding: 'utf8' });
   if (decoded.error?.code === 'ENOENT') console.log('Python 不可用，独立 ZIP 解码待验；标准 CRC 向量与字节核验通过');
   else { assert.equal(decoded.status, 0, decoded.stderr); console.log(decoded.stdout.trim()); }
   for (const input of [{ items: [] }, { items: [coreItems[0], coreItems[0]] }, { items: [{ source: 'core', id: legacyItem.id }] },
