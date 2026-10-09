@@ -51,7 +51,7 @@ const sandbox = {
   }
 };
 sandbox.globalThis = sandbox.window;
-vm.runInNewContext(src, sandbox, { filename: 'lib/client.js', timeout: 5000 });
+vm.runInNewContext(src.replace('var clientSlots = clientSlotsPort(ctx);', 'window.__retry = CoreRetryButton; var clientSlots = clientSlotsPort(ctx);'), sandbox, { filename: 'lib/client.js', timeout: 5000 });
 assert(registrations.length === 1, 'client bundle 必须仍注册一个 loader entry');
 const seats = [];
 registrations[0].factory((request) => {
@@ -139,4 +139,20 @@ for (const [label, overrides, expected] of truthTable) {
 assert(coreTaskRetryable(null) === false && coreTaskRetryable([]) === false,
   '畸形输入必须判为不可重试');
 
-console.log('ALL OK —— D4 retry 客户端：计费确认文案、prompt 重新输入、关系展示与门真值表');
+const sourceId = 'artifact_' + 'b'.repeat(24);
+const editRow = rowWith({ phase: 'terminal', acceptance: 'unknown', sourceArtifactId: sourceId });
+assert(editRow.sourceArtifactId === sourceId, '改图用户投影携带安全来源 ID');
+const editor = sandbox.window.__retry({ row: editRow });
+let answers = [' 修改颜色 ', ' ' + sourceId + ' '];
+const prompts = [];
+sandbox.window.prompt = (message, initial) => { prompts.push({ message, initial }); return answers.shift(); };
+const editedBody = editor.props.buildBody();
+assert(editedBody.prompt === '修改颜色' && editedBody.source_artifact_id === sourceId && editedBody.confirmBilling === true,
+  '改图重试重新收集指令与来源，带显式计费确认', editedBody);
+assert(prompts.length === 2 && prompts[1].initial === sourceId, '来源 ID 预填后仍须用户确认');
+answers = ['修改颜色', null]; assert(editor.props.buildBody() === null, '取消来源确认停止重试');
+answers = ['修改颜色', ' ']; assert(editor.props.buildBody() === null, '空来源停止重试');
+answers = ['新图指令']; prompts.length = 0;
+const normalBody = sandbox.window.__retry({ row: rowWith({ phase: 'terminal', outcome: 'failed' }) }).props.buildBody();
+assert(normalBody.prompt === '新图指令' && prompts.length === 1 && !normalBody.source_artifact_id, '普通生成重试不要求原图');
+console.log('ALL OK —— D4 retry 客户端：计费确认、指令与改图来源重新输入/取消、关系展示和门真值表');

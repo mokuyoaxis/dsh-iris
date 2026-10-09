@@ -1,6 +1,8 @@
 # Text/Vision Model Port v0 契约设计
 
-状态：**已发布 0.2.0 包含 M1；开发工作树完成提示词 M2、单图视觉 M3 与复合视觉 M4，尚未发布。** DSH 文本适配器与共享优化消费者、HTTP/DSH Vision Port 与 look/relook、OCR、定位、拼图摘要及图片自述均已接入。上述切片不增加公开 export、CLI 命令、持久配置字段或生产依赖，不改变 [Host Adapter v0](HOST_ADAPTER_CONTRACT.md) 的现有方法。新增按次规则与 UI 见 [提示词优化系统](PROMPT_OPTIMIZER.md)，单图预算与宿主附件副作用见 [单图视觉调用](VISION_MODEL.md)，复合操作见 [长图 OCR](OCR_MODEL.md) 和 [定位与摘要](COMPOSITE_VISION.md)。
+状态：**Iris 0.2.1。** 0.2.0 已包含 M1 契约；0.2.1 接入 DSH 文本适配器与共享优化消费者、HTTP/DSH Vision Port，以及 look/relook、OCR、定位、拼图摘要和图片自述。端口仍为内部契约，不增加公开 export 或生产依赖，不改变 [Host Adapter v0](HOST_ADAPTER_CONTRACT.md) 的现有方法。新增按次规则与 UI 见 [提示词优化系统](PROMPT_OPTIMIZER.md)，单图预算与宿主附件副作用见 [单图视觉调用](VISION_MODEL.md)，复合操作见 [长图 OCR](OCR_MODEL.md) 和 [定位与摘要](COMPOSITE_VISION.md)。
+
+0.2.1 还提供 [视觉 CLI](VISION_CLI.md)、可选账号/模型 `visionInput` 和设置命令，见 [看图输入预算](CLI_MANAGEMENT.md#看图输入预算)；不改变请求/完成 DTO、契约版本或公开 exports。该设置用于看图、OCR 分块、定位和聊天改图的发送副本，不是供应商能力上限声明；聊天改图的媒体任务语义仍由 Core Runner 管理。
 
 ## 目标与范围
 
@@ -155,7 +157,7 @@ interface VisionModelPort {
 
 迁移保留已有业务预算：提示词草稿 32 KiB、输出 16,000 code units、默认 45 秒与 1,200 输出 token，原配置范围不变。草稿上限仍在业务层校验；端口的总文本上限需按草稿上限、JSON 转义的最坏增长与已验证模板上限计算，不能把带模板的整个请求限制为 32 KiB，导致原本合法的草稿被拒绝。
 
-视觉 M3 沿用 120 秒默认档，原 6,000 字限制改为超限失败；输入文字 32 KiB UTF-8，图片 20 MiB。其他入口需明确其文字/图片上限，不直接套用生成任务参数校验。v0 不为预算增加持久配置格式。开发版 M2 已将元数据未知时的显式 effort 从直接透传收紧为生成前拒绝，覆盖配置与 inherit；默认 off-if-supported 保留供应商默认回退，不能声称所有行为完全未变。
+视觉 M3 沿用 120 秒默认档，原 6,000 字限制改为超限失败；输入文字 32 KiB UTF-8，图片 20 MiB。其他入口需明确其文字/图片上限，不直接套用生成任务参数校验。v0 不为预算增加持久配置格式。0.2.1 的 M2 已将元数据未知时的显式 effort 从直接透传收紧为生成前拒绝，覆盖配置与 inherit；默认 off-if-supported 保留供应商默认回退，不能声称所有行为完全未变。
 
 ## 完整结果与底层流
 
@@ -209,12 +211,15 @@ type ModelPortErrorRecord = {
   invocation: 'not_invoked' | 'rejected' | 'responded' | 'unknown';
   backendId?: string;
   status?: number;  // 已验证的 HTTP 状态码；未知时省略
+  imageBytes?: number;  // 看图大小拒绝：实际发送图片字节数
+  imageMaxBytes?: number;  // 已验证的上限；未知时省略
 };
 ```
 
 | code | 含义 |
 |---|---|
 | `IRIS_MODEL_INPUT_INVALID` | 字段、类型、预算或输入大小非法 |
+| `IRIS_MODEL_IMAGE_TOO_LARGE` | 看图副本无法满足预算，或上游明确拒绝图片大小；安全数值生成说明，不返回原文 |
 | `IRIS_MODEL_UNAVAILABLE` | 未配置或缺失依赖/Host 图片桥接能力 |
 | `IRIS_MODEL_INCOMPATIBLE` | 端口版本或底层协议形状不兼容 |
 | `IRIS_MODEL_UNSUPPORTED` | 当前模型/协议不支持显式输入或生成参数 |
@@ -239,10 +244,10 @@ type ModelPortErrorRecord = {
 
 ## DSH 图片与结果桥接
 
-当前 Host 视觉实现只消费 attachment 引用，忽略 `imageDataUrl`。新适配器必须保证模型实际收到共享请求里的同一张图：
+DSH 视觉适配器通过 Attachments Port 桥接共享请求中的图片，模型必须收到同一张图或经核验的宿主规范化副本：
 
 1. 已验证 DSH 支持内联图片时，在适配边界转换字节；
-2. 否则使用 Attachments Port 保存相同字节，取得 Host 引用，再调用 Host 模型；该步骤受同一信号、deadline 与图片预算约束；
+2. 否则使用 Attachments Port 保存输入字节，取得 Host 引用，再调用 Host 模型；若宿主规范化图片，须核验实际 MIME、尺寸、字节数和来源引用，该步骤受同一信号、deadline 与图片预算约束；
 3. 若两者都不可用，调用模型前返回 `IRIS_MODEL_UNAVAILABLE`，禁止退化成只有问题的纯文本请求。
 
 Host 引用、session ID 与 source metadata 可存在于 DSH 适配器闭包，但不能进入共享请求、结果或诊断快照。桥接不得创建 Core Artifact；宿主是否持久保存附件需在实现与 canary 中明确记录，不能把这条路径称为完全零副作用。
@@ -251,17 +256,17 @@ Host 引用、session ID 与 source metadata 可存在于 DSH 适配器闭包，
 
 ## 实现切片与退出条件
 
-M1 已发布；M2/M3/M4 经用户授权，已在当前工作树完成（尚未发布）。M5 的独立视觉 CLI 已实现，详见 [视觉 CLI](VISION_CLI.md)；提示词优化后续由用户另行安排。
+0.2.0 包含 M1；0.2.1 包含 M2/M3/M4 和 M5 独立视觉 CLI，详见 [视觉 CLI](VISION_CLI.md)；提示词优化后续由用户另行安排。
 
 | 切片 | 范围 | 退出条件 |
 |---|---|---|
 | M1：纯契约与调用控制（已实现） | `model-port-contract.js`、`model-invoker.js`、test-only Fake Text/Vision Port | 无 Host/配置/Store 依赖；请求、错误、预算与取消 conformance 通过 |
-| M2：首个文本消费者（开发版已实现） | `dsh-text-model-adapter.js` 与纯 `prompt-optimizer-core.js`；原入口保留配置/选择/投影，泡泡加入按次规则/组装/预览 | DSH/Fake 共用 conformance、reasoning、点击/写回、取消和零 Task 写入回归，以及已安装 rc.2 Runtime 隔离验收通过；真实模型/浏览器另验 |
-| M3：视觉单次调用（开发版已实现） | `http-vision-model-adapter.js`、`dsh-vision-model-adapter.js`、`vision-core.js`，Agent/工作台 look/relook 与显式视觉实测 | HTTP/DSH 共用 conformance；同图字节、准备/整体预算、严格终态、取消后零下一候选；真实 rc.2 与阿里云隔离验收已通过；浏览器另验 |
-| M4：复合视觉业务（开发版已实现） | OCR、locate、contact-sheet summarize 和生成后自述接入共享端口 | 有限分块与明确 partial；总预算/次数；取消停止后续块/候选；bbox 解析；同一张拼图一次候选生成；Core 转写正文；真实 DSH CLI 与独立安装逐项验收 |
-| M5：独立视觉入口（开发版已实现） | CLI look/locate/ocr/summarize、严格显式选型和文件输出；主动转写才使用 Core | 实际 CLI 子进程、无 DSH tarball 安装副本与真实廉价 Provider 分别验收；文本目录与独立优化另行安排 |
+| M2：首个文本消费者（0.2.1 已实现） | `dsh-text-model-adapter.js` 与纯 `prompt-optimizer-core.js`；原入口保留配置/选择/投影，泡泡加入按次规则/组装/预览 | DSH/Fake 共用 conformance、reasoning、点击/写回、取消和零 Task 写入回归，以及已安装 rc.2 Runtime 隔离验收通过；真实模型/浏览器另验 |
+| M3：视觉单次调用（0.2.1 已实现） | `http-vision-model-adapter.js`、`dsh-vision-model-adapter.js`、`vision-core.js`，Agent/工作台 look/relook 与显式视觉实测 | HTTP/DSH 共用 conformance；同图字节、准备/整体预算、严格终态、取消后零下一候选；真实 rc.2 与阿里云隔离验收已通过；浏览器另验 |
+| M4：复合视觉业务（0.2.1 已实现） | OCR、locate、contact-sheet summarize 和生成后自述接入共享端口 | 有限分块与明确 partial；总预算/次数；取消停止后续块/候选；bbox 解析；同一张拼图一次候选生成；Core 转写正文；真实 DSH CLI 与独立安装逐项验收 |
+| M5：独立视觉入口（0.2.1 已实现） | CLI look/locate/ocr/summarize、严格显式选型和文件输出；主动转写才使用 Core | 实际 CLI 子进程、无 DSH tarball 安装副本与真实廉价 Provider 分别验收；文本目录与独立优化另行安排 |
 
-实际协议实现为 `http-vision-model-adapter.js`、`dsh-vision-model-adapter.js` 和 `dsh-text-model-adapter.js`。视觉候选通过共享调用策略执行，业务入口不再调用 legacy `vision.js` 的模型链；共享代码不反向导入旧 Host 实现。开发版 S2V/Browser 已迁移至共享 Core，见 [CLI 管理与补齐](CLI_MANAGEMENT.md)；媒体摘要复用 Core 抽帧 Artifact 仍待后续。
+实际协议实现为 `http-vision-model-adapter.js`、`dsh-vision-model-adapter.js` 和 `dsh-text-model-adapter.js`。视觉候选通过共享调用策略执行，业务入口不再调用 legacy `vision.js` 的模型链；共享代码不反向导入旧 Host 实现。0.2.1 的 S2V/Browser 已迁移至共享 Core，见 [CLI 管理与补齐](CLI_MANAGEMENT.md)；媒体摘要已支持复用 Core 抽帧 Artifact，无需原视频或 ffmpeg。
 
 ## M1 内部调用方式
 
@@ -280,7 +285,7 @@ M1 已发布；M2/M3/M4 经用户授权，已在当前工作树完成（尚未�
 
 ## 必须补齐的 conformance
 
-M1 已执行纯契约、调用控制与 Fake Port；开发版 M2 执行 DSH 文本协议、业务/HTTP、实际组件点击及已安装 Runtime 隔离验收；开发版 M3 执行 HTTP/DSH Vision Port、单图入口与图片桥接。M4 在同一端口上逐项验证多块 OCR、定位、摘要与自述的整体 operation，并有实际 DSH CLI 和无 DSH 安装副本证据。
+M1 已执行纯契约、调用控制与 Fake Port；0.2.1 的 M2 执行 DSH 文本协议、业务/HTTP、实际组件点击及已安装 Runtime 隔离验收；0.2.1 的 M3 执行 HTTP/DSH Vision Port、单图入口与图片桥接。M4 在同一端口上逐项验证多块 OCR、定位、摘要与自述的整体 operation，并有实际 DSH CLI 和无 DSH 安装副本证据。
 
 | 场景 | 必须证明的结果 |
 |---|---|
@@ -292,7 +297,7 @@ M1 已执行纯契约、调用控制与 Fake Port；开发版 M2 执行 DSH 文�
 | EOF、`[DONE]` 但无终态、坏 JSON、未知终态 | 稳定失败，部分正文不返回为成功 |
 | 空结果、token 截断、输出超限、工具调用、内容阻断 | 独立错误；切换行为符合显式策略与总次数 |
 | OCR 与候选组合 | 有限总调用数与整体 deadline；普通块失败可形成明确 partial 业务结果，取消/超时终止操作 |
-| DSH 图片桥接 | 保存/内联的字节与输入相同；缺桥接时零模型调用，无引用泄漏 |
+| DSH 图片桥接 | 保存/内联输入图片，允许经核验的宿主规范化；损坏或不匹配引用在生成前拒绝；缺桥接时零模型调用，无引用泄漏 |
 | 模型身份与 usage | DSH 与 Iris 命名空间不混用；未知默认身份和 usage 字段省略 |
 | 错误、快照与自动记录 | 不包含输入、Key、端点、路径或 Host 对象；正文只作为显式结果返回，无隐式 Task/Artifact 写入 |
 | 两类适配器与业务入口 | Fake Port、HTTP 协议 fixture、DSH 流 fixture 消费同一组结果/错误规则 |

@@ -18,8 +18,13 @@ const galleryEnd = client.indexOf('function coreCapabilityLabel', galleryStart);
 assert(galleryStart >= 0 && galleryEnd > galleryStart, '无法定位统一作品区');
 const gallery = client.slice(galleryStart, galleryEnd);
 assert(gallery.includes('Core 作品不会删除') && gallery.includes('清空旧版作品')
-    && gallery.includes("isCore ? React.createElement('span'") && gallery.includes('内容哈希保护'),
-  'DSH 作品区必须明确区分只读 Core 与可删除 legacy outputs');
+    && gallery.includes('内容哈希保护') && gallery.includes('删除选中 Core 作品') && gallery.includes('Core 回收区'),
+  'DSH 作品区必须区分 Core 可恢复管理与 legacy 永久删除');
+const management = read('lib/workbench-management.js');
+assert(management.includes("maintainWorkbenchForDsh('core.delete'")
+  && management.includes("maintainWorkbenchForDsh('core.restore'")
+  && management.includes('confirm_restore !== true') && !management.includes('quarantineCoreFiles'),
+  '工作台必须复用 Core Command Service、显式确认恢复，不另写删除实现');
 
 const coreChecksStart = doctor.indexOf('function appendCoreChecks');
 const coreChecksEnd = doctor.indexOf('function summarizeChecks', coreChecksStart);
@@ -39,8 +44,7 @@ for (const [name, source] of [
   assert(source.includes('DSH 工作台') && source.includes('Headless CLI')
       && source.includes('legacy `outputs/`') && source.includes('CLI_MANAGEMENT.md'),
   `${name} 必须说明 DSH 的 legacy 删除边界与开发版 CLI 可恢复删除入口`);
-  assert(!source.includes('删除请通过 DSH 工作台') && !source.includes('删除需经 DSH 工作台'),
-    `${name} 不得再暗示 DSH 工作台可以删除 Core 作品`);
+  assert(source.includes('WORKBENCH_ARTIFACTS.md'), `${name} 必须关联工作台可恢复管理说明`);
 }
 
 console.log('core deletion boundary tests passed');

@@ -2,15 +2,18 @@
 
 把下面一段交给负责安装或使用 Iris 的 Agent。版本与发布状态以当前 [README](../README.md) 为准；Iris 和 DSH 的版本号独立。
 
+当前安装版本为 Iris 0.2.1。先核对宿主与实际安装版本，再使用新视觉命令或 Artifact 改图；旧宿主仍固定安装 0.1.4。
+
 ## 中文
 
 ```text
 请根据本仓库 README，帮我安装并使用 Iris（@mokuyoaxis/dsh-iris）。
-先确认运行环境、目标 DSH profile，并用 dsh --version 核对宿主；Iris 0.2.0 要求 Node.js >=22.0.0（旧 npm 0.1.4 的历史要求为 >=20.10.0）：
-- DSH 0.2.0-rc.2：固定安装 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.0。
+先确认运行环境、目标 DSH profile，并用 dsh --version 核对宿主；Iris 0.2.x 要求 Node.js >=22.0.0（旧 npm 0.1.4 的历史要求为 >=20.10.0）：
+- DSH 0.2.0-rc.2：固定安装 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.1。
 - DSH >=0.1.2-rc.1 <0.1.3-0 或 0.1.5-rc.1：固定安装 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.1.4；只下载用 npm pack @mokuyoaxis/dsh-iris@0.1.4。
 - 其他 DSH 版本：先报告没有支持声明，不自行升级宿主或跳过版本检查。
-没有 DSH、希望用 CLI 时，按 docs/HEADLESS_CLI.md 使用 npm 0.2.0；npm 0.1.4 不含新的 Core 媒体 CLI。
+没有 DSH、希望用 CLI 时，按 docs/HEADLESS_CLI.md 使用 npm 0.2.1；npm 0.1.4 不含新的 Core 媒体 CLI。
+先用 --help 和 Doctor 核对实际版本与命令。Iris 0.2.1 支持 OpenAI 兼容图片与视觉工作流；其他协议与 music 是后续计划。
 从 dsh-market 安装也要核对实际包名、版本和兼容范围；市场缓存不代表支持旧宿主，不对旧 DSH 安装 latest。
 若使用其他 profile，把示例中的 web 换成已确认的目标。保留完整 scoped 包名，不把 dsh-iris 当作同一 npm 包。
 安装后检查 Doctor 和工具可达性，再执行我指定的媒体任务；不要输出 API Key，重启宿主前说明影响。
@@ -22,11 +25,12 @@
 
 ```text
 Help me install and use Iris (@mokuyoaxis/dsh-iris) according to this repository's README.
-Check the environment, target DSH profile, and dsh --version first; Iris 0.2.0 requires Node.js >=22.0.0 (the published npm 0.1.4 historically requires >=20.10.0):
-- DSH 0.2.0-rc.2: pin dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.0.
+Check the environment, target DSH profile, and dsh --version first; Iris 0.2.x requires Node.js >=22.0.0 (the published npm 0.1.4 historically requires >=20.10.0):
+- DSH 0.2.0-rc.2: pin dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.1.
 - DSH >=0.1.2-rc.1 <0.1.3-0 or 0.1.5-rc.1: pin dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.1.4; download only with npm pack @mokuyoaxis/dsh-iris@0.1.4.
 - Other DSH versions: report the missing support claim; do not upgrade the host or bypass its version checks automatically.
-For CLI use without DSH, follow docs/HEADLESS_CLI.md using npm 0.2.0; npm 0.1.4 does not include the new Core media CLI.
+For CLI use without DSH, follow docs/HEADLESS_CLI.md using npm 0.2.1; npm 0.1.4 does not include the new Core media CLI.
+Check --help, Doctor and the actual installed version before using commands. Iris 0.2.1 supports the OpenAI-compatible image and vision workflow; additional protocols and music remain future work.
 For dsh-market, check the actual package name, version, and compatibility range too. Cached listings do not establish older-host support; do not install latest on an old DSH host.
 Replace web with the confirmed profile when needed. Keep the scoped package name; unscoped dsh-iris is a different npm package.
 Check Doctor and tool availability after installation, then carry out my requested media task. Do not expose API keys; explain the impact before restarting the host.

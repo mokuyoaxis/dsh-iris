@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { FAKE_PNG } from './fixtures/fake-lifecycle-provider.mjs';
 import { useTempDshHome } from './test-env.js';
 
 useTempDshHome('iris-image-task-v2');
@@ -62,7 +63,7 @@ global.fetch = async (input, init = {}) => {
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   if (url === 'https://result.invalid/v2.png') {
-    return new Response(Buffer.from('fake-png-v2'), { status: 200, headers: { 'Content-Type': 'image/png' } });
+    return new Response(FAKE_PNG, { status: 200, headers: { 'Content-Type': 'image/png' } });
   }
   throw new Error('unexpected fetch: ' + url);
 };
@@ -81,7 +82,7 @@ try {
   const finished = await inspectProviderTaskForDsh(action.taskId);
   assert(finished.outcome === 'succeeded' && finished.deliveryState === 'ready' && finished.status === 'succeeded', '轮询与产物交付按独立事实收口', finished);
   const media = await readCoreArtifactMediaForDsh(finished.artifactIds[0]);
-  assert(media.bytes.toString() === 'fake-png-v2' && !fs.existsSync(path.join(config.irisHome(), 'outputs')), '异步图片只落盘 Core Artifact');
+  assert(media.bytes.equals(FAKE_PNG) && !fs.existsSync(path.join(config.irisHome(), 'outputs')), '异步图片只落盘 Core Artifact');
   const registry = JSON.stringify(coreTaskRecords());
   assert(!registry.includes('first-secret') && !registry.includes('second-secret'), '任务注册表不持久化 API Key');
 } finally {

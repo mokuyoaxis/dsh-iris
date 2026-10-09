@@ -1,14 +1,16 @@
 # 长图 OCR
 
-状态：开发工作树完成 M4 的 OCR 切片，**尚未发布**。其余定位、拼图摘要及自述已完成，见 [复合视觉调用](COMPOSITE_VISION.md)；已发布 npm 0.2.0 不包含这些变化。
+状态：**Iris 0.2.1**。定位、拼图摘要及自述见 [复合视觉调用](COMPOSITE_VISION.md)。
 
-Agent 的 `iris_long_ocr` 与工作台 OCR 使用相同分块业务和 M3 Vision Ports。工具接受 `image_path`、`artifact_id` 或 `attachment_id` 三选一；工作台动作接受 `image_path` 或 `artifact_id` 二选一，现有表单继续输入文件路径。Core ID 读取当前 profile 的既有图片，核验内容哈希和 MIME，不依赖原文件、不导出临时图片、不写入 Core。工具文字保留 Core ID，动作 JSON 带 `artifactId`；CLI `vision ocr` 同样支持，详见 [视觉 CLI](VISION_CLI.md)。没有新增配置字段、公开 SDK export 或生产依赖。
+Agent 的 `iris_long_ocr` 与工作台 OCR 使用相同分块业务和共享 Vision Ports。工具接受 `image_path`、`artifact_id` 或 `attachment_id` 三选一；工作台动作接受 `image_path` 或 `artifact_id` 二选一，现有表单继续输入文件路径。Core ID 读取当前 profile 的既有图片，核验内容哈希和 MIME，不依赖原文件、不导出临时图片、不写入 Core。工具文字保留 Core ID，动作 JSON 带 `artifactId`；CLI `vision ocr` 同样支持，详见 [视觉 CLI](VISION_CLI.md)。复用可选的账号/模型输入预算，不新增公开 SDK export 或生产依赖。
 
 ## 分块与结果
 
 默认块高 1200 像素、重叠 120 像素，纵向步长为块高减重叠。显式 `overlap: 0` 会关闭重叠。保留原有块高至少 100、重叠钳制到 `[0, 块高−1]` 的规则；非有限数值在读取图片前拒绝。
 
-宽图先按比例缩到最多 2048 像素宽，再从上到下分块。输出中的宽高与 `y` 都是处理后图片的坐标。每块传一张 PNG 的字节与 MIME，候选后端看的是同一份源切片。重叠区域的重复文字仍保留，不做可能误删内容的自动去重。
+图片先按 EXIF 转正；宽图再按比例缩到默认最多 2048 像素宽，从上到下分块。输出中的宽高与 `y` 都是处理后图片的坐标，`sourceWidth/sourceHeight` 为转正后的源尺寸。每块提供相同源 PNG 切片，各候选在提交前按自己的账号/模型 `visionInput` 准备发送副本，不把整张长图先缩到模型最长边。重叠区域的重复文字仍保留，不做可能误删内容的自动去重。
+
+CLI/共享结果的成功块附 `input.source/sent`：切片与实际发送图的宽高、字节数、MIME，以及是否缩小。候选切换使用成功模型的记录；DSH 记录宿主保存后实际附件，而不是保存前估计。文本结果在整体宽度或某块缩小时明确提示细字可能丢失，并列出缩小块的发送尺寸。可以提高 CLI `max_dimension`（最高 4096）或模型预算以保留更多细节；缩放不会保证识别质量。
 
 | 结果 | 含义 |
 |---|---|
@@ -32,6 +34,6 @@ Agent 的 `iris_long_ocr` 与工作台 OCR 使用相同分块业务和 M3 Vision
 
 次数用尽后不再准备/生成后续块，已完成块形成明确部分结果；一块也未完成则失败。整体 deadline 不会因下一块或下一候选重置。输入损坏、MIME 不符或多帧图片在生成前拒绝。
 
-DSH 默认视觉路由在本轮首次使用时绑定，操作期间的默认模型变更在下次 OCR 才生效。每块仍通过宿主保存并读回核对源字节；DSH rc.2 不可取消保存、图片归一化与远端预处理的边界沿用 [单图视觉调用](VISION_MODEL.md)。Sharp 的原生图片处理不能被 AbortSignal 强制中止，本地等待有界退出后晚到结果会被忽略，不会启动模型或保存 Core 产物。
+DSH 默认视觉路由在本轮首次使用时绑定，操作期间的默认模型变更在下次 OCR 才生效。每块通过宿主保存并读回，允许核验过的合法规范化，检查内容哈希、字节数、MIME 和尺寸；不可取消保存与远端预处理的边界沿用 [单图视觉调用](VISION_MODEL.md)。Sharp 的原生图片处理不能被 AbortSignal 强制中止，本地等待有界退出后晚到结果会被忽略，不会启动模型或保存 Core 产物。
 
 OCR 不创建 Core/legacy Task、Attempt 或 Artifact，也不自动保存识别正文。验证使用共享 Fake/HTTP/DSH 端口、真实安装的 DSH 服务和无 DSH 的包外安装副本；真实模型验收单独记录，不把协议 fixture 当成识别质量证明。

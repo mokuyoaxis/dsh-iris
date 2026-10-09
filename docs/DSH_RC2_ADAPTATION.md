@@ -4,6 +4,8 @@
 
 旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 按历史验证范围使用稳定包 `@mokuyoaxis/dsh-iris@0.1.4`。安装与 npm tarball 下载方式见 [README](../README.md#最快开始)。保留的旧桥接与 fixture 测试不构成 Iris 0.2.0 的旧宿主支持承诺。
 
+Iris 0.2.1 沿用相同 Node/DSH 要求，新增 Artifact 改图工具后共注册 15 个工具；最新服务隔离检查为 31 项。宿主适配与业务功能分别验收，浏览器限制见下文。
+
 ## 宿主边界的修正
 
 | 边界 | 问题与修正 |
@@ -27,10 +29,10 @@ node scripts/verify-dsh-host.mjs --dsh-root /absolute/path/to/@deepseek-ai/dsh
 
 脚本在仓库外创建新临时数据根，载入实际安装的 Cordis、加载器兼容检查、附件、工具、Skill、LLM、默认模型、WebServer 与客户端 SlotRegistry。模型使用本地 Fake Adapter，正常流遵循安装包的 `index` 和对象终态格式，并验证真实 Runtime 将异常转换为失败终态；禁止外部请求。会话日志和列表是显式 fixture，宿主进程入口是已核实 DSH bin 的模拟。实际 WebServer 只绑定临时 loopback 端口，退出时卸载所有 Fiber。临时目录与 `report.json` 保留供复核。
 
-它检查 14 个工具、2 项 Skill、Doctor 路由、DSH → Core diff → DSH 附件，以及四个客户端座位的注册和卸载。SlotRegistry 使用安装包中的真实代码，React/DOM 为 stub，因此不证明完整 Web profile 装载、实际组件渲染、点击和草稿写回。另用 `scripts/verify-headless-package.mjs --offline` 验证当前 tarball 在无 DSH/Cordis 安装树中执行 CLI 和 Artifact 导出。
+当前脚本检查 15 个工具、2 项 Skill、Doctor 路由、DSH → Core diff → DSH 附件，以及四个客户端座位的注册和卸载。SlotRegistry 使用安装包中的真实代码，React/DOM 为 stub，因此不证明完整 Web profile 装载、实际组件渲染、点击和草稿写回。另用 `scripts/verify-headless-package.mjs --offline` 验证当前 tarball 在无 DSH/Cordis 安装树中执行 CLI 和 Artifact 导出。
 
 ## 当前限制
 
 真实用户 profile 若禁用 Iris，路由不存在属于预期状态，不据此判定适配失败。启用后仍需实机验证工作台、会话附件选择、提示词预览/写回和媒体展示。验证脚本不自动启用、安装、重载或重启用户插件，也不运行付费探针。
 
-已发布 0.2.0 的 rc.2 修正保留原 `textModel.stream()` / `visionModel.analyze()` 消费链，没有将真实消费者接入 Model Port。后续开发工作树已完成提示词 M2、单图视觉 M3 和复合视觉 M4（尚未发布），见 [Model Port](MODEL_PORT_CONTRACT.md)、[单图视觉调用](VISION_MODEL.md)、[OCR](OCR_MODEL.md) 和 [定位/摘要/自述](COMPOSITE_VISION.md)。安装 rc.2 离线检查覆盖真实 Runtime/Attachments/ToolRuntime/WebServer；2026-10-05 另由真正 `dsh` CLI 加载隔离 profile，原生模型定位、摘要、自述与流式取消七项检查通过。各业务分别验收，不能仅由 rc.2 桥接测试推断完成。
+已发布 0.2.0 的 rc.2 修正保留原 `textModel.stream()` / `visionModel.analyze()` 消费链，没有将真实消费者接入 Model Port。0.2.1 已完成提示词 M2、单图视觉 M3、复合视觉 M4 和独立视觉 CLI，见 [Model Port](MODEL_PORT_CONTRACT.md)、[单图视觉调用](VISION_MODEL.md)、[OCR](OCR_MODEL.md) 和 [定位/摘要/自述](COMPOSITE_VISION.md)。安装 rc.2 离线检查覆盖真实 Runtime/Attachments/ToolRuntime/WebServer；2026-10-05 另由真正 `dsh` CLI 加载隔离 profile，原生模型定位、摘要、自述与流式取消七项检查通过。各业务分别验收，不能仅由 rc.2 桥接测试推断完成。

@@ -9,6 +9,12 @@ Read only the section matching the chosen workflow. Keep paid steps bounded by t
 3. Call `iris_draw_image` once for each requested artifact.
 4. Inspect the result only when verification or iteration was requested. A mismatch is evidence to report, not automatic permission to regenerate.
 
+## Edit a Core image, then inspect
+
+1. Resolve the source Core Artifact ID; one static PNG, JPEG or WebP image up to 20 MiB is supported.
+2. Call `iris_edit_image` with `source_artifact_id` and a focused modification prompt, optionally an explicit model. The original stays intact and the edited Artifact records its source.
+3. Inspect the new Artifact ID only when review is requested. Preserve the Task ID if acceptance or delivery is uncertain; do not repeat the edit automatically.
+
 ## Generate or reuse a still, then animate
 
 1. Create a still with `iris_draw_image`, reuse an Iris-produced first-frame attachment, or obtain a host-visible path. Do not pass an ordinary session attachment as `first_frame_attachment_id`.

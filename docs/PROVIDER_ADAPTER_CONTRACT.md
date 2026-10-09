@@ -1,6 +1,6 @@
 # Provider Adapter v0 生命周期契约
 
-状态：**v0.1.4 的六操作内部契约已实现；0.2.0 增加可选输入准备能力。** 这是 Iris Core 模块与供应商协议实现之间的内部边界，尚未冻结为第三方公开 SDK。当前 DashScope 与 OpenAI Images 兼容实现已经通过同一套零网络 conformance runner。
+状态：**Iris 0.2.1；沿用 v0 生命周期内部契约。** 0.1.4 建立六操作契约，0.2.0 增加可选输入准备能力，0.2.1 增加聊天/Responses 生图及模型级协议覆盖。 这是 Iris Core 模块与供应商协议实现之间的内部边界，尚未冻结为第三方公开 SDK。DashScope 与 OpenAI Images 兼容实现通过同一套零网络 conformance runner；聊天/Responses 图片协议另有提交、交付与 CLI 回归。
 
 ## 目标与依赖方向
 
@@ -23,7 +23,7 @@ Action / Task watcher / recovery / model discovery
 
 ## 描述结构
 
-0.2.0 的协议工厂由内部注册表选择，当前仍只有 `dashscope` 和 `openai-images` 两项，不提供公开注册 API。未知的显式 `mediaProtocol` 保留原值，调用时以 `IRIS_PROVIDER_PROTOCOL_UNSUPPORTED` 在联网前拒绝；错误只包含合法协议标识，不回显端点或凭据。
+协议工厂由内部注册表选择；0.2.0 基线提供 `dashscope` 和 `openai-images`，0.2.1 另有 `openai-chat-images` 与 `openai-responses-images`，不提供公开注册 API。生图模型可通过可选 `imageProtocol` 覆盖账号默认；选择、实测与 Task binding 共用有效协议，详见 [模型级图片协议](CLI_MANAGEMENT.md#模型级图片协议)。未知的显式 `mediaProtocol` 保留原值，调用时以 `IRIS_PROVIDER_PROTOCOL_UNSUPPORTED` 在联网前拒绝；错误只包含合法协议标识，不回显端点或凭据。
 
 未配置协议或选择 `auto` 时，官方端点可识别为对应协议；其他端点继续使用 OpenAI Images 兼容路径，并标记 `protocolInferred:true`。该标记表示尚待用户确认兼容性，不代表已经验证成功。显式选择协议会清除标记；旧记录中已保存的明确协议不追溯猜测其来源。CLI 与 DSH 共用选择逻辑，Task binding 绑定最终实际协议与端点。
 
@@ -72,13 +72,15 @@ Core Attempt 持久化 `providerId::modelId` 复合身份，具体 Provider Adap
 - `unknown` 只停止当前盯守并保留 `acceptance=accepted`，不得伪造失败或重提；
 - `succeeded` 和图片 `completed` 使用同一可物化描述：`remote-url` 或 `inline-base64`；文本任务仍可使用 text value。生成成功先于本地物化事实落盘。
 
-`download` 物化已经确认成功的产物：`remote-url` 执行下载，OpenAI Images 的 `inline-base64` 直接写入私有 staging。inline 正文只作为 non-enumerable 的短生命周期字段传给 Runner，不进入 JSON、Task 或 Manifest。物化失败只能改变交付状态，不能触发生成重提。OpenAI Images 当前同步返回图片，所以 `poll` 与 `cancel` 显式 unsupported；DashScope 当前没有经过验证的远端取消接口，因此 `cancel` 同样显式 unsupported，而不是伪装取消成功。
+`download` 物化已经确认成功的产物：`remote-url` 执行下载，`inline-base64` 直接写入私有 staging。inline 正文只作为 non-enumerable 的短生命周期字段传给 Runner，不进入 JSON、Task 或 Manifest。生图产物按真实字节校验 PNG/JPEG/WebP，保留字节、MIME、后缀和哈希。物化失败只能改变交付状态，不能触发生成重提。OpenAI Images、聊天生图与当前 Responses 生图切片均同步返回图片，所以 `poll` 与 `cancel` 显式 unsupported；Responses 纯文字、缺图或未完成结果保留受理未知，不扫描其他接口。DashScope 当前没有经过验证的远端取消接口，因此 `cancel` 同样显式 unsupported，而不是伪装取消成功。
+
+聊天改图仍使用 `capability:image`：Runner 从当前 Core 校验并读取来源 Artifact，短生命周期 `input.image:{bytes,mediaType}` 与 `prompt` 交给聊天适配器。适配器按实际模型 `visionInput` 准备副本，HTTP 用户消息使用 `text` 与 `image_url` data URL。普通 Images/Responses 不接受此输入，编辑候选链预先过滤协议。Task 仅保存可选 `sourceArtifactId`，用于未知/失败任务的来源保护和交付时写入新 Artifact 的 `derived-from`；旧记录无需迁移，重试仍重新提供输入。来源或编辑输入预算失败发生在 HTTP 之前。
 
 ## 可选输入准备与上传边界
 
 Host 和 CLI 通过 `prepareProviderInput(adapter, { model, filePath, signal?, timeoutMs? })` 调用可选准备能力，不能自行绕过 Adapter 上传。DashScope 的 Adapter 闭包持有实际凭据与媒体端点并实现临时上传；OpenAI Images 明确不支持。未实现时在网络调用前抛 `IRIS_PROVIDER_INPUT_PREPARATION_UNSUPPORTED`。返回的 `{url}` 只供紧随其后的提交读取，属性不参与 JSON 序列化，不能进入 Task、日志或能力快照。
 
-上传错误经 Adapter 映射与脱敏，固定为 `stage=upload / acceptance=not_accepted`；这组字段属于返回调用方的安全错误分类，**不等于已持久化的 Core Attempt stage**。上传属于 Host/CLI 输入准备，只有随后真正调用 `submit` 才跨越可能计费的受理边界。当前 s2v 仍走 legacy 链，其 Attempt 可保存上传错误；Core 转写的 `audio_path` 在创建 Task 前上传，失败会直接返回且不创建 Core Task，也不会调用 submit。这是 D-12 当前采用的路径 B；若未来要求把准备失败纳入 Core 事实，须另行评审路径 A，不能由错误字段反推已经落盘。
+上传错误经 Adapter 映射与脱敏，固定为 `stage=upload / acceptance=not_accepted`；这组字段属于返回调用方的安全错误分类，**不等于已持久化的 Core Attempt stage**。上传属于 Host/CLI 输入准备，只有随后真正调用 `submit` 才跨越可能计费的受理边界。S2V 已迁入 Core：先持久化 Attempt，再按实际候选账号上传首帧和音频，上传失败可写入该 Attempt，且不调用生成 submit；Core 转写的 `audio_path` 在创建 Task 前上传，失败会直接返回且不创建 Core Task，也不会调用 submit。这是 D-12 当前采用的路径 B；若未来要求把准备失败纳入 Core 事实，须另行评审路径 A，不能由错误字段反推已经落盘。
 
 ## 错误与取消传播
 

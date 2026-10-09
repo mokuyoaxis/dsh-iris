@@ -234,7 +234,8 @@ assert(src.includes('state.health.capabilities') && src.includes('CapabilityHeal
 for (const status of ['unconfigured', 'configured', 'verified', 'failed']) {
   assert(src.includes(status + ": { label:") || src.includes(status + ": { label:"), '健康状态文案缺失 ' + status);
 }
-assert(src.includes("className: 'iris-pm-dot ' + headStatus") && src.includes("className: 'iris-act-card'"),
+assert(src.includes("className: 'iris-pm-dot ' + healthClass(cardHealth)") && src.includes("className: 'iris-act-card'")
+  && src.includes("return health.retryAt ? 'cooling' : health.rateLimited ? 'rate-limited' : health.status;"),
   '功能卡片未使用持久健康状态');
 assert(!src.includes('headError ?') && !src.includes('capabilityReady(irisState'),
   '临时 UI 执行错误不得替代 Provider 健康事实');

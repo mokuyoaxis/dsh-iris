@@ -1,6 +1,6 @@
 # 独立视觉 CLI
 
-状态：当前开发工作树已实现，**尚未发布**；已发布 npm 0.2.0 尚不包含以下命令。从当前源码运行 `node bin/dsh-iris.js ...`，或安装该工作树打包的 tarball 后运行 `dsh-iris ...`。需要 Node.js ≥ 22、已有依赖 Sharp；从视频文件抽帧还需要 PATH 中的 ffmpeg、ffprobe，复用既有 Core 帧不需要。
+状态：**Iris 0.2.1**。安装 `npm install @mokuyoaxis/dsh-iris@0.2.1` 后运行 `npx dsh-iris ...`，或从源码运行 `node bin/dsh-iris.js ...`。需要 Node.js ≥ 22、已有依赖 Sharp；从视频文件抽帧还需要 PATH 中的 ffmpeg、ffprobe，复用既有 Core 帧不需要。
 
 ## 四个命令
 
@@ -27,9 +27,9 @@ dsh-iris vision summarize \
   --output ./summary.json --sheet-output ./contact-sheet.png
 ```
 
-`look` 的 `question` 可省略，默认用中文描述画面。`locate` 要求非空 `target`，返回原图像素 `bbox` 或 `{found:false}`，同时提供原图尺寸。定位结果取决于模型判断。
+`look` 的 `question` 可省略，默认用中文描述画面。`locate` 要求非空 `target`，返回原图像素 `bbox` 或 `{found:false}`，同时提供原图尺寸和 `input` 图片事实。模型被明确要求使用 0–1000 归一化坐标；返回结果已换算、处理 EXIF 方向并向外取整，可直接用于原图裁剪。定位结果取决于模型判断。
 
-`ocr` 默认块高 1200、重叠 120、最大图片维度 2048，可用 `chunk_height`、`overlap`、`max_dimension`、`max_invocations` 调整；沿用 [OCR](OCR_MODEL.md) 的限制，最多 32 块和 64 次生成。返回 `complete` / `partial` / `failed`、成功/失败/未处理块数、每块状态与 `fullText`，保留原段号；失败块正文不会混入识别全文。
+`ocr` 默认块高 1200、重叠 120、最大宽度 2048，可用 `chunk_height`、`overlap`、`max_dimension`、`max_invocations` 调整；沿用 [OCR](OCR_MODEL.md) 的限制，最多 32 块和 64 次生成。各切片再应用实际模型的 `visionInput`。返回 `complete` / `partial` / `failed`、成功/失败/未处理块数、每块状态与 `fullText`，保留原段号；成功块的 `input.source/sent` 记录切片与实际发送图的宽高、字节数和 MIME。文本格式会提示缩小导致的细字风险；失败块正文不会混入识别全文。
 
 `summarize` 默认均匀取 8 帧，`max_frames` 最多 20；`target_width` 默认 640，按源图比例缩放。每次视觉候选调用只发送一张带时间戳的 PNG 拼图，`--sheet-output` 保存的就是该图片。JSON 仅包含拼图尺寸、MIME 和 SHA-256，不包含图片 base64 或本机路径。
 
@@ -55,7 +55,7 @@ dsh-iris vision ocr \
   --format text --output ./recognized.txt
 ```
 
-示例 ID 需替换成实际 ID。读取核验 Core 内容哈希，直接使用 Manifest 的 MIME 和图片原字节，支持最多 20 MiB 的 PNG/JPEG/WebP/GIF，不限制图片的 `kind`。定位仍返回实际图片的原像素坐标；OCR 仍沿用单帧、像素/分块上限与部分完成语义。JSON 结果（含 OCR 部分结果）附 `artifactId`，文本输出保持原格式。
+示例 ID 需替换成实际 ID。读取核验 Core 内容哈希，使用 Manifest 的 MIME 和图片原字节，支持最多 20 MiB 的 PNG/JPEG/WebP/GIF，不限制图片的 `kind`。看图、OCR 每块和定位按实际账号/模型准备发送副本，默认 8 MiB；超预算 PNG/JPEG/WebP 等比缩小并保留格式，原图及下载字节不变。可配置大小与最长边，见 [视觉输入预算](CLI_MANAGEMENT.md#看图输入预算)。定位返回原像素坐标；OCR 保留单帧、像素/分块上限与部分完成语义。JSON 结果（含 OCR 部分结果）附 `artifactId`。
 
 这三个命令只以 reader 打开显式数据根，不需要原图片文件、不导出临时图片、不创建 Task/Artifact，也不取得 writer 租约。缺失、损坏、非图片或超限 Artifact 在调用模型前拒绝；缺失的数据根不会被创建。文件输入用法不变。
 

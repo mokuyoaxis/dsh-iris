@@ -15,6 +15,7 @@ const { serveApi } = await import('../lib/api.js');
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const dataRoot = dshCoreDataRoot();
 assert.equal((await workbenchArtifacts({ source: 'core' })).total, 0);
+assert.equal((await workbenchArtifacts({ source: 'core' })).coreError, undefined, '未创建 Core 的新 profile 是空目录，不是故障');
 assert.equal(listCoreArtifacts(dataRoot, { offset: 24 }).offset, 0, '原空 Store 列表语义保持');
 assert(!fs.existsSync(dataRoot), '空目录查询不初始化 Core');
 const runtime = createCoreRuntime({ dataRoot, mode: 'writer' }); runtime.start();

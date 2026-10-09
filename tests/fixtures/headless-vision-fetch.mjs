@@ -1,6 +1,7 @@
 /** 子进程/包外验收 fixture：不导入 Iris 或 DSH，绝不访问真实网络。 */
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
+import sharp from 'sharp';
 import './headless-async-fetch.mjs';
 
 const providerFetch = globalThis.fetch;
@@ -40,7 +41,11 @@ globalThis.fetch = async (input, options = {}) => {
       const current = read(); current.visionAborted = true; write(current); reject(options.signal.reason);
     }, { once: true }));
   }
-  const text = state.responses?.[index] ?? (prompt.includes('只返回一个 JSON 对象') ? '{"x1":1,"y1":2,"x2":20,"y2":25}'
+  const dimensions = await sharp(bytes).metadata();
+  const bbox = prompt.includes('0–1000 归一化坐标')
+    ? JSON.stringify({ x1: 1000 / dimensions.width, y1: 2000 / dimensions.height, x2: 20000 / dimensions.width, y2: 25000 / dimensions.height })
+    : '{"x1":1,"y1":2,"x2":20,"y2":25}';
+  const text = state.responses?.[index] ?? (prompt.includes('只返回一个 JSON 对象') ? bbox
     : prompt.includes('完整读出图片') ? 'IRIS 427' : prompt.includes('关键帧') || prompt.includes('转写文本') ? '视频摘要：' + (prompt.includes('fixture 转写正文') ? '音轨已结合。' : '红色画面。') : '图片是红色的。');
   const finish = mode === 'length' ? 'length' : mode === 'unknown' ? 'provider_unknown' : 'stop';
   return new Response('data: ' + JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: finish }],

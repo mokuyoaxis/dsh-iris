@@ -1,6 +1,6 @@
 # Iris Task/Attempt v2 语义契约
 
-状态：**v0.1.3 已实现；v0.1.4 Host/Provider Adapter、Host Doctor 与作品库 v0 已接入。** Task v2 已覆盖图片、视频、转写与 TTS，包括同步/异步、上传/提交、混合协议候选、工作台稳定用户态、状态流防倒退、重新观察、重新交付、提醒已读/恢复和知情人工重试。作品库 v0 只分离本地作品生命周期；正式 Artifact Manifest 仍属于后续工作。
+状态：**v0.1.3 已实现；v0.1.4 Host/Provider Adapter、Host Doctor 与作品库 v0 已接入。** Task v2 已覆盖图片、视频、转写与 TTS，包括同步/异步、上传/提交、混合协议候选、工作台稳定用户态、状态流防倒退、重新观察、重新交付、提醒已读/恢复和知情人工重试。本文的 Task v2 字段描述 legacy 任务，不等同于 Core DTO。作品库 v0 分离旧本地作品生命周期；0.2.0 已实现 Core Task/Attempt 与 Artifact Manifest，0.2.1 的媒体、聊天改图和维护入口共享 Core 事实，见 [Core Runtime](CORE_RUNTIME_CONTRACT.md)。
 
 ## 1. 为什么需要 v2
 
@@ -144,5 +144,5 @@ Task v2 至少包含以下事实轴；字段值采用可序列化的 snake_case 
 
 - 不在语义冻结阶段重写全部任务存储或 UI。
 - 不新增 Gemini、Fal、Replicate 等供应商分支。
-- v0.1.3 包含零网络、可独立运行的离线 Doctor v0 与最薄 CLI；v0.1.4 已接入 Host/Provider Adapter、Host Doctor 和不含谱系的作品库 v0。完整 Artifact Manifest 仍属于后续版本。
+- v0.1.3 包含零网络、可独立运行的离线 Doctor v0 与最薄 CLI；v0.1.4 已接入 Host/Provider Adapter、Host Doctor 和不含谱系的作品库 v0。0.2.0 已实现 [Core Artifact Manifest](ARTIFACT_MANIFEST.md)，0.2.1 补齐共享 CLI/DSH 消费与编辑关系；两种存储保持独立。
 - 不用更多自动重试换取表面成功率。

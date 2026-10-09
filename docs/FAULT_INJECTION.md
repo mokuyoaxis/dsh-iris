@@ -1,6 +1,6 @@
-# v0.1.3 故障注入矩阵
+# 故障注入矩阵
 
-状态：本矩阵全部使用本地 fixture、Fake Provider、Mock Fetch 或临时目录，不发送真实供应商请求。
+状态：本矩阵使用本地 fixture、Fake Provider、Mock Fetch 或临时目录，不发送真实供应商请求。前表记录 legacy Task v2 的受理与恢复语义；后表补充 Iris 0.2.1 的 Core、图片协议与视觉边界。
 
 | 场景 | 预期事实 | 自动重复提交 | 证据 |
 |---|---|---:|---|
@@ -22,5 +22,15 @@
 | 人工重新观察/重新交付 | 只轮询或下载，不提交 | 0 | `task-manual-recovery-v2.mjs` |
 | 标为已读/恢复提醒 | 只写本地提醒审计元数据，不改变任务事实 | 0 | `task-manual-recovery-v2.mjs` |
 | 用户知情人工重试 | 独立确认、建立新 Task 关系并归档原提醒 | 明确授权后 1 | `task-manual-recovery-v2.mjs` |
+
+## 0.2.1 新增边界
+
+| 场景 | 预期事实 | 自动重复提交 | 证据 |
+|---|---|---:|---|
+| 短时 429 / 明确额度耗尽 | 前者冷却后恢复候选资格；后者停用至手动实测成功 | 遵守受理证据 | `model-rate-limit.mjs`、`model-rate-limit-async.mjs` |
+| 聊天/Responses 返回 200 但缺图片或缺完整终态 | 记录受理未知，停止候选；不把文字当作图片成功 | 0 | `chat-image-generation.mjs`、`responses-image-generation.mjs` |
+| 大图超发送预算、EXIF 旋转、OCR 分块与定位 | 只转换发送副本，保留来源字节；定位映射回原像素 | 仅有限视觉调用 | `vision-image-input.mjs`、`ocr-locate-image-input.mjs` |
+| Artifact 来源缺失/损坏或编辑失败 | 生成前核验；来源保持原样，已受理未知不重提 | 0 | `chat-image-edit.mjs`、`chat-image-edit-cli.mjs` |
+| Core 删除引用保护、隔离与恢复冲突 | 拒绝删除仍被引用的作品；可恢复隔离，冲突不覆盖 | 0 | `core-deletion-boundary.mjs`、`workbench-management.mjs` |
 
 矩阵的硬性规则是：只要已有 `accepted` 或 `unknown` 事实，任何自动路径的生成提交次数增量必须为 **0**。人工重试不属于自动恢复；它必须由用户逐次确认，并在数据中保留新旧 Task 的关系。

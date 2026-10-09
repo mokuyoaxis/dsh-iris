@@ -1,12 +1,12 @@
-# Core Runtime v0 候选契约
+# Core Runtime v0 内部契约
 
-本文定义 0.2.0 的 Core Runtime 内部接口。内部接口在后续版本仍可能调整，npm 包不把它作为公开 API 导出；现有 `config.js`、`tasks.js` 和 `artifacts.js` 也尚未迁移。
+本文定义 Iris 0.2.1 沿用的 Core Runtime 内部接口，初版在 0.2.0 实现。内部接口在后续版本仍可能调整，npm 包不把它作为公开 API 导出；现有 `config.js`、`tasks.js` 和 `artifacts.js` 也尚未迁移。
 
 ## 目标与范围
 
 Core Runtime 由调用方显式创建、启动和释放。数据根、操作权限、取消和清理都属于实例；存储缓存与观察器接入后也必须遵守同一归属。Core 不推断 DSH profile，不读取 `ctx`，不启动浏览器或监听端口，也不在启动、Doctor 或能力枚举时触发供应商请求。
 
-0.2.0 包含 Runtime、Task/Attempt、Artifact Manifest、本地与媒体 Command，以及 DSH 对已迁移媒体任务的同源消费。s2v、视觉理解等未迁移能力仍走 legacy Host；完整迁移与公开 Core API 冻结留待后续版本。
+0.2.0 包含 Runtime、Task/Attempt、Artifact Manifest、本地与媒体 Command，以及 DSH 对已迁移媒体任务的同源消费。0.2.1 已迁移 S2V 与 HTML，单图视觉、OCR、定位、摘要及提示词预览通过共享 Model Ports 执行；纯视觉不自动创建 Task/Artifact。legacy 存储和兼容入口保留，公开 Core API 仍未冻结。
 
 ## 数据根和进程归属
 
@@ -47,7 +47,7 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 ## 错误与结果边界
 
-候选稳定错误码：
+当前稳定错误码：
 
 - `IRIS_CORE_OPTIONS_INVALID`：选项或显式数据根无效；
 - `IRIS_CORE_STATE_INVALID`：生命周期顺序无效；
@@ -66,18 +66,19 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 ## 当前接口与后续范围
 
-当前候选实现包括：
+当前实现包括：
 
 - `normalizeCoreOptions()`：规范化显式数据根和 reader/writer 模式；
 - `createCoreRuntime()`：管理写者租约、状态、`AbortSignal`、在途操作和 cleanup；
 - `createCommandService()`：提供 `crop`、只读 `task.list/task.inspect`、显式单步 `task.observe`/`task.reobserve`（同一份实现，`reobserve` 是人工触发观察的对外命令名）、人工重新交付 `task.redeliver`（只开放 outcome=succeeded / deliveryState=failed，一次带 redelivery 标志的 re-poll + 下载，绝不 submit、绝不重新生成）、人工取消 `task.cancel`（只开放已受理未终态任务，只有 Provider 明确确认才写 canceled，不支持/无法确认保持真实状态）、人工重试为新任务 `task.retry`（只开放终态未成功交付任务；必须显式 confirm_billing 确认重复计费；新 Task 记录单向 retriedFrom 关系，候选链按宿主实况重新解析；Core 不持久化 Prompt，prompt 必须由调用方重新提供），以及 Artifact inspect/list/export/rebuild；Task reader 返回既有安全事实，不读取 Provider 配置，也不创建、修复或迁移记录；`observe/reobserve/redeliver/cancel` 只接受宿主注入的 Adapter resolver，`retry` 只接受宿主注入的候选链 resolver，Core 不读取配置路径；Task capability 现已覆盖 image、video、tts 与 transcribe——交付按 `provider-task-runner.js` 的 DELIVERY_PROFILES 冻结（video：`video/mp4` + `generated-video`；tts：`audio/mpeg`/`audio/wav` + `generated-audio`，同步 completed 同次调用内交付；transcribe：`text/plain` + `transcript`，正文物化为 UTF-8 Artifact），不共用不准确的图片交付语义；
+- 0.2.1 补齐 `media.diff/frames/html`、S2V 按候选上传、查询/批量管理与 Core 隔离/恢复；视觉和维护入口见 [CLI 管理](CLI_MANAGEMENT.md) 与 [视觉 CLI](VISION_CLI.md)。
 - Artifact Manifest v0：保存受控对象、SHA-256、关系边和可重建 Index，可跨 CLI 进程检查、导出和显式重建；Doctor 只报告孤立/未解析条目，不自动删除或修复。
 
-[Headless CLI](HEADLESS_CLI.md) 记录了当前开发接口，包括只读配置查询、Core Doctor 与陈旧租约显式恢复。FakeProvider 与各媒体 Profile 的离线生命周期测试已经存在；真实 Provider、Android 目视、跨平台 CI 和发布门禁仍须分别举证。未迁移能力保持 legacy 路径，不冒充 Core 事实。
+[Headless CLI](HEADLESS_CLI.md) 记录了当前接口，包括只读配置查询、Core Doctor 与陈旧租约显式恢复。FakeProvider 与各媒体 Profile 的离线生命周期测试已经存在；真实 Provider、Android 目视、跨平台 CI 和发布门禁仍须分别举证。legacy 数据与未迁移存储保持独立，不冒充 Core 事实。
 
 ## 非目标
 
 - 当前接口尚未作为 package export 或第三方 SDK 发布。0.2.0 的 F 阶段已正式决定：**不新增 `./core` 公开 export**——Root 插件与 `bin/dsh-iris` CLI 承载全部对外能力，内部模块（core-runtime、core-tasks、command-service、provider-task-runner、core-artifact*、core-user-projection）保持私有，可在 minor 版本间调整；冻结为公开 export 的决策顺延到 M2（0.3.0）的 Recipe/Serve 边界定稿后再审。届时一旦公开即写兼容策略与 semver 边界；
 - 不提供 standalone 服务、账号、多租户或额外监听端口；
-- 不包含新 Provider、收藏、标签、搜索或 Flow/Recipe；
+- 不预建缺少实际需求的 Provider 协议；收藏、标签、搜索与 Flow/Recipe 留待后续；
 - 不把 0.1.4 的模块级存储包装成实例存储，也不允许 CLI 与 DSH 无租约并发写同一数据根。

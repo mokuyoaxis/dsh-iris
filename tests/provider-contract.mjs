@@ -1,6 +1,7 @@
 /** 最小 Provider 提交契约：写前记录、受理边界、脱敏与零网络候选调度。 */
 import {
   ProviderContractError,
+  normalizeProviderArtifacts,
   normalizeSubmissionResult,
   providerErrorRecord,
   submitWithAcceptanceBoundary
@@ -21,6 +22,22 @@ assert(accepted.acceptance === 'accepted' && accepted.remoteTaskId === 'remote-1
 let invalidAccepted = false;
 try { normalizeSubmissionResult({ kind: 'accepted' }); } catch (_) { invalidAccepted = true; }
 assert(invalidAccepted, 'accepted 缺少 remoteTaskId 必须拒绝');
+
+// 真实 4K PNG 响应会包含十几 MiB 的内联字节，不能因校验正则而栈溢出。
+const largeImage = Buffer.alloc(16 * 1024 * 1024, 0xa7);
+const largeBase64 = largeImage.toString('base64');
+const inline = normalizeProviderArtifacts([{ kind: 'inline-base64', data: largeBase64, mediaType: 'image/png' }])[0];
+assert(inline.byteLength === largeImage.length && inline.data === largeBase64, '大图片内联结果必须完整保留');
+assert(!JSON.stringify(inline).includes(largeBase64), '内联正文仍不得进入 JSON 日志');
+for (const bytes of [1, 2, 3]) {
+  const value = Buffer.alloc(bytes, 0xa7).toString('base64');
+  assert(normalizeProviderArtifacts([{ kind: 'inline-base64', data: value }])[0].byteLength === bytes, '合法 padding 必须保留');
+}
+for (const data of ['', 'A', 'AAA', 'A===', 'AA=A', 'AAAA====', 'AA?=', 'AA\nA']) {
+  let rejected = false;
+  try { normalizeProviderArtifacts([{ kind: 'inline-base64', data }]); } catch (_) { rejected = true; }
+  assert(rejected, '仍拒绝非法 base64：' + JSON.stringify(data));
+}
 
 const leaked = providerErrorRecord(new Error(
   'Authorization: Bearer topsecret https://example.test/result?token=abc123 apiKey=sk-secret123456'

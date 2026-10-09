@@ -1,12 +1,14 @@
 # 定位、视频摘要与图片自述
 
-状态：开发工作树完成视觉 M4，**尚未发布**。长图分块另见 [OCR](OCR_MODEL.md)；已发布 npm 0.2.0 保留原视觉链路。
+状态：**Iris 0.2.1**。长图分块另见 [OCR](OCR_MODEL.md)。
 
 ## 使用与变化
 
-Agent 的 `iris_locate` 和工作台定位使用共享 Vision Ports。目标先修剪，空目标在图片读取前拒绝；模型返回原图像素 bbox，保留 `found:false`、边界钳制和裁剪指令。只有完整正常终态的回答才解析 JSON；格式错误不会触发另一次模型生成。定位仍依赖模型判断，不保证精确像素边界。
+Agent 的 `iris_locate` 和工作台定位使用共享 Vision Ports。目标先修剪，空目标在图片读取前拒绝；业务返回原图像素 bbox，保留 `found:false`、边界钳制和裁剪指令。只有完整正常终态的回答才解析 JSON；格式错误不会触发另一次模型生成。定位仍依赖模型判断，不保证精确像素边界。
 
-开发版定位支持 Core 图片 `artifact_id`：Agent 的 `image_path`、`artifact_id`、`attachment_id` 三选一，动作和 CLI 使用路径或 Core ID 二选一。直接只读核验图片原字节/MIME，坐标按实际图片尺寸计算；不导出临时文件、不新增 Core 产物。Core 输入的工具结果注明 ID 和裁剪区域，避免把 ID 当成本机路径；工作台动作 JSON 保留 `artifactId`。现有文件/会话附件用法保留，CLI 示例见 [视觉 CLI](VISION_CLI.md)。
+定位在提交前按实际账号/模型预算缩小发送副本，并显式应用 EXIF 方向。提示词给出真正发送图的尺寸，明确约定模型返回 0–1000 归一化坐标（左右为 x，上下为 y）；不是根据数字大小猜测坐标域。完成后对四角进行比例与 EXIF 逆变换，左上向下取整、右下向上取整，返回原文件的原始像素 bbox，与 Core 裁剪使用的坐标一致。DSH 用核验后的实际附件尺寸；候选切换不会复用上一模型的输入记录。CLI 和共享结果附安全 `input` 尺寸事实，`coordinateSpace: normalized-1000` 表示模型约定，公开 bbox 始终是原图像素。归一化精度和定位边界仍取决于模型。
+
+定位支持 Core 图片 `artifact_id`：Agent 的 `image_path`、`artifact_id`、`attachment_id` 三选一，动作和 CLI 使用路径或 Core ID 二选一。直接只读核验图片原字节/MIME，坐标按实际图片尺寸计算；不导出临时文件、不新增 Core 产物。Core 输入的工具结果注明 ID 和裁剪区域，避免把 ID 当成本机路径；工作台动作 JSON 保留 `artifactId`。现有文件/会话附件用法保留，CLI 示例见 [视觉 CLI](VISION_CLI.md)。
 
 `iris_media_summarize` 和工作台视频摘要可用 `video_path` 先经 ffmpeg 抽帧，或用 `frame_artifact_ids` 直接读取当前 DSH profile 中既有 Core 抽帧 Artifact，再用 Sharp 按时间顺序拼成一张带时间戳的 PNG。一次候选生成只发送这一张拼图，不逐帧请求模型；成功后提供同一张拼图供用户检查。修复时间戳标签缺少绘制空间，以及十帧以上按文件名字典序排列导致的时间顺序错误。
 
@@ -30,4 +32,4 @@ Agent 的 `iris_locate` 和工作台定位使用共享 Vision Ports。目标先�
 
 验证覆盖原 bbox 解析、时间戳实际像素、十二帧时序、一张拼图一次生成、取消/超时、Core 转写正文接线、真实安装的 DSH rc.2 工具和 HTTP 入口，以及无 DSH/Cordis 的 tarball 安装副本。2026-10-05 另以真实 `dsh` CLI 启动隔离 profile，使用已有 DashScope `qwen3-vl-flash` 完成定位、三色视频摘要、自述和收到正文后的取消，共七次模型请求；这些合成样本不代表复杂视频或目标定位质量。
 
-M4 没有增加 CLI 命令、公开 SDK export、持久配置字段或生产依赖。未被业务入口调用的 legacy 视觉兼容实现仍保留。后续 M5 的 [独立视觉 CLI](VISION_CLI.md) 已复用这些共享业务并提供严格显式模型选择；开发版也已实现 Core 抽帧 Artifact 摘要、HTML/Browser 和 S2V 迁移。
+共享视觉迁移本身不增加公开 SDK export 或生产依赖；未被业务入口调用的 legacy 兼容实现仍保留。0.2.1 的 [独立视觉 CLI](VISION_CLI.md) 复用这些业务，提供严格显式模型选择；同时支持 Core 帧摘要、可选输入预算、HTML/Browser 和 S2V。

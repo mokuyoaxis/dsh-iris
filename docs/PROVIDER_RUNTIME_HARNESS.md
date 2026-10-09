@@ -22,7 +22,7 @@ Task → 写前 Attempt → submit → accepted → poll
 
 ## 当前限制
 
-每次 `observe` 只轮询一次，不拥有后台 timer；同一 Runtime 内同一 Task 的并发操作以 `IRIS_PROVIDER_TASK_BUSY` 拒绝。交付只验收一个 `image/png` 产物；重新交付需有持久化的远端任务 ID。Task v0 尚未迁移 0.1.4 的任务文件，也未形成公开 package export。多产物、内容哈希、关系边、索引重建和孤儿回收由 Artifact Manifest 阶段完成。
+每次 `observe` 只轮询一次，不拥有后台 timer；同一 Runtime 内同一 Task 的并发操作以 `IRIS_PROVIDER_TASK_BUSY` 拒绝。该基础 harness 的交付 fixture 只使用一个 `image/png` 产物，不代表产品格式上限；0.2.1 的图片交付支持 PNG/JPEG/WebP，视频、音频和转写使用各自的 Profile 回归。重新交付需有持久化的远端任务 ID。Task v0 尚未迁移 0.1.4 的任务文件，也未形成公开 package export。[Artifact Manifest v0](ARTIFACT_MANIFEST.md) 已实现内容哈希、关系边、索引重建及多产物；Doctor 报告孤立对象，显式清理走可恢复隔离，永久 purge 留待后续。
 
 运行单项验收：
 

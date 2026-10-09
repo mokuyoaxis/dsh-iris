@@ -7,17 +7,25 @@ import { recoverCoreWriterLease } from '../lib/core-lease-recovery.js';
 import { doctor, formatDoctorReport } from '../lib/doctor.js';
 import { loadProviderCatalog, providerCatalogSnapshot, catalogCapabilitySnapshot, imageCandidatesFromCatalog, providerForTaskFromCatalog, providerTaskBinding, transcribeCandidatesFromCatalog, ttsCandidatesFromCatalog, videoCandidatesFromCatalog } from '../lib/provider-catalog.js';
 import { createConfiguredProviderAdapter } from '../lib/provider-adapters.js';
+import { providerForImageModel } from '../lib/provider-protocol.js';
 import { prepareProviderInput } from '../lib/provider-adapter.js';
 import { createProviderTaskRunner } from '../lib/provider-task-runner.js';
 import { GenerationInputError, normalizeGenerationInput } from '../lib/generation-input.js';
 import { executeVisionCommand, normalizeVisionInput } from '../lib/headless-vision.js';
 import { videoTaskCandidates } from '../lib/video-input.js';
 import { createChromiumBrowser } from '../lib/chromium-browser.js';
-import { executeConfigCommand } from '../lib/provider-config-service.js';
+import { executeConfigCommand, recordCatalogRateLimit } from '../lib/provider-config-service.js';
 import { probeVisionModel } from '../lib/vision-model-routing.js';
 import { RED_TEST_IMAGE } from '../lib/vision.js';
 import { parseModelRef, modelRef as qualifiedModelRef } from '../lib/models.js';
 import { coreTaskWaitFinished } from '../lib/task-wait.js';
+
+function trackedProviderAdapter(provider, options, task) {
+  return createConfiguredProviderAdapter(provider, {
+    modelId: parseModelRef(task?.modelRef)?.modelId,
+    onRateLimit: event => recordCatalogRateLimit(options['provider-config'], event)
+  });
+}
 
 class CliUsageError extends Error {
   constructor(message) {
@@ -39,7 +47,7 @@ function usage() {
     '  dsh-iris providers <add|set> --provider-config <absolute-path> --input <provider-json>',
     '  dsh-iris providers remove <provider-id> --provider-config <absolute-path>',
     '  dsh-iris models list --provider-config <absolute-path>',
-    '  dsh-iris models <add|remove|caps> <providerId::modelId> --provider-config <absolute-path> [--input <json>]',
+    '  dsh-iris models <add|remove|caps|protocol|vision-input> <providerId::modelId> --provider-config <absolute-path> [--input <json>]',
     '  dsh-iris models discover <provider-id> --provider-config <absolute-path> [--apply <true|false>]',
     '  dsh-iris models test <providerId::modelId> --capability <vision|tts|image-gen|video-gen|transcribe> --provider-config <absolute-path> [--data-root <absolute-path>]',
     '  dsh-iris assignments <list|set|clear> --provider-config <absolute-path> [--input <json>]',
@@ -223,13 +231,14 @@ async function main(args) {
 
   if (['config', 'providers', 'models', 'assignments'].includes(args[0])) {
     const [group, verb] = args;
-    const verbs = { config: ['init', 'show', 'check'], providers: ['add', 'set', 'remove'], models: ['list', 'add', 'remove', 'caps', 'discover', 'test'], assignments: ['list', 'set', 'clear'] };
+    const verbs = { config: ['init', 'show', 'check'], providers: ['add', 'set', 'remove'], models: ['list', 'add', 'remove', 'caps', 'protocol', 'vision-input', 'discover', 'test'], assignments: ['list', 'set', 'clear'] };
     if (!verbs[group].includes(verb)) throw new CliUsageError('未知配置命令');
     const positional = (group === 'providers' && verb === 'remove') || (group === 'models' && verb !== 'list');
     const id = positional ? required(args[2], group === 'providers' || verb === 'discover' ? 'provider-id' : 'model-ref') : undefined;
     const options = flags(args.slice(positional ? 3 : 2), ['provider-config', 'input', 'apply', 'capability', 'data-root']);
     if (options.apply !== undefined && !['true', 'false'].includes(options.apply)) throw new CliUsageError('--apply 必须是 true 或 false');
     let input = options.input ? jsonInput(options.input) : {};
+    const probeInput = { ...input };
     if (group === 'providers') input = ['add', 'set'].includes(verb) ? { provider: jsonInput(options.input) } : { provider_id: id };
     if (group === 'models' && positional) {
       if (verb === 'discover') input = { provider_id: id, apply: options.apply === 'true' };
@@ -242,17 +251,36 @@ async function main(args) {
       signal: cliAbortController.signal,
       probe: async ({ provider, modelId, capability, signal }) => {
         if (capability === 'vision') return probeVisionModel(provider, modelId, { bytes: Buffer.from(RED_TEST_IMAGE.split(',')[1], 'base64'), mediaType: 'image/png' }, { signal });
-        if (['video-gen', 'transcribe'].includes(capability)) return { skipped: true, ok: false, reason: '请通过 run video/transcribe 提供实际首帧或音频验证；未发起请求' };
+        if (['video-gen', 'transcribe'].includes(capability) && !options.input) return {
+          skipped: true, ok: false, reason: '请用 models test --input 提供与 run video/transcribe 相同的真实素材；未发起请求'
+        };
         return withRawRuntime('writer', options['data-root'], async runtime => {
-          const mediaCapability = capability === 'image-gen' ? 'image' : 'tts';
-          const adapter = createConfiguredProviderAdapter(provider);
+          const mediaCapability = capability === 'image-gen' ? 'image' : capability === 'video-gen' ? 'video' : capability;
+          if (mediaCapability === 'image') provider = providerForImageModel(provider, modelId);
+          const adapter = createConfiguredProviderAdapter(provider, { allowRateLimited: true, modelId });
+          let providerInput = mediaCapability === 'image'
+            ? { prompt: 'red circle', n: 1, ...(['openai-chat-images', 'openai-responses-images'].includes(adapter.protocol) ? {} : {
+              size: adapter.protocol === 'openai-images' ? '256x256' : '512*512'
+            }) }
+            : { text: '你好', voice: provider.ttsVoice || 'Cherry' };
+          let candidates = [{ adapter, model: qualifiedModelRef(provider.id, modelId), selectionReason: 'explicit', providerBinding: providerTaskBinding(provider) }];
+          if (['video', 'transcribe'].includes(mediaCapability)) {
+            const normalized = generationInput(mediaCapability, { ...probeInput, model_ref: qualifiedModelRef(provider.id, modelId) },
+              { allowVideoPaths: true, allowAudioPath: true });
+            providerInput = normalized.providerInput;
+            if (mediaCapability === 'video') candidates = videoTaskCandidates(candidates, normalized);
+            else if (normalized.audioPath) {
+              const prepared = await prepareProviderInput(adapter, { model: modelId, filePath: normalized.audioPath, signal });
+              providerInput = generationInput('transcribe', { audio_url: prepared.url }).providerInput;
+            }
+          }
           const submitted = await createProviderTaskRunner(runtime).submit({ capability: mediaCapability,
-            candidates: [{ adapter, model: qualifiedModelRef(provider.id, modelId), selectionReason: 'explicit', providerBinding: providerTaskBinding(provider) }],
-            providerInput: mediaCapability === 'image' ? { prompt: 'red circle', size: adapter.protocol === 'openai-images' ? '256x256' : '512*512', n: 1 } : { text: '你好', voice: provider.ttsVoice || 'Cherry' } });
+            candidates, providerInput });
           const waited = await createCommandService(runtime, { resolveTaskAdapter: () => adapter }).execute('task.wait', {
             task_id: submitted.task.id, timeout_ms: 60000, poll_interval_ms: 1000 });
           const task = waited.task;
-          return { ok: task.outcome === 'succeeded' && task.deliveryState === 'ready', taskId: task.id, category: task.lastError?.category };
+          return { ok: task.outcome === 'succeeded' && task.deliveryState === 'ready', taskId: task.id,
+            category: task.lastError?.category, httpStatus: task.lastError?.httpStatus };
         });
       }
     });
@@ -277,6 +305,7 @@ async function main(args) {
     }
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     const execute = runtime => executeVisionCommand({ command, input, catalog, runtime,
+      onRateLimit: event => recordCatalogRateLimit(options['provider-config'], event),
       modelRef: options['model-ref'] || '', signal: cliAbortController.signal,
       ...(options['timeout-ms'] !== undefined ? { timeoutMs: Number(options['timeout-ms']) } : {}) });
     const completed = input.transcribe
@@ -328,18 +357,18 @@ async function main(args) {
 
   if (args[0] === 'run' && args[1] === 'image') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
-    const { providerInput, modelRef } = generationInput('image', jsonInput(options.input));
+    const { providerInput, modelRef, sourceArtifactId } = generationInput('image', jsonInput(options.input));
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     const routes = imageCandidatesFromCatalog(catalog, modelRef);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
-        adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
+        adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
         selectionReason: route.selectionReason,
         providerBinding: providerTaskBinding(route.provider)
       }));
       const result = await createProviderTaskRunner(runtime).submit({
         capability: 'image', candidates,
-        providerInput
+        providerInput, sourceArtifactId
       });
       console.log(JSON.stringify(result, null, 2));
     });
@@ -355,7 +384,7 @@ async function main(args) {
     const routes = videoCandidatesFromCatalog(catalog, modelRef);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = videoTaskCandidates(routes.map((route) => ({
-        adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
+        adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
         selectionReason: route.selectionReason,
         providerBinding: providerTaskBinding(route.provider)
       })), normalized);
@@ -376,7 +405,7 @@ async function main(args) {
     const routes = ttsCandidatesFromCatalog(catalog, modelRef);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
-        adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
+        adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
         selectionReason: route.selectionReason,
         providerBinding: providerTaskBinding(route.provider)
       }));
@@ -399,14 +428,14 @@ async function main(args) {
     let providerInput = normalized.providerInput;
     if (normalized.audioPath) {
       if (!fs.existsSync(normalized.audioPath)) throw new CliUsageError('音频文件不存在');
-      const prepared = await prepareProviderInput(createConfiguredProviderAdapter(routes[0].provider), {
+      const prepared = await prepareProviderInput(trackedProviderAdapter(routes[0].provider, options), {
         model: routes[0].model, filePath: normalized.audioPath
       });
       providerInput = generationInput('transcribe', { audio_url: prepared.url }).providerInput;
     }
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
-        adapter: createConfiguredProviderAdapter(route.provider), model: route.modelRef,
+        adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
         selectionReason: route.selectionReason,
         providerBinding: providerTaskBinding(route.provider)
       }));
@@ -426,7 +455,7 @@ async function main(args) {
     const inspected = await withRuntime('reader', options['data-root'], commands => commands.execute('task.inspect', { task_id: args[2] }));
     const catalog = coreTaskWaitFinished(inspected.task) ? null : loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     const result = await withRuntime(catalog ? 'writer' : 'reader', options['data-root'], commands => commands.execute('task.wait', input), {
-      ...(catalog ? { resolveTaskAdapter: task => createConfiguredProviderAdapter(providerForTaskFromCatalog(catalog, task)) } : {}) });
+      ...(catalog ? { resolveTaskAdapter: task => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task) } : {}) });
     console.log(JSON.stringify(result, null, 2));
     return result.timedOut ? 3 : result.ready ? 0 : 1;
   }
@@ -436,7 +465,7 @@ async function main(args) {
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     await withRuntime('reader', options['data-root'], (commands) => commands.execute('task.inspect', { task_id: args[2] }));
     const result = await withRuntime('writer', options['data-root'], (commands) => commands.execute('task.observe', { task_id: args[2] }), {
-      resolveTaskAdapter: (task) => createConfiguredProviderAdapter(providerForTaskFromCatalog(catalog, task))
+      resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task)
     });
     console.log(JSON.stringify(result, null, 2));
     return 0;
@@ -447,7 +476,7 @@ async function main(args) {
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     await withRuntime('reader', options['data-root'], (commands) => commands.execute('task.inspect', { task_id: args[2] }));
     const result = await withRuntime('writer', options['data-root'], (commands) => commands.execute('task.redeliver', { task_id: args[2] }), {
-      resolveTaskAdapter: (task) => createConfiguredProviderAdapter(providerForTaskFromCatalog(catalog, task))
+      resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task)
     });
     console.log(JSON.stringify(result, null, 2));
     return 0;
@@ -458,7 +487,7 @@ async function main(args) {
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     await withRuntime('reader', options['data-root'], (commands) => commands.execute('task.inspect', { task_id: args[2] }));
     const result = await withRuntime('writer', options['data-root'], (commands) => commands.execute('task.cancel', { task_id: args[2] }), {
-      resolveTaskAdapter: (task) => createConfiguredProviderAdapter(providerForTaskFromCatalog(catalog, task))
+      resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task)
     });
     console.log(JSON.stringify(result, null, 2));
     return 0;
@@ -487,7 +516,7 @@ async function main(args) {
             ? transcribeCandidatesFromCatalog(catalog, modelRef || undefined)
             : imageCandidatesFromCatalog(catalog, modelRef || undefined)
       ).map((route) => ({
-        adapter: createConfiguredProviderAdapter(route.provider),
+        adapter: trackedProviderAdapter(route.provider, options),
         model: route.modelRef,
         selectionReason: route.selectionReason,
         providerBinding: providerTaskBinding(route.provider)

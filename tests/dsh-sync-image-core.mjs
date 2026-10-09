@@ -81,7 +81,8 @@ try {
   assert.equal(task.deliveryState, 'ready');
   assert.equal(tasks.all().length, legacyBefore, 'DSH tool must not create a legacy Task');
   assert.equal(fs.existsSync(path.join(config.irisHome(), 'outputs')), false, 'Core generation must not dual-write outputs');
-  assert.equal(config.modelHealth(first.id, 'same-image', 'image-gen').status, 'configured');
+  assert.equal(config.modelHealth(first.id, 'same-image', 'image-gen').status, 'failed');
+  assert(config.modelHealth(first.id, 'same-image', 'image-gen').retryAt, '短时 429 进入冷却');
   assert.equal(config.modelHealth(second.id, 'same-image', 'image-gen').status, 'verified');
 
   const taskPath = path.join(dshCoreDataRoot(), 'task-store/v0/tasks', taskId + '.json');
@@ -102,6 +103,7 @@ try {
   assert.equal(JSON.parse(exported.stdout).artifact.digest.value, media.artifact.digest.value);
 
   mode = 'unknown';
+  config.setModelVerified(first.id, 'same-image', 'image-gen', { ok: true });
   const beforeUnknown = calls.length;
   let unknown;
   try { await runAction({}, 'image', { prompt: 'fixture unknown acceptance' }); } catch (error) { unknown = error; }

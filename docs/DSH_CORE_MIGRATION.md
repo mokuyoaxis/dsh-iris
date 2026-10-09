@@ -1,6 +1,8 @@
 # DSH → Core 渐进迁移
 
-本文描述 Iris 0.2.0 的实现与迁移边界。迁移逐条切换消费者，不原地改写 0.1.4 数据；未迁移能力继续使用原有实现。
+本文描述 **Iris 0.2.1** 的实现边界；0.2.0 建立的 Core 数据格式保持兼容。迁移逐条切换消费者，不原地改写 0.1.4 数据。
+
+0.2.1 已把 S2V、HTML、单图视觉、OCR、定位、摘要和提示词预览接入共享 Core Command 或 Model Ports，并补齐视觉 CLI、配置/查询/维护命令。图片按模型选择四种协议，Artifact ID 聊天编辑另存新作品并保留来源关系；输入预算仅处理发送副本。功能范围见 [发布说明](releases/0.2.1.md)。
 
 ## 已切换的执行链：本地媒体处理与新生成任务
 
@@ -23,7 +25,7 @@ Core runner 不拥有 timer，单次 observe 最多执行一次 poll，绝不 re
 - 启动扫描全部 Task 页，保守恢复 submitting、active、取消响应和交付中断窗口；仅接管仍有远端受理证据、且在自动窗口内的图片。旧无 binding Task 不猜测恢复配置。
 - timer 使用 unref，随插件 Fiber 清理；在途观察收到取消信号，旧回调不能清掉同一 Task 的新观察器。停止本地观察不宣称已取消远端任务。
 
-Headless CLI 使用同一控制面：`task observe` 每次显式调用只 poll 一次；开发版 `task wait` 对原 Task 有界循环，超时中断在途请求、释放租约，绝不重提。Provider 配置路径由 CLI 边界提供。
+Headless CLI 使用同一控制面：`task observe` 每次显式调用只 poll 一次；0.2.1 `task wait` 对原 Task 有界循环，超时中断在途请求、释放租约，绝不重提。Provider 配置路径由 CLI 边界提供。
 
 DSH 工作台现也开放同一份显式单步观察（D1 reobserve）：`POST /iris/api/core/task/:id/reobserve` 经 Command Service 命令 `task.reobserve`（与 `task.observe` 同实现），adapter/binding 恢复与 Host 观察节拍共用同一 resolver。用户任务区的 Core 投影行在服务端的行 DTO 标记 `observable`（已受理、有远端 ID、结果未定论、非终态）时显示「重新观察」按钮，点击后单次调用、禁用期间防重复，完成后复用刷新节拍重拉快照；高级诊断卡对符合同一受理事实门的任务提供同一动作。每次调用至多一次 poll，绝不 submit；终态、未受理、无远端 ID 或 binding 漂移的任务在网络与写入前被拒绝并返回稳定错误码。
 
@@ -35,7 +37,7 @@ DSH 工作台现也开放同一份显式单步观察（D1 reobserve）：`POST /
 
 ## 作品与只读诊断
 
-工作台只有一个作品库：开发版统一展示 Core 与旧 outputs 的图片、视频、音频和文本，每页 24 个，支持媒体、来源及产物类型过滤；原始输入 Artifact 不进入作品视图。目录查询只读取已提交元数据和文件大小，图片卡直接按 Artifact ID 看图/OCR，详见 [工作台作品浏览与识别](WORKBENCH_ARTIFACTS.md)。Core 媒体路由 `/iris/api/core/artifact/<artifact_id>/media` 没有独立 token：它按随机 96-bit Artifact ID 读取，每次验证 SHA-256，并由默认回环/显式 trusted Host 与浏览器 `Origin`/`Sec-Fetch-Site` 守卫拒绝明确跨站请求。Artifact ID 持有者在可达受信 Host 时即可读取；Host allowlist 不等于身份认证。Host URL 不写回 Core。
+工作台只有一个作品库：统一展示 Core 与旧 outputs 的图片、视频、音频和文本，每页 24 个，支持媒体、来源及产物类型过滤；原始输入 Artifact 不进入作品视图。目录查询只读取已提交元数据和文件大小，图片卡直接按 Artifact ID 看图/OCR/聊天改图，详见 [工作台作品浏览与识别](WORKBENCH_ARTIFACTS.md)。Core 媒体路由 `/iris/api/core/artifact/<artifact_id>/media` 没有独立 token：它按随机 96-bit Artifact ID 读取，每次验证 SHA-256，并由默认回环/显式 trusted Host 与浏览器 `Origin`/`Sec-Fetch-Site` 守卫拒绝明确跨站请求。Artifact ID 持有者在可达受信 Host 时即可读取；Host allowlist 不等于身份认证。Host URL 不写回 Core。
 
 默认收起的“高级诊断 → Core 任务事实”展示同一批作品背后的 Task/Attempt，可展开、复制 ID 和打开图片，不是第二个作品库。`iris_task_status` 可查询同一 Core ID；CLI 指定同一 profile 数据根时可以 inspect/export，反向也成立。重复读取和附件投影不触发生成或修改 Core 事实。
 
@@ -53,7 +55,7 @@ Core 任务的提醒处置属于 **Host 偏好**（计划铁律：提醒已读/�
 
 ## 视频迁移（E 阶段第一项）
 
-t2v/i2v 视频已迁到 Core，与图片共用 Task/Attempt 事实轴但**不共用图片状态机**：交付走冻结的视频 Profile（`lib/provider-task-runner.js` 的 `DELIVERY_PROFILES.video`：媒体白名单 `video/mp4`、Artifact kind `generated-video`、metadata 带 `capability`），观察用视频长轮询档（默认 6s/拍），受理、取消（当前真实协议不支持远端取消，not_supported 如实回落）、redeliver/retry 与 CLI/API/UI 控制面全部对视频生效。Agent 工具与工作台视频动作经 `submitCoreVideo` 落到 Core，**零 legacy 双写**（不再写 `tasks.json`/`outputs/`；旧视频任务继续 legacy 只读兼容）。同源媒体路由按 ID 播放 mp4；视频作品在任务区行内给出链接，开发版也进入统一作品库并可按视频筛选。开发版 S2V 已迁入同一 Core：Attempt 写前落盘后，按实际候选上传首帧与音频。真实阿里云 wan2.2-s2v 的 480P/2 秒视频生成与导出哈希验收通过。
+t2v/i2v 视频已迁到 Core，与图片共用 Task/Attempt 事实轴但**不共用图片状态机**：交付走冻结的视频 Profile（`lib/provider-task-runner.js` 的 `DELIVERY_PROFILES.video`：媒体白名单 `video/mp4`、Artifact kind `generated-video`、metadata 带 `capability`），观察用视频长轮询档（默认 6s/拍），受理、取消（当前真实协议不支持远端取消，not_supported 如实回落）、redeliver/retry 与 CLI/API/UI 控制面全部对视频生效。Agent 工具与工作台视频动作经 `submitCoreVideo` 落到 Core，**零 legacy 双写**（不再写 `tasks.json`/`outputs/`；旧视频任务继续 legacy 只读兼容）。同源媒体路由按 ID 播放 mp4；视频作品在任务区行内给出链接，0.2.1 也进入统一作品库并可按视频筛选。S2V 已迁入同一 Core：Attempt 写前落盘后，按实际候选上传首帧与音频。真实阿里云 wan2.2-s2v 的 480P/2 秒视频生成与导出哈希验收通过。
 
 ## 语音合成迁移（E 阶段第二项）
 
@@ -69,21 +71,23 @@ Core Command Service 已纳入两项确定性、零 Provider 的本地能力：`
 
 DSH 的 `iris_pixel_diff`、`iris_video_frames` 与工作台对应动作也消费上述 Command：Host 只解析图片附件/本地来源，并将已落盘的 Artifact 字节投影为附件或首帧预览。diff 的附件输入先形成 `host-input` Artifact，热力图保存 `derived-from` 关系；本地视频路径不伪造来源关系。结果提供 `artifactIds`，CLI 可从同一 Core 根检查和导出相同字节，DSH 不再为这两项另写 legacy Task 或 `outputs/`。
 
-图片、t2v/i2v 视频、TTS 与转写的正常提交和知情重试共用 `generation-input.js`：统一文本修剪、数量/时长/长度校验，并把 `img_data_url`、`audio_url` 转为 Adapter 的 `imgDataUrl`、`audioUrl`。非法输入在 Provider 提交和新 Task 创建前拒绝；CLI 仍返回 usage 退出码，Command 仍返回 `IRIS_COMMAND_INPUT_INVALID`。工作台清空可选文本框仍由 Host 解释为使用默认值。音频路径与签名地址不落 Core，上传和附件解析仍属于入口；S2V 的 legacy 参数链保持原边界。
+图片、t2v/i2v 视频、TTS 与转写的正常提交和知情重试共用 `generation-input.js`：统一文本修剪、数量/时长/长度校验，并把 `img_data_url`、`audio_url` 转为 Adapter 的 `imgDataUrl`、`audioUrl`。非法输入在 Provider 提交和新 Task 创建前拒绝；CLI 仍返回 usage 退出码，Command 仍返回 `IRIS_COMMAND_INPUT_INVALID`。工作台清空可选文本框仍由 Host 解释为使用默认值。音频路径与签名地址不落 Core，上传和附件解析仍属于入口；S2V 通过同一输入规范化和按候选上传链提交。
 
-依赖视觉模型或 Host Browser 的 `locate`、长图 OCR、媒体摘要和 HTML 渲染不进入这条本地命令链。开发版视觉业务通过独立的共享 Model Port 迁移；纯视觉业务不取得 Core writer，摘要的可选转写沿用既有 Core Task，不把网络模型或浏览器对象塞进本地命令链。
+定位、长图 OCR 和媒体摘要通过共享 Model Ports 执行；纯视觉不取得 Core writer，可选转写沿用 Core Task。HTML 通过独立 `media.html` Command 注入 Browser Port 并保存 Artifact，不归入无浏览器的 crop/diff/frames 原语。
 
-## Text/Vision 迁移（已发布 M1，开发版 M2/M3/M4）
+## Text/Vision 迁移
 
 [Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 固定目标请求、完整结果、错误、取消/预算与 DSH 图片桥接边界。迁移顺序为纯契约/Fake Port → 提示词优化 → look/relook → OCR/定位/拼图摘要，逐个消费者举证。新链逐项修正取消后 fallback、缺终态的部分文字成功和 OCR 吞取消继续分块；旧链测试通过不能算作新契约已通过。
 
-M1 已包含纯契约、调用控制与 Fake Port。当前开发工作树（尚未发布）完成提示词 M2：DSH TextModel Port、共享优化核心、显式规则/确定性输出拼接和泡泡预览。Fake 与 DSH 事件 fixture 复用 conformance，已安装 rc.2 Runtime/WebServer 使用离线源适配器单独验收。v1 配置及公共 export 保持不变，无 Task/Artifact 写入；来源分离不代表模型语义注入防护完全解决。见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
+M1 已包含纯契约、调用控制与 Fake Port。0.2.1 完成提示词 M2：DSH TextModel Port、共享优化核心、显式规则/确定性输出拼接和泡泡预览。Fake 与 DSH 事件 fixture 复用 conformance，已安装 rc.2 Runtime/WebServer 使用离线源适配器单独验收。v1 配置及公共 export 保持不变，无 Task/Artifact 写入；来源分离不代表模型语义注入防护完全解决。见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
 
-当前开发版 M3 已实现 HTTP/DSH Vision Port 并接入 Agent/工作台 look/relook 与显式视觉实测。完整终态、候选链总预算、取消停止切换和图片字节桥接分别验收，不写 Core Task/Artifact；DSH 保存后归一化导致字节变化会在生成前拒绝。见 [单图视觉调用](VISION_MODEL.md)。M4 的 [OCR](OCR_MODEL.md) 与 [定位、拼图摘要及自述](COMPOSITE_VISION.md) 已全部接入同一端口：OCR 普通块失败形成明确部分结果，定位保留原像素 bbox，摘要每次候选发送同一张拼图，并从 Core 转写 Artifact 取正文。legacy 视觉兼容实现仍保留，业务入口不再调用。M5 独立视觉 CLI、显式模型选择、HTML/Browser、S2V 及摘要复用既有 Core 抽帧 Artifact 均已实现。
+0.2.1 已实现 HTTP/DSH Vision Port 并接入 Agent/工作台 look/relook 与显式视觉实测。完整终态、候选链总预算、取消停止切换和图片字节桥接分别验收，不写 Core Task/Artifact；允许经核验的 DSH 附件规范化，使用实际 MIME、尺寸和字节数；不匹配或损坏的引用仍在生成前拒绝。见 [单图视觉调用](VISION_MODEL.md)。M4 的 [OCR](OCR_MODEL.md) 与 [定位、拼图摘要及自述](COMPOSITE_VISION.md) 已全部接入同一端口：OCR 普通块失败形成明确部分结果，定位保留原像素 bbox，摘要每次候选发送同一张拼图，并从 Core 转写 Artifact 取正文。legacy 视觉兼容实现仍保留，业务入口不再调用。M5 独立视觉 CLI、显式模型选择、HTML/Browser、S2V 及摘要复用既有 Core 抽帧 Artifact 均已实现。
 
-## 开发版 CLI 补齐（尚未发布）
+## CLI 与图片编辑
 
 S2V 数字人已迁移到共享 Core Task/Attempt/Artifact，DSH 与 CLI 在每个候选的 Attempt 内上传首帧和音频，受理未知停止切换，观察阶段不重新上传或提交。HTML 工具/action 共用 `media.html` Command；独立 CLI 显式提供 Chromium Browser Port，DSH 仍使用宿主浏览器，均保存 `html-screenshot` Artifact。
+
+图片生成支持模型级 DashScope/Images/聊天/Responses 协议。聊天编辑以 `source_artifact_id` 读取 Core 静态图片，各候选按自己的输入预算准备副本，新 Task 保存来源 ID，新 Artifact 记录 `derived-from`；来源参与删除/清理引用保护，原图不变。来源预检失败不创建 Task，未知受理不自动重提。
 
 账号/模型/分配管理、发现预览与合并、单模型实测、Task 有界等待、查询分页/过滤、显式批量查询/导出、JSON 文件/stdin 以及 Core 可恢复删除/清理均已实现，详见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。提示词优化后续由用户另行安排，本次未扩展。
 
@@ -91,27 +95,41 @@ S2V 数字人已迁移到共享 Core Task/Attempt/Artifact，DSH 与 CLI 在每�
 
 - Text 的公开独立入口和显式自持文本模型选择；
 - 旧任务、旧作品 ID 与 Core ID 的显式映射；
-- Core 隔离内容的永久 purge、工作台批量管理与 Core 删除/恢复入口（作品分页与过滤已实现，CLI 查询及可恢复删除已开放）；
+- Core 隔离内容的永久 purge（CLI 和工作台的查询、批量操作及可恢复删除/恢复已开放）；
 - 真实 DSH 对话 attachment、浏览器进度/作品区和异步重启 canary。
 
-旧作品重新索引、删除、清空和孤儿清理仍只操作 legacy `outputs/`；Core 在 DSH 工作台保持只读，Headless CLI 的 `core delete/cleanup` 默认预览，明确确认后移入可恢复隔离，`core restore` 不覆盖原位置冲突。Doctor 会报告 Core 孤立对象、未提交 Manifest 与未解析条目，不删除或修复；永久 purge 留待 0.2.x。不要手动移动或删除 `core-v0` 中的 object、Manifest、record 或租约文件。
+旧作品重新索引、永久删除、清空和孤儿清理仍只操作 legacy `outputs/`；DSH 工作台已开放 Core 删除预览、可恢复隔离及事务恢复，复用 Headless CLI 的 `core delete/transactions/restore`，引用保护不变，关联任务必须明确选择，不自动级联。详见 [工作台作品管理](WORKBENCH_ARTIFACTS.md) 与 [CLI 管理](CLI_MANAGEMENT.md)。`core restore` 不覆盖原位置冲突。Doctor 会报告 Core 孤立对象、未提交 Manifest 与未解析条目，不删除或修复；永久 purge 留待 0.2.x。不要手动移动或删除 `core-v0` 中的 object、Manifest、record 或租约文件。
 
 ## 验证证据与限制
 
-- 开发版看图、定位和 OCR 已支持 Core 图片 `artifact_id`，CLI 与 DSH 工具/动作共用只读读取器；直接核验原字节/MIME和内容哈希，不导出临时图片、不创建 Task/Artifact，文件路径与定位/OCR 会话附件仍可使用。见 [视觉 CLI](VISION_CLI.md)。
+2026-10-09 的实现快照通过 163 个测试文件、263 文件 lint、142 文件打包 dry-run，以及已安装 DSH rc.2 服务 31 项隔离检查。真实网关已验证生成 → Core Artifact → 按 ID 看图，以及来源 Artifact → 聊天编辑 → 新 Artifact；大图和小图分别通过 DSH 工具与工作台入口，原图哈希保持不变。正式版另通过版本一致性、实际 tarball 的源码校验、仓库外安装与跨平台 CI 发布检查；浏览器与重启范围见下文。
 
-- 当前开发版 CLI 与 DSH Agent/动作的摘要已支持 `frame_artifact_ids`，共用 Core 只读帧读取器，核对哈希、保留时间戳和原帧序号，无需原视频或 ffmpeg，不重抽帧或写入 Core。视频文件模式保留原行为；已有帧消费显式转写文本。见 [视觉 CLI](VISION_CLI.md) 和 [复合视觉调用](COMPOSITE_VISION.md)。
+以下保留此前工作台第二轮的验收快照，计数与包一致性仅对应当时源码：
 
-- 2026-09-30 当前开发工作树已完成仓库外真实 tarball 安装验收：空项目安装当前包和 Sharp，不含 DSH/Cordis，也不复用仓库依赖。安装后的 CLI 实际完成 crop/diff/抽帧和四类 Provider fixture 生成，13 份 Artifact 的导出字节及 SHA-256 一致；跨进程 reader/导出零 Core 写入、零额外 Provider 请求。可在源码仓库执行 `node scripts/verify-headless-package.mjs` 复现，缓存完整时支持 `--offline`。本机为 Linux ARM64/PRoot、Node 22；这项证据不替代真实 Provider、DSH 异步重启或其他平台验收。
-- 完整离线回归为 96 个测试文件，lint 覆盖 151 个 JS/MJS 文件。同步、多产物、混合 failover、受理未知、交付失败、跨进程观察、零 legacy 双写、用户侧只读投影（五类真值表、零写入、局部降级、窄屏断言）与 D1 reobserve、D2 redeliver、D3 cancel、D4 retry（Command 门真值表零网络零写入、幂等矩阵、redelivery 标志、取消三分支如实语义与竞态防护、计费确认三层门、retriedFrom 关系与 prompt 零持久化、失败回落显式收敛、API 状态码/脱敏、CLI↔API 同一 Task 事实连续性、客户端投影门）均有 fixture；E 阶段视频、语音、转写迁移各有独立 conformance（视频长轮询多拍/mp4 Profile、语音同步双产物形态/音频 Profile、转写上传通道/文本物化 Profile）与 CLI/DSH 端到端 fixture。
-- 2026-09-19 最新完整门禁为 113 个测试文件、lint 173 个 JS/MJS 文件；新增证据包括 T-09 七阶段时间戳与旧记录兼容，以及 T-12 本地 diff/抽帧 CLI、Artifact 关系和路径脱敏。上一条 96/151 为早期迁移阶段的历史计数。
+2026-10-08 工作台第二轮验收快照：145 个测试文件、240 文件 lint、已安装 DSH 0.2.0-rc.2 的 30 项服务检查全部通过。服务验收使用实际 Runtime/WebServer/附件/注册服务和本地模型 fixture，37 次 fixture 调用、0 外部请求；涵盖作品分页、原 PNG Artifact 看图/OCR、详情/ZIP 下载与同一 Core 隔离/恢复。
+
+同日仓库外无 DSH 安装验收通过 100 条命令、4 类媒体生成和 13 份 Artifact 导出/hash；之后的最终候选包包含 140 个文件，安装到新的空项目，文件与当时源码逐字一致，包内工作台查询/管理/客户端交互及 CLI 入口另验通过。工作台产生的隔离事务可由独立 CLI 恢复，再由 Host 读取相同 digest。以上针对受验源码与 tarball 快照，不表示后续文档更新或新改动已重新打包验证。
+
+用户已有绘图 → 识图 → TTS 的正向试用反馈；PNG/JPEG 排查确认 Core 原 PNG 未改写，DSH 会话附件可能经规范化编码，Core Artifact ID 与会话 attachment ID 用途不同。浏览器/移动端新入口的逐项操作、真实会话的完整操作复验，以及真实异步重启/CLI 接管仍待验。这些待验项不由上述 fixture 或单次试用反馈替代。
+
+以下保留能力范围和早期阶段的历史验证记录；旧测试计数、限流和 tarball 记录均按对应阶段解读。
+
+- 0.2.1 看图、定位和 OCR 已支持 Core 图片 `artifact_id`，CLI 与 DSH 工具/动作共用只读读取器；直接核验原字节/MIME和内容哈希，不导出临时图片、不创建 Task/Artifact，文件路径与定位/OCR 会话附件仍可使用。见 [视觉 CLI](VISION_CLI.md)。
+
+- 0.2.1 CLI 与 DSH Agent/动作的摘要已支持 `frame_artifact_ids`，共用 Core 只读帧读取器，核对哈希、保留时间戳和原帧序号，无需原视频或 ffmpeg，不重抽帧或写入 Core。视频文件模式保留原行为；已有帧消费显式转写文本。见 [视觉 CLI](VISION_CLI.md) 和 [复合视觉调用](COMPOSITE_VISION.md)。
+
+- 2026-09-30 的开发快照已完成仓库外真实 tarball 安装验收：空项目安装当时的包和 Sharp，不含 DSH/Cordis，也不复用仓库依赖。安装后的 CLI 实际完成 crop/diff/抽帧和四类 Provider fixture 生成，13 份 Artifact 的导出字节及 SHA-256 一致；跨进程 reader/导出零 Core 写入、零额外 Provider 请求。可在源码仓库执行 `node scripts/verify-headless-package.mjs` 复现，缓存完整时支持 `--offline`。本机为 Linux ARM64/PRoot、Node 22；这项证据不替代真实 Provider、DSH 异步重启或其他平台验收。
+- 早期迁移阶段的完整离线回归为 96 个测试文件，lint 覆盖 151 个 JS/MJS 文件。同步、多产物、混合 failover、受理未知、交付失败、跨进程观察、零 legacy 双写、用户侧只读投影（五类真值表、零写入、局部降级、窄屏断言）与 D1 reobserve、D2 redeliver、D3 cancel、D4 retry（Command 门真值表零网络零写入、幂等矩阵、redelivery 标志、取消三分支如实语义与竞态防护、计费确认三层门、retriedFrom 关系与 prompt 零持久化、失败回落显式收敛、API 状态码/脱敏、CLI↔API 同一 Task 事实连续性、客户端投影门）均有 fixture；E 阶段视频、语音、转写迁移各有独立 conformance（视频长轮询多拍/mp4 Profile、语音同步双产物形态/音频 Profile、转写上传通道/文本物化 Profile）与 CLI/DSH 端到端 fixture。
+- 2026-09-19 阶段记录的完整门禁为 113 个测试文件、lint 173 个 JS/MJS 文件；新增证据包括 T-09 七阶段时间戳与旧记录兼容，以及 T-12 本地 diff/抽帧 CLI、Artifact 关系和路径脱敏。此处与上一条 96/151 均为历史计数。
 - DSH 异步工具 fixture 实际执行注册后的工具，贯通 submit → poll → download → Core Artifact → attachment；另验证 active 崩溃接管、唯一 Attempt、端点漂移零 poll/零 Task 写入。
 - Headless CLI 与真实 DSH action 已用百炼同步模型完成图片生成，Manifest、同源媒体和 CLI 导出 hash 一致。这些证据不包含真实异步 Provider 或会话附件。
-- 最近一次真实对话验收在进入 Iris 前被 DSH 主模型的 429 限流阻断，未新增 Core Task/Artifact，也未调用媒体 Provider。未改动用户全局模型设置。
-- 早期候选 tarball 已在仓库外、无 DSH 包的临时项目安装并完成 crop/inspect；后续新增代码仍需最终候选重新打包审计。Windows CI 和安卓浏览器目视未以离线测试替代。
+- 此前一次真实对话验收在进入 Iris 前被 DSH 主模型的 429 限流阻断，未新增 Core Task/Artifact，也未调用媒体 Provider。未改动用户全局模型设置；这次阻断记录不代表后来用户试用的状态。
+- 早期候选 tarball 曾在仓库外、无 DSH 包的临时项目安装并完成 crop/inspect；2026-10-08 第二轮另完成上述最终候选包验收。后续新增改动仍按具体候选重新打包审计。Windows CI 和安卓浏览器目视未以离线测试替代。
 
 ## 后续验收
 
+两轮工作台功能实现后，拟把以下实际使用检查列为第三轮：浏览器/移动端作品区、真实对话中的 Core ID 与会话附件链路、隔离 profile 的异步任务重启及 CLI 接管。该安排由后续讨论提出，尚未执行；优先补足已有功能的现场证据，收藏/标签/搜索等新功能另行规划。
+
 Core 任务到工作台进度/提醒的只读安全投影已完成（五类状态、合并任务区、会话内一次性完成提示、损坏/缺媒体局部降级），人工控制面四个动作已全部开放（reobserve/redeliver/cancel/retry，CLI/API/UI 同一 Command Service，retry 三层强制计费确认）。图片、t2v/i2v、TTS、转写以及本地 crop/diff/抽帧已有 Core 执行链；接下来补恢复后真实会话附件、浏览器与异步重启证据，验证停止 DSH 后 CLI 仍可 inspect/observe/export。旧 ID 映射和尚未迁移能力按后续计划单独处理。
 
-发行验证覆盖最终 tarball、无 DSH 安装闭包、Linux/Windows CI 和真实安装的 rc.2 服务隔离检查；这些检查不替代付费 Provider、个人 profile 的停机接管/回退与逐项浏览器验收。上述剩余范围继续跟踪；未验证的宿主版本与 Provider 路径不作为支持声明。
+发布收口需重新验证最终 tarball、无 DSH 安装闭包、候选 Linux/Windows CI 和真实安装的 rc.2 服务隔离检查；这些检查不替代付费 Provider、个人 profile 的停机接管/回退与逐项浏览器验收。上述剩余范围继续跟踪；未验证的宿主版本与 Provider 路径不作为支持声明。

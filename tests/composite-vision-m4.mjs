@@ -67,7 +67,7 @@ const provider = config.upsert({ type: 'openai', baseUrl: 'https://fixture.inval
   models: [{ id: 'vision', capabilities: ['vision'] }], visionModel: 'vision', enabled: true });
 const file = path.join(root, 'source.png'); fs.writeFileSync(file, source);
 const originalFetch = globalThis.fetch;
-let received = [], finish = 'stop', text = '{"x1":10,"y1":20,"x2":50,"y2":80}', cancelSignal;
+let received = [], finish = 'stop', text = '{"x1":62.5,"y1":200,"x2":312.5,"y2":800}', cancelSignal;
 let wait = false;
 const definitions = new Map(), disposers = [];
 let saves = 0;

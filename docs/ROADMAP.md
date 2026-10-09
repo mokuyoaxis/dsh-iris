@@ -1,48 +1,43 @@
 # 路线图
 
-Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿主的媒体生产核心。本文只列当前状态与后续方向；历史版本的具体改动见[变更记录](../CHANGELOG.md)，内部实现顺序不在公开路线图中展开。
+Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿主的媒体生产核心。本文列当前状态与后续方向；版本变化见 [变更记录](../CHANGELOG.md)。
 
 ## 当前状态
 
-当前版本为 `0.2.0`，保留包名 `@mokuyoaxis/dsh-iris`，同时提供 DeepSeek Harness 插件和 Headless CLI。它提供：
+当前版本为 **Iris 0.2.1**。包名保持 `@mokuyoaxis/dsh-iris`，同时提供 DSH 插件与无 DSH 的 Headless CLI。功能范围见 [0.2.1 发布说明](releases/0.2.1.md)。
 
-- 图片、视频和语音生成，音频转写；
-- 看图问答、OCR、目标定位、裁剪、像素比较、视频抽帧和摘要；
-- 多供应商模型池与能力分配；
-- 可恢复的异步任务、受理边界和人工接管；
-- 独立作品库、Iris 工作台、🫧 提示词优化入口；
-- 两项随包 Agent Skill；
-- Host/Provider Adapter、离线 Doctor 和零网络一致性测试。
+0.2.1 的更新重点是 **完成 OpenAI 兼容图片与视觉工作流**：生成图片 → Core Artifact → 按 ID 看图/OCR → 聊天改图 → 新 Artifact，CLI 与 DSH 工作台共用同一链路。本版已实现以下能力：
 
-0.2.0 建立实例化 Core Runtime，打通无 DSH 的 crop、四种媒体生成提交、Task 观察与 Artifact 管理，并提供带内容哈希、关系边、可重建 Index 和孤儿恢复的 Artifact Manifest v0。crop 与图片、视频、语音、转写的新任务全部落到共享 Core Task/Attempt/Artifact：Host 负责有界观察、启动接管和 attachment/UI 投影；统一作品区与五类用户状态投影覆盖四种媒体工作，CLI、DSH API 和 UI 共用同一 Command Service 的人工控制面（重新观察、重新取回、取消、重试为新任务）。迁移过程中积累了真实 Provider canary 记录，详细范围与后续待验项以验收文档为准。s2v 数字人视频、视觉理解与提示词优化仍走原有链路；Core 公开 API 未冻结，详见 [Headless CLI](HEADLESS_CLI.md)、[FakeProvider 生命周期验收器](PROVIDER_RUNTIME_HARNESS.md)、[Artifact Manifest](ARTIFACT_MANIFEST.md)和 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。
+- 图片生成按模型选择 DashScope、OpenAI Images、聊天生图或 Responses 协议，PNG/JPEG/WebP 按真实字节交付；
+- Artifact ID 看图、OCR、定位，以及“来源 Artifact → 聊天改图 → 新 Artifact”的关系与引用保护；
+- 共享视觉预算、长图分块、取消与完整终态检查；账号/模型输入预算只处理发送副本，定位坐标映射回原图；
+- 图片、视频、S2V、语音、转写与本地处理的 Core 任务链，独立视觉 CLI、HTML 截图及完整配置/查询/维护命令；
+- 工作台统一 Core/旧版全媒体分页过滤，跨页选择、ZIP 下载、详情及 Core 可恢复隔离/恢复；
+- 短时 429 琥珀冷却、明确额度或预算耗尽红色停用，以及既有提示词泡泡的按次规则和可编辑预览。
 
-第二个真实 Host Adapter 实现并验收后，计划将现有 GitHub 仓库更名为 Iris，并新建 `@mokuyoaxis/iris` npm 包，复用发布工作流。当前 0.2.0 保留名称；旧包后续单独维护另行决定。CLI、测试 fixture 与媒体 Provider 不算第二个 Host Adapter。
+CLI 与 DSH 共用 Task、Attempt、Artifact 和 Command Service；Host 负责会话、附件、浏览器与 UI。纯视觉和提示词预览消费共享 Model Ports，不自动创建媒体 Task/Artifact。受理未知不会自动重提，同一数据根只允许一个 writer。Core 与 Model Port 内部接口尚未冻结为公共 SDK，详见 [Core 迁移](DSH_CORE_MIGRATION.md)、[CLI](HEADLESS_CLI.md) 和 [Artifact Manifest](ARTIFACT_MANIFEST.md)。
 
-已发布 Iris `0.1.4` 的历史 DSH 范围为 `>=0.1.2-rc.1 <0.1.3-0` 和 `0.1.5-rc.1`，旧宿主应固定安装 `@mokuyoaxis/dsh-iris@0.1.4`。Iris `0.2.0` 只声明支持准确的 DSH `0.2.0-rc.2`，已通过真实安装服务隔离验收；历史旧版验收不继承到当前版本。修正与实机待验项见 [rc.2 适配说明](DSH_RC2_ADAPTATION.md)。其他版本需先通过独立 Host canary 才会加入支持范围，具体安装与市场版本选择见 [README](../README.md#最快开始)。
+Node.js 最低版本保持 22.0.0，DSH 插件只声明支持准确的 `0.2.0-rc.2`。旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 继续固定安装 Iris `0.1.4`；其他宿主版本需独立验收。第二个真实 Host Adapter 完成并验收后再安排仓库与 npm 包更名，CLI、测试 fixture 与媒体 Provider 不算第二个 Host Adapter。
 
-## 下一步
+## 近期优先：真实使用验收
 
-当前开发工作树已完成提示词 M2：DSH 文本适配器、共享优化核心和按次规则/只组装/可编辑预览；**尚未发布**。v1 配置保持不变，CLI `prompt.optimize`、自持文本后端及规则持久化仍待后续切片。见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
+0.2.1 的发布检查覆盖完整测试、lint、实际 tarball、敏感信息、仓库外安装与跨平台 CI。服务层与包安装验收之外，近期优先补齐真实浏览器/移动端及异步重启使用证据。
 
-开发版视觉 M3 已接入单图 look/relook 和显式视觉实测：HTTP/DSH 正常终态检查、整体预算、取消停止切换与同图字节桥接已实现，**尚未发布**。单图范围与限制见 [单图视觉调用](VISION_MODEL.md)。
+工作台两轮功能已实现；第三轮仍需补浏览器/移动端的筛选、分页、跨页选择、识别、改图、下载及回收区使用验收，以及真实异步任务重启后的 CLI 接管。已有真实图片生成、按 ID 看图和聊天改图链路验证，完整会话与重启范围继续以 [验证说明](DSH_CORE_MIGRATION.md#验证证据与限制) 为准。提示词优化系统的后续设计单独安排，不扩入本次发布。
 
-开发版 M4 已完成长图 OCR、定位、拼图摘要及图片生成后自述的共享端口迁移。整体预算覆盖准备和候选，取消/超时终止后续生成；OCR 明确部分结果，摘要一张拼图一次候选调用，可选转写读取 Core 文本 Artifact。尚未发布，详见 [长图 OCR](OCR_MODEL.md) 和 [复合视觉调用](COMPOSITE_VISION.md)。
+DSH 工作台与 Headless CLI 均复用 Core 的引用保护、可恢复隔离和恢复命令；legacy `outputs/` 的永久删除仍由旧工作台处理。两种删除语义与已实现的作品管理见 [工作台作品管理](WORKBENCH_ARTIFACTS.md)。
 
-M5 的独立视觉入口已实现 `vision look / locate / ocr / summarize`，支持严格显式选型、JSON/文本和文件输出；默认画面摘要，文件输入无需数据根，图片/帧 Artifact ID 输入使用显式 Core reader，主动转写使用 Core writer。尚未发布，详见 [视觉 CLI](VISION_CLI.md)。提示词优化后续由用户另行安排，本次未扩展其入口或配置。
-
-开发版已按顺序补齐 S2V Core 迁移与 CLI、HTML 截图、模型/配置管理、异步任务等待、查询与批量操作、Core 可恢复删除和清理。仍沿用原包入口与配置结构，没有新增生产依赖、发布或扩展提示词系统。详见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。
-
-开发版摘要现可直接复用既有 Core 抽帧 Artifact，CLI 和 DSH 共用只读帧输入，保留原帧序号/时间戳，无需原视频或 ffmpeg。看图/定位/OCR 也已支持 Core 图片 Artifact ID，无需原文件或临时导出。接下来可补真实 DSH 对话附件、浏览器与异步重启/CLI 接管验收；提示词优化仍由用户另行安排。
+## 后续功能方向
 
 ### 后续 0.2.x
 
-开发版已补工作台统一作品分页、基础过滤和 Core 图片卡看图/OCR，支持可取消的结果预览、复制和下载文本。详见 [工作台作品管理](WORKBENCH_ARTIFACTS.md)。批量选择、下载和可恢复删除属于下一轮。
-
-- 收藏、标签、工作台搜索与批量管理（CLI 过滤、分页与显式批量导出已完成）；
+- 适配其他协议，包括原生 Gemini、Fal 和后续 Replicate；网关兼容接口与原生协议接入分别验证；
+- Music 音乐生成：接入音乐生成模型，复用 Core 任务、Artifact 和作品管理；具体协议、模型与入口后续确定，不纳入 0.2.1；
+- 收藏、标签与工作台搜索（CLI 及工作台过滤、分页、显式选择/批量下载已完成）；
 - Artifact 关系边冻结 `retried-from` 类型，补全重试谱系（0.2.0 仅有 Task 级 `retriedFrom`）；
-- Core 隔离内容的永久 purge 与工作台删除入口（开发版 CLI 已开放可恢复隔离/恢复，DSH 工作台现有删除、清空与孤儿清理仍只作用于 legacy `outputs/`）；
+- Core 隔离内容的永久 purge（0.2.1 已开放可恢复隔离/恢复，legacy 永久删除保持原行为）；
 - 鸢尾花与泡泡视觉身份；
-- Gemini、Fal 和后续 Replicate Provider；
+- 有可用接口与实际需求后，补 Images 编辑、mask、多参考图或连续编辑；
 - 将提示词优化收口为 Core Prompt Engine 与共享 `prompt.optimize` Command，由 CLI 和 DSH 入口共同消费；DSH 只负责草稿读取、预览和写回；
 - 冻结中立 TextModel Port，把 Ollama、兼容文本端点及其他文本模型后端与媒体 Provider Catalog 分离，避免通用文本模型淹没 Iris 媒体模型界面；
 - 接入 ComfyUI、本地 TTS 等本地媒体 Provider，并补齐 `auth: none`、`billing: none`、同步完成语义和本地/远程 UI 区分；
@@ -56,12 +51,13 @@ M5 的独立视觉入口已实现 `vision look / locate / ocr / summarize`，支
 
 ## 兼容性与限制
 
-- Iris 0.2.0 的 Node.js 最低版本为 22.0.0；DSH 要求更高版本时以 DSH 为准。
-- 图片处理依赖 `sharp`；视频文件抽帧依赖 `ffmpeg`、`ffprobe`，开发版摘要复用既有 Core 帧时无需这两个工具。
+- Iris 0.2.x 的 Node.js 最低版本为 22.0.0；DSH 要求更高版本时以 DSH 为准。
+- 图片处理依赖 `sharp`；视频文件抽帧依赖 `ffmpeg`、`ffprobe`，摘要复用既有 Core 帧时无需这两个工具。独立 HTML 截图需要显式提供 Chromium。
 - DSH 仍处于快速演进期。单个 Host Port 可以降级，但 DSH 若改变插件加载协议，仍需更新 DSH Adapter。
 - 模型发现只列出候选项；真实能力必须由用户显式验证。
 - 原生 Windows/WSL 的完整 DSH 宿主冒烟仍待补充。
-- Headless CLI 开发版的媒体、视觉、S2V、HTML、配置、查询、批量、有界等待与 Core 隔离/恢复见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。需要存储时显式指定绝对数据根，观察不重新提交；DSH 工作台的破坏性动作仍只处理 legacy `outputs/`，永久 purge 留待 0.2.x。
+- Headless CLI 的媒体、视觉、S2V、HTML、配置、查询、批量、有界等待与 Core 隔离/恢复见 [CLI 管理](CLI_MANAGEMENT.md)。需要存储时显式指定绝对数据根，观察和等待不重新提交；Core 永久 purge 尚未开放。
+- Responses 只支持同步单图；聊天改图只支持一张静态来源图片，输出尺寸与编辑精度由模型决定。
 
 ## 质量要求
 

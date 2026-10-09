@@ -22,7 +22,7 @@ const configBefore = fs.readFileSync(config);
 const state = () => JSON.parse(fs.readFileSync(stateFile, 'utf8'));
 const reset = extra => fs.writeFileSync(stateFile, JSON.stringify({ submit: 0, poll: 0, download: 0, tasks: {}, ...extra }), { mode: 0o600 });
 let checks = 0;
-function cli(command, input, flags = [], expected = 0) {
+function cli(command, input, flags = [], expected = 0, healthWrite = false) {
   const args = ['bin/dsh-iris.js', 'vision', command, '--provider-config', config, '--input', JSON.stringify(input), ...flags];
   const run = spawnSync(process.execPath, args, { cwd: repo, encoding: 'utf8', timeout: 15000, shell: false,
     env: { ...process.env, DSH_HOME: dshHome, NODE_OPTIONS: '--import=' + pathToFileURL(path.join(repo, 'tests/fixtures/headless-vision-fetch.mjs')).href,
@@ -30,7 +30,14 @@ function cli(command, input, flags = [], expected = 0) {
   assert(!run.error, run.error?.message); assert.equal(run.status, expected, run.stderr + '\n' + run.stdout);
   assert(!run.stdout.includes('fixture-key') && !run.stderr.includes('fixture-key'));
   assert(!run.stdout.includes(work) && !run.stderr.includes(work));
-  assert(!fs.existsSync(dshHome)); assert.deepEqual(fs.readFileSync(config), configBefore);
+  assert(!fs.existsSync(dshHome));
+  if (healthWrite) {
+    const saved = JSON.parse(fs.readFileSync(config));
+    const cooling = saved.providers[0].health.rateLimits[0];
+    assert.equal(cooling.modelId, 'selected'); assert.equal(cooling.httpStatus, 429); assert(cooling.until);
+    delete saved.providers[0].health;
+    assert.deepEqual(saved, catalog, '429 只记录健康资格，不能改账号、模型或分配');
+  } else assert.deepEqual(fs.readFileSync(config), configBefore);
   assert(!fs.existsSync(path.join(dataRoot, '.iris-runtime-writer-v0')));
   checks++; return run;
 }
@@ -50,8 +57,10 @@ try {
   assert.equal(fallback.modelRef, 'first::backup'); assert.equal(fallback.selectionReason, 'pool');
   assert.deepEqual(state().vision.map(value => value.model), ['selected', 'backup']);
   reset({ modes: { selected: 'rate' } });
-  assert(cli('look', { image_path: image }, ['--model-ref', 'first::selected'], 1).stderr.includes('IRIS_MODEL_RATE_LIMITED'));
+  assert(cli('look', { image_path: image }, ['--model-ref', 'first::selected'], 1, true).stderr.includes('IRIS_MODEL_RATE_LIMITED'));
   assert.equal(state().vision.length, 1);
+  // 后续输入/输出边界场景使用独立健康种子；实测恢复由 model-rate-limit-cli 另验。
+  fs.writeFileSync(config, configBefore);
   reset();
   assert.equal(json('look', { image_path: image }, ['--model-ref', 'second::selected']).modelRef, 'second::selected');
   assert.equal(state().vision[0].provider, 'second.invalid');

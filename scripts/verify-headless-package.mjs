@@ -314,9 +314,9 @@ try {
   assert(!fs.existsSync(stateFile), '本地媒体命令不得请求 Provider');
 
   // 四个独立视觉命令也必须通过 npm 安装的可执行入口，而不是源码导入。
-  const visionFixture = path.join(work, 'headless-vision-fetch.mjs');
+  const visionFixture = path.join(consumer, 'headless-vision-fetch.mjs');
   fs.copyFileSync(path.join(repo, 'tests/fixtures/headless-vision-fetch.mjs'), visionFixture);
-  fs.copyFileSync(path.join(repo, 'tests/fixtures/headless-async-fetch.mjs'), path.join(work, 'headless-async-fetch.mjs'));
+  fs.copyFileSync(path.join(repo, 'tests/fixtures/headless-async-fetch.mjs'), path.join(consumer, 'headless-async-fetch.mjs'));
   const visionStateFile = path.join(work, 'vision-state.json'), visionConfigFile = path.join(work, 'vision-providers.json');
   fs.writeFileSync(visionStateFile, JSON.stringify({ submit: 0, poll: 0, download: 0, tasks: {} }), { mode: 0o600 });
   fs.writeFileSync(visionConfigFile, JSON.stringify({ providers: [{ id: 'vision-fixture', type: 'openai', enabled: true,

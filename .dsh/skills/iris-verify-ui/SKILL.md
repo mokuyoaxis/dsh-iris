@@ -22,6 +22,7 @@ Ask one concise question only when a missing reference, target state, theme, or 
 ## Prepare the inputs
 
 1. Identify each image source:
+   - Existing Core image: pass `artifact_id` to look/locate/OCR. Crop and pixel diff still need a supported path or attachment; export the Artifact explicitly if those steps require it.
    - Host absolute path: pass `image_path`.
    - Current-session or Iris-produced attachment: pass `attachment_id`.
    - Browser-local path, `content://` URI, or ordinary web URL: do not assume the host can read it. Ask for an upload or a host-accessible file.
@@ -45,7 +46,7 @@ When raw HTML needs capture, call `iris_html_screenshot` with the same HTML wrap
 
 ### 2. Inspect semantics
 
-Inspect the current and reference images separately. Call `iris_look_at_image` for a host path and `iris_relook_attachment` for an attachment.
+Inspect the current and reference images separately. Call `iris_look_at_image` for a Core Artifact ID or host path and `iris_relook_attachment` for an attachment.
 
 Each vision call sees only one image. Ask the same structured questions for both images:
 

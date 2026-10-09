@@ -37,7 +37,7 @@ try {
       && JSON.stringify(DELIVERY_PROFILES.video.mediaTypes) === JSON.stringify(['video/mp4'])
       && DELIVERY_PROFILES.video.defaultMediaType === 'video/mp4'
       && DELIVERY_PROFILES.image.kind === 'generated-image'
-      && JSON.stringify(DELIVERY_PROFILES.image.mediaTypes) === JSON.stringify(['image/png']),
+      && JSON.stringify(DELIVERY_PROFILES.image.mediaTypes) === JSON.stringify(['image/png', 'image/jpeg', 'image/webp']),
     '交付 Profile 必须冻结视频/图片的 kind 与媒体白名单', DELIVERY_PROFILES);
 
   const dataRoot = path.join(base, 'data');

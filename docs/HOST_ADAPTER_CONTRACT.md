@@ -1,12 +1,12 @@
 # Host Adapter v0 契约
 
-状态：**v0.1.4 内部契约与渐进迁移已完成，并通过真实 DSH 隔离 canary。** 本文固定真实消费者所需的最小边界；不宣称已经提供独立 Core、公开 Host SDK 或完整 Local Host。
+状态：**v0.1.4 内部契约与渐进迁移已完成，并通过真实 DSH 隔离 canary。** 本文固定真实消费者所需的最小边界；0.2.1 已提供独立 Core/CLI，但未冻结公开 Host SDK，也未实现完整 Local Host。
 
 ## 目标
 
 Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、会话、浏览器和模型能力映射为 Iris 端口。Command 接收 Iris 输入、`AbortSignal` 和所声明的 Host Port，**不得接收原始 `ctx`**。Task、Provider、文件持久化和成本语义不属于宿主。
 
-契约版本固定为 `0`。它在 0.1.x 内仍是内部接口；只有经过 DSH 与 Local Host 两个真实消费者验证后，才考虑成为公开 SDK。
+契约版本固定为 `0`。它仍是内部接口；只有经过 DSH 与 Local Host 两个真实消费者验证后，才考虑成为公开 SDK。
 
 ## 端口清单
 
@@ -29,7 +29,7 @@ Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、�
 | Command/入口 | 必需端口 | 可选端口 | 说明 |
 |---|---|---|---|
 | `image` | 无 | `visionModel` | 生成与 Task 不依赖宿主；成功后的简短视觉描述可以降级 |
-| `video`、`tts`、`transcribe` | 无 | 无 | Provider、Task 与产物落盘属于 Iris Core 候选 |
+| `video`、`tts`、`transcribe` | 无 | 无 | Provider、Task 与产物落盘属于 Iris Core |
 | `look`、`locate`、`ocr` | 无 | `visionModel` | 优先使用 Iris Provider；没有任何视觉后端才失败 |
 | `crop`、`diff`、`video_frames` | 无 | 无 | 确定性本地动作 |
 | `media_summarize` | 无 | `visionModel` | 帧提取是本地动作，理解阶段允许宿主视觉降级 |
@@ -45,9 +45,9 @@ Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、�
 
 ## 不可违反规则
 
-1. Core 候选、Command、Task 和 Provider 模块不得导入 DSH/Cordis 运行时，也不得通过任意字段重新取得原始 `ctx`。
+1. Core、Command、Task 和 Provider 模块不得导入 DSH/Cordis 运行时，也不得通过任意字段重新取得原始 `ctx`。
 2. Host Adapter 只能映射宿主能力；不得复制业务校验、Provider 路由、Task 状态机、failover 或产物持久化。
-3. 宿主会话 ID 只能作为来源上下文，不能成为 Iris Task、Attempt 或未来 Artifact 的主键。
+3. 宿主会话 ID 只能作为来源上下文，不能成为 Iris Task、Attempt 或 Artifact 的主键。
 4. Command 输入和结果只能包含 JSON、字节、稳定引用与受控错误；不得持久化 page、session、service 等 live Host 对象。
 5. 能力探测必须显式、可序列化且零计费。缺能力返回稳定分类和可执行说明，不得用异常吞噬后继续猜测私有 API。
 6. 调用方的 `AbortSignal` 必须传播到 Host 操作；断开、取消和超时不得被 Adapter 转换为自动重试。
@@ -87,16 +87,16 @@ Iris 继续作为普通 DSH/Cordis 插件装载：`cordis.patch.yml` 只把 npm 
 - `lib/dsh-host-adapter.js` 映射九类命名端口；
 - Local Host fixture 覆盖 crop/diff、Task 查询与提醒操作，并验证缺失能力的错误；
 - Host Doctor 对服务端注册账本、客户端版本和 Slot 握手分别给出结果；
-- 已发布 Iris `0.1.4` 在 DSH `0.1.2-rc.1` 与 `0.1.5-rc.1` 上有历史宿主验证记录，不继承为当前候选的支持声明。
-- Iris `0.2.0` 只声明 DSH `0.2.0-rc.2`，已通过真实安装服务隔离验收，保留附件完整引用、绑定明确图片模型路由并适配客户端主视图选择；边界与尚未完成的浏览器实机检查见 [rc.2 适配说明](DSH_RC2_ADAPTATION.md)。
+- 已发布 Iris `0.1.4` 在 DSH `0.1.2-rc.1` 与 `0.1.5-rc.1` 上有历史宿主验证记录，不继承为当前版本的支持声明。
+- Iris `0.2.1` 只声明 DSH `0.2.0-rc.2`，已通过真实安装服务隔离验收，保留附件完整引用、绑定明确图片模型路由并适配客户端主视图选择；边界与尚未完成的浏览器实机检查见 [rc.2 适配说明](DSH_RC2_ADAPTATION.md)。
 
 Local Host 不模拟 Browser、会话或附件。测试需要这些能力时必须显式注入，缺失行为也属于契约。
 
-## Text/Vision 后续共享契约
+## Text/Vision 共享契约
 
-[Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 已实现独立纯契约、调用控制与 test-only Fake Port，不替换本契约已有的 `textModel.stream()` / `visionModel.analyze()` 方法。后续由 DSH 模型适配器把 Host 方法映射为共享 `complete()`：解析原始流和正常终态、传递取消、桥接同一张图片，并隔离 Host 引用与会话上下文。
+[Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 已实现独立纯契约、调用控制与 test-only Fake Port，不替换本契约已有的 `textModel.stream()` / `visionModel.analyze()` 方法。0.2.1 已由 DSH 模型适配器把 Host 能力映射为共享 `complete()`：解析原始流和正常终态、传递取消、桥接同一张图片，并隔离 Host 引用与会话上下文。
 
-普通能力快照仍为零模型调用。显式视觉实测属于可能计费的模型操作，不能用于 `describe()` 或自动 Doctor；缺图片桥接时必须在模型调用前失败。新共享版本不代表 Host Adapter v0 已升级、公开 SDK 已冻结或现有消费者已迁移。
+普通能力快照仍为零模型调用。显式视觉实测属于可能计费的模型操作，不能用于 `describe()` 或自动 Doctor；缺图片桥接时必须在模型调用前失败。共享端口已被视觉、OCR、定位、摘要与提示词预览消费；它不代表 Host Adapter v0 已升级或公开 SDK 已冻结。
 
 ## 范围
 

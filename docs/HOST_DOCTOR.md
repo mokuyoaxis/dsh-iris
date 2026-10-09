@@ -5,7 +5,7 @@ Host Doctor 是 Iris 在运行中的 DSH 实例内提供的兼容性诊断。它
 | 模式 | 入口 | 观察范围 |
 |---|---|---|
 | `offline` | `dsh-iris doctor [--json]` | Node、依赖、私有存储、配置、Task 与产物；不要求 DSH |
-| `host` | 已认证 DSH 中的 `GET /iris/api/doctor` | DSH 版本和 Host Port、插件装载、14 个工具、2 项 Skill、4 组路由、Browser/附件/模型能力、客户端版本与 4 个 UI Slot |
+| `host` | 已认证 DSH 中的 `GET /iris/api/doctor` | DSH 版本和 Host Port、插件装载、当前工具（0.2.1为 15 个）、2 项 Skill、4 组路由、Browser/附件/模型能力、客户端版本与 4 个 UI Slot |
 
 两种模式都默认零网络、零计费。Host Doctor 不调用任何 Host Port，不打开 Browser，不读取附件或会话，不调用文本/视觉模型，也不向 Provider 发送请求。它只读取：
 
@@ -29,14 +29,14 @@ Host Doctor 是 Iris 在运行中的 DSH 实例内提供的兼容性诊断。它
 
 如果刚安装、热更新或强制刷新，先等 Web 页面完成装载，再刷新诊断。未收到客户端握手时，Host Doctor 只报告警告，不会把“服务端已装载”冒充成“UI 已装载”。
 
-Iris `0.2.0` 仅支持 DSH `0.2.0-rc.2`，版本检查与 package 的 DSH engines 一致。旧 DSH `0.1.2` 线或 `0.1.5-rc.1` 返回版本错误，并提示使用历史稳定包 `@mokuyoaxis/dsh-iris@0.1.4`；旧版 Doctor 的支持范围不继承到当前版本。无 DSH 的 CLI/离线诊断不受此宿主限制。
+Iris `0.2.x` 仅支持 DSH `0.2.0-rc.2`，版本检查与 package 的 DSH engines 一致。旧 DSH `0.1.2` 线或 `0.1.5-rc.1` 返回版本错误，并提示使用历史稳定包 `@mokuyoaxis/dsh-iris@0.1.4`；旧版 Doctor 的支持范围不继承到当前版本。无 DSH 的 CLI/离线诊断不受此宿主限制。
 
 ## 运行时证据
 
 服务端只登记成功完成的注册：
 
 - 插件身份与 npm 版本；
-- 14 个 Iris Agent 工具名；
+- Iris Agent 工具名（0.2.1包含 `iris_edit_image`，共 15 个）；
 - `iris-verify-ui`、`iris-compose-media`；
 - `/iris/media`、`/iris/api`、`/iris/api/actions`、`/iris/render` 四组逻辑路由。
 

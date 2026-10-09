@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { FAKE_PNG } from './fixtures/fake-lifecycle-provider.mjs';
 import { useTempDshHome } from './test-env.js';
 useTempDshHome('iris-image-routing');
 const assert = (cond, msg, extra) => {
@@ -36,7 +37,7 @@ global.fetch = async (input, init = {}) => {
     return new Response(JSON.stringify({ output: { task_status: 'SUCCEEDED', choices: [{ message: { content: [{ image: 'https://result.invalid/polled.png', type: 'image' }] } }] } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   if (url === 'https://result.invalid/generated.png') {
-    return new Response(Buffer.from('fake-png'), { status: 200, headers: { 'Content-Type': 'image/png' } });
+    return new Response(FAKE_PNG, { status: 200, headers: { 'Content-Type': 'image/png' } });
   }
   throw new Error('unexpected fetch: ' + url);
 };
@@ -67,7 +68,7 @@ try {
     '新版图片只登记为 Core Task/Artifact', task);
   assert(tasks.all().length === legacyCount && tasks.get(action.taskId) == null, '同步图片不得双写 legacy tasks/outputs');
   const media = await readCoreArtifactMediaForDsh(task.artifactIds[0]);
-  assert(media.bytes.toString() === 'fake-png' && action.imageUrl.endsWith('/' + task.artifactIds[0] + '/media'),
+  assert(media.bytes.equals(FAKE_PNG) && action.imageUrl.endsWith('/' + task.artifactIds[0] + '/media'),
     '动作预览 URL 与 Core Artifact 指向同一字节', { action, artifact: media.artifact });
   const status = await runAction({}, 'status', { task_id: action.taskId });
   assert(status.storage === 'core' && status.text.includes(task.artifactIds[0]) && status.text.includes('Core terminal'),

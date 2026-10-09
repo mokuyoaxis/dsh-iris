@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { FAKE_PNG } from './fixtures/fake-lifecycle-provider.mjs';
 import { useTempDshHome } from './test-env.js';
 
 useTempDshHome('iris-image-task-mixed-v2');
@@ -63,7 +64,7 @@ global.fetch = async (input, init = {}) => {
         status: 200, headers: { 'Content-Type': 'application/json' }
       });
     }
-    return new Response(JSON.stringify({ data: [{ b64_json: Buffer.from('sync-png').toString('base64') }] }), {
+    return new Response(JSON.stringify({ data: [{ b64_json: FAKE_PNG.toString('base64') }] }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
     });
   }
@@ -84,14 +85,14 @@ try {
   assert(finished.outcome === 'succeeded' && finished.deliveryState === 'ready' && finished.status === 'succeeded', '同步生成与交付完整收口', finished);
   assert(action.providerId === syncProvider.id && action.remoteTaskId === null, '动作返回实际同步候选');
   const media = await readCoreArtifactMediaForDsh(finished.artifactIds[0]);
-  assert(media.bytes.toString() === 'sync-png' && !fs.existsSync(path.join(config.irisHome(), 'outputs')), '同步 base64 产物只落盘 Core Artifact');
+  assert(media.bytes.equals(FAKE_PNG) && !fs.existsSync(path.join(config.irisHome(), 'outputs')), '同步 base64 产物只落盘 Core Artifact');
   const health = config.providerHealthSnapshot();
   const imageHealth = health.capabilities['image-gen'];
   const rejectedHealth = imageHealth.candidates.find((item) => item.providerId === asyncProvider.id);
   const completedHealth = imageHealth.candidates.find((item) => item.providerId === syncProvider.id);
-  assert(imageHealth.status === 'verified' && rejectedHealth.status === 'configured'
+  assert(imageHealth.status === 'verified' && rejectedHealth.status === 'failed' && rejectedHealth.retryAt
     && completedHealth.status === 'verified',
-  '真实提交把成功候选标绿，429 候选保持蓝色', imageHealth);
+  '真实提交把成功候选标绿，429 候选进入冷却并显示恢复时间', imageHealth);
 
   mode = 'delivery-fail';
   let thrown;
@@ -109,6 +110,7 @@ try {
   assert(asyncCalls === 1, '显式同步模型交付失败后不回到异步供应商');
 
   mode = 'auth-fail';
+  config.setModelVerified(asyncProvider.id, 'wan2.2-t2i-flash', 'image-gen', { ok: true });
   let authThrown;
   try {
     await runAction({}, 'image', { prompt: 'auth failure', model: asyncRef });

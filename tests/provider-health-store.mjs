@@ -33,11 +33,31 @@ config.recordProviderHealth(p1.id, 'gpt-image-1', 'image-gen', {
   ok: false, source: 'task', category: 'rate_limit', httpStatus: 429, note: 'quota'
 });
 snapshot = config.providerHealthSnapshot();
-assert.equal(snapshot.capabilities['image-gen'].status, 'verified',
-  '429 不覆盖近期成功');
-assert.equal(snapshot.capabilities['image-gen'].candidates[0].observedAt, verifiedAt,
-  '绿色时间必须保留最近成功时间，不能被较新的临时错误冒充');
+assert.equal(snapshot.capabilities['image-gen'].status, 'failed', '首次短时 429 暂时阻断调用');
+assert(snapshot.capabilities['image-gen'].retryAt, '全部候选冷却时汇总带恢复时间，供 UI 显示琥珀色');
+assert.equal(snapshot.capabilities['image-gen'].candidates[0].rateLimited, true);
+assert.equal(snapshot.capabilities['image-gen'].candidates[0].httpStatus, 429);
+assert.equal(config.allProviders()[0].health.observations[0].lastSuccess.at, verifiedAt,
+  '停用保留原成功事实');
 assert.equal(snapshot.capabilities['image-gen'].candidates[0].source, 'task');
+assert.equal(config.pickFor('image-gen'), null, '停用模型不能再被自动选择');
+assert.deepEqual(config.pickAllFor('image-gen'), []);
+config.recordProviderHealth(p1.id, 'gpt-image-1', 'image-gen', { ok: true, source: 'task' });
+assert.equal(config.modelHealth(p1.id, 'gpt-image-1', 'image-gen').rateLimited, true,
+  '并发旧任务成功不能代替手动实测恢复');
+assert.equal(config.modelHealth(p1.id, 'gpt-image-1', 'image-gen', {
+  now: Date.now() + 8 * 24 * 60 * 60 * 1000
+}).rateLimited, undefined, '短时 429 冷却到期恢复候选资格');
+config.recordProviderHealth(p1.id, 'gpt-image-1', 'image-gen', {
+  ok: false, source: 'probe', category: 'quota', httpStatus: 403, note: 'Free quota exhausted.'
+});
+assert.equal(config.modelHealth(p1.id, 'gpt-image-1', 'image-gen', {
+  now: Date.now() + 8 * 24 * 60 * 60 * 1000
+}).rateLimited, true, '手动检测确认额度耗尽后升级为持续停用');
+config.upsert({ id: p1.id, apiKey: 'sk-primary-new-value' });
+assert.equal(config.modelHealth(p1.id, 'gpt-image-1', 'image-gen').rateLimited, true,
+  '改变 Key 不绕过明确耗尽的显式实测要求');
+config.upsert({ id: p1.id, apiKey: 'sk-primary-secret-value' });
 
 config.recordProviderHealth(p1.id, 'gpt-image-1', 'image-gen', {
   ok: false,
@@ -81,7 +101,7 @@ config.upsert({ id: p1.id, apiKey: '' });
 assert.equal(config.providerHealthSnapshot().capabilities['image-gen'].status, 'unconfigured',
   '无 API 候选回到灰色');
 
-// 汇总时间必须来自获胜状态，不能用更新的蓝色临时观察冒充绿色验证时间。
+// 汇总时间必须来自获胜状态，不能用更新的红色停用冒充绿色验证时间。
 const p3 = config.upsert({
   name: 'winner', baseUrl: 'https://winner.invalid/v1', apiKey: 'winner-key', enabled: true,
   mediaProtocol: 'openai-images', models: [{ id: 'winner-image', capabilities: ['image-gen'] }]

@@ -35,6 +35,8 @@ Do not add an analysis, transcription, or review step merely because a tool exis
 
 ## Resolve media inputs
 
+- For edits to an existing Core image, pass its ID as `source_artifact_id` to `iris_edit_image` with the requested change. This creates a new Task and Artifact while keeping the source intact; it requires a configured chat image model.
+- PNG, JPEG and WebP can be used directly; do not convert a generated PNG to JPEG merely to call vision or OCR. Core IDs and host paths remain separate inputs.
 - Use `iris_look_at_image` for a host-visible absolute `image_path` or an existing Core image `artifact_id` (choose one).
 - Use `iris_relook_attachment` for an image attachment already present in the session or produced by Iris.
 - Use `iris_long_ocr` when exact text from an image matters more than a visual description; choose exactly one of `image_path`, Core `artifact_id`, or session `attachment_id`. `iris_locate` accepts the same three sources for original-pixel bounding boxes.
@@ -48,6 +50,7 @@ An attachment returned by `iris_draw_image` can be passed as `first_frame_attach
 Choose the minimum chain, then read only the matching section of [references/workflows.md](references/workflows.md):
 
 - inspect an image, then draw: `iris_look_at_image` or `iris_relook_attachment` → `iris_draw_image`;
+- edit a Core image, then inspect: `iris_edit_image` → `iris_look_at_image` using the new Artifact ID;
 - generate/reuse a still, then animate: optional `iris_draw_image` → `iris_generate_video`;
 - summarize a video, then narrate: `iris_media_summarize` → `iris_speak_text`;
 - create an S2V talking video: resolve a first frame and audio → `iris_generate_video`;

@@ -1,6 +1,6 @@
-# 开发版 CLI 能力补齐
+# CLI 配置与任务管理
 
-以下能力已在工作树实现，尚未发布。沿用 `dsh-iris` 入口，不启动 DSH，不修改包名、版本或生产依赖。视觉命令见 [视觉 CLI](VISION_CLI.md)，基础媒体链路见 [Headless CLI](HEADLESS_CLI.md)。提示词优化后续由用户另行安排。
+本文面向 Iris 0.2.1，沿用 `dsh-iris` 入口，无需启动 DSH，未新增生产依赖。安装 `npm install @mokuyoaxis/dsh-iris@0.2.1` 后运行 `npx dsh-iris ...`；也可从源码或本地 tarball 使用同一入口。视觉命令见 [视觉 CLI](VISION_CLI.md)，基础媒体链路见 [Headless CLI](HEADLESS_CLI.md)。
 
 所有需要 JSON 的命令均支持 `--input '<json>'`、`--input-file /path/input.json` 或 `--input -`（stdin），只能选择一种，输入最多 2 MiB。私有配置必须是普通文件、绝对路径，POSIX 权限为 `0600`。真实请求只由显式执行生成、发现、实测或观察命令触发。
 
@@ -39,14 +39,17 @@ dsh-iris media html --data-root /path/core --input-file /path/html-input.json \
 | `models list` | 模型复合引用、能力和实测事实 |
 | `models add <ref> [--input ...]` | 添加模型；可给 capabilities，省略则按现有名称规则推断 |
 | `models caps <ref> --input ...` | 手动能力标签（允许空数组） |
+| `models protocol <ref> --input ...` | 单模型图片协议；`auto` 恢复账号默认 |
+| `models vision-input <ref> --input ...` | 模型视觉输入预算；`null` 恢复账号继承 |
 | `models remove <ref>` | 移除模型，剪去失效分配 |
 | `models discover <provider-id>` | 请求发现，仅预览，不修改配置 |
 | `models discover <provider-id> --apply true` | 合并发现结果，保留手工能力标签和已有实测记录 |
 | `models test <ref> --capability vision` | 一次红图视觉实测，严格绑定该模型，记录 verified |
 | `models test <ref> --capability image-gen/tts --data-root ...` | 实际生成测试，结果保存为 Core Task/Artifact，图片最多等待 60 秒 |
+| `models test <ref> --capability video-gen/transcribe --data-root ... --input ...` | 使用真实素材单独实测，输入格式同 `run video/transcribe`，最多等待 60 秒；成功才恢复停用模型 |
 | `assignments list/set/clear` | 查询路由候选、保存有序复合引用或清除指定能力分配 |
 
-上述命令均需 `--provider-config /path/providers.json`。`<ref>` 必须是 `providerId::modelId`；媒体 run 的既有输入规则不变。`models test` 本身是显式真实请求，可能消耗额度。视频/转写探针不猜测试素材，返回 `skipped:true` 并指引用 `run video/transcribe` 验证，不记录成功。
+上述命令均需 `--provider-config /path/providers.json`。`<ref>` 必须是 `providerId::modelId`；媒体 run 的既有输入规则不变。`models test` 本身是显式真实请求，可能消耗额度，只调用指定模型，成功后解除该模型的冷却或耗尽停用。视频/转写未提供 `--input` 时返回 `skipped:true`，不请求供应商、不记录成功。`models list` 对受阻模型显示 `rateLimited`，短时限流另有 `retryAt`，明确耗尽另有 `reason`。
 
 ```bash
 dsh-iris providers add --provider-config /path/providers.json --input-file /path/private-provider.json
@@ -56,7 +59,82 @@ dsh-iris assignments set --provider-config /path/providers.json \
   --input '{"capability":"vision","model_refs":["aliyun::qwen3-vl-flash"]}'
 ```
 
-配置只在明确写命令中更新；未知字段保留，每次写入先创建唯一的 `0600` 私有备份，再原子替换。备份包含原始凭据，按私有配置保管。并发修改检测失败则拒绝覆盖；不会自动迁移 DSH 配置或轮换备份。发现不会自动实测。脱敏输出不展示 API key、端点或原始错误正文。
+配置在明确写命令或真实请求首次确认冷却/耗尽时更新；只读查询和冷却到期不写配置、不请求模型。未知字段保留，每次写入先创建唯一的 `0600` 私有备份，再原子替换。备份包含原始凭据，按私有配置保管。并发修改检测失败则拒绝覆盖；不会自动迁移 DSH 配置或轮换备份。发现不会自动实测。脱敏输出不展示 API key、端点或原始错误正文。
+
+### 看图输入预算
+
+账号 `visionInput` 和 `models[].visionInput` 配置视觉发送副本的大小与最长边，用于看图、OCR 每块输入、定位及聊天改图。`maxBytes` 是图片编码字节上限，`maxDimension` 是最长边像素，均为正整数；模型逐字段覆盖账号，未设置时默认 8 MiB、不限制最长边。该默认值是客户端预算，不是上游能力声明。无需修改配置版本或迁移旧数据。
+
+```bash
+dsh-iris providers set --provider-config /path/providers.json \
+  --input '{"id":"gateway","visionInput":{"maxBytes":12582912}}'
+dsh-iris models vision-input 'gateway::vision-model' --provider-config /path/providers.json \
+  --input '{"visionInput":{"maxDimension":2048}}'
+dsh-iris models vision-input 'gateway::vision-model' --provider-config /path/providers.json \
+  --input '{"visionInput":null}'
+```
+
+示例中的 12 MiB 仅演示已知上游限制，其他账号应按实际服务设置。`models list/config show` 返回模型的 `visionInputEffective`；模型发现保留已有覆盖。工作台账号详情、视觉模型行与聊天生图模型行提供 MiB、最长边和恢复继承。保存配置不调用模型、不改验证成功状态、不解除额度停用。
+
+小图透传，超限 PNG/JPEG/WebP 等比缩小，保持真实格式和方向；Core 原图、尺寸和哈希不变，不创建预览 Artifact。读取原图片的本地上限仍为 20 MiB。OCR 先切片，再按实际候选预算处理每块，结果记录实际输入并提示缩小时的细字风险；定位显式转正图片，约定模型使用 0–1000 坐标，返回原图像素 bbox。DSH 使用核验后的实际附件尺寸。摘要拼图仍按原业务处理，动画需要缩放时拒绝。大小拒绝显示实际字节数与已知上限，400 不记为 429 冷却，不自动重发。
+
+### 模型级图片协议
+
+模型对象可选 `imageProtocol` 字段。支持 `dashscope`、`openai-images`、`openai-chat-images` 和 `openai-responses-images`；省略或使用 `auto` 时继承账号的 `mediaProtocol`。这个覆盖仅用于生图，不改变同模型的视觉能力或账号的视频、语音、转写路由。媒体端点仍使用账号的 `mediaBaseUrl`，留空沿用 `baseUrl`；DashScope 仍只允许阿里云官方 HTTPS 地址。
+
+```bash
+dsh-iris models protocol 'account::image-model' --provider-config /path/providers.json \
+  --input '{"imageProtocol":"openai-images"}'
+dsh-iris models protocol 'account::image-model' --provider-config /path/providers.json \
+  --input '{"imageProtocol":"auto"}'
+```
+
+`models add` 的输入也可同时提供 `capabilities` 和 `imageProtocol`。`models list/config show` 展示模型覆盖值及有效 `imageRouting`；DSH 设置中的生图模型行可直接选择图片协议。发现和能力编辑保留协议覆盖，不扫描生图端点、不自动实测。改变有效协议使该模型的生图验证失效，保留其他能力、其他模型与已有额度停用；异步观察/取回仍核对原模型的提交协议，协议改变时在请求前停止。
+
+`openai-chat-images` 是兼容网关的非流式 `POST /chat/completions` 生图扩展，读取消息正文中的图片 Markdown/data URL、`image_url` 内容块或 `message.images`；它不是 OpenAI 官方通用生图响应。普通文字或链接不会作为图片成功，纯文字 200 保留结果未知，停止自动切换接口或模型。只调用显式配置的接口，不扫描后缀。
+
+例如已在目录中的 `gemini-image` 可显式设置生图能力及聊天协议，随后直接生成并按返回的 Artifact ID 看图：
+
+```bash
+dsh-iris models caps 'gateway::gemini-image' --provider-config /path/providers.json \
+  --input '{"capabilities":["image-gen"]}'
+dsh-iris models protocol 'gateway::gemini-image' --provider-config /path/providers.json \
+  --input '{"imageProtocol":"openai-chat-images"}'
+dsh-iris run image --data-root /path/core --provider-config /path/providers.json \
+  --input '{"prompt":"画一只蓝色机器人","model_ref":"gateway::gemini-image"}'
+dsh-iris vision look --data-root /path/core --provider-config /path/providers.json \
+  --model-ref 'gateway::gemini-3.8-flash' --input '{"artifact_id":"artifact_ID"}'
+```
+
+聊天生图不发送 Images 的 `size` 参数；显式传入会在请求前报错，尺寸可在提示词中描述。`n>1` 使用聊天协议的候选数量参数，是否支持及实际图片数量由网关决定；默认单次请求一张。手动实测使用无尺寸参数的同一适配器。
+
+`openai-responses-images` 调用非流式 `POST /responses`，提交 `image_generation` 工具并指定 `action:generate` 和工具选择；`store:false`、`background:false`。模型引用指定 Responses 主模型，图片工具模型使用服务端默认，需选择支持图片工具的主模型。官方完成态 `image_generation_call.result` 为图片 base64；网关完成态消息中的 `output_text` 图片 Markdown/data URL 也可读取，这种消息不能证明执行了官方工具。参考 [官方图片工具说明](https://developers.openai.com/api/docs/guides/tools-image-generation)。
+
+```bash
+dsh-iris models protocol 'gateway::gemini-image' --provider-config /path/providers.json \
+  --input '{"imageProtocol":"openai-responses-images"}'
+dsh-iris run image --data-root /path/core --provider-config /path/providers.json \
+  --input '{"prompt":"画一只蓝色机器人","model_ref":"gateway::gemini-image"}'
+```
+
+此切片只支持同步生图、`n=1`，多图数量在请求前拒绝；可选 `size` 传给图片工具（例如 `1024x1024`，尺寸支持由服务端决定），默认与手动实测不指定尺寸。纯文字、无图、非法 base64 或未完成结果均停止并保留未知，不自动改接口或重提。目前不接后台轮询、多轮编辑、源图上传或 `/images/edits`。
+
+四种生图适配器共用 Core 交付，按实际图片字节识别 PNG/JPEG/WebP；MIME、`.png`/`.jpg`/`.webp` 后缀与 SHA-256 匹配，保留原字节，不因 data URL 标注、HTTP 头或 URL 后缀而转码。图片格式不受支持或取回失败只标记交付失败，保留远端成功事实，不自动重新生成。
+
+## Artifact 聊天改图
+
+为 `run image` 提供 `source_artifact_id`，将当前 Core 中的原图与修改指令一起发送给支持带图编辑的 `openai-chat-images` 模型：
+
+```bash
+dsh-iris run image --data-root /path/core --provider-config /path/providers.json \
+  --input '{"source_artifact_id":"artifact_ID","prompt":"把蓝色发饰改成白色，保留人物、服装和构图","model_ref":"gateway::gemini-image"}'
+```
+
+来源必须是同一数据根中的有效 Artifact ID（`artifact_` 后 24 位十六进制），最多 20 MiB 的静态 PNG/JPEG/WebP；创建 Task 前核验哈希、MIME 和真实格式。不需要导出原图，不支持 GIF/动画或蒙版。省略 `model_ref` 时沿用生图候选顺序，只保留聊天生图协议；显式指定其他协议会在 HTTP 前拒绝，不误发普通文生图。模型是否实际支持编辑由上游决定。
+
+原图只读，发送副本复用默认 8 MiB 与账号/模型 `visionInput`，按每个实际候选分别处理。新 Task 保存 `sourceArtifactId`，新 Artifact 保存 `derived-from` 来源关系；输出原字节及 MIME 保留。返回的新 Artifact ID 可继续 `vision look/ocr`、导出或编辑。
+
+未知受理、纯文字响应和交付失败不会自动重提或切换端点。知情 `task retry --confirm-billing true` 必须在新的 `--input` 中重新提供 `prompt` 和 `source_artifact_id`，模型覆盖使用外层 `--model-ref`。Core 删除预览会识别原图被编辑任务与新作品引用的情况。DSH 对应工具为 `iris_edit_image`，动作是 `image_edit`，工作台图片卡提供“改图”。
 
 ## 等待与查询
 
@@ -100,4 +178,4 @@ dsh-iris core cleanup --data-root /path/core --input-file /path/cleanup-selectio
 
 清理预览只列出默认一小时以上、原进程已退出的已知下载 `.part`，及没有 record/Manifest/Task/关系引用的已知孤立对象；`older_than_ms` 最小一分钟。执行必须提供当前仍符合条件的具体 paths。符号链接、未知文件、未提交 Manifest、legacy `outputs/` 和外部路径不会清理。Doctor 仍只读报告，无自动删除或修复。
 
-**隔离保留字节，暂不提供永久 purge，因此不会立即释放这部分磁盘空间。** DSH 工作台的删除与清空仍只处理 legacy 作品，本次新增入口仅在 Headless CLI。下一步 0.2.x 的收藏/标签、工作台分页及永久 purge 另行安排。
+**隔离保留字节，暂不提供永久 purge，因此不会立即释放这部分磁盘空间。** DSH 工作台也已接上同一删除预览、隔离与事务恢复，见 [工作台作品管理](WORKBENCH_ARTIFACTS.md)；旧版永久删除/清空语义保持原样。收藏/标签、搜索及永久 purge 另行安排。

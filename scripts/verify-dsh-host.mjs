@@ -23,6 +23,10 @@ const work = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-dsh-host-'));
 const reportFile = path.join(work, 'report.json');
 const report = { status: 'running', dsh: { root: dshRoot, version: manifest.version }, work, checks: [] };
 const save = () => fs.writeFileSync(reportFile, JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
+const fingerprints = directory => Object.fromEntries(fs.readdirSync(directory, { withFileTypes: true }).map(entry => {
+  const file = path.join(directory, entry.name);
+  return [entry.name, entry.isDirectory() ? fingerprints(file) : crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')];
+}));
 async function check(name, action) {
   try { await action(); report.checks.push({ name, status: 'pass' }); }
   catch (error) { report.checks.push({ name, status: 'fail', message: error.message }); }
@@ -116,7 +120,7 @@ try {
         yield { type: 'block-end', index: 1, block: { type: 'reasoning', text: 'private fixture thinking' } };
       }
       const answer = request.messages[0].content.some(block => block.type === 'text' && block.text.includes('在图片中定位'))
-        ? '{"x1":1,"y1":1,"x2":5,"y2":4}' : 'fixture answer';
+        ? '{"x1":125,"y1":166.67,"x2":625,"y2":666.66}' : 'fixture answer';
       yield { type: 'text-delta', index: 0, text: answer };
       if (fixtureFailure === 'after') throw new Error('private fixture failure');
       if (fixtureFailure === 'ocr-cancel') await new Promise((_, reject) => {
@@ -316,10 +320,6 @@ try {
       const screenshot = await runtime.run('execute', ({ dataRoot }) => createCoreArtifact(dataRoot, {
         bytes: ocrSource, mediaType: 'image/png', kind: 'html-screenshot', metadata: {}
       }));
-      const fingerprints = directory => Object.fromEntries(fs.readdirSync(directory, { withFileTypes: true }).map(entry => {
-        const file = path.join(directory, entry.name);
-        return [entry.name, entry.isDirectory() ? fingerprints(file) : crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')];
-      }));
       const before = fingerprints(dshCoreDataRoot()), beforeCalls = modelCalls;
       for (const [name, action, input] of [
         ['iris_look_at_image', 'look', { artifact_id: image.id, question: 'fixture' }],
@@ -387,6 +387,41 @@ try {
       assert.equal(modelCalls, before + 2);
     } finally { await runtime.dispose(); }
   });
+  await check('workbench management uses real HTTP preview, ZIP, quarantine and restore without models', async () => {
+    const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+    const { createCoreRuntime } = await import('../lib/core-runtime.js');
+    const { createCoreArtifact, readCoreArtifactBytes } = await import('../lib/core-artifacts.js');
+    const root = dshCoreDataRoot(), runtime = createCoreRuntime({ dataRoot: root, mode: 'writer' }); runtime.start();
+    const callsBefore = modelCalls;
+    let original, derived;
+    const post = (action, body) => fetch(allowedOrigin + '/iris/api/works/' + action, { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    try {
+      original = await runtime.run('execute', ({ dataRoot }) => createCoreArtifact(dataRoot,
+        { bytes: source, mediaType: 'image/png', kind: 'workbench-management', metadata: { width: 8, height: 6 } }));
+      derived = await runtime.run('execute', ({ dataRoot }) => createCoreArtifact(dataRoot,
+        { bytes: source, mediaType: 'image/png', kind: 'workbench-management', relations: [{ type: 'derived-from', artifactId: original.id }] }));
+      const before = fingerprints(root);
+      const detail = await fetch(allowedOrigin + '/iris/api/works/core/' + original.id);
+      assert.equal(detail.status, 200); assert.equal((await detail.json()).item.digest, original.digest.value);
+      const preview = await post('delete', { artifact_ids: [original.id] }); assert.equal(preview.status, 200);
+      assert.equal((await preview.json()).allowed, false);
+      const archive = await post('download', { items: [original, derived].map(item => ({ source: 'core', id: item.id })) });
+      assert.equal(archive.status, 200); assert.equal(archive.headers.get('content-type'), 'application/zip');
+      const bytes = Buffer.from(await archive.arrayBuffer()); assert.equal(bytes.readUInt32LE(0), 0x04034b50);
+      assert(bytes.includes(source)); assert.deepEqual(fingerprints(root), before);
+    } finally { await runtime.dispose(); }
+    const deleted = await post('delete', { artifact_ids: [original.id, derived.id], confirm_delete: true });
+    assert.equal(deleted.status, 200); const transaction = await deleted.json(); assert(transaction.recoverable);
+    assert.throws(() => readCoreArtifactBytes(root, original.id));
+    const transactions = await (await fetch(allowedOrigin + '/iris/api/works/transactions')).json();
+    assert(transactions.transactions.some(item => item.transactionId === transaction.transactionId));
+    const restored = await post('restore', { transaction_id: transaction.transactionId, confirm_restore: true });
+    assert.equal(restored.status, 200); assert.equal((await restored.json()).state, 'restored');
+    assert.deepEqual(readCoreArtifactBytes(root, original.id).bytes, source);
+    assert.deepEqual(readCoreArtifactBytes(root, derived.id).bytes, source);
+    assert.equal(modelCalls, callsBefore);
+  });
   await check('M4 actual Agent and WebServer summary invoke one same-byte sheet each', async () => {
     if (spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status !== 0) throw new Error('验收摘要需要现有 ffmpeg');
     const video = path.join(work, 'summary.mp4');
@@ -416,10 +451,6 @@ try {
     const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
     const { createCoreRuntime } = await import('../lib/core-runtime.js');
     const runtime = createCoreRuntime({ dataRoot: dshCoreDataRoot(), mode: 'writer' }); runtime.start();
-    const fingerprints = directory => Object.fromEntries(fs.readdirSync(directory, { withFileTypes: true }).map(entry => {
-      const file = path.join(directory, entry.name);
-      return [entry.name, entry.isDirectory() ? fingerprints(file) : crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')];
-    }));
     const beforeCore = fingerprints(dshCoreDataRoot()), beforeCalls = modelCalls;
     const originalPath = process.env.PATH, emptyPath = path.join(work, 'no-media-tools'); fs.mkdirSync(emptyPath);
     fs.renameSync(video, video + '.unavailable'); process.env.PATH = emptyPath;
@@ -552,6 +583,30 @@ try {
     await clientFiber.dispose();
     assert.equal(listeners.size, 0);
     for (const seat of EXPECTED_IRIS_CLIENT_SEATS) assert.equal(ctx.get('slots').entries(seat).length, 0);
+  });
+  await check('real providers HTTP exposes cooldown and persistent quota without model calls', async () => {
+    const config = await import('../lib/config.js');
+    const before = modelCalls;
+    const provider = config.upsert({ name: 'health fixture', auth: 'none', baseUrl: 'https://health.fixture.invalid/v1',
+      mediaProtocol: 'openai-images', models: [{ id: 'fixture-vision', capabilities: ['vision'] }] });
+    const list = async () => {
+      const response = await fetch(allowedOrigin + '/iris/api/actions/providers_list', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      assert.equal(response.status, 200);
+      return (await response.json()).providers.find(value => value.id === provider.id).models[0].health.vision;
+    };
+    config.recordRateLimit({ providerId: provider.id, modelId: 'fixture-vision', capability: 'vision', retryAfterMs: 120000 });
+    const cooling = await list(); assert(cooling.retryAt); assert.equal(cooling.category, 'rate_limit');
+    const state = await (await fetch(allowedOrigin + '/iris/api/state')).json();
+    assert.equal(state.health.capabilities.vision.retryAt, cooling.retryAt);
+    config.recordProviderHealth(provider.id, 'fixture-vision', 'vision', {
+      ok: false, source: 'probe', category: 'quota', httpStatus: 403, note: 'Free quota exhausted.' });
+    config.resetCache();
+    const exhausted = await list(); assert.equal(exhausted.reason, 'free_quota'); assert.equal(exhausted.retryAt, undefined);
+    assert.deepEqual(config.pickAllFor('vision'), []);
+    config.setModelVerified(provider.id, 'fixture-vision', 'vision', { ok: true });
+    assert.equal((await list()).status, 'verified');
+    assert.equal(modelCalls, before, '这里只注入健康事实，不发起模型验证');
   });
   await check('Iris unload removes tools, skills and routes from real services', async () => {
     assert.equal(hostRuntimeEvidence().server.loaded, true);

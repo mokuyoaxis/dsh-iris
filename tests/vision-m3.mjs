@@ -71,7 +71,7 @@ try {
   assert.deepEqual(modelCalls, ['vision', 'other']);
 
   // 真正的动作与工具共用结果语义；只写明确的 Provider 健康反馈，没有 Core/legacy Task/Artifact。
-  const configured = config.upsert({ ...provider, id: undefined });
+  const configured = config.upsert({ ...provider, id: undefined, health: undefined });
   globalThis.fetch = async () => new Response('data: {"choices":[{"delta":{"content":"红色"}}]}\n\n' + stop,
     { headers: { 'Content-Type': 'text/event-stream' } });
   const file = path.join(root, 'input.png'); fs.writeFileSync(file, image.bytes);

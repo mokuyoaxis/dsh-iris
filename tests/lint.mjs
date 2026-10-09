@@ -808,11 +808,11 @@ if (tasksLib) {
   if (!/for \(const ref of assignmentOrder\(capability\)\)/.test(configSrc)) {
     failures.push('lib/config.js pickFor 必须按分配顺序取首个可用（不再只认单值）');
   }
-  if (!/export function pickAllFor\(capability\)[\s\S]{0,240}models\.orderedModels\(pool, capability, assignments\(\)\[capability\]\)/.test(configSrc)) {
+  if (!/export function pickAllFor\(capability(?:,[^\n]*)?\)[\s\S]{0,300}models\.orderedModels\(pool, capability, assignments\(\)\[capability\](?:,[^\n;]*)?\)/.test(configSrc)) {
     failures.push('lib/config.js pickAllFor 必须复用 orderedModels（分配序优先、池序补齐）');
   }
   const modelsSrc = read('lib/models.js');
-  if (!/export function orderedModels\(pool, capability, assignments\)[\s\S]{0,700}resolvePoolModel\(pool, raw, capability\)[\s\S]{0,300}for \(const model of pool\) add\(model\)/.test(modelsSrc)) {
+  if (!/export function orderedModels\(pool, capability, assignments(?:,[^\n]*)?\)[\s\S]{0,1000}resolvePoolModel\(pool, raw, capability\)[\s\S]{0,300}for \(const model of pool\) add\(model\)/.test(modelsSrc)) {
     failures.push('lib/models.js orderedModels 必须按分配序解析并按池序补齐去重');
   }
   const actionsSrc = read('lib/actions.js');
@@ -1009,7 +1009,7 @@ if (tasksLib) {
     }
   }
   const roadmap = read('docs/ROADMAP.md');
-  for (const sec of ['当前状态', '下一步', '兼容性与限制', '质量要求', '暂不计划']) {
+  for (const sec of ['当前状态', '近期优先：真实使用验收', '兼容性与限制', '质量要求', '暂不计划']) {
     if (!roadmap.includes(sec)) failures.push(`docs/ROADMAP.md 缺少「${sec}」节`);
   }
   const pkg = JSON.parse(read('package.json'));

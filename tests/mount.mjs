@@ -110,8 +110,8 @@ const runtimeEvidence = hostRuntimeEvidence();
 assert(runtimeEvidence.server.loaded && runtimeEvidence.server.pluginId === '@mokuyoaxis/dsh-iris'
   && runtimeEvidence.server.version === JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')).version,
   'Host Doctor 应登记服务端身份与包版本', runtimeEvidence.server);
-assert(runtimeEvidence.tools.length === 14 && runtimeEvidence.skills.length === 2 && runtimeEvidence.routes.length === 4,
-  'Host Doctor 应只登记成功完成的 14 工具、2 Skill 与 4 路由组', runtimeEvidence);
+assert(runtimeEvidence.tools.length === 15 && runtimeEvidence.skills.length === 2 && runtimeEvidence.routes.length === 4,
+  'Host Doctor 应只登记成功完成的 15 工具（含改图）、2 Skill 与 4 路由组', runtimeEvidence);
 
 /* ===== ② 单个工具注册抛错 ===== */
 errs = [];

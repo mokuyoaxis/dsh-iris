@@ -1,6 +1,6 @@
 # Iris 架构与边界
 
-状态：Iris `0.2.0` 提供可在无 DSH 进程中运行的实例化 Core Runtime、Headless CLI、共享 Provider 生命周期、Core Task/Attempt 与 Artifact Manifest，并让 DSH 逐项消费同一套事实。DSH 插件仅支持 `0.2.0-rc.2`，Node.js 最低为 22.0.0；旧宿主固定使用 npm `0.1.4`。Core 内部 API 尚未冻结为公共 SDK。
+状态：本文面向 **Iris 0.2.1**。0.2.0 建立实例化 Core Runtime、Headless CLI、共享 Provider 生命周期与 Task/Artifact 事实；0.2.1 补共享视觉、模型级图片协议、Artifact 编辑及维护入口。DSH 插件仅支持 `0.2.0-rc.2`，Node.js 最低为 22.0.0；旧宿主固定使用 npm `0.1.4`。Core 内部 API 尚未冻结为公共 SDK。
 
 ## 当前形态
 
@@ -22,7 +22,7 @@ DSH Host / Cordis                         Headless CLI
                               ┌────────────┴────────────┐
                               ▼                         ▼
                     Command Service v0          Provider Task Runner
-                    crop / diff / frames        submit / observe /
+                    crop / diff / frames / html submit / observe /
                     inspect / control           cancel / delivery
                               └────────────┬────────────┘
                                            ▼
@@ -35,20 +35,21 @@ DSH Host / Cordis                         Headless CLI
 
 `lib/index.js` 是 DSH 插件装配入口，`lib/dsh-host-adapter.js` 是原始 DSH/Cordis 对象进入 Iris 的服务端边界；`lib/dsh-core-adapter.js` 只负责选择 DSH profile 的 Core 数据根、恢复 Provider 配置和投影 Host DTO。`bin/dsh-iris.js` 不启动 DSH，也不推断 profile。`lib/api.js` 与 `lib/client.js` 是 Host 投影，不是真相来源。
 
-已发布 0.2.0 中，s2v 数字人视频、视觉理解、长图 OCR、媒体摘要、HTML 渲染和提示词优化仍走 legacy 链。开发工作树已完成 Text/Vision M2–M4 的共享业务迁移，见下文；S2V 和 Browser 独立处理。
+0.2.1的 S2V 使用 Core Task/Attempt，HTML 使用 `media.html` 与显式 Browser Port；视觉和提示词预览通过共享 Model Ports 执行。纯视觉不创建 Task/Artifact，摘要主动转写仍使用 Core 任务。聊天改图属于媒体生成链，按来源 Artifact ID 创建新 Task 和关联产物。
 
-## 0.2.0 核心
+## 共享核心
 
 | 模块 | 职责 | DSH 运行时依赖 |
 |---|---|---:|
 | `core-contract.js` / `core-runtime.js` | 显式数据根、reader/writer 权限、单写者租约、取消与释放 | 无 |
 | `command-service.js` | 本地媒体命令、Task 控制面和 Artifact 查询/导出 | 无 |
 | `generation-input.js` | CLI、DSH 与重试共用的生成参数校验和 Provider 字段转换 | 无 |
-| `model-port-contract.js` / `model-invoker.js` | Text/Vision 内部契约、有限调用预算与取消；开发版 M2–M4 消费 | 无 |
+| `model-port-contract.js` / `model-invoker.js` | Text/Vision 内部契约、有限调用预算与取消 | 无 |
 | `core-tasks.js` | Core Task/Attempt 持久事实、受理与交付状态 | 无 |
 | `core-artifacts.js` / `core-artifact-store.js` | 对象、Manifest、SHA-256、关系边与可重建 Index | 无 |
 | `provider-contract.js` / `provider-adapter.js` | canonical 结果、错误脱敏、受理边界与 Provider v0 操作 | 无 |
-| `provider-adapters.js` | DashScope / OpenAI Images 协议实现和可选输入准备 | 无 |
+| `provider-adapters.js` | DashScope / Images / 聊天 / Responses 图片协议和可选输入准备 | 无 |
+| `vision-image-input.js` / `image-edit-input.js` | 视觉发送副本与聊天改图来源预检；Core 原图保持不变 | 无 |
 | `provider-task-runner.js` | 写前 Attempt、submit/poll/cancel/download 与 Profile 化交付 | 无 |
 | `core-doctor.js` / `core-lease-recovery.js` | 只读完整性诊断与需显式确认的陈旧租约恢复 | 无 |
 | `provider-catalog.js` | 显式 Provider 配置、能力候选和原 Task Adapter 恢复 | 无 |
@@ -56,7 +57,7 @@ DSH Host / Cordis                         Headless CLI
 | `dsh-host-adapter.js` / `index.js` | Host 能力映射、工具/路由/Skill 与生命周期装配 | 有 |
 | `client.js` | DSH Web Slot、统一任务/作品区、泡泡和提示词入口 | 有 |
 
-完整规则见 [Core Runtime v0](CORE_RUNTIME_CONTRACT.md)、[Artifact Manifest v0](ARTIFACT_MANIFEST.md)、[Provider Adapter v0](PROVIDER_ADAPTER_CONTRACT.md) 与 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。这些是 rc 候选内部契约，不是第三方 SDK 兼容承诺。
+完整规则见 [Core Runtime v0](CORE_RUNTIME_CONTRACT.md)、[Artifact Manifest v0](ARTIFACT_MANIFEST.md)、[Provider Adapter v0](PROVIDER_ADAPTER_CONTRACT.md) 与 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。这些仍是内部契约，不是第三方 SDK 兼容承诺。
 
 ## Task、Attempt 与 Artifact
 
@@ -65,29 +66,29 @@ DSH Host / Cordis                         Headless CLI
 - 生成结果与本地交付是两类事实。远端成功后下载失败仍保持 `outcome=succeeded / deliveryState=failed`，可显式重新交付而不重新生成。
 - 新 Attempt 可选保存阶段时间戳与模型选择来源；旧记录缺少这些字段仍可读取。
 - Artifact Manifest v0 保存内容哈希、媒体类型、中性元数据和关系边；不保存 Prompt、API Key、签名 URL、Provider 端点或宿主绝对路径。
-- 开发版 Core/CLI 已提供默认只读预览、明确选择与确认、文件隔离和恢复的删除/清理 Command，保护活跃 Task 和引用；索引更新只使用已提交记录，不升级或接回孤儿。DSH 作品区仍只读，永久 purge 未开放。Doctor 只报告，不自动修复。见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。
+- Core/CLI 已提供默认只读预览、明确选择与确认、文件隔离和恢复的删除/清理 Command，保护活跃 Task 和引用；索引更新只使用已提交记录，不升级或接回孤儿。DSH 作品区共用删除预览、隔离与事务恢复，永久 purge 未开放。Doctor 只报告，不自动修复。见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。
 
-0.1.4 的 `tasks.json`、`artifacts.json`、`outputs/` 与上传目录继续作为 legacy 数据存在；Core 使用隔离的 `core-v0`。已迁移的新图片、视频、TTS 与转写任务不双写 legacy，回退到 0.1.4 时也不删除或改写 Core 数据。
+0.1.4 的 `tasks.json`、`artifacts.json`、`outputs/` 与上传目录继续作为 legacy 数据存在；Core 使用隔离的 `core-v0`。已迁移的新图片、视频、S2V、TTS 与转写任务不双写 legacy，回退到 0.1.4 时也不删除或改写 Core 数据。
 
 ## Provider 边界
 
 Provider Adapter v0 固定 discovery、submit、poll、cancel、download 与 error mapping 六类生命周期操作；提交前的临时输入上传是可选准备能力，不自动成为 Core 事实。协议实现只接收显式凭据、模型和媒体端点，Core 保存复合模型身份与非敏感 binding，不保存端点原文。
 
-Core Runner 不拥有后台 timer。Headless `task observe` 每次最多 poll 一次；DSH 的有界自动观察属于 Host，插件释放时停止 timer 并中止在途观察，但不会把“停止本地观察”写成“远端已取消”。端点或协议 binding 漂移时恢复在联网前拒绝。
+Core Runner 不拥有后台 timer。Headless `task observe` 每次最多 poll 一次，`task wait` 仅在本次命令内有界观察；DSH 的有界自动观察属于 Host，插件释放时停止 timer 并中止在途观察，但不会把“停止本地观察”写成“远端已取消”。端点或协议 binding 漂移时恢复在联网前拒绝。
 
 每个操作必须明确声明 supported 或 unsupported。当前 DashScope 与 OpenAI Images 媒体协议没有经过验证的远端取消实现，因此取消请求如实返回 not-supported，而不是伪造 canceled。完整受理与错误规则见 [Provider 提交契约 v0](PROVIDER_SUBMISSION_CONTRACT.md)。
 
-## Text/Vision 共享边界（已发布 M1，开发版 M2/M3/M4）
+## Text/Vision 共享边界
 
 [Text/Vision Model Port v0](MODEL_PORT_CONTRACT.md) 的纯契约、调用控制与 test-only Fake Port 已发布于 0.2.0。它以 `describe()` 和单轮 `complete()` 统一文本/视觉输入、正常终态、预算、取消与安全错误；图片以字节和 MIME 进入共享层，模型选择、会话与附件桥接保留在入口/适配器。
 
-当前开发工作树（尚未发布）已通过 `prompt-optimizer-core.js` → `model-invoker.js` → `dsh-text-model-adapter.js` 接入首个提示词消费者；`prompt-optimizer.js` 继续拥有 v1 配置、模型选择、reasoning 策略和 Host 投影。共享核心不读取 Host/配置/Store，不取得 writer，也不创建媒体 Task/Attempt/Artifact。规则与预览见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
+0.2.1通过 `prompt-optimizer-core.js` → `model-invoker.js` → `dsh-text-model-adapter.js` 接入首个提示词消费者；`prompt-optimizer.js` 继续拥有 v1 配置、模型选择、reasoning 策略和 Host 投影。共享核心不读取 Host/配置/Store，不取得 writer，也不创建媒体 Task/Attempt/Artifact。规则与预览见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
 
-开发版 M3 将 Agent/工作台 look/relook 和显式视觉实测接入 `vision-core.js` 与 HTTP/DSH Vision Port：共享 120 秒整体预算、完整终态与候选策略，图片桥接读回核对同一字节。DSH 附件保存属于宿主副作用，不是 Core Artifact；rc.2 保存不可取消的限制如实保留。见 [单图视觉调用](VISION_MODEL.md)。M2–M4 未增加持久配置字段或公共 SDK export；自持文本目录和 CLI 入口另行处理。
+单图视觉将 Agent/工作台 look/relook 和显式视觉实测接入 `vision-core.js` 与 HTTP/DSH Vision Port：共享 120 秒整体预算、完整终态与候选策略，图片桥接核验原图与实际附件，接受合法宿主规范化。DSH 附件保存属于宿主副作用，不是 Core Artifact；rc.2 保存不可取消的限制如实保留。见 [单图视觉调用](VISION_MODEL.md)。视觉 CLI 复用这些业务；可选 `visionInput` 在入口层控制发送副本。未新增公共 SDK export，自持文本目录和独立提示词入口另行安排。
 
-开发版 M4 的 OCR 切片通过 `ocr-model-routing.js` 在入口解引用前建立整体 operation，`ocr.js` 仅接收图片字节和模型端口，使用现有 Sharp 做有限分块；全部块复用 `completeVision`，没有每块重置计时或调用额度。普通块失败可以产生明确部分结果，取消/超时终止整次操作；不取得 Core writer 或写入 Task/Artifact。见 [长图 OCR](OCR_MODEL.md)。
+OCR 切片通过 `ocr-model-routing.js` 在入口解引用前建立整体 operation，`ocr.js` 仅接收图片字节和模型端口，使用现有 Sharp 做有限分块；全部块复用 `completeVision`，没有每块重置计时或调用额度。普通块失败可以产生明确部分结果，取消/超时终止整次操作；不取得 Core writer 或写入 Task/Artifact。见 [长图 OCR](OCR_MODEL.md)。
 
-M4 的定位、拼图摘要与生成后自述复用 `runVisionOperation`，`locate.js` / `summarize.js` 消费共享端口；入口处理附件、抽帧和可选 Core 转写，摘要读取已成功转写的文本 Artifact。纯视觉业务不写 Task/Artifact。legacy 视觉兼容实现保留，现有入口不再调用。见 [复合视觉调用](COMPOSITE_VISION.md)。
+定位、拼图摘要与生成后自述复用 `runVisionOperation`，`locate.js` / `summarize.js` 消费共享端口；入口处理附件、抽帧和可选 Core 转写，摘要读取已成功转写的文本 Artifact。纯视觉业务不写 Task/Artifact。legacy 视觉兼容实现保留，现有入口不再调用。见 [复合视觉调用](COMPOSITE_VISION.md)。
 
 ## Host Port 与 Headless 边界
 
@@ -96,7 +97,7 @@ M4 的定位、拼图摘要与生成后自述复用 `runVisionOperation`，`loca
 | 工具注册与 Fiber 生命周期 | `ctx.tools` / `ctx.effect` | 不注册 DSH 工具；CLI/Core 不受影响 |
 | Web 路由 | `webServer` 或 `httpServer` | 无工作台 API 和同源媒体路由；CLI 直接导出 Artifact |
 | UI Slot | DSH Web Client | 不影响 Core Task、Artifact 与离线 Doctor |
-| Browser | DSH browser service | HTML 渲染不可用；本地媒体命令不受影响 |
+| Browser | DSH browser service | CLI 可显式提供独立 Chromium Browser Port；未提供时 HTML 不可用 |
 | 会话附件与输入草稿 | session/input ports | CLI 使用显式文件或 JSON 输入，不创建会话对象 |
 | Skills registry | DSH skills service | 随包 Skill 不自动注册；CLI/Core 仍可用 |
 
@@ -104,14 +105,14 @@ Command、Core Store、Provider Runner 和 Headless CLI 不接收原始 `ctx`、
 
 ## 事件、UI 与媒体读取
 
-DSH 工作台把 Core 与 legacy Task 合并到一个用户任务区，把 Core 图片与旧 `outputs/` 合并到一个作品区。普通投影只有五类用户状态；原始 Attempt 事实留在高级诊断。刷新、展开、关闭、读取作品和查询状态都不得触发 submit、poll 或隐式修复。
+DSH 工作台把 Core 与 legacy Task 合并到一个用户任务区，把 Core 与旧 `outputs/` 的图片、视频、音频和文本合并到一个作品区。普通投影只有五类用户状态；原始 Attempt 事实留在高级诊断。刷新、展开、关闭、读取作品和查询状态都不得触发 submit、poll 或隐式修复。
 
 Core 媒体路由按随机 Artifact ID 读取并逐次验证 SHA-256；它没有独立 token。浏览器请求还受可信 Host、`Origin`/`Sec-Fetch-Site` 和 `Referrer-Policy: no-referrer` 约束。Artifact ID 是持有者标识，不等于多租户认证；Iris 与 DSH 仍处于同一本机信任域。
 
 ## 非目标与发布边界
 
-- `0.2.0` 不启动独立常驻服务，也不复制 DSH 聊天界面。
+- `0.2.1` 不启动独立常驻服务，也不复制 DSH 聊天界面。
 - 不迁移到 SQLite/JSONL，不原地改写 0.1.4 数据，不自动接管不确定的写者租约。
-- 不在本候选新增 Gemini、Fal、Replicate 或本地模型协议；注册表只是后续接入点。
+- 0.2.1 未新增原生 Gemini、Fal、Replicate 或本地模型协议；注册表只是后续接入点。
 - 不把离线测试、一次 canary 或 Headless 可运行等同于公开 Core API 已冻结。
-- rc.1 仍须通过最终包审计、仓库外安装、跨平台 CI、Android 目视、回退和机器可读验证摘要后才能发布。
+- 发布检查覆盖版本元数据、实际包审计、仓库外安装与跨平台 CI；浏览器/移动端和真实异步重启范围单独记录，不由程序化检查推定通过。

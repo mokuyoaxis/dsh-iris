@@ -1,12 +1,12 @@
-# Headless CLI（0.2.0）
+# Headless CLI
 
-Iris 0.2.0 提供无 DSH 的本地裁剪、图片 diff、视频抽帧，以及 Provider 媒体任务闭环。结果保存为 Core Artifact，并可在后续进程中检查或导出。Core 内部接口与 Artifact v0 尚未冻结为跨版本公共 SDK。
+本文面向 Iris 0.2.1，涵盖无 DSH 的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为 Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core 内部接口与 Artifact v0 尚未冻结为公共 SDK。
 
-需要 Node.js ≥ 22.0.0。在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.0` 后，通过 `npx dsh-iris ...` 使用命令；也可临时运行 `npx --package @mokuyoaxis/dsh-iris@0.2.0 dsh-iris --help`。下文的 `dsh-iris` 指该版本提供的可执行入口，不需要安装 DSH。
+需要 Node.js ≥ 22.0.0。安装 `npm install @mokuyoaxis/dsh-iris@0.2.1` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；安装本地 tarball 后也可运行 `dsh-iris ...`。
+
+0.2.1 提供 `vision look / locate / ocr / summarize`。文件输入的纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；图片/帧 Artifact ID 输入需显式数据根，以 reader 读取既有 Core 产物，只有主动音轨转写才创建 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)；S2V、HTML、配置、等待及批量管理见 [CLI 管理](CLI_MANAGEMENT.md)。
 
 ## 配置查询与离线诊断
-
-当前开发工作树另提供 `vision look / locate / ocr / summarize`，尚未发布。文件输入的纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；图片/帧 Artifact ID 输入需显式数据根，以 reader 读取既有 Core 产物，只有主动音轨转写才创建 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)。
 
 ```bash
 dsh-iris providers list --provider-config /absolute/path/to/providers.json
@@ -27,6 +27,8 @@ dsh-iris runtime recover --data-root /absolute/path/to/iris-data --confirm-stale
 ```
 
 此命令会再次核对租约证据和 PID，写入私有恢复审计记录后释放陈旧租约；活跃、无法确认、损坏或 PID 不匹配时拒绝。它不是 Doctor 的自动副作用，也不会修复 Task/Artifact。不要手动删除 `.iris-runtime-writer-v0` 或把“PID 不存在”单独当作安全证明。
+
+媒体与视觉路由会持久记录短时 429 冷却或明确额度/预算耗尽，后续候选跳过受阻模型。冷却到期不发起请求；持续停用需 `models test` 成功恢复。状态及私有配置写入规则见 [Provider 健康](PROVIDER_HEALTH.md) 与 [CLI 管理命令](CLI_MANAGEMENT.md)。
 
 ## 裁剪并保存 Artifact
 
@@ -73,6 +75,8 @@ dsh-iris run image \
 
 旧裸 DashScope 账号的已知目录仅在 DSH 配置加载或保存时一次性写入 `models`，随后可见、可编辑；CLI 只读配置，不执行该迁移。独立 CLI 配置须自行声明模型。
 
+生图按每个模型的有效图片协议调用，保存真实 PNG/JPEG/WebP 字节。聊天改图使用 `source_artifact_id`，创建关联原图的新 Artifact；具体参数和协议限制见 [模型级图片协议](CLI_MANAGEMENT.md#模型级图片协议) 与 [Artifact 聊天改图](CLI_MANAGEMENT.md#artifact-聊天改图)。
+
 同步图片会在一次命令内完成 Task → Attempt → Provider Adapter → download → Artifact。异步图片模型先持久化受理事实与远端 Task ID；之后由用户显式执行单步观察，不建立后台 timer。
 
 视频（t2v/i2v）同样走 Core：
@@ -84,7 +88,7 @@ dsh-iris run video \
   --input '{"prompt":"海浪拍岸","size":"1280*720","duration":5}'
 ```
 
-普通视频输入为 `{prompt, size?, duration?, img_data_url?, first_frame_path?, model_ref?}`：首帧可用 data URL 或绝对本地路径，二者互斥。开发版已开放 S2V 的 `first_frame_path + audio_path + resolution?`，共用 Core Attempt 的按候选上传，见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。视频产物为 `video/mp4` / `generated-video`。显式 `task observe` 每次推进一拍；开发版 `task wait` 提供有界等待，不重新提交。
+普通视频输入为 `{prompt, size?, duration?, img_data_url?, first_frame_path?, model_ref?}`：首帧可用 data URL 或绝对本地路径，二者互斥。0.2.1 支持 S2V 的 `first_frame_path + audio_path + resolution?`，共用 Core Attempt 的按候选上传，见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。视频产物为 `video/mp4` / `generated-video`。显式 `task observe` 每次推进一拍；0.2.1 `task wait` 提供有界等待，不重新提交。
 
 语音合成是同步完成型，一次命令内完成 Task → Attempt → 交付：
 
@@ -199,10 +203,10 @@ dsh-iris artifact rebuild --data-root /absolute/path/to/iris-data
 ## 当前边界
 
 - Core 的 `run`、`media`、`task`、`artifact` 和 `runtime recover` 操作必须显式提供绝对 `--data-root`，避免误写日常 profile；配置查询只要求 `--provider-config`，Doctor 省略数据根时按上述默认范围检查。
-- 该路径只使用 Node.js、`sharp` 和 Iris Core，不加载 DSH/Cordis，也不启动服务；只有显式 `run image`、`run video`、`run tts`、`run transcribe`、`task observe`、`task redeliver`、`task cancel` 和 `task retry` 会访问供应商。
+- 该路径只使用 Node.js、`sharp` 和 Iris Core，不加载 DSH/Cordis，也不启动服务；只有显式媒体生成、视觉分析、模型发现/实测及任务观察/等待/交付/取消/重试会访问供应商；Doctor 与本地列表查询不触发探针。
 - Artifact Manifest v0 已包含 SHA-256、关系边、可重建 Index 和进程崩溃窗口恢复；格式与限制见 [Artifact Manifest v0](ARTIFACT_MANIFEST.md)。
-- 当前开放 `crop`、同步/异步图片提交、视频 t2v/i2v 提交、语音同步合成（`run tts`）、音频转写（`run transcribe`）、图片/视频/转写单步观察（CLI `task observe` 与工作台「重新观察」共用）、失败产物重新取回（CLI `task redeliver` 与工作台「重新取回作品」共用）、人工取消（CLI `task cancel` 与工作台「取消任务」共用，只有供应商明确确认才记为已取消）、重试为新任务（CLI `task retry` 与工作台「重试为新任务」共用，必须显式确认计费且重新提供 prompt/文本/音频地址）、Task 只读查询与 Artifact 管理；自动观察、其他媒体能力和其余 Command 会按相同事实语义逐项迁入。
-- 开发版 Headless CLI 已提供 `core delete/cleanup/transactions/restore`：默认只读预览，明确选择和确认后隔离文件，引用保护和恢复哈希检查均生效，详见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。DSH 工作台的删除、清空与孤儿清理仍只处理 legacy `outputs/`，Core 作品保持只读；永久 purge 和工作台管理留待 0.2.x。不要手动删除 `core-v0` 中的记录、Manifest 或对象。
+- 当前开放 `crop`、同步/异步图片提交、视频 t2v/i2v 提交、语音同步合成（`run tts`）、音频转写（`run transcribe`）、图片/视频/转写单步观察（CLI `task observe` 与工作台「重新观察」共用）、失败产物重新取回（CLI `task redeliver` 与工作台「重新取回作品」共用）、人工取消（CLI `task cancel` 与工作台「取消任务」共用，只有供应商明确确认才记为已取消）、重试为新任务（CLI `task retry` 与工作台「重试为新任务」共用，必须显式确认计费且重新提供 prompt/文本/音频地址）、Task 只读查询与 Artifact 管理；0.2.1 已补齐 S2V、HTML、视觉分析、模型与配置管理、任务等待、批量操作和 Core 隔离/恢复，见 [CLI 管理](CLI_MANAGEMENT.md)。后台自动观察由 DSH 生命周期负责，CLI 不启动常驻服务。
+- 0.2.1 Headless CLI 提供 `core delete/cleanup/transactions/restore`：默认只读预览，明确选择和确认后隔离文件，引用保护和恢复哈希检查均生效，详见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。DSH 工作台已接上同一 Core 隔离/恢复命令，见 [工作台作品管理](WORKBENCH_ARTIFACTS.md)；既有永久删除、清空与孤儿清理仍只处理 legacy `outputs/`。Core 永久 purge 留待 0.2.x，不要手动删除 `core-v0` 中的记录、Manifest 或对象。
 
 ## 源码仓库的包外验收
 

@@ -136,8 +136,8 @@ try {
 } catch (_) { rejectedSeat = true; }
 assert(rejectedSeat, '客户端证据必须拒绝未知 Slot');
 const ledger = hostRuntimeEvidence();
-assert(ledger.tools.length === 14 && ledger.skills.length === 2 && ledger.routes.length === 4,
-  '运行时账本应去重并覆盖 14/2/4 注册事实', ledger);
+assert(ledger.tools.length === 15 && ledger.skills.length === 2 && ledger.routes.length === 4,
+  '运行时账本应去重并覆盖 15/2/4 注册事实', ledger);
 assert(!JSON.stringify(ledger).includes('must-not-enter-ledger'), '账本不得保存未知字段或密钥');
 
 function fakeRes(resolve) {
@@ -179,4 +179,4 @@ const noHost = fakeRes();
 serveApi({ method: 'GET', url: '/iris/api/doctor', headers: {} }, noHost);
 assert(noHost.status === 503, '没有 Host Adapter 时不得伪造 Host Doctor 结果');
 
-console.log('ALL OK —— Host Doctor 健康/降级/零调用、14+2+4 账本、客户端握手与 API 端点通过');
+console.log('ALL OK —— Host Doctor 健康/降级/零调用、15+2+4 账本、客户端握手与 API 端点通过');

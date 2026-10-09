@@ -4,26 +4,51 @@
 
 ## [Unreleased]
 
-- 工作台作品库统一 Core 与旧版的分页和媒体/来源/产物类型过滤，显示真实匹配总数，覆盖图片、视频、音频与文本。Core 图片卡可直接看图/OCR，结果支持取消、复制和浏览器下载文本，保留页码/筛选并区分 OCR 部分完成与失败；目录仅查元数据，实际媒体读取和识别保留完整哈希核验。详见 [工作台作品管理](docs/WORKBENCH_ARTIFACTS.md)。尚未发布。
+后续未归入版本的变更在此记录。
 
-- 看图、定位和 OCR 支持 `artifact_id`：CLI 与 DSH 工具/动作直接只读 Core 图片，核验哈希、原字节和 MIME，保留来源 ID；不需要原文件或临时导出、不创建 Core Task/Artifact。文件路径和定位/OCR 会话附件用法保留，三项业务沿用模型选型、预算和结果语义。详见 [视觉 CLI](docs/VISION_CLI.md)。
+## [0.2.1] - 2026-10-09
 
-- 视频摘要支持 `frame_artifact_ids`：CLI 与 DSH 工具/动作共用 Core 帧读取器，按原时间戳和帧序号组成联系表，返回实际使用的 Artifact ID；无需原视频或 ffmpeg，不重复抽帧、导出或写入 Core。现有视频文件用法保留，已有帧可搭配显式转写文字。详见 [视觉 CLI](docs/VISION_CLI.md)。
+0.2.1 的更新重点是 **完成 OpenAI 兼容图片与视觉工作流**：生成图片 → Core Artifact → 按 ID 看图/OCR → 聊天改图 → 新 Artifact，CLI 与 DSH 工作台共用同一链路。模型发现与能力分类、模型级图片协议、视觉输入和作品管理共同支持这套流程。要求仍为 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；包名、配置版本和生产依赖保持不变。完整范围见 [0.2.1 发布说明](docs/releases/0.2.1.md)。
 
-- 修复跨平台 CLI 测试：预加载模块使用文件 URL，Core 管理路径断言区分平台路径与 POSIX 管理路径，私有文件权限和 SIGINT 按实际平台验证；缺少可选 ffmpeg/ffprobe 时明确跳过视觉 CLI 视频段，继续执行看图、定位、OCR、输出及模型超时测试。
+### Added
 
-- 按用户指定顺序补齐 CLI：S2V 数字人迁入共享 Core Attempt 上传链，HTML 经独立 Chromium Browser Port 或 DSH 宿主保存 Core PNG；增加账号/模型/能力分配管理、发现与显式实测、私有备份与竞争写保护、有界 `task wait`、分页过滤、批量查询/导出及 JSON 文件/stdin 输入。
-- 新增 `core delete/cleanup/transactions/restore`：默认预览、引用和活跃任务保护、明确选择后隔离、哈希核对恢复与失败补偿；DSH 工作台仍只删除 legacy 作品，隔离数据不永久 purge。真实阿里云 `wan2.2-s2v` 480P/2 秒视频与 ARM64 Chromium 截图测试通过，详见 [CLI 管理与补齐](docs/CLI_MANAGEMENT.md)。尚未发布。
+- 生图模型可独立设置 `imageProtocol`，分别选择 DashScope、OpenAI Images、聊天生图或 Responses 生图；省略或 `auto` 时继承账号默认。同账号的模型可使用不同接口，生成、实测和恢复按实际协议绑定，不扫描接口或自动探测。
+- 聊天生图兼容非流式 Chat Completions 图片消息；Responses 支持同步单图、已完成的 `image_generation_call` 及网关图片消息。生成结果按真实字节保存为 PNG/JPEG/WebP Core Artifact，MIME、后缀和内容哈希一致。纯文字 200、缺图或未完成响应不会宣称成功或自动重提。
+- Artifact ID 聊天改图：DSH `iris_edit_image`、Core 图片卡“改图”与 CLI `run image` 的 `source_artifact_id` 共用 `openai-chat-images`。修改版另存为新 Artifact，记录 `derived-from` 及来源引用，原图保留；编辑池只选择聊天生图模型。详见 [Artifact 聊天改图](docs/CLI_MANAGEMENT.md#artifact-聊天改图)。
+- 独立视觉 CLI：`vision look / locate / ocr / summarize`，支持严格显式模型选择、JSON/文本、结果文件和摘要拼图输出；DSH 与 CLI 复用共享视觉业务。纯视觉不创建 Task/Artifact，主动音轨转写使用 Core。
+- 看图、定位和 OCR 支持 `artifact_id`；视频摘要支持 `frame_artifact_ids`。只读核验 Core 原字节、MIME 和哈希，不要求原文件或临时导出；已有视频帧无需再次抽帧或 ffmpeg。
+- 账号与模型可配置 `visionInput.maxBytes/maxDimension`，模型逐字段覆盖账号，默认发送预算 8 MiB。工作台和 CLI `models vision-input` 可设置或恢复继承；看图、OCR 分块、定位和聊天改图按实际候选准备发送副本，Core 原图、下载与哈希不变。
+- 工作台统一 Core/旧版图片、视频、音频和文本，每页 24 项，支持媒体、来源和产物类型过滤、真实匹配计数。Core 图片卡直接看图/OCR/改图，识别结果可取消、复制和下载，并明确 OCR 部分完成。
+- 作品详情、显式跨页选择、ID 复制与混合来源 ZIP 下载，单次最多 200 项、下载上限 128 MiB。Core 删除先预览，再确认移入可恢复回收区；恢复不覆盖冲突文件。详见 [工作台作品管理](docs/WORKBENCH_ARTIFACTS.md)。
+- CLI 补齐 S2V 数字人视频、HTML 截图、账号/模型/能力分配管理、模型发现与显式实测、有界 `task wait`、分页过滤、批量查询/导出，以及 JSON 文件和 stdin 输入。
+- CLI `core delete/cleanup/transactions/restore` 提供默认预览、引用和活跃任务保护、明确选择后的隔离、哈希核对恢复及失败补偿；不提供永久 purge。
+- 对话泡泡增加本次改写规则、原样前缀/后缀、“只组装”、可编辑结果和原文/改动对照。规则按次传入，v1 配置保持不变；未扩展后续独立提示词优化系统。
 
-- 新增独立视觉 CLI：`dsh-iris vision look / locate / ocr / summarize`，复用共享视觉业务；显式 `--model-ref providerId::modelId` 只调用该项，省略时按配置分配/模型池选型。支持 JSON/文本、排他保存结果与同一张摘要拼图；纯视觉不创建 Task/Artifact，主动音轨转写才使用 Core。整体预算、取消和 OCR 部分完成状态保持一致。详见 [视觉 CLI](docs/VISION_CLI.md)。尚未发布。
+### Changed
 
-- 完成视觉 M4：定位、视频拼图摘要与生成后自述改为共享 Vision Ports，准备与候选共用整体预算；截断、取消和协议错误停止后续生成。摘要的一张拼图与输出一致，可选音轨转写读取 Core 文本 Artifact；修复时间戳标签未绘制和十帧以上时序错乱。真实 `dsh` CLI 下定位、摘要、自述及流式取消七项实测通过。详见 [复合视觉调用](docs/COMPOSITE_VISION.md)。尚未发布。
-- 长图 OCR 接入共享 Vision Ports：图片准备、全部分块与候选共用 120 秒整体预算和最多 64 次生成；取消/超时立即停止后续块，失败/截断正文不拼入全文。结果区分完成、部分完成和失败，保留失败后的原段号，修复显式 `overlap: 0` 被入口默认值覆盖的问题；最多 32 块，超限生成前拒绝。详见 [长图 OCR](docs/OCR_MODEL.md)。尚未发布。
-- 修复视觉能力探针的图片尺寸：用 128×128 纯红 PNG 替换 1×1 图片，避免模型因输入图片过小返回 400 而被误判为不支持视觉。
-- 单图视觉 M3：Agent/工作台的看图与重看、显式视觉实测接入共享 VisionModel Port；HTTP/DSH 严格验证正常终态，取消/超时不再切换候选，截断和部分正文不返回成功。DSH 图片桥接保存后读回核对字节，整体 120 秒预算覆盖准备与候选链，正文 6,000 字上限改为超限失败。详见 [单图视觉调用](docs/VISION_MODEL.md)。尚未发布。
-- 提示词优化迁入共享业务核心与 DSH TextModel Port：元数据和生成共用预算，严格检查终态/正文上限，取消清理底层流；不产生 Task/Artifact。
-- 泡泡增加本次改写规则、原样输出前缀/后缀、“只组装”、可编辑结果、原文/改动对照与参与规则预览；写回保护新草稿、忙碌状态及结构化引用，旧请求迟到结果不能覆盖新操作。v1 配置保持不变，规则仅按次传入。
-- 显式 reasoning effort（含 inherit）在模型元数据未声明对应档位时改为生成前拒绝；默认 off-if-supported 仍在关闭能力未知时使用供应商默认。详见 [提示词优化系统](docs/PROMPT_OPTIMIZER.md)。以上尚未发布。
+- 提示词优化、单图看图/重看、OCR、定位、视频拼图摘要及生成后自述迁入共享 Text/Vision Model Ports。准备与候选共用整体预算，严格检查正常终态；取消、超时、截断或协议错误停止后续生成，超长正文明确失败。
+- OCR 整次操作最多 32 块、64 次生成、120 秒；先按转正后的长图切片，再按候选预算处理每块，记录实际发送尺寸与字节数，缩小时提示细字风险，区分完成、部分完成和失败。
+- 定位显式要求模型返回 0–1000 归一化坐标，依据实际发送尺寸和 EXIF 方向换算回原图像素，向外取整供裁剪；接受经核验的 DSH 附件规范化，不猜测返回坐标域。
+- 模型路由区分短时限流和明确耗尽。短时 429 按 `Retry-After`（默认 60 秒）冷却，以琥珀色显示；到期只恢复候选资格，不自动验证。明确免费额度或预算耗尽以红色持续停用至手动实测成功，重启后仍跳过。DSH、CLI、OCR 共用账号 × 模型规则。
+- S2V 首帧与音频迁入共享 Core Attempt 上传链，各候选使用自己的账号；HTML 截图经独立 Chromium Browser Port 或 DSH 宿主保存 Core PNG。配置写入使用私有备份、原子替换和竞争写保护。
+- 修改模型图片协议只使对应生图验证失效，不解除限流或耗尽停用；发现保留手工能力、协议覆盖和输入预算。原图引用参与 Core 删除与清理保护。
+
+### Fixed
+
+- 修复 4K 生图响应的 base64 校验触发调用栈溢出，保留原字节交付与字符、padding 校验。
+- 修复视觉探针图片过小造成的能力误判，改用 128×128 红色 PNG。
+- 修复 OCR 显式 `overlap: 0` 被入口默认值覆盖，以及失败块导致后续原段号丢失。
+- 修复视频摘要时间戳标签未绘制、十帧以上按文件名字典序排列造成的时序错乱；交付与模型输入使用同一张拼图。
+- 保护提示词写回时的新草稿、忙碌状态和结构化引用，旧请求迟到结果不覆盖新操作；不支持的显式 reasoning effort 在生成前拒绝。
+- 修正跨平台 CLI 测试的文件 URL、路径、权限与信号断言；缺少可选 ffmpeg/ffprobe 时只跳过相应视频段。
+
+### 已知限制
+- 浏览器/移动端完整作品管理，以及真实异步任务重启后的 CLI 接管尚未完成验收；已有本地测试和 rc.2 服务隔离检查不替代这些验证。
+- Responses 当前仅同步单图；聊天改图不支持 mask、多参考图或连续编辑历史。独立 Images 编辑与原生 Gemini/Fal 协议未在本版接入。
+
+### 后续方向
+
+- 继续适配其他协议，并规划 Music 音乐生成功能；均属于后续工作，不纳入 0.2.1。详见 [路线图](docs/ROADMAP.md#后续功能方向)。
 
 ## [0.2.0] - 2026-10-01
 
@@ -242,7 +267,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.2...v0.1.3
