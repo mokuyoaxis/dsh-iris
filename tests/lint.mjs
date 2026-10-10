@@ -822,8 +822,8 @@ if (tasksLib) {
   if (!/order\[c\] = store\.assignmentOrder\(c\)/.test(actionsSrc)) {
     failures.push('lib/actions.js assignments_get 必须返回归一化 order');
   }
-  if (!/qwen\\d\?-vl/.test(modelsSrc) || !/qwen3-vl-235b-a22b-thinking/.test(modelsSrc)) {
-    failures.push('lib/models.js 必须含 qwen?-vl 规则且收录 qwen3-vl 强视觉模型（VERIFY 2026-09-03 实证）');
+  if (!/qwen\\d\?-vl/.test(modelsSrc)) {
+    failures.push('lib/models.js 的非权威名称建议须识别 qwen?-vl；不要求默认厂商模型目录');
   }
 }
 

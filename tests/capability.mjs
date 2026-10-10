@@ -3,7 +3,7 @@
  * 运行：node tests/capability.mjs
  * 覆盖：
  *   ① 能力常量与已知能力过滤；
- *   ② 旧配置迁移：显式声明权威 / 模型字段推断 / DashScope 裸账号全能力 / 未知返回空；
+ *   ② 明确能力：显式声明权威 / 旧字段绑定 / 裸账号无能力 / 空数组权威；
  *   ③ 严格选择：不具备能力的 provider 不被选中（不再兜底）；
  *   ④ 有序 failover：tryOrdered 首胜即止、错误累计、全败返回 null+errors。
  * 纯函数，零网络、零 I/O。
@@ -32,13 +32,18 @@ const dashscopeBase = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 const explicitP = { id: 'p1', capabilities: ['vision'], visionModel: 'x', imageModel: 'y' };
 assert(JSON.stringify(cap.capabilitiesOf(explicitP)) === JSON.stringify(['vision']), '显式声明权威');
 
-// 空 capabilities + 模型字段 → 按字段推断
-const modelP = { id: 'p2', capabilities: [], imageModel: 'm1', videoModel: 'm2', ttsModel: 'm3', transcribeModel: 'm4' };
+// 旧模型字段明确声明了模型用途
+const modelP = { id: 'p2', imageModel: 'm1', videoModel: 'm2', ttsModel: 'm3', transcribeModel: 'm4' };
 assert(cap.capabilitiesOf(modelP).sort().join(',') === 'image-gen,transcribe,tts,video-gen', '模型字段推断', cap.capabilitiesOf(modelP));
+assert(cap.capabilitiesOf({ ...modelP, capabilities: [] }).length === 0, '明确空能力不能被旧字段穿透');
 
-// 空 capabilities + 无模型 + DashScope baseUrl → 全部能力（裸账号迁移）
+// 账号端点不证明任何模型能力
 const bareDash = { id: 'p3', capabilities: [], baseUrl: dashscopeBase };
-assert(cap.capabilitiesOf(bareDash).sort().join(',') === 'image-gen,transcribe,tts,video-gen,vision', '裸 DashScope 全能力', cap.capabilitiesOf(bareDash));
+assert(cap.capabilitiesOf(bareDash).length === 0, '裸 DashScope 不赋能', cap.capabilitiesOf(bareDash));
+assert(cap.capabilitiesOf({ ...bareDash, mediaProtocol: 'dashscope' }).length === 0, '显式协议不赋能');
+assert(cap.capabilitiesOf({ ...modelP, models: [] }).length === 0, '空模型池优先于旧字段');
+assert(cap.capabilitiesOf({ models: ['gemini-music', 'qwen-vl-plus'] }).length === 0, '模型名不赋能');
+assert(cap.capabilitiesOf({ models: [{ id: 'custom', capabilities: ['vision', 'vision', 'bogus'] }] }).join(',') === 'vision', '明确模型标签聚合并过滤');
 
 // 空 capabilities + 无模型 + 非 DashScope → 空
 const bareOther = { id: 'p4', capabilities: [], baseUrl: 'https://other.example.com/v1' };

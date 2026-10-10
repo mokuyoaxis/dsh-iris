@@ -31,7 +31,9 @@ try {
   assert.equal(cli(['models', 'discover', 'test']).changed, false);
   assert.deepEqual(fs.readFileSync(file), before);
   cli(['models', 'discover', 'test', '--apply', 'true']);
-  assert.equal(cli(['models', 'list']).models.length, 2);
+  const discovered = cli(['models', 'list']).models;
+  assert.equal(discovered.length, 3);
+  assert.deepEqual(discovered.find(model => model.id === 'other-unknown').capabilities, [], '无能力元数据的目录项保留但不赋能');
   assert.equal(cli(['models', 'test', 'test::qwen-vl-plus', '--capability', 'vision']).passed, true);
   const show = cli(['config', 'show']);
   assert.equal(show.models.find(model => model.id === 'qwen-vl-plus').verified.vision.ok, true);

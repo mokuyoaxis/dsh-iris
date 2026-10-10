@@ -271,12 +271,12 @@ for (const act of ['tasks_delete', 'tasks_clear', 'tasks_orphans', 'tasks_purge_
 
 /* ---------- ⑫ 模型池逐模型管理（阶段 9 P3，离线：CRUD + verified 存储） ---------- */
 config.resetCache();
-// ⑫a 手动添加模型（能力缺省按规则推断）
+// ⑫a 手动添加模型（省略能力保持未标注）
 await runAction(stubHost, 'providers_add_model', { id: 'p_old', model_id: 'wan2.7-image' });
 config.resetCache();
 let plP3 = (await runAction(stubHost, 'providers_list', {})).providers.find((x) => x.id === 'p_old');
 let addedP3 = plP3.models.find((m) => m.id === 'wan2.7-image');
-assert(addedP3 && addedP3.capabilities.includes('image-gen'), '⑫a 手动添加按规则推能力', addedP3);
+assert(addedP3 && addedP3.capabilities.length === 0, '⑫a 手动添加未标注名称不赋能', addedP3);
 assert(addedP3.source === 'manual', '⑫a source=manual', addedP3.source);
 // ⑫b 纠正能力标签
 await runAction(stubHost, 'providers_set_model_caps', { id: 'p_old', model_id: 'wan2.7-image', capabilities: ['vision'] });

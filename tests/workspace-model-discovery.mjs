@@ -29,7 +29,7 @@ assert.equal(providerMediaBaseUrl({ baseUrl: 'https://vision.invalid/v1', mediaB
 
 const officialModels = Array.from({ length: 101 }, (_, i) => ({
   model: i === 0 ? 'future-image-model' : (i === 1 ? 'future-video-model' : (i === 2 ? 'brand-new-audio' : 'text-' + i)),
-  capabilities: i === 0 ? ['IG'] : (i === 1 ? ['VG'] : (i === 2 ? [] : ['TG'])),
+  ...(i === 2 ? {} : { capabilities: i === 0 ? ['IG'] : (i === 1 ? ['VG'] : ['TG']) }),
   ...(i === 2 ? { inference_metadata: { request_modality: ['Text'], response_modality: ['Audio'] } } : {})
 }));
 const calls = [];
@@ -60,8 +60,12 @@ assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel(discovered[2]), [CAPAB
 assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'future-asr', capabilities: ['ASR'] }), [CAPABILITIES.TRANSCRIBE]);
 assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'future-tts', capabilities: ['TTS'] }), [CAPABILITIES.TTS]);
 assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'future-vu', capabilities: ['VU'] }), [CAPABILITIES.VISION]);
-assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'qwen-image-3.0' }), [CAPABILITIES.IMAGE],
-  '无元数据时仍按名称规则兜底');
+assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'qwen-image-3.0' }), [],
+  '无元数据时不按名称赋能');
+assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'gemini-music', capabilities: ['MUSIC'] }), [],
+  '未来能力或别名不被归入视觉池');
+assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'qwen-image-3.0', capabilities: [] }), [],
+  '空元数据不被名称规则穿透');
 
 const transportCalls = [];
 const transport = {

@@ -21,7 +21,7 @@ assert.equal(models.resolveModelRef({ ...provider, models: undefined, imageModel
 assert.equal(models.providerModels({ id: 'bare', baseUrl: 'https://dashscope.aliyuncs.com/v1' }).length, 0,
   'runtime selection must not inject vendor models');
 const legacy = config.upsert({ enabled: true, apiKey: 'fixture', baseUrl: 'https://dashscope.aliyuncs.com/v1' });
-assert.ok(legacy.models.length > 0, 'legacy bare account migration is materialized in configuration');
+assert.equal(legacy.models, undefined, 'bare account writes must not materialize vendor models');
 const stored = JSON.parse(fs.readFileSync(path.join(config.irisHome(), 'providers.json'), 'utf8'));
 assert.deepEqual(stored.providers.find((p) => p.id === legacy.id).models, legacy.models);
 config.removeProvider(legacy.id);
@@ -51,4 +51,4 @@ try {
   await assert.rejects(runAction({}, 'image', { prompt: 'fixture', model: 'absent' }), /模型/);
   assert.equal(calls, 0, 'an undeclared bare model must be rejected before submitting');
 } finally { global.fetch = originalFetch; }
-console.log('Model resolution: explicit authority, reference parity, persisted migration and zero-network rejection passed');
+console.log('Model resolution: explicit authority, reference parity, no bare account defaults and zero-network rejection passed');

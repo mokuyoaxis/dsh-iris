@@ -72,6 +72,8 @@ DSH Host / Cordis                         Headless CLI
 
 ## Provider 边界
 
+当前开发树（Unreleased）按功能组织有序模型候选池，能力来自明确模型标签、旧能力字段绑定或供应商能力元数据。裸账号不物化默认模型，模型名称不授权进入候选链；明确空池与空标签保持权威。模型与供应商复合身份用于底层执行器，功能入口、分配排序及安全 failover 没有改为模型中心产品或默认轮转。当前 npm 0.2.1 仍是此前发布行为。
+
 Provider Adapter v0 固定 discovery、submit、poll、cancel、download 与 error mapping 六类生命周期操作；提交前的临时输入上传是可选准备能力，不自动成为 Core 事实。协议实现只接收显式凭据、模型和媒体端点，Core 保存复合模型身份与非敏感 binding，不保存端点原文。
 
 Core Runner 不拥有后台 timer。Headless `task observe` 每次最多 poll 一次，`task wait` 仅在本次命令内有界观察；DSH 的有界自动观察属于 Host，插件释放时停止 timer 并中止在途观察，但不会把“停止本地观察”写成“远端已取消”。端点或协议 binding 漂移时恢复在联网前拒绝。

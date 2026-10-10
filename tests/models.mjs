@@ -2,8 +2,8 @@
  * dsh-iris 模型发现规则测试（阶段 6）。
  * 运行：node tests/models.mjs
  * 覆盖：
- *   ① capabilitiesOfModel：模型名 → 能力标签（wan/qwen-vl/qwen-tts/gpt/dall-e/gemini）
- *   ② providerModels：显式 models 数组、旧四字段迁移、裸 DashScope 兜底、空
+ *   ① capabilitiesOfModel：非权威名称建议，不参与功能池选型
+ *   ② providerModels：明确标签、旧功能绑定、裸账号无默认模型、空池
  *   ③ modelPool / pickModel：全局池合并、按能力挑选、顺序
  * 纯函数，零网络、零 I/O。
  */
@@ -52,7 +52,7 @@ const pExplicit = { id: 'p1', models: [{ id: 'wan2.2-t2i-flash', capabilities: [
 const mExp = models.providerModels(pExplicit);
 assert(mExp.length === 2, '显式 models 2 条', mExp.length);
 assert(mExp[0].id === 'wan2.2-t2i-flash' && mExp[0].capabilities.includes('image-gen'), '显式模型带能力');
-assert(mExp[1].id === 'qwen-vl-plus' && mExp[1].capabilities.includes('vision'), '无能力声明则按规则推断');
+assert(mExp[1].id === 'qwen-vl-plus' && mExp[1].capabilities.length === 0, '无能力声明则保留未标注模型');
 const explicitEmpty = models.providerModels({ id: 'p-empty', models: [{ id: 'qwen-vl-plus', capabilities: [] }] });
 assert(explicitEmpty[0].capabilities.length === 0, '显式空能力数组覆盖名字推断');
 assert(models.parseModelRef(models.modelRef('p::x', 'model/a')).providerId === 'p::x', '复合引用可逆编码 provider');
@@ -77,22 +77,18 @@ assert(mExplicitEmptyDash.length === 0,
 assert(models.modelPool([pExplicitEmptyDash]).length === 0,
   'models: [] 的供应商不得出现在全局模型池');
 
-// 旧裸账号只在配置写入时迁移；运行时不隐式注入。
+// 裸账号不注入厂商模型或能力。
 const pNoModelsDash = { id: 'p-no-models-dash', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' };
 assert(models.providerModels(pNoModelsDash).length === 0, '运行时不猜模型');
-assert(models.migrateProviderModels(pNoModelsDash), '配置层可显式接回旧裸账号');
-assert(!models.migrateProviderModels(pNoModelsDash), '配置迁移幂等');
-assert(models.providerModels(pNoModelsDash).length > 0, '读取已经物化的迁移配置');
+assert(!Object.hasOwn(pNoModelsDash, 'models'), '读取不物化模型池');
 
-// 裸 DashScope 兜底
+// 协议与域名都不构成明确模型声明
 const pDash = { id: 'p3', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' };
-models.migrateProviderModels(pDash);
 const mDash = models.providerModels(pDash);
-assert(mDash.length >= 3, '裸 DashScope 至少 3 个已知模型', mDash.length);
-assert(mDash.some((m) => m.id === 'wan2.2-t2i-flash' && m.capabilities.includes('image-gen')), 'DashScope 含 wan t2i');
-assert(mDash.some((m) => m.id === 'qwen-vl-plus' && m.capabilities.includes('vision')), 'DashScope 含 qwen-vl');
-assert(mDash.some((m) => m.id === 'qwen3-vl-235b-a22b-thinking' && m.capabilities.includes('vision')), 'DashScope 池含 qwen3-vl 强视觉模型');
-assert(mDash.some((m) => m.id === 'qwen-audio-3.0-asr-flash-filetrans' && m.capabilities.includes('transcribe')), 'DashScope 池含独立转写模型');
+assert(mDash.length === 0, '裸 DashScope 没有隐含默认模型', mDash.length);
+const shared = models.providerModels({ id: 'shared', imageModel: 'custom', visionModel: 'custom' });
+assert(shared.length === 1 && shared[0].capabilities.join(',') === 'image-gen,vision', '同一旧模型可属于多个功能池');
+assert(models.providerModels({ ...pOld, capabilities: [] }).length === 0, '账号明确空能力阻止旧绑定');
 
 // 空（无字段、非 DashScope）
 const pEmpty = { id: 'p4', baseUrl: 'https://other.com/v1' };
@@ -117,4 +113,4 @@ assert(vis && vis.id === 'qwen-vl-plus' && vis.providerId === 'a', 'pickModel vi
 
 assert(models.pickModel(pool, 'nonexistent') === null, '无能力 → null');
 
-console.log('ALL OK —— 模型发现规则 5 组断言全部通过（能力推断/显式models/旧字段迁移/裸DashScope/全局池挑选）');
+console.log('ALL OK —— 模型规则断言通过（名称建议/明确功能标签/旧绑定/裸账号无兜底/功能池挑选）');

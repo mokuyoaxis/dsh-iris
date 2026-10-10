@@ -1,0 +1,72 @@
+/** 实际功能标签编辑组件：明确选入功能池，清空/取消/失败及零实测。 */
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const source = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
+const anchor = 'var clientSlots = clientSlotsPort(ctx);';
+let entry, failed = false, refreshes = 0, cursor = 0;
+const state = [], requests = [], notes = [];
+const window = { __ModuleLoader__: { load(value) { entry = value; } } };
+const React = {
+  createElement(type, props, ...children) { return { type, props: { ...props, children } }; },
+  useState(initial) {
+    const index = cursor++;
+    if (!(index in state)) state[index] = initial;
+    return [state[index], value => { state[index] = typeof value === 'function' ? value(state[index]) : value; }];
+  }
+};
+vm.runInNewContext(source.replace(anchor, 'window.ModelCapabilityEditor = ModelCapabilityEditor;\n    ' + anchor), {
+  window, document: { getElementById() { return {}; } }, console: { log() {} },
+  fetch: async (url, options) => {
+    requests.push({ url, body: JSON.parse(options.body) });
+    return { ok: !failed, json: async () => ({ error: '保存失败' }) };
+  }
+});
+entry.factory(() => React).apply({ slots: { inject(_name, callback) { return callback(); }, register() { return () => {}; } } });
+const nodes = tree => !tree || typeof tree !== 'object' ? [] : Array.isArray(tree) ? tree.flatMap(nodes) : [tree, ...nodes(tree.props?.children)];
+const props = { provider: { id: 'account' }, model: { id: 'custom', capabilities: ['vision'] },
+  onNote: value => notes.push(value), onDone: () => { refreshes++; } };
+const render = () => { cursor = 0; return nodes(window.ModelCapabilityEditor(props)); };
+const button = (tree, text) => tree.find(node => node.type === 'button' && node.props.children.includes(text));
+const checkbox = (tree, value) => tree.find(node => node.type === 'input' && node.props.value === value);
+const tick = () => new Promise(setImmediate);
+button(render(), '设置功能').props.onClick();
+let tree = render();
+assert.equal(tree.filter(node => node.type === 'input').length, 5);
+assert.equal(checkbox(tree, 'vision').props.checked, true);
+assert.equal(checkbox(tree, 'image-gen').props.checked, false);
+checkbox(tree, 'image-gen').props.onChange({ target: { checked: true } });
+tree = render();
+button(tree, '保存功能').props.onClick();
+assert(tree.filter(node => node.type === 'input').every(node => !node.props.disabled));
+assert(render().filter(node => node.type === 'input').every(node => node.props.disabled));
+await tick();
+assert.deepEqual(requests[0], { url: '/iris/api/actions/providers_set_model_caps',
+  body: { id: 'account', model_id: 'custom', capabilities: ['vision', 'image-gen'] } });
+assert.equal(refreshes, 1);
+assert.equal(notes[0], '模型功能标签已保存');
+
+props.model.capabilities = [];
+button(render(), '设置功能').props.onClick();
+tree = render();
+assert(tree.filter(node => node.type === 'input').every(node => !node.props.checked));
+button(tree, '取消').props.onClick();
+assert.equal(requests.length, 1, '取消不落盘');
+button(render(), '设置功能').props.onClick();
+button(render(), '保存功能').props.onClick();
+await tick();
+assert.deepEqual(requests[1].body.capabilities, [], '清空能力不触发名字兜底');
+assert.equal(refreshes, 2);
+
+failed = true;
+button(render(), '设置功能').props.onClick();
+checkbox(render(), 'tts').props.onChange({ target: { checked: true } });
+button(render(), '保存功能').props.onClick();
+await tick();
+tree = render();
+assert.equal(checkbox(tree, 'tts').props.checked, true, '失败保留用户选择');
+assert.equal(refreshes, 2, '失败不假装保存并刷新');
+assert.equal(notes.at(-1), '保存失败');
+button(tree, '取消').props.onClick();
+assert(requests.every(request => request.url.endsWith('/providers_set_model_caps')), '标签编辑不实测、不生成、不改分配');
+console.log('PASS 功能标签实际组件：五类功能、已有选择、明确保存、空能力、取消、失败反馈与零实测');

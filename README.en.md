@@ -249,7 +249,9 @@ By default, the optimizer uses the model selected for the current session and fa
 
 ## Model assignment and failover
 
-Capability assignment uses `providerId::modelId` as the model identity. The same model name from a different provider or account counts as two independent options. Discovery prefers provider capability metadata, falls back to name rules, and preserves explicit user overrides. Alibaba Cloud media calls may use a separate Workspace `mediaBaseUrl`.
+Iris organizes ordered model candidates by function. Capability assignments identify each executor with `providerId::modelId`; the same model name from a different provider or account is a separate option. Alibaba Cloud media calls may use a separate Workspace `mediaBaseUrl`.
+
+The current development tree (Unreleased) uses explicit function labels, legacy capability bindings, or provider capability metadata. Bare accounts and model names no longer grant capabilities. Discovery retains unlabelled models; assign their functions in the workbench or with CLI `models caps`. Existing explicit labels, assignment order and safe failover are preserved. The published npm 0.2.1 package retains its earlier inference behavior.
 
 Generation capabilities accept multiple candidate models. Every request starts at the head of the ordered list; this is safe failover, not round-robin. Iris tries the next candidate only when the provider explicitly proves that the request was not accepted. A 500 response, timeout, disconnect, missing response, polling failure, or local persistence failure never authorizes automatic resubmission. Once accepted, Iris may only resume observation or delivery.
 

@@ -4,6 +4,8 @@
 
 所有需要 JSON 的命令均支持 `--input '<json>'`、`--input-file /path/input.json` 或 `--input -`（stdin），只能选择一种，输入最多 2 MiB。私有配置必须是普通文件、绝对路径，POSIX 权限为 `0600`。真实请求只由显式执行生成、发现、实测或观察命令触发。
 
+能力配置规则已同步当前开发树（Unreleased，尚未发布）：能力来自明确配置或供应商元数据，裸账号和模型名称不自动赋能。现有功能入口、按功能分配的有序候选池和安全切换规则保持。
+
 ## S2V 数字人视频
 
 ```bash
@@ -37,13 +39,13 @@ dsh-iris media html --data-root /path/core --input-file /path/html-input.json \
 | `providers add/set --input-file ...` | 添加/局部更新账号；JSON 是 provider 对象，必须包含 id |
 | `providers remove <id>` | 移除指定账号，剪去失效分配 |
 | `models list` | 模型复合引用、能力和实测事实 |
-| `models add <ref> [--input ...]` | 添加模型；可给 capabilities，省略则按现有名称规则推断 |
+| `models add <ref> [--input ...]` | 添加模型；可给 capabilities，省略或空数组则保持未标注 |
 | `models caps <ref> --input ...` | 手动能力标签（允许空数组） |
 | `models protocol <ref> --input ...` | 单模型图片协议；`auto` 恢复账号默认 |
 | `models vision-input <ref> --input ...` | 模型视觉输入预算；`null` 恢复账号继承 |
 | `models remove <ref>` | 移除模型，剪去失效分配 |
 | `models discover <provider-id>` | 请求发现，仅预览，不修改配置 |
-| `models discover <provider-id> --apply true` | 合并发现结果，保留手工能力标签和已有实测记录 |
+| `models discover <provider-id> --apply true` | 合并明确能力元数据，保留未标注条目、已有明确标签和实测记录 |
 | `models test <ref> --capability vision` | 一次红图视觉实测，严格绑定该模型，记录 verified |
 | `models test <ref> --capability image-gen/tts --data-root ...` | 实际生成测试，结果保存为 Core Task/Artifact，图片最多等待 60 秒 |
 | `models test <ref> --capability video-gen/transcribe --data-root ... --input ...` | 使用真实素材单独实测，输入格式同 `run video/transcribe`，最多等待 60 秒；成功才恢复停用模型 |
