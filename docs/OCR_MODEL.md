@@ -1,6 +1,6 @@
 # 长图 OCR
 
-状态：**Iris 0.2.1**。定位、拼图摘要及自述见 [复合视觉调用](COMPOSITE_VISION.md)。
+状态：**Iris 0.2.2**。定位、拼图摘要及自述见 [复合视觉调用](COMPOSITE_VISION.md)。
 
 Agent 的 `iris_long_ocr` 与工作台 OCR 使用相同分块业务和共享 Vision Ports。工具接受 `image_path`、`artifact_id` 或 `attachment_id` 三选一；工作台动作接受 `image_path` 或 `artifact_id` 二选一，现有表单继续输入文件路径。Core ID 读取当前 profile 的既有图片，核验内容哈希和 MIME，不依赖原文件、不导出临时图片、不写入 Core。工具文字保留 Core ID，动作 JSON 带 `artifactId`；CLI `vision ocr` 同样支持，详见 [视觉 CLI](VISION_CLI.md)。复用可选的账号/模型输入预算，不新增公开 SDK export 或生产依赖。
 

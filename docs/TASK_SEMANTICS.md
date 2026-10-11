@@ -1,6 +1,6 @@
 # Iris Task/Attempt v2 语义契约
 
-状态：**v0.1.3 已实现；v0.1.4 Host/Provider Adapter、Host Doctor 与作品库 v0 已接入。** Task v2 已覆盖图片、视频、转写与 TTS，包括同步/异步、上传/提交、混合协议候选、工作台稳定用户态、状态流防倒退、重新观察、重新交付、提醒已读/恢复和知情人工重试。本文的 Task v2 字段描述 legacy 任务，不等同于 Core DTO。作品库 v0 分离旧本地作品生命周期；0.2.0 已实现 Core Task/Attempt 与 Artifact Manifest，0.2.1 的媒体、聊天改图和维护入口共享 Core 事实，见 [Core Runtime](CORE_RUNTIME_CONTRACT.md)。
+状态：**v0.1.3 已实现；v0.1.4 Host/Provider Adapter、Host Doctor 与作品库 v0 已接入。** Task v2 已覆盖图片、视频、转写与 TTS，包括同步/异步、上传/提交、混合协议候选、工作台稳定用户态、状态流防倒退、重新观察、重新交付、提醒已读/恢复和知情人工重试。本文的 Task v2 字段描述 legacy 任务，不等同于 Core DTO。作品库 v0 分离旧本地作品生命周期；0.2.0 已实现 Core Task/Attempt 与 Artifact Manifest，0.2.2 的媒体、聊天改图和维护入口共享 Core 事实，见 [Core Runtime](CORE_RUNTIME_CONTRACT.md)。
 
 ## 1. 为什么需要 v2
 

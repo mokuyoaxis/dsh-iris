@@ -1,10 +1,10 @@
 # CLI 配置与任务管理
 
-本文面向 Iris 0.2.1，沿用 `dsh-iris` 入口，无需启动 DSH，未新增生产依赖。安装 `npm install @mokuyoaxis/dsh-iris@0.2.1` 后运行 `npx dsh-iris ...`；也可从源码或本地 tarball 使用同一入口。视觉命令见 [视觉 CLI](VISION_CLI.md)，基础媒体链路见 [Headless CLI](HEADLESS_CLI.md)。
+本文面向 Iris 0.2.2，沿用 `dsh-iris` 入口，无需启动 DSH，未新增生产依赖。安装 `npm install @mokuyoaxis/dsh-iris@0.2.2` 后运行 `npx dsh-iris ...`；也可从源码或本地 tarball 使用同一入口。视觉命令见 [视觉 CLI](VISION_CLI.md)，基础媒体链路见 [Headless CLI](HEADLESS_CLI.md)。
 
 所有需要 JSON 的命令均支持 `--input '<json>'`、`--input-file /path/input.json` 或 `--input -`（stdin），只能选择一种，输入最多 2 MiB。私有配置必须是普通文件、绝对路径，POSIX 权限为 `0600`。真实请求只由显式执行生成、发现、实测或观察命令触发。
 
-能力配置规则已同步当前开发树（Unreleased，尚未发布）：能力来自明确配置或供应商元数据，裸账号和模型名称不自动赋能。现有功能入口、按功能分配的有序候选池和安全切换规则保持。
+能力配置规则已同步Iris 0.2.2：能力来自明确配置或供应商元数据，裸账号和模型名称不自动赋能。现有功能入口、按功能分配的有序候选池和安全切换规则保持。
 
 ## S2V 数字人视频
 

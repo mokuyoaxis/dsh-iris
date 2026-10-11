@@ -1,6 +1,6 @@
 # 独立视觉 CLI
 
-状态：**Iris 0.2.1**。安装 `npm install @mokuyoaxis/dsh-iris@0.2.1` 后运行 `npx dsh-iris ...`，或从源码运行 `node bin/dsh-iris.js ...`。需要 Node.js ≥ 22、已有依赖 Sharp；从视频文件抽帧还需要 PATH 中的 ffmpeg、ffprobe，复用既有 Core 帧不需要。
+状态：**Iris 0.2.2**。安装 `npm install @mokuyoaxis/dsh-iris@0.2.2` 后运行 `npx dsh-iris ...`，或从源码运行 `node bin/dsh-iris.js ...`。需要 Node.js ≥ 22、已有依赖 Sharp；从视频文件抽帧还需要 PATH 中的 ffmpeg、ffprobe，复用既有 Core 帧不需要。
 
 ## 四个命令
 

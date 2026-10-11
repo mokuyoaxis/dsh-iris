@@ -1,12 +1,12 @@
 # dsh-iris 用户指南
 
-本指南说明如何安装、配置和使用 Iris 0.2.1。升级范围见 [CHANGELOG](CHANGELOG.md) 和 [发布说明](docs/releases/0.2.1.md)。
+本指南说明如何安装、配置和使用 Iris 0.2.2。升级范围见 [CHANGELOG](CHANGELOG.md) 和 [发布说明](docs/releases/0.2.2.md)。
 
-本文的能力配置说明已同步当前开发树（Unreleased），尚未进入 npm 0.2.1：账号和名称不再自动赋能，需明确功能标签或供应商能力元数据。已发布版本的范围以发布说明为准。
+0.2.2 的能力来自明确功能标签、旧能力字段绑定或供应商能力元数据，账号和名称不再自动赋能。已有明确配置保留；仅有裸账号的配置需要先给实际模型设置功能，再加入有序候选池。
 
 ## 安装
 
-先运行 `dsh --version`。Iris `0.2.1` 仅声明支持 DSH `0.2.0-rc.2`；旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 使用固定版本 Iris `0.1.4`。验证边界见[适配说明](docs/DSH_RC2_ADAPTATION.md)。还需要 PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。Iris 0.2.1 要求 Node.js 22.0.0 或更高版本，旧 npm 0.1.4 的历史要求为 20.10.0；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 及后续 0.1.x 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
+先运行 `dsh --version`。Iris `0.2.2` 仅声明支持 DSH `0.2.0-rc.2`；旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 使用固定版本 Iris `0.1.4`。验证边界见[适配说明](docs/DSH_RC2_ADAPTATION.md)。还需要 PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。Iris 0.2.2 要求 Node.js 22.0.0 或更高版本，旧 npm 0.1.4 的历史要求为 20.10.0；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 及后续 0.1.x 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
 
 在上述旧 DSH 范围内，从 npm 安装固定稳定版到 Web profile：
 
@@ -17,12 +17,12 @@ dsh web
 
 npm 上无 scope 的 `dsh-iris` 是另一款插件；安装或更新 Iris Media 时必须使用完整 scoped 包名。
 
-只下载旧稳定包可运行 `npm pack @mokuyoaxis/dsh-iris@0.1.4`，安装为普通 npm 依赖可运行 `npm install @mokuyoaxis/dsh-iris@0.1.4`；后者不会自动加入 DSH profile。固定版本仍可在 latest 更新后安装，0.1.4 不包含新的 Core 媒体 CLI。DSH rc.2 使用 0.2.1。
+只下载旧稳定包可运行 `npm pack @mokuyoaxis/dsh-iris@0.1.4`，安装为普通 npm 依赖可运行 `npm install @mokuyoaxis/dsh-iris@0.1.4`；后者不会自动加入 DSH profile。固定版本仍可在 latest 更新后安装，0.1.4 不包含新的 Core 媒体 CLI。DSH rc.2 使用 0.2.2。
 
 在 DSH `0.2.0-rc.2` 上，从 npm 安装：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.1
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.2
 dsh web
 ```
 
@@ -30,7 +30,7 @@ dsh web
 
 ### 独立 CLI
 
-无需 DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.1`，通过 `npx dsh-iris --help` 查看入口。详见 [Headless CLI](docs/HEADLESS_CLI.md) 和 [视觉 CLI](docs/VISION_CLI.md)。
+无需 DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.2`，通过 `npx dsh-iris --help` 查看入口。详见 [Headless CLI](docs/HEADLESS_CLI.md) 和 [视觉 CLI](docs/VISION_CLI.md)。
 
 其他 DSH 版本，包括 `0.2.0` 正式版与其他 rc，须另行验收。让 Agent 协助安装时，可使用[简要 Prompt](docs/AGENT_QUICKSTART.md)。
 
@@ -257,18 +257,18 @@ Iris 工作台中的文件字段提供三种方式：
 
 ## 对话框提示词优化
 
-0.2.1 增加“智能优化 / 只组装”、本次规则、可编辑结果和改动对照。当前开发分支的一般功能提供默认忠实整理、可选改写表达、独立补充建议，以及折叠卡、改图用途与贴近 Skills 的指令；特殊功能后续安排。详见 [提示词优化与规则组装](docs/PROMPT_OPTIMIZER.md)。规则按次传入，原有自定义 v1 配置保留，读取旧配置不自动重写。
+0.2.2 在既有只组装、本次规则和可编辑对照上提供一般功能：默认忠实整理、可选改写表达、独立补充建议，以及折叠卡、改图用途与贴近 Skills 的指令；特殊功能后续安排。详见 [提示词优化与规则组装](docs/PROMPT_OPTIMIZER.md)。规则按次传入，原有自定义 v1 配置保留，读取旧配置不自动重写。
 
 安装并启用 Iris 后，DSH 对话输入区会出现一个没有边框、底色和文字的“🫧”入口。点击后打开半透明玻璃悬浮窗；桌面端靠近输入区，手机窄屏自动变为底部面板，并适配浏览器安全区、可用高度和内部滚动。它独立于 Iris 工作台，可用于普通问答、写作、编程以及图片/视频生成提示词。[查看 Android 16 真机完整流程](docs/screenshots.md)。
 
 使用流程：
 
 1. 在对话框写入草稿，点击“🫧”。
-2. 在一般功能中选择“通用、画图、改图、视频、数字人”（新布局和改图需要开发分支；npm 0.2.1 保留原四目标）。
-3. 开发分支默认“忠实整理”，保持原文与句序，只调整分组/分段。需要润色或明确改变指定内容时选择“改写表达”，再展开本次规则；只组装仍原样拼接草稿与前后缀，不调用模型。旧后端保留“智能优化”。
+2. 在一般功能中选择“通用、画图、改图、视频、数字人”（旧 0.2.1 的四目标调用保持兼容）。
+3. 0.2.2 默认“忠实整理”，保持原文与句序，只调整分组/分段。需要润色或明确改变指定内容时选择“改写表达”，再展开本次规则；只组装仍原样拼接草稿与前后缀，不调用模型。旧后端保留“智能优化”。
 4. 编辑预览、检查原文与改动，然后选择“写回输入框、复制、重新生成预览”或“恢复原文”。需要额外创意时展开“可选补充与待确认”，点击获取才调用一次模型；勾选后还需点击采纳才加入预览，可以撤回上次采纳。手动编辑会清除旧建议绑定；建议与待确认问题不代表已验证事实或用户已有要求。折叠不清空选择和结果，Iris 不会自动发送消息。
 
-默认路由是当前会话模型；当前会话没有选择时使用 DSH 默认模型。开发分支的“指令与模型设置”可查看当前默认或自定义指令，导出/导入 JSON，或恢复内置默认值。配置单独保存在 `$DSH_HOME/iris/v1/prompt-optimizer.json`，不包含供应商 API Key，也不与 `providers.json` 混合。
+默认路由是当前会话模型；当前会话没有选择时使用 DSH 默认模型。0.2.2 的“指令与模型设置”可查看当前默认或自定义指令，导出/导入 JSON，或恢复内置默认值。配置单独保存在 `$DSH_HOME/iris/v1/prompt-optimizer.json`，不包含供应商 API Key，也不与 `providers.json` 混合。
 
 导出文件格式：
 
@@ -325,7 +325,7 @@ Task v2 将“供应商是否受理、观察是否继续、远端结果和本地
 
 旧版任务会明确显示“旧任务 · 只读”。只有服务端明确返回 `schemaVersion=1` 才使用该标签；客户端与服务端热更新暂时不同步时，不会把字段缺失的新任务误判为旧任务。
 
-### 生图错误诊断（当前开发分支）
+### 生图错误诊断（0.2.2）
 
 即时错误与任务详情显示同一脱敏原因。包装的网络异常保留请求或正文读取阶段及可用的底层错误码，可区分 DNS/TLS、连接建立超时、等待响应头超时和正文中断；原生取消/超时保持各自分类，鉴权、参数、限流及额度错误分别分类。`fetch failed` 本身不能证明图片太大或网关回收长连接，需结合阶段与错误码判断。
 
@@ -367,7 +367,7 @@ npx @mokuyoaxis/dsh-iris doctor --json
 
 已安装包也可以直接运行 `dsh-iris doctor`。退出码为 `0`（正常）、`1`（警告）和 `2`（硬错误）。Doctor 会执行一个随后立即删除的本地写入探针，并检查配置、任务、能力分配、临时文件和产物引用；输出不含完整 API Key。离线模式无法检查 DSH 工具/客户端是否已经装载，也不会用付费请求验证 Provider。
 
-**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 npm 0.2.1 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.2.1 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
+**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 npm 0.2.1 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.2.2 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
 
 ## Host Doctor
 

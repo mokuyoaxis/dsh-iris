@@ -1,6 +1,6 @@
 # Iris 架构与边界
 
-状态：本文面向 **Iris 0.2.1**。0.2.0 建立实例化 Core Runtime、Headless CLI、共享 Provider 生命周期与 Task/Artifact 事实；0.2.1 补共享视觉、模型级图片协议、Artifact 编辑及维护入口。DSH 插件仅支持 `0.2.0-rc.2`，Node.js 最低为 22.0.0；旧宿主固定使用 npm `0.1.4`。Core 内部 API 尚未冻结为公共 SDK。
+状态：本文面向 **Iris 0.2.2**。0.2.0 建立实例化 Core Runtime、Headless CLI、共享 Provider 生命周期与 Task/Artifact 事实；0.2.2 补共享视觉、模型级图片协议、Artifact 编辑及维护入口。DSH 插件仅支持 `0.2.0-rc.2`，Node.js 最低为 22.0.0；旧宿主固定使用 npm `0.1.4`。Core 内部 API 尚未冻结为公共 SDK。
 
 ## 当前形态
 
@@ -41,7 +41,7 @@ DSH Host / Cordis                         Headless CLI
 
 | 模块 | 职责 | DSH 运行时依赖 |
 |---|---|---:|
-| `core-contract.js` / `core-runtime.js` / `core-writer-lease.js`（开发树） | 显式数据根、reader/writer 权限、单写者租约、取消与释放 | 无 |
+| `core-contract.js` / `core-runtime.js` / `core-writer-lease.js`（0.2.2） | 显式数据根、reader/writer 权限、单写者租约、取消与释放 | 无 |
 | `command-service.js` | 本地媒体命令、Task 控制面和 Artifact 查询/导出 | 无 |
 | `generation-input.js` | CLI、DSH 与重试共用的生成参数校验和 Provider 字段转换 | 无 |
 | `model-port-contract.js` / `model-invoker.js` | Text/Vision 内部契约、有限调用预算与取消 | 无 |
@@ -59,7 +59,7 @@ DSH Host / Cordis                         Headless CLI
 
 完整规则见 [Core Runtime v0](CORE_RUNTIME_CONTRACT.md)、[Artifact Manifest v0](ARTIFACT_MANIFEST.md)、[Provider Adapter v0](PROVIDER_ADAPTER_CONTRACT.md) 与 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。这些仍是内部契约，不是第三方 SDK 兼容承诺。
 
-当前开发树的 Core writer 在创建目录前发布完整 owner 意图，释放和显式恢复通过整体退役保留证据；普通启动不抢占。非图片 staging 复用文件复制接收与分块哈希，图片格式验证和 inline 解码仍可能使用完整 Buffer，不声称端到端流式传输。
+0.2.2 的 Core writer 在创建目录前发布完整 owner 意图，释放和显式恢复通过整体退役保留证据；普通启动不抢占。非图片 staging 复用文件复制接收与分块哈希，图片格式验证和 inline 解码仍可能使用完整 Buffer，不声称端到端流式传输。
 
 ## Task、Attempt 与 Artifact
 
@@ -74,11 +74,11 @@ DSH Host / Cordis                         Headless CLI
 
 ## Provider 边界
 
-当前开发树（Unreleased）按功能组织有序模型候选池，能力来自明确模型标签、旧能力字段绑定或供应商能力元数据。裸账号不物化默认模型，模型名称不授权进入候选链；明确空池与空标签保持权威。模型与供应商复合身份用于底层执行器，功能入口、分配排序及安全 failover 没有改为模型中心产品或默认轮转。当前 npm 0.2.1 仍是此前发布行为。
+0.2.2按功能组织有序模型候选池，能力来自明确模型标签、旧能力字段绑定或供应商能力元数据。裸账号不物化默认模型，模型名称不授权进入候选链；明确空池与空标签保持权威。模型与供应商复合身份用于底层执行器，功能入口、分配排序及安全 failover 没有改为模型中心产品或默认轮转。旧 0.2.1 的能力推断行为不再用于裸账号或模型名称赋能。
 
 Provider Adapter v0 固定 discovery、submit、poll、cancel、download 与 error mapping 六类生命周期操作；提交前的临时输入上传是可选准备能力，不自动成为 Core 事实。协议实现只接收显式凭据、模型和媒体端点，Core 保存复合模型身份与非敏感 binding，不保存端点原文。
 
-当前开发树的生图错误将 HTTP 前的尺寸拒绝明确记为未受理，网络异常保留实际请求/正文阶段及可用错误码，原生取消/超时保留原分类。错误诊断不改变受理门，网络超时或正文丢失仍不能触发自动重提。
+0.2.2 的生图错误将 HTTP 前的尺寸拒绝明确记为未受理，网络异常保留实际请求/正文阶段及可用错误码，原生取消/超时保留原分类。错误诊断不改变受理门，网络超时或正文丢失仍不能触发自动重提。
 
 Core Runner 不拥有后台 timer。Headless `task observe` 每次最多 poll 一次，`task wait` 仅在本次命令内有界观察；DSH 的有界自动观察属于 Host，插件释放时停止 timer 并中止在途观察，但不会把“停止本地观察”写成“远端已取消”。端点或协议 binding 漂移时恢复在联网前拒绝。
 
@@ -90,7 +90,7 @@ Core Runner 不拥有后台 timer。Headless `task observe` 每次最多 poll �
 
 0.2.1通过 `prompt-optimizer-core.js` → `model-invoker.js` → `dsh-text-model-adapter.js` 接入首个提示词消费者；`prompt-optimizer.js` 继续拥有 v1 配置、模型选择、reasoning 策略和 Host 投影。共享核心不读取 Host/配置/Store，不取得 writer，也不创建媒体 Task/Attempt/Artifact。规则与预览见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
 
-当前开发树的一般提示词功能在这个共享消费者上增加 faithful / rewrite / suggestions 策略：忠实正文由原稿片段按原顺序拼回，建议独立返回并要求明确采纳。五用途和折叠预览属于 DSH UI，不自动进入生图模型池，也不新增自持文本目录、CLI 或公共 SDK。
+0.2.2 的一般提示词功能在这个共享消费者上增加 faithful / rewrite / suggestions 策略：忠实正文由原稿片段按原顺序拼回，建议独立返回并要求明确采纳。五用途和折叠预览属于 DSH UI，不自动进入生图模型池，也不新增自持文本目录、CLI 或公共 SDK。
 
 单图视觉将 Agent/工作台 look/relook 和显式视觉实测接入 `vision-core.js` 与 HTTP/DSH Vision Port：共享 120 秒整体预算、完整终态与候选策略，图片桥接核验原图与实际附件，接受合法宿主规范化。DSH 附件保存属于宿主副作用，不是 Core Artifact；rc.2 保存不可取消的限制如实保留。见 [单图视觉调用](VISION_MODEL.md)。视觉 CLI 复用这些业务；可选 `visionInput` 在入口层控制发送副本。未新增公共 SDK export，自持文本目录和独立提示词入口另行安排。
 

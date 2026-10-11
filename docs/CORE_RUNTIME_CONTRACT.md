@@ -1,6 +1,6 @@
 # Core Runtime v0 内部契约
 
-本文定义 Iris 0.2.1 沿用的 Core Runtime 内部接口，初版在 0.2.0 实现。内部接口在后续版本仍可能调整，npm 包不把它作为公开 API 导出；现有 `config.js`、`tasks.js` 和 `artifacts.js` 也尚未迁移。
+本文定义 Iris 0.2.2 沿用的 Core Runtime 内部接口，初版在 0.2.0 实现。内部接口在后续版本仍可能调整，npm 包不把它作为公开 API 导出；现有 `config.js`、`tasks.js` 和 `artifacts.js` 也尚未迁移。
 
 ## 目标与范围
 
@@ -19,7 +19,7 @@ Core Runtime 由调用方显式创建、启动和释放。数据根、操作权�
 
 初版租约优先使用 Node 标准库和本地文件系统能力，不新增生产依赖。Android 共享存储、网络文件系统和异常退出后的恢复只有拿到真实证据后才声明支持；实现不得假设 systemd 或常驻 daemon 存在。
 
-当前开发分支在原 v0 租约目录旁增加 `.iris-runtime-writer-v0.owner.json` 意图证据：完整私有 owner 先准备，再通过排他 hard link 原子发布，随后创建目录并链接 `owner.json`。新写者同时尊重目录和意图；创建中断仍保留完整 PID。文件系统不支持 hard link 时安全失败，不回退到可能半写的锁。Task、Artifact、配置格式和 CLI 参数不变，既有完整 v0 目录仍可诊断与显式恢复。
+0.2.2在原 v0 租约目录旁增加 `.iris-runtime-writer-v0.owner.json` 意图证据：完整私有 owner 先准备，再通过排他 hard link 原子发布，随后创建目录并链接 `owner.json`。新写者同时尊重目录和意图；创建中断仍保留完整 PID。文件系统不支持 hard link 时安全失败，不回退到可能半写的锁。Task、Artifact、配置格式和 CLI 参数不变，既有完整 v0 目录仍可诊断与显式恢复。
 
 正常释放先整体 rename 非空目录为本实例 UUID 的退役目录，最后撤下意图；不会先在占位目录里删除 owner。退役目录本身不占有固定租约，但若撤下意图前中断，剩余意图仍阻止普通 writer，需要在 owner 已退出且证据完整时显式恢复。意图撤下后的清理只涉及本实例退役证据，清理失败不阻止新 writer；遗留退役目录不会在下次启动时自动删除。
 

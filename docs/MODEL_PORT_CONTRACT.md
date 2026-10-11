@@ -1,6 +1,6 @@
 # Text/Vision Model Port v0 契约设计
 
-状态：**Iris 0.2.1。** 0.2.0 已包含 M1 契约；0.2.1 接入 DSH 文本适配器与共享优化消费者、HTTP/DSH Vision Port，以及 look/relook、OCR、定位、拼图摘要和图片自述。端口仍为内部契约，不增加公开 export 或生产依赖，不改变 [Host Adapter v0](HOST_ADAPTER_CONTRACT.md) 的现有方法。新增按次规则与 UI 见 [提示词优化系统](PROMPT_OPTIMIZER.md)，单图预算与宿主附件副作用见 [单图视觉调用](VISION_MODEL.md)，复合操作见 [长图 OCR](OCR_MODEL.md) 和 [定位与摘要](COMPOSITE_VISION.md)。
+状态：**Iris 0.2.2。** 0.2.0 已包含 M1 契约；0.2.2 接入 DSH 文本适配器与共享优化消费者、HTTP/DSH Vision Port，以及 look/relook、OCR、定位、拼图摘要和图片自述。端口仍为内部契约，不增加公开 export 或生产依赖，不改变 [Host Adapter v0](HOST_ADAPTER_CONTRACT.md) 的现有方法。新增按次规则与 UI 见 [提示词优化系统](PROMPT_OPTIMIZER.md)，单图预算与宿主附件副作用见 [单图视觉调用](VISION_MODEL.md)，复合操作见 [长图 OCR](OCR_MODEL.md) 和 [定位与摘要](COMPOSITE_VISION.md)。
 
 0.2.1 还提供 [视觉 CLI](VISION_CLI.md)、可选账号/模型 `visionInput` 和设置命令，见 [看图输入预算](CLI_MANAGEMENT.md#看图输入预算)；不改变请求/完成 DTO、契约版本或公开 exports。该设置用于看图、OCR 分块、定位和聊天改图的发送副本，不是供应商能力上限声明；聊天改图的媒体任务语义仍由 Core Runner 管理。
 
@@ -254,11 +254,11 @@ Host 引用、session ID 与 source metadata 可存在于 DSH 适配器闭包，
 
 提示词优化仍由 DSH 边界读取 v1 配置、解析固定/会话/默认模型，返回选择来源供 UI 展示。共享核心只接收选定端口与模板；保留原草稿、预览后写回和不携带会话历史的行为。Provider 健康反馈由入口消费安全结果/错误，模型端口不导入健康 Store。
 
-当前开发树的一般功能在既有消费者上增加 faithful / rewrite / suggestions 策略；忠实整理校验原文片段覆盖和顺序，独立建议不自动加入正文。新策略与五用途不改变 Model Port 的单次调用契约，不新增自持文本能力、独立提示词 CLI 或公开 SDK；具体输出协议和旧调用兼容见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
+0.2.2 的一般功能在既有消费者上增加 faithful / rewrite / suggestions 策略；忠实整理校验原文片段覆盖和顺序，独立建议不自动加入正文。新策略与五用途不改变 Model Port 的单次调用契约，不新增自持文本能力、独立提示词 CLI 或公开 SDK；具体输出协议和旧调用兼容见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
 
 ## 实现切片与退出条件
 
-0.2.0 包含 M1；0.2.1 包含 M2/M3/M4 和 M5 独立视觉 CLI，详见 [视觉 CLI](VISION_CLI.md)。一般提示词功能的新增编辑策略属于 Unreleased 开发树，特殊功能及独立提示词入口后续安排。
+0.2.0 包含 M1；0.2.1 包含 M2/M3/M4 和 M5 独立视觉 CLI，详见 [视觉 CLI](VISION_CLI.md)。一般提示词功能的新增编辑策略属于 0.2.2，特殊功能及独立提示词入口后续安排。
 
 | 切片 | 范围 | 退出条件 |
 |---|---|---|

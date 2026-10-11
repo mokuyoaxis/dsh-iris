@@ -1,6 +1,6 @@
 # Host Adapter v0 契约
 
-状态：**v0.1.4 内部契约与渐进迁移已完成，并通过真实 DSH 隔离 canary。** 本文固定真实消费者所需的最小边界；0.2.1 已提供独立 Core/CLI，但未冻结公开 Host SDK，也未实现完整 Local Host。
+状态：**v0.1.4 内部契约与渐进迁移已完成，并通过真实 DSH 隔离 canary。** 本文固定真实消费者所需的最小边界；0.2.2 已提供独立 Core/CLI，但未冻结公开 Host SDK，也未实现完整 Local Host。
 
 ## 目标
 

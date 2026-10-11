@@ -1,6 +1,6 @@
 # Provider Adapter v0 生命周期契约
 
-状态：**Iris 0.2.1；沿用 v0 生命周期内部契约。** 0.1.4 建立六操作契约，0.2.0 增加可选输入准备能力，0.2.1 增加聊天/Responses 生图及模型级协议覆盖。 这是 Iris Core 模块与供应商协议实现之间的内部边界，尚未冻结为第三方公开 SDK。DashScope 与 OpenAI Images 兼容实现通过同一套零网络 conformance runner；聊天/Responses 图片协议另有提交、交付与 CLI 回归。
+状态：**Iris 0.2.2；沿用 v0 生命周期内部契约。** 0.1.4 建立六操作契约，0.2.0 增加可选输入准备能力，0.2.2 增加聊天/Responses 生图及模型级协议覆盖。 这是 Iris Core 模块与供应商协议实现之间的内部边界，尚未冻结为第三方公开 SDK。DashScope 与 OpenAI Images 兼容实现通过同一套零网络 conformance runner；聊天/Responses 图片协议另有提交、交付与 CLI 回归。
 
 ## 目标与依赖方向
 
@@ -74,7 +74,7 @@ Core Attempt 持久化 `providerId::modelId` 复合身份，具体 Provider Adap
 
 `download` 物化已经确认成功的产物：`remote-url` 执行下载，`inline-base64` 直接写入私有 staging。inline 正文只作为 non-enumerable 的短生命周期字段传给 Runner，不进入 JSON、Task 或 Manifest。生图产物按真实字节校验 PNG/JPEG/WebP，保留字节、MIME、后缀和哈希。物化失败只能改变交付状态，不能触发生成重提。OpenAI Images、聊天生图与当前 Responses 生图切片均同步返回图片，所以 `poll` 与 `cancel` 显式 unsupported；Responses 纯文字、缺图或未完成结果保留受理未知，不扫描其他接口。DashScope 当前没有经过验证的远端取消接口，因此 `cancel` 同样显式 unsupported，而不是伪装取消成功。
 
-当前开发分支对视频、音频及文本 staging 复用 Artifact Store 的文件复制接收路径，哈希仍按 1 MiB 分块计算，不再为落库整文件 `readFileSync`。Profile、大小核对、元数据、关系边和交付失败事实保持。图片仍读取字节验证真实格式；inline 响应的解码以及工作台预览/ZIP 等读取路径仍可能使用完整 Buffer，本改动不声称端到端流式传输。
+0.2.2对视频、音频及文本 staging 复用 Artifact Store 的文件复制接收路径，哈希仍按 1 MiB 分块计算，不再为落库整文件 `readFileSync`。Profile、大小核对、元数据、关系边和交付失败事实保持。图片仍读取字节验证真实格式；inline 响应的解码以及工作台预览/ZIP 等读取路径仍可能使用完整 Buffer，本改动不声称端到端流式传输。
 
 聊天改图仍使用 `capability:image`：Runner 从当前 Core 校验并读取来源 Artifact，短生命周期 `input.image:{bytes,mediaType}` 与 `prompt` 交给聊天适配器。适配器按实际模型 `visionInput` 准备副本，HTTP 用户消息使用 `text` 与 `image_url` data URL。普通 Images/Responses 不接受此输入，编辑候选链预先过滤协议。Task 仅保存可选 `sourceArtifactId`，用于未知/失败任务的来源保护和交付时写入新 Artifact 的 `derived-from`；旧记录无需迁移，重试仍重新提供输入。来源或编辑输入预算失败发生在 HTTP 之前。
 
@@ -94,7 +94,7 @@ Host 和 CLI 通过 `prepareProviderInput(adapter, { model, filePath, signal?, t
 
 `submit` 抛错由统一调用器转换成保守四态；`cancel` 抛错转换为 `unknown`；`discover/poll/download` 抛出脱敏的 `ProviderContractError`，由各自调用方应用重试和事实规则。
 
-当前开发分支的生图传输同时覆盖请求与响应正文读取。包装的网络异常在尚未取得响应头时标记 `stage=submit`，取得响应头后正文读取失败时标记 `stage=response`；已知网络超时码归类 timeout，两者都保留 `acceptance=unknown`，不凭 HTTP 200 响应头断言完整生成成功。可用的底层网络错误码放入既有 `providerCode` 字段，提示区分 DNS、TLS、连接建立、等待响应头及正文读取；没有明确错误码时只描述实际阶段。原生 AbortError、TimeoutError 或 ABORT_ERR 保留原异常及取消/超时分类，未附加正文读取阶段证据时沿用提交调用的阶段。完整 HTTP 业务响应仍按鉴权、限流/额度、参数或供应商错误分类，明确分类不被错误文字中的 timeout 覆盖。
+0.2.2的生图传输同时覆盖请求与响应正文读取。包装的网络异常在尚未取得响应头时标记 `stage=submit`，取得响应头后正文读取失败时标记 `stage=response`；已知网络超时码归类 timeout，两者都保留 `acceptance=unknown`，不凭 HTTP 200 响应头断言完整生成成功。可用的底层网络错误码放入既有 `providerCode` 字段，提示区分 DNS、TLS、连接建立、等待响应头及正文读取；没有明确错误码时只描述实际阶段。原生 AbortError、TimeoutError 或 ABORT_ERR 保留原异常及取消/超时分类，未附加正文读取阶段证据时沿用提交调用的阶段。完整 HTTP 业务响应仍按鉴权、限流/额度、参数或供应商错误分类，明确分类不被错误文字中的 timeout 覆盖。
 
 本地尺寸校验使用 `validate / invalid_request / not_accepted`，在 HTTP 前失败。分隔符按协议归一，DashScope 多模态只执行已有证据的总像素范围，不推断单边上限；OpenAI 兼容网关的数值集合留给上游。`retryable` 表示错误类别可重试，不授权重提受理未知的收费请求；Core 的受理门继续先于候选切换。DSH 动作错误附带同一脱敏 `safeMessage`，不输出原始 cause、正文或凭据。
 

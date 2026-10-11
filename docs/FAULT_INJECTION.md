@@ -1,6 +1,6 @@
 # 故障注入矩阵
 
-状态：本矩阵使用本地 fixture、Fake Provider、Mock Fetch 或临时目录，不发送真实供应商请求。前表记录 legacy Task v2 的受理与恢复语义；后表补充 Iris 0.2.1 的 Core、图片协议与视觉边界。
+状态：本矩阵使用本地 fixture、Fake Provider、Mock Fetch 或临时目录，不发送真实供应商请求。前表记录 legacy Task v2 的受理与恢复语义；后表补充 Iris 0.2.2 的 Core、图片协议与视觉边界。
 
 | 场景 | 预期事实 | 自动重复提交 | 证据 |
 |---|---|---:|---|
@@ -33,7 +33,7 @@
 | Artifact 来源缺失/损坏或编辑失败 | 生成前核验；来源保持原样，已受理未知不重提 | 0 | `chat-image-edit.mjs`、`chat-image-edit-cli.mjs` |
 | Core 删除引用保护、隔离与恢复冲突 | 拒绝删除仍被引用的作品；可恢复隔离，冲突不覆盖 | 0 | `core-deletion-boundary.mjs`、`workbench-management.mjs` |
 
-## 当前开发树新增边界（Unreleased）
+## 0.2.2 新增边界
 
 | 场景 | 预期事实 | 自动重复提交 | 证据 |
 |---|---|---:|---|

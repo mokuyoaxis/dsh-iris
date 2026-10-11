@@ -1,8 +1,8 @@
 # Headless CLI
 
-本文面向 Iris 0.2.1，涵盖无 DSH 的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为 Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core 内部接口与 Artifact v0 尚未冻结为公共 SDK。
+本文面向 Iris 0.2.2，涵盖无 DSH 的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为 Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core 内部接口与 Artifact v0 尚未冻结为公共 SDK。
 
-需要 Node.js ≥ 22.0.0。安装 `npm install @mokuyoaxis/dsh-iris@0.2.1` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；安装本地 tarball 后也可运行 `dsh-iris ...`。
+需要 Node.js ≥ 22.0.0。安装 `npm install @mokuyoaxis/dsh-iris@0.2.2` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；安装本地 tarball 后也可运行 `dsh-iris ...`。
 
 0.2.1 提供 `vision look / locate / ocr / summarize`。文件输入的纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；图片/帧 Artifact ID 输入需显式数据根，以 reader 读取既有 Core 产物，只有主动音轨转写才创建 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)；S2V、HTML、配置、等待及批量管理见 [CLI 管理](CLI_MANAGEMENT.md)。
 
@@ -28,7 +28,7 @@ dsh-iris runtime recover --data-root /absolute/path/to/iris-data --confirm-stale
 
 此命令会再次核对租约证据和 PID，写入私有恢复审计记录后释放陈旧租约；活跃、无法确认、损坏或 PID 不匹配时拒绝。它不是 Doctor 的自动副作用，也不会修复 Task/Artifact。不要手动删除 `.iris-runtime-writer-v0` 或把“PID 不存在”单独当作安全证明。
 
-当前开发分支保留创建/释放意图和恢复步骤证据。Doctor 可报告 `phase: pending` 或 `recovering`；恢复本身被强杀后重新运行 Doctor，回显最新 PID，不沿用旧确认。只有完整证据且所有相关 PID 已退出才可继续；无 owner 的旧空目录及仅剩旧 `.owner.stale-*` 的现场仍拒绝。恢复审计保留完整退役目录，普通启动不删除它们。需要支持 hard link 的私有文件系统；参数、Task/Artifact/配置版本不变。细节与验证边界见 [Core Runtime 契约](CORE_RUNTIME_CONTRACT.md)。
+0.2.2保留创建/释放意图和恢复步骤证据。Doctor 可报告 `phase: pending` 或 `recovering`；恢复本身被强杀后重新运行 Doctor，回显最新 PID，不沿用旧确认。只有完整证据且所有相关 PID 已退出才可继续；无 owner 的旧空目录及仅剩旧 `.owner.stale-*` 的现场仍拒绝。恢复审计保留完整退役目录，普通启动不删除它们。需要支持 hard link 的私有文件系统；参数、Task/Artifact/配置版本不变。细节与验证边界见 [Core Runtime 契约](CORE_RUNTIME_CONTRACT.md)。
 
 媒体与视觉路由会持久记录短时 429 冷却或明确额度/预算耗尽，后续候选跳过受阻模型。冷却到期不发起请求；持续停用需 `models test` 成功恢复。状态及私有配置写入规则见 [Provider 健康](PROVIDER_HEALTH.md) 与 [CLI 管理命令](CLI_MANAGEMENT.md)。
 
