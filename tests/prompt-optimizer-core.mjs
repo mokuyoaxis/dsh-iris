@@ -41,6 +41,19 @@ const multiple = assemblePrompt({ text: '原稿', rules: [
 ] });
 assert.equal(multiple.optimized, '一\n\n二\n\n原稿\n\n三');
 
+for (const text of ['http://googleusercontent.com/image_generation_content/0_752',
+  'https://fixture.invalid/image.png', '![图像](https://fixture.invalid/image.png)',
+  '[结果](https://fixture.invalid/result.mp4)', 'data:image/png;base64,aGVsbG8=',
+  '```text\nhttps://fixture.invalid/audio.mp3\n```']) {
+  const fixture = createFakeModelPort({ steps: [{ text }] });
+  await assert.rejects(runPromptOptimization(fixture.port, plan), error => error.code === 'IRIS_MODEL_PROTOCOL_INVALID'
+    && error.stage === 'normalize' && error.invocation === 'responded');
+  assert.equal(fixture.stats.invocations, 1, '错误类型的终态不自动重试');
+}
+const withUrl = createFakeModelPort({ steps: [{ text: '请参考 https://example.com 的内容，写一段中文摘要。' }] });
+assert((await runPromptOptimization(withUrl.port, preparePromptOptimization({ text: '参考 https://example.com 写中文摘要' }, config))).optimized.includes('https://example.com'));
+assert.equal(assemblePrompt({ text: 'https://example.com' }).optimized, 'https://example.com', '原样组装不误判用户原文');
+
 for (const bad of [
   { ...input, mode: 'other' }, { ...input, target: 0 },
   { ...input, rules: [{ ...rules[0], position: 'prefix' }] },

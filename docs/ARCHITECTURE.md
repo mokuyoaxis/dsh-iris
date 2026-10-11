@@ -88,6 +88,8 @@ Core Runner 不拥有后台 timer。Headless `task observe` 每次最多 poll �
 
 0.2.1通过 `prompt-optimizer-core.js` → `model-invoker.js` → `dsh-text-model-adapter.js` 接入首个提示词消费者；`prompt-optimizer.js` 继续拥有 v1 配置、模型选择、reasoning 策略和 Host 投影。共享核心不读取 Host/配置/Store，不取得 writer，也不创建媒体 Task/Attempt/Artifact。规则与预览见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
 
+当前开发树的一般提示词功能在这个共享消费者上增加 faithful / rewrite / suggestions 策略：忠实正文由原稿片段按原顺序拼回，建议独立返回并要求明确采纳。五用途和折叠预览属于 DSH UI，不自动进入生图模型池，也不新增自持文本目录、CLI 或公共 SDK。
+
 单图视觉将 Agent/工作台 look/relook 和显式视觉实测接入 `vision-core.js` 与 HTTP/DSH Vision Port：共享 120 秒整体预算、完整终态与候选策略，图片桥接核验原图与实际附件，接受合法宿主规范化。DSH 附件保存属于宿主副作用，不是 Core Artifact；rc.2 保存不可取消的限制如实保留。见 [单图视觉调用](VISION_MODEL.md)。视觉 CLI 复用这些业务；可选 `visionInput` 在入口层控制发送副本。未新增公共 SDK export，自持文本目录和独立提示词入口另行安排。
 
 OCR 切片通过 `ocr-model-routing.js` 在入口解引用前建立整体 operation，`ocr.js` 仅接收图片字节和模型端口，使用现有 Sharp 做有限分块；全部块复用 `completeVision`，没有每块重置计时或调用额度。普通块失败可以产生明确部分结果，取消/超时终止整次操作；不取得 Core writer 或写入 Task/Artifact。见 [长图 OCR](OCR_MODEL.md)。

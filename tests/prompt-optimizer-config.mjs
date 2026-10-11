@@ -18,7 +18,7 @@ assert(initial.config.enabled === true, '提示词入口默认应启用');
 assert(initial.config.route.mode === 'session', '默认应使用当前会话模型');
 assert(initial.config.generation.reasoningEffort === 'off-if-supported', '默认应在模型明确支持时关闭 thinking');
 assert(initial.config.systemPrompt.includes('Iris 提示词编辑器'), '缺少内置默认 Prompt');
-assert(Object.keys(initial.config.targets).join(',') === 'general,image,video,s2v', '目标模板集合不完整');
+assert(Object.keys(initial.config.targets).join(',') === 'general,image,image-edit,video,s2v', '目标模板集合不完整');
 
 const imported = config.importPromptOptimizerConfig({
   version: 1,
