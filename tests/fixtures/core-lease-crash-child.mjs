@@ -3,7 +3,9 @@ import path from 'node:path';
 import { createCoreRuntime } from '../../lib/core-runtime.js';
 import { recoverCoreWriterLease } from '../../lib/core-lease-recovery.js';
 
-const [stage, root, pid] = process.argv.slice(2);
+const [stage, rootArgument, pid] = process.argv.slice(2);
+// Runtime 按 native realpath 执行；Windows 临时目录可能包含 8.3 路径别名。
+const root = fs.realpathSync.native(rootArgument);
 const directory = path.join(root, '.iris-runtime-writer-v0');
 const intent = path.join(root, '.iris-runtime-writer-v0.owner.json');
 function checkpoint(hit) {
@@ -26,7 +28,7 @@ for (const method of ['writeFileSync', 'mkdirSync', 'linkSync', 'renameSync', 'u
       || (stage === 'owner-published' && method === 'linkSync' && second === path.join(directory, 'owner.json'))
       || (stage === 'release-retired' && method === 'renameSync' && first === directory && second.includes('.released-'))
       || (stage === 'release-intent-removed' && method === 'unlinkSync' && first === intent)
-      || (stage === 'release-owner-removed' && method === 'unlinkSync' && first.includes('.released-') && first.endsWith('/owner.json'))
+      || (stage === 'release-owner-removed' && method === 'unlinkSync' && first.includes('.released-') && path.basename(first) === 'owner.json')
       || (['recovery-claim-published', 'recovery-hold'].includes(stage) && method === 'linkSync' && second.includes('.iris-runtime-writer-v0.recovery-'))
       || (stage === 'recovery-audit-published' && method === 'linkSync' && /lease_recovery_[a-f0-9]+\.json$/.test(second))
       || (stage === 'recovery-retired' && method === 'renameSync' && first === directory && second.endsWith('.lease'))

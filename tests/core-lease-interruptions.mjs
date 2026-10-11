@@ -15,7 +15,7 @@ const root = name => { const value = path.join(base, name); fs.mkdirSync(value, 
 function crash(stage, dataRoot, pid) {
   const result = spawnSync(process.execPath, [childFile, stage, dataRoot, String(pid || '')], { encoding: 'utf8', timeout: 10000 });
   assert.ifError(result.error);
-  assert.equal(result.stdout, 'CHECKPOINT ' + stage + '\n', stage + ': interruption checkpoint reached');
+  assert.equal(result.stdout, 'CHECKPOINT ' + stage + '\n', result.stderr || stage + ': interruption checkpoint reached');
   assert.equal(result.stderr, '', stage + ': must not be an exception exit');
   // Windows 的进程内 SIGKILL 返回 TerminateProcess 的退出码，父进程没有 signalCode。
   if (process.platform === 'win32') { assert.equal(result.status, 1); assert.equal(result.signal, null); }
@@ -40,6 +40,11 @@ function recover(dataRoot) {
   assert(fs.statSync(path.join(audit, record.evidenceDirectory)).isDirectory());
 }
 try {
+  // 通过目录别名传入根路径；fixture 的检查点须匹配 Runtime 的真实路径。
+  const aliasTarget = root('alias-target'), alias = path.join(base, 'root-alias');
+  fs.symlinkSync(aliasTarget, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  crash('intent-published', alias);
+  recover(alias); await canWrite(alias);
   for (const stage of ['prepare-written', 'intent-published', 'directory-created', 'owner-published',
     'release-retired', 'release-intent-removed', 'release-owner-removed']) {
     const dataRoot = root(stage); crash(stage, dataRoot);
@@ -134,7 +139,7 @@ try {
   const destination = path.join(occupied, '.iris-runtime-writer-v0.released-' + id); fs.mkdirSync(destination);
   await assert.rejects(runtime.dispose(), { code: 'IRIS_CORE_LEASE_INVALID' });
   assert(fs.existsSync(destination)); assert.equal(fs.readFileSync(path.join(occupied, '.iris-runtime-writer-v0/owner.json'), 'utf8'), original);
-  console.log('PASS 租约：11 个真实 SIGKILL 窗口、连续恢复中断、并发拒绝、旧恢复兼容、损坏/未知拒绝与后续可写');
+  console.log('PASS 租约：根路径别名、11 个真实 SIGKILL 窗口、连续恢复中断、并发拒绝、旧恢复兼容、损坏/未知拒绝与后续可写');
 } finally {
   for (const child of children) child.kill('SIGKILL');
   fs.rmSync(base, { recursive: true, force: true });
