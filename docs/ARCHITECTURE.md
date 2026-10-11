@@ -41,7 +41,7 @@ DSH Host / Cordis                         Headless CLI
 
 | 模块 | 职责 | DSH 运行时依赖 |
 |---|---|---:|
-| `core-contract.js` / `core-runtime.js` | 显式数据根、reader/writer 权限、单写者租约、取消与释放 | 无 |
+| `core-contract.js` / `core-runtime.js` / `core-writer-lease.js`（开发树） | 显式数据根、reader/writer 权限、单写者租约、取消与释放 | 无 |
 | `command-service.js` | 本地媒体命令、Task 控制面和 Artifact 查询/导出 | 无 |
 | `generation-input.js` | CLI、DSH 与重试共用的生成参数校验和 Provider 字段转换 | 无 |
 | `model-port-contract.js` / `model-invoker.js` | Text/Vision 内部契约、有限调用预算与取消 | 无 |
@@ -58,6 +58,8 @@ DSH Host / Cordis                         Headless CLI
 | `client.js` | DSH Web Slot、统一任务/作品区、泡泡和提示词入口 | 有 |
 
 完整规则见 [Core Runtime v0](CORE_RUNTIME_CONTRACT.md)、[Artifact Manifest v0](ARTIFACT_MANIFEST.md)、[Provider Adapter v0](PROVIDER_ADAPTER_CONTRACT.md) 与 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。这些仍是内部契约，不是第三方 SDK 兼容承诺。
+
+当前开发树的 Core writer 在创建目录前发布完整 owner 意图，释放和显式恢复通过整体退役保留证据；普通启动不抢占。非图片 staging 复用文件复制接收与分块哈希，图片格式验证和 inline 解码仍可能使用完整 Buffer，不声称端到端流式传输。
 
 ## Task、Attempt 与 Artifact
 

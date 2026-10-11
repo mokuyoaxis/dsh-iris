@@ -100,7 +100,7 @@ try {
   const originalReadFileSync = fs.readFileSync;
   let injected = false;
   fs.readFileSync = (...args) => {
-    if (!injected && String(args[0]).includes('.owner.stale-')) {
+    if (!injected && String(args[0]).includes('.iris-runtime-writer-v0.recovery-')) {
       injected = true;
       throw new Error('fixture: stale owner read failed');
     }
@@ -126,17 +126,19 @@ try {
 
   const auditDirectory = path.join(staleRoot, '.iris-runtime-recovery-audit-v0');
   const auditFiles = fs.readdirSync(auditDirectory);
-  assert.deepEqual(auditFiles, [result.auditId + '.json']);
-  const auditText = fs.readFileSync(path.join(auditDirectory, auditFiles[0]), 'utf8');
+  assert.deepEqual(auditFiles.sort(), [result.auditId + '.json', result.auditId + '.lease']);
+  const auditText = fs.readFileSync(path.join(auditDirectory, result.auditId + '.json'), 'utf8');
   const audit = JSON.parse(auditText);
   assert.equal(audit.action, 'writer-lease-recovery');
   assert.equal(audit.confirmation.ownerPid, staleOwner.pid);
   assert.equal(audit.staleOwner.instanceId, staleOwner.instanceId);
   assert.equal(audit.recoveryOwner.pid > 0, true);
+  assert.equal(fs.readFileSync(path.join(auditDirectory, audit.evidenceDirectory, 'owner.json'), 'utf8'), staleBefore,
+    '原 owner 证据完整退役，恢复不删除原记录');
   assert.equal(auditText.includes(staleRoot), false, '审计记录不得泄露绝对数据根');
   if (process.platform !== 'win32') {
     assert.equal(fs.statSync(auditDirectory).mode & 0o777, 0o700);
-    assert.equal(fs.statSync(path.join(auditDirectory, auditFiles[0])).mode & 0o777, 0o600);
+    assert.equal(fs.statSync(path.join(auditDirectory, result.auditId + '.json')).mode & 0o777, 0o600);
   }
 
   const successor = createCoreRuntime({ dataRoot: staleRoot, mode: 'writer' });
@@ -145,7 +147,7 @@ try {
   const repeated = cli(['runtime', 'recover', '--data-root', staleRoot, '--confirm-stale-pid', String(staleOwner.pid)]);
   assert.equal(repeated.status, 1);
   assert.match(repeated.stderr, /IRIS_CORE_LEASE_NOT_FOUND/);
-  assert.equal(fs.readdirSync(auditDirectory).length, 1, '重复恢复不得新增审计或伪造成功');
+  assert.equal(fs.readdirSync(auditDirectory).length, 2, '重复恢复不得新增审计或伪造成功');
 
   const missingConfirm = cli(['runtime', 'recover', '--data-root', staleRoot]);
   assert.equal(missingConfirm.status, 2);

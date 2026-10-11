@@ -33,4 +33,11 @@
 | Artifact 来源缺失/损坏或编辑失败 | 生成前核验；来源保持原样，已受理未知不重提 | 0 | `chat-image-edit.mjs`、`chat-image-edit-cli.mjs` |
 | Core 删除引用保护、隔离与恢复冲突 | 拒绝删除仍被引用的作品；可恢复隔离，冲突不覆盖 | 0 | `core-deletion-boundary.mjs`、`workbench-management.mjs` |
 
+## 当前开发树新增边界（Unreleased）
+
+| 场景 | 预期事实 | 自动重复提交 | 证据 |
+|---|---|---:|---|
+| writer 创建/释放/恢复在关键操作后强杀、恢复竞争 | 保留完整 owner/恢复证据；陈旧现场仅显式恢复，普通 writer 不抢占 | 0 | `core-lease-interruptions.mjs`、`runtime-recover.mjs` |
+| 16 MiB 视频/音频/文本文件接收或复制失败 | staging 不整文件读取；失败保持远端 succeeded，显式重交付不 submit | 0 | `provider-file-delivery.mjs` |
+
 矩阵的硬性规则是：只要已有 `accepted` 或 `unknown` 事实，任何自动路径的生成提交次数增量必须为 **0**。人工重试不属于自动恢复；它必须由用户逐次确认，并在数据中保留新旧 Task 的关系。

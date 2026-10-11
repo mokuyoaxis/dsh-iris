@@ -74,6 +74,8 @@ Core Attempt 持久化 `providerId::modelId` 复合身份，具体 Provider Adap
 
 `download` 物化已经确认成功的产物：`remote-url` 执行下载，`inline-base64` 直接写入私有 staging。inline 正文只作为 non-enumerable 的短生命周期字段传给 Runner，不进入 JSON、Task 或 Manifest。生图产物按真实字节校验 PNG/JPEG/WebP，保留字节、MIME、后缀和哈希。物化失败只能改变交付状态，不能触发生成重提。OpenAI Images、聊天生图与当前 Responses 生图切片均同步返回图片，所以 `poll` 与 `cancel` 显式 unsupported；Responses 纯文字、缺图或未完成结果保留受理未知，不扫描其他接口。DashScope 当前没有经过验证的远端取消接口，因此 `cancel` 同样显式 unsupported，而不是伪装取消成功。
 
+当前开发分支对视频、音频及文本 staging 复用 Artifact Store 的文件复制接收路径，哈希仍按 1 MiB 分块计算，不再为落库整文件 `readFileSync`。Profile、大小核对、元数据、关系边和交付失败事实保持。图片仍读取字节验证真实格式；inline 响应的解码以及工作台预览/ZIP 等读取路径仍可能使用完整 Buffer，本改动不声称端到端流式传输。
+
 聊天改图仍使用 `capability:image`：Runner 从当前 Core 校验并读取来源 Artifact，短生命周期 `input.image:{bytes,mediaType}` 与 `prompt` 交给聊天适配器。适配器按实际模型 `visionInput` 准备副本，HTTP 用户消息使用 `text` 与 `image_url` data URL。普通 Images/Responses 不接受此输入，编辑候选链预先过滤协议。Task 仅保存可选 `sourceArtifactId`，用于未知/失败任务的来源保护和交付时写入新 Artifact 的 `derived-from`；旧记录无需迁移，重试仍重新提供输入。来源或编辑输入预算失败发生在 HTTP 之前。
 
 ## 可选输入准备与上传边界
