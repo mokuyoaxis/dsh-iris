@@ -78,6 +78,8 @@ DSH Host / Cordis                         Headless CLI
 
 Provider Adapter v0 固定 discovery、submit、poll、cancel、download 与 error mapping 六类生命周期操作；提交前的临时输入上传是可选准备能力，不自动成为 Core 事实。协议实现只接收显式凭据、模型和媒体端点，Core 保存复合模型身份与非敏感 binding，不保存端点原文。
 
+当前开发树的生图错误将 HTTP 前的尺寸拒绝明确记为未受理，网络异常保留实际请求/正文阶段及可用错误码，原生取消/超时保留原分类。错误诊断不改变受理门，网络超时或正文丢失仍不能触发自动重提。
+
 Core Runner 不拥有后台 timer。Headless `task observe` 每次最多 poll 一次，`task wait` 仅在本次命令内有界观察；DSH 的有界自动观察属于 Host，插件释放时停止 timer 并中止在途观察，但不会把“停止本地观察”写成“远端已取消”。端点或协议 binding 漂移时恢复在联网前拒绝。
 
 每个操作必须明确声明 supported 或 unsupported。当前 DashScope 与 OpenAI Images 媒体协议没有经过验证的远端取消实现，因此取消请求如实返回 not-supported，而不是伪造 canceled。完整受理与错误规则见 [Provider 提交契约 v0](PROVIDER_SUBMISSION_CONTRACT.md)。

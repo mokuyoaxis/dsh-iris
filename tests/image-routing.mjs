@@ -7,6 +7,7 @@ const assert = (cond, msg, extra) => {
   if (!cond) { console.log('FAIL:', msg, extra === undefined ? '' : (' | ' + JSON.stringify(extra))); process.exit(1); }
 };
 const adapters = await import('../lib/adapters.js');
+const protocol = await import('../lib/provider-protocol.js');
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
@@ -20,6 +21,39 @@ assert(adapters.dashscopeImageMode('qwen-image-plus-2026-01-09') === 'legacy-asy
 for (const model of ['wan2.6-t2i', 'wan2.7-image', 'qwen-image-2.0-pro', 'qwen-image-3.0', 'qwen-image-max', 'z-image-turbo']) {
   assert(adapters.dashscopeImageMode(model) === 'multimodal-sync', model + ' 走新版多模态');
 }
+
+
+// 尺寸规则住在协议层（provider-protocol.js），调用点不再自带厂商假设。
+// 分隔符与边界均取自线上实测：多模态严格要求 `*`（`100x100` → Invalid size format）；
+// 旧异步提交期不校验（`100x100`/`auto` 均 200）；OpenAI 兼容端点用 `x` 且集合由网关决定。
+assert(protocol.normalizeImageSize({ protocol: 'dashscope', mode: 'multimodal-sync', size: '1024x1536' }) === '1024*1536',
+  'DashScope 多模态把 x 归一成 *');
+assert(protocol.normalizeImageSize({ protocol: 'openai-images', size: '1024*1536' }) === '1024x1536',
+  'OpenAI 兼容把 * 归一成 x');
+assert(protocol.normalizeImageSize({ protocol: 'openai-responses-images', size: '1024*1536' }) === '1024x1536',
+  'Responses 协议同样归一');
+assert(protocol.normalizeImageSize({ protocol: 'dashscope', mode: 'multimodal-sync', size: 'auto' }) === 'auto',
+  'auto 这类自由取值原样透传');
+assert(protocol.imageSizeViolation({ protocol: 'dashscope', mode: 'multimodal-sync', size: '100*100' }),
+  '多模态面积不足须判违规');
+assert(protocol.imageSizeViolation({ protocol: 'dashscope', mode: 'multimodal-sync', size: '4096*4096' }),
+  '多模态面积超限须判违规');
+assert(protocol.imageSizeViolation({ protocol: 'dashscope', mode: 'multimodal-sync', size: '1024*1536' }) === null,
+  '多模态 1024*1536 合规');
+for (const size of ['1536x2304', '1536x2688', '2688x1536', '2368x1728', '512x512', '2048x2048']) {
+  assert(protocol.imageSizeViolation({ protocol: 'dashscope', mode: 'multimodal-sync', size }) === null,
+    size + ' 面积合规，不额外限制单边');
+}
+assert(protocol.imageSizeViolation({ protocol: 'dashscope', mode: 'legacy-async', size: '100*100' }) === null,
+  '旧异步无本地规则，不得比服务端更严');
+assert(protocol.imageSizeViolation({ protocol: 'openai-images', size: '1024*1536' }) === null,
+  'OpenAI 兼容无本地数值白名单');
+let sizeThrew = null;
+try { adapters.applyImageSize({ protocol: 'dashscope', mode: 'multimodal-sync', size: '100*100' }); } catch (e) { sizeThrew = e; }
+assert(sizeThrew && sizeThrew.category === 'invalid_request' && /总像素/.test(sizeThrew.message),
+  '违规尺寸须翻译成 invalid_request', sizeThrew && sizeThrew.message);
+assert(sizeThrew.stage === 'validate' && sizeThrew.acceptance === 'not_accepted',
+  '本地尺寸拒绝明确标记为校验失败、未受理');
 
 const calls = [];
 const originalFetch = global.fetch;
@@ -49,11 +83,17 @@ try {
   assert(oldCall && oldCall.body.input.prompt === 'old' && !('size' in oldCall.body.parameters), '旧协议保留 input.prompt，留空尺寸时采用模型默认值', oldCall && oldCall.body);
   assert(oldCall.init.headers['X-DashScope-Async'] === 'enable', '旧协议声明异步头');
 
-  const modern = await adapters.startImageGeneration({ key: 'k', baseUrl: DS_BASE, model: 'qwen-image-2.0-pro', prompt: 'new', size: '2048*2048', n: 2 });
+  const modern = await adapters.startImageGeneration({ key: 'k', baseUrl: DS_BASE, model: 'qwen-image-2.0-pro', prompt: 'new', size: '2048x2048', n: 2 });
   assert(modern.remoteTaskId === null && modern.urls[0] === 'https://result.invalid/generated.png', '新版协议直接返回 URL', modern);
   const modernCall = calls.find((c) => c.url.includes('/multimodal-generation/generation'));
   assert(modernCall && modernCall.body.input.messages[0].content[0].text === 'new', '新版协议使用 messages/content/text', modernCall && modernCall.body);
   assert(modernCall.body.parameters.n === 2 && !modernCall.init.headers['X-DashScope-Async'], '新版同步协议参数与请求头正确');
+  assert(modernCall.body.parameters.size === '2048*2048', 'x 尺寸进 DashScope 请求体前须归一成 *', modernCall.body.parameters);
+  for (const size of ['1536x2304', '1536x2688', '2688x1536']) {
+    await adapters.generateImageMultimodal({ key: 'k', baseUrl: DS_BASE, model: 'qwen-image-2.0-pro', prompt: 'portrait', size });
+    assert(calls.at(-1).body.parameters.size === size.replace('x', '*'),
+      size + ' 合法比例到达请求体并归一分隔符');
+  }
 
   const polled = await adapters.pollTask({ key: 'k', baseUrl: DS_BASE, remoteTaskId: 'new-shape' });
   assert(polled.done && polled.ok && polled.urls[0] === 'https://result.invalid/polled.png', '轮询兼容 choices 图片结果', polled);
@@ -77,4 +117,32 @@ try {
   tasks.stopWatchAll();
   global.fetch = originalFetch;
 }
+// fetch failed 本身不能证明长连接或网关问题，提示只陈述已知阶段。
+global.fetch = async () => { throw new TypeError('fetch failed'); };
+try {
+  let linkErr = null;
+  try {
+    await adapters.generateImageMultimodal({ key: 'k', baseUrl: DS_BASE, model: 'qwen-image-3.0', prompt: 'x', size: '1024*1536' });
+  } catch (e) { linkErr = e; }
+  assert(linkErr && linkErr.category === 'network' && /尚未收到响应头/.test(linkErr.message)
+    && !/长连接|改用异步/.test(linkErr.message),
+    '同步生成网络失败保留阶段，不猜测原因或建议切换模型', linkErr && linkErr.message);
+
+  let legacyErr = null;
+  try {
+    await adapters.submitImage({ key: 'k', baseUrl: DS_BASE, model: 'wan2.2-t2i-flash', prompt: 'x' });
+  } catch (e) { legacyErr = e; }
+  assert(legacyErr && legacyErr.category === 'network', '旧异步网络失败仍归类 network', legacyErr && legacyErr.message);
+
+  // 超时/取消不能被吞成 network —— 轮询容错与 submitGuard 依赖这个区分
+  global.fetch = async () => { throw Object.assign(new Error('aborted'), { name: 'TimeoutError' }); };
+  let abortErr = null;
+  try {
+    await adapters.generateImageMultimodal({ key: 'k', baseUrl: DS_BASE, model: 'qwen-image-3.0', prompt: 'x' });
+  } catch (e) { abortErr = e; }
+  assert(abortErr && abortErr.name === 'TimeoutError', '超时须原样抛出，不得包装成 network', abortErr && abortErr.name);
+} finally {
+  global.fetch = originalFetch;
+}
+
 console.log('ALL OK —— DashScope 图像新旧协议分流 + choices 解析 + 同步动作落盘通过');

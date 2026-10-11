@@ -40,5 +40,6 @@
 | writer 创建/释放/恢复在关键操作后强杀、恢复竞争 | 保留完整 owner/恢复证据；陈旧现场仅显式恢复，普通 writer 不抢占 | 0 | `core-lease-interruptions.mjs`、`runtime-recover.mjs` |
 | 16 MiB 视频/音频/文本文件接收或复制失败 | staging 不整文件读取；失败保持远端 succeeded，显式重交付不 submit | 0 | `provider-file-delivery.mjs` |
 | 忠实整理遗漏/重复/调换原文片段、建议或媒体混入 | 协议失败不交付成功预览；建议默认不进入正文，无隐藏第二次调用 | 0 | `prompt-optimizer-boundary.mjs`、`prompt-optimizer-api.mjs`、`prompt-optimizer-client.mjs` |
+| 生图本地尺寸拒绝、DNS/TLS/网络超时、HTTP 200 后正文中断 | 本地校验 not_accepted 且 fetch=0；传输失败 unknown，保留分类/阶段/可用错误码 | 0 | `image-transport-errors.mjs`、`image-task-acceptance-unknown.mjs` |
 
 矩阵的硬性规则是：只要已有 `accepted` 或 `unknown` 事实，任何自动路径的生成提交次数增量必须为 **0**。人工重试不属于自动恢复；它必须由用户逐次确认，并在数据中保留新旧 Task 的关系。

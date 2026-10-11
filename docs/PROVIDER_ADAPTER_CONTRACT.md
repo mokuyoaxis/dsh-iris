@@ -94,14 +94,20 @@ Host 和 CLI 通过 `prepareProviderInput(adapter, { model, filePath, signal?, t
 
 `submit` 抛错由统一调用器转换成保守四态；`cancel` 抛错转换为 `unknown`；`discover/poll/download` 抛出脱敏的 `ProviderContractError`，由各自调用方应用重试和事实规则。
 
+当前开发分支的生图传输同时覆盖请求与响应正文读取。包装的网络异常在尚未取得响应头时标记 `stage=submit`，取得响应头后正文读取失败时标记 `stage=response`；已知网络超时码归类 timeout，两者都保留 `acceptance=unknown`，不凭 HTTP 200 响应头断言完整生成成功。可用的底层网络错误码放入既有 `providerCode` 字段，提示区分 DNS、TLS、连接建立、等待响应头及正文读取；没有明确错误码时只描述实际阶段。原生 AbortError、TimeoutError 或 ABORT_ERR 保留原异常及取消/超时分类，未附加正文读取阶段证据时沿用提交调用的阶段。完整 HTTP 业务响应仍按鉴权、限流/额度、参数或供应商错误分类，明确分类不被错误文字中的 timeout 覆盖。
+
+本地尺寸校验使用 `validate / invalid_request / not_accepted`，在 HTTP 前失败。分隔符按协议归一，DashScope 多模态只执行已有证据的总像素范围，不推断单边上限；OpenAI 兼容网关的数值集合留给上游。`retryable` 表示错误类别可重试，不授权重提受理未知的收费请求；Core 的受理门继续先于候选切换。DSH 动作错误附带同一脱敏 `safeMessage`，不输出原始 cause、正文或凭据。
+
 ## 当前内置实现
 
 | 协议 | discover | submit | poll | cancel | download | mapError |
 |---|---:|---:|---:|---:|---:|---:|
 | DashScope | 支持（`/api/v1/models` 分页与能力元数据） | 图片/视频/TTS/转写 | 图片/视频/转写 | 显式不支持 | 支持 | 支持 |
 | OpenAI Images 兼容 | 支持 | 同步图片 | 显式不支持 | 显式不支持 | 支持 | 支持 |
+| OpenAI 聊天生图兼容 | 支持 | 同步图片/单来源改图 | 显式不支持 | 显式不支持 | 支持 | 支持 |
+| OpenAI Responses 生图兼容 | 支持 | 同步单图 | 显式不支持 | 显式不支持 | 支持 | 支持 |
 
-本表只描述协议生命周期，不扩大 0.1.4 的供应商范围。Gemini、Fal 与 Replicate 仍在 0.2.x 路线中。
+本表描述已实现的协议生命周期；网关 Gemini 模型可以使用兼容协议，不代表原生 Gemini Adapter 已接入。原生 Gemini、Fal 与 Replicate 仍在后续路线中。
 
 ## conformance runner
 
