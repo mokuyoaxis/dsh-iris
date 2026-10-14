@@ -2,13 +2,12 @@
 
 把下面一段交给负责安装或使用 Iris 的 Agent。版本与发布状态以当前 [README](../README.md) 为准；Iris 和 DSH 的版本号独立。
 
-本文对应 Iris 0.2.3 发布候选；发布前安装仍固定使用 0.2.2。使用时先核对实际版本、可用工具和功能分配；旧宿主仍固定安装 0.1.4。
+本文对应 Iris 0.2.3。使用时先核对实际版本、可用工具和功能分配；旧宿主仍固定安装 0.1.4。
 
 ## 中文
 
 ```text
 请根据本仓库 README，帮我安装并使用 Iris（@mokuyoaxis/dsh-iris）。
-0.2.3 是发布候选；若尚未发布，先报告可用版本，安装0.2.2并按实际工具列表使用。
 先确认运行环境、目标 DSH profile，并用 dsh --version 核对宿主；Iris 0.2.x 要求 Node.js >=22.0.0（旧 npm 0.1.4 的历史要求为 >=20.10.0）：
 - DSH 0.2.0-rc.2：固定安装 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.3。
 - DSH >=0.1.2-rc.1 <0.1.3-0 或 0.1.5-rc.1：固定安装 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.1.4；只下载用 npm pack @mokuyoaxis/dsh-iris@0.1.4。
@@ -26,7 +25,6 @@
 
 ```text
 Help me install and use Iris (@mokuyoaxis/dsh-iris) according to this repository's README.
-Version 0.2.3 is a release candidate; if unavailable, report the available release, install 0.2.2, and use its actual tool list.
 Check the environment, target DSH profile, and dsh --version first; Iris 0.2.x requires Node.js >=22.0.0 (the published npm 0.1.4 historically requires >=20.10.0):
 - DSH 0.2.0-rc.2: pin dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.3.
 - DSH >=0.1.2-rc.1 <0.1.3-0 or 0.1.5-rc.1: pin dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.1.4; download only with npm pack @mokuyoaxis/dsh-iris@0.1.4.

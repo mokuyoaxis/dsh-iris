@@ -20,8 +20,6 @@
 
 dsh-iris gives agents, the Iris workbench and a standalone CLI image, video, music, speech and visual understanding capabilities. Each image model can use DashScope, OpenAI Images, chat image generation or Responses. Shared Core Artifacts connect generation, vision, OCR and chat editing. The DSH workbench provides configuration and task management, while the 🫧 bubble offers draft optimization in the composer.
 
-> This document describes the **0.2.3 release candidate**. Until publication, pin npm installs to `0.2.2`; the `0.2.3` commands below are for upgrading after release.
-
 Music uses a Chat Completions interface with inline audio, explicit model assignment, configurable 502 retries, and playback/export. See [Music setup and usage](docs/MUSIC.md) (Chinese).
 
 ## A real generation example
@@ -186,7 +184,7 @@ dsh-iris remains a native DSH plugin. Iris 0.2.3 server registers 16 agent tools
 | Published stable `0.1.4` | `0.1.5-rc.1` | Historical daily Android/Linux profile checks |
 | `0.2.0` | Only `0.2.0-rc.2` | Installed-service isolation checks, Core diff, and SlotRegistry; user demonstration reported successful, with detailed browser actions and asynchronous restart/rollback verification continuing |
 | `0.2.2` | Only `0.2.0-rc.2` | Installed-service checks cover 15 tools and 31 boundaries; complete browser/mobile and real asynchronous restart acceptance remain pending |
-| `0.2.3` (candidate) | Only `0.2.0-rc.2` | Adds music and a third skill; check actual loading with Host Doctor after upgrading |
+| `0.2.3` | Only `0.2.0-rc.2` | Adds music and a third skill; check actual loading with Host Doctor after upgrading |
 
 See the [rc.2 adaptation notes](docs/DSH_RC2_ADAPTATION.md) for scope. The published npm 0.1.4 package does not contain these later changes.
 

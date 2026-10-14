@@ -4,7 +4,7 @@ Iris 的方向是本地优先、Agent 可调用的多模态创作工作台。用
 
 ## 当前状态
 
-本文对应 **Iris 0.2.3 发布候选**。包名为 `@mokuyoaxis/dsh-iris`，同时提供 DSH 插件与独立 CLI，详见 [0.2.3 发布说明](releases/0.2.3.md)。
+当前版本为 **Iris 0.2.3**。包名为 `@mokuyoaxis/dsh-iris`，同时提供 DSH 插件与独立 CLI，详见 [0.2.3 发布说明](releases/0.2.3.md)。
 
 - 图片生成、Artifact ID 看图/OCR/定位和聊天改图，支持按模型配置图片协议。
 - 视频、S2V、TTS、转写与音乐生成，共用任务、音频/视频作品和导出入口；音乐使用明确分配名单。
