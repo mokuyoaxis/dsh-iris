@@ -116,14 +116,14 @@ Task v2 至少包含以下事实轴；字段值采用可序列化的 snake_case 
 
 结构化错误至少应区分 stage、category、HTTP 状态、供应商错误码、受理状态和可安全展示的信息。任务、Attempt、事件与日志不得保存 API Key、Authorization 头、完整请求体、私有绝对路径或带临时签名的结果 URL。
 
-错误是否“可重试”与是否“允许自动重新提交”是两个不同问题。前者描述技术性质，后者只能由 `acceptance=not_accepted` 授权。
+错误是否“可重试”与Core是否“允许自动切换候选”是两个不同问题。前者描述技术性质，后者只能由 `acceptance=not_accepted` 授权。Music入口另外按本次配置对明确HTTP502执行有限的新Task重发，保留原任务的 `unknown` 事实；这不改变Core候选切换规则，详见 [音乐生成](MUSIC.md)。
 
 ## 10. 事件与 UI
 
 - 每次 Task v2 持久化变更得到单调递增的 Task `revision`。完整状态快照另带进程 `stateEpoch/stateRevision`；客户端拒绝同一 epoch 内迟到的旧快照，SSE 重连后以持久化全量快照收敛。
 - SSE 慢消费者进入背压时只保留最新待发快照，避免旧状态排队造成内存增长或视觉倒退。
 - UI 应把事实映射成“排队中、运行中、观察暂停、需要确认、结果待取回、已完成、明确失败、已取消”等人类状态，不应在手机界面直接堆叠所有内部字段。
-- `acceptance=unknown`、`cancelState=unknown` 和 `deliveryState=failed` 必须提供明确的人工接管入口；任何可能再次计费的操作都需要单独确认。
+- `acceptance=unknown`、`cancelState=unknown` 和 `deliveryState=failed` 必须提供明确的人工接管入口；手动重新生成需要逐次确认潜在费用。Music入口内部的有限502重发按本次配置执行。
 - 提醒处置与任务事实正交：标为已读只把任务移出主动提醒队列，恢复提醒只重新开放该队列；两者都不得修改受理、观察、结果、交付或取消事实。
 - 知情重试创建并关联新 Task 后，原提醒自动记录为“已通过重试处理”。原任务保留原始未知事实和审计记录，但不继续产生重复角标；用户可从历史详情恢复提醒。
 
@@ -138,11 +138,11 @@ Task v2 至少包含以下事实轴；字段值采用可序列化的 snake_case 
 
 故障注入至少覆盖：请求发送前失败、提交响应丢失、获得远端 ID 后本地落盘失败、轮询 429/500/超时、远端成功后下载失败、取消响应丢失，以及 `submitting/accepted/running` 阶段的进程退出与恢复。
 
-每个场景必须同时断言最终事实字段和供应商提交调用次数。对于 `accepted` 或 `unknown`，自动重复提交次数必须为 **0**。
+每个场景必须同时断言最终事实字段和供应商提交调用次数。Core候选切换遇到 `accepted` 或 `unknown` 时，自动重复提交次数必须为 **0**；Music功能层的有限502重发单独验证新Task关系与次数。
 
 ## 13. 本版非目标
 
 - 不在语义冻结阶段重写全部任务存储或 UI。
 - 不新增 Gemini、Fal、Replicate 等供应商分支。
 - v0.1.3 包含零网络、可独立运行的离线 Doctor v0 与最薄 CLI；v0.1.4 已接入 Host/Provider Adapter、Host Doctor 和不含谱系的作品库 v0。0.2.0 已实现 [Core Artifact Manifest](ARTIFACT_MANIFEST.md)，0.2.1 补齐共享 CLI/DSH 消费与编辑关系；两种存储保持独立。
-- 不用更多自动重试换取表面成功率。
+- 通用恢复流程不增加无界自动重试。

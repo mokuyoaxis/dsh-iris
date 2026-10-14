@@ -8,6 +8,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { useTempDshHome } from './test-env.js';
 import { FAKE_WAV } from './fixtures/fake-lifecycle-provider.mjs';
 
@@ -113,6 +115,15 @@ try {
   assert.equal(mediaRes.status, 200);
   assert.equal(mediaRes.headers['Content-Type'], 'audio/mpeg');
   assert.deepEqual(Buffer.from(mediaRes.body), FAKE_WAV, '同源路由必须返回音频字节');
+
+  /* Skill 的 TTS → 文件接力：消费同一 Artifact，不猜路径，也不重新合成。 */
+  const exportedAudio = path.join(root, 'narration.mp3');
+  execFileSync(process.execPath, [fileURLToPath(new URL('../bin/dsh-iris.js', import.meta.url)),
+    'artifact', 'export', artifactId, '--data-root', path.join(config.irisHome(), 'core-v0'), '--output', exportedAudio],
+  { encoding: 'utf8' });
+  assert.deepEqual(fs.readFileSync(exportedAudio), FAKE_WAV, '音频 Artifact 导出保持原字节');
+  assert.equal(calls.tts, 1, '导出已有音频不得再次调用生成供应商');
+  assert.equal((await inspectProviderTaskForDsh(taskId)).artifactIds[0], artifactId, '导出不改变原任务作品');
 
   /* 工作台快照：tts 行进入五类投影，四门全关 */
   const snapshotRes = apiResponse();

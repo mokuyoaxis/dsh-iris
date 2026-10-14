@@ -74,11 +74,13 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 ## 当前接口与后续范围
 
+0.2.3 增加同步完成结果的私有交付缓存：`task.redeliver` 可从原结果恢复，无需虚构远端 ID；完整字节离线交付，缺失字节只取回原 URL，不 submit。完整缓存可补回提交完成事实的中断，预留 Artifact ID 支持逐件重入；缓存与任务隔离/恢复一起管理。详见 [同步交付恢复](SYNC_DELIVERY_RECOVERY.md)。
+
 当前实现包括：
 
 - `normalizeCoreOptions()`：规范化显式数据根和 reader/writer 模式；
 - `createCoreRuntime()`：管理写者租约、状态、`AbortSignal`、在途操作和 cleanup；
-- `createCommandService()`：提供 `crop`、只读 `task.list/task.inspect`、显式单步 `task.observe`/`task.reobserve`（同一份实现，`reobserve` 是人工触发观察的对外命令名）、人工重新交付 `task.redeliver`（只开放 outcome=succeeded / deliveryState=failed，一次带 redelivery 标志的 re-poll + 下载，绝不 submit、绝不重新生成）、人工取消 `task.cancel`（只开放已受理未终态任务，只有 Provider 明确确认才写 canceled，不支持/无法确认保持真实状态）、人工重试为新任务 `task.retry`（只开放终态未成功交付任务；必须显式 confirm_billing 确认重复计费；新 Task 记录单向 retriedFrom 关系，候选链按宿主实况重新解析；Core 不持久化 Prompt，prompt 必须由调用方重新提供），以及 Artifact inspect/list/export/rebuild；Task reader 返回既有安全事实，不读取 Provider 配置，也不创建、修复或迁移记录；`observe/reobserve/redeliver/cancel` 只接受宿主注入的 Adapter resolver，`retry` 只接受宿主注入的候选链 resolver，Core 不读取配置路径；Task capability 现已覆盖 image、video、tts 与 transcribe——交付按 `provider-task-runner.js` 的 DELIVERY_PROFILES 冻结（video：`video/mp4` + `generated-video`；tts：`audio/mpeg`/`audio/wav` + `generated-audio`，同步 completed 同次调用内交付；transcribe：`text/plain` + `transcript`，正文物化为 UTF-8 Artifact），不共用不准确的图片交付语义；
+- `createCommandService()`：提供 `crop`、只读 `task.list/task.inspect`、显式单步 `task.observe`/`task.reobserve`（同一份实现，`reobserve` 是人工触发观察的对外命令名）、人工重新交付 `task.redeliver`（只开放 outcome=succeeded / deliveryState=failed，异步使用一次带 redelivery 标志的 re-poll + 下载，同步结果使用原缓存，绝不 submit、绝不重新生成）、人工取消 `task.cancel`（只开放已受理未终态任务，只有 Provider 明确确认才写 canceled，不支持/无法确认保持真实状态）、人工重试为新任务 `task.retry`（只开放终态未成功交付任务；必须显式 confirm_billing 确认重复计费；新 Task 记录单向 retriedFrom 关系，候选链按宿主实况重新解析；Core 不持久化 Prompt，prompt 必须由调用方重新提供），以及 Artifact inspect/list/export/rebuild；Task reader 返回既有安全事实，不读取 Provider 配置，也不创建、修复或迁移记录；需联网的 `observe/reobserve/redeliver/cancel` 只接受宿主注入的 Adapter resolver；完整本地缓存的 redeliver 不解析 Provider，`retry` 只接受宿主注入的候选链 resolver，Core 不读取配置路径；Task capability覆盖image、video、tts、transcribe与music——交付按 `provider-task-runner.js` 的 DELIVERY_PROFILES 冻结（video：`video/mp4` + `generated-video`；tts/music：`audio/mpeg`/`audio/wav` + `generated-audio`，同步 completed 同次调用内交付；transcribe：`text/plain` + `transcript`，正文物化为 UTF-8 Artifact），不共用不准确的图片交付语义；
 - 0.2.1 补齐 `media.diff/frames/html`、S2V 按候选上传、查询/批量管理与 Core 隔离/恢复；视觉和维护入口见 [CLI 管理](CLI_MANAGEMENT.md) 与 [视觉 CLI](VISION_CLI.md)。
 - Artifact Manifest v0：保存受控对象、SHA-256、关系边和可重建 Index，可跨 CLI 进程检查、导出和显式重建；Doctor 只报告孤立/未解析条目，不自动删除或修复。
 

@@ -1,5 +1,7 @@
 # DSH → Core 渐进迁移
 
+Iris 0.2.3 的音乐生成由 CLI、Agent 工具与工作台共同调用，使用独立模型协议绑定和明确功能分配。502有限重试每次创建新Core Task并记录关系，交付失败可使用同步缓存恢复，见 [音乐生成](MUSIC.md)。
+
 本文描述 **Iris 0.2.2** 的实现边界；0.2.0 建立的 Core 数据格式保持兼容。迁移逐条切换消费者，不原地改写 0.1.4 数据。
 
 0.2.1 已把 S2V、HTML、单图视觉、OCR、定位、摘要和提示词预览接入共享 Core Command 或 Model Ports，并补齐视觉 CLI、配置/查询/维护命令。图片按模型选择四种协议，Artifact ID 聊天编辑另存新作品并保留来源关系；输入预算仅处理发送副本。功能范围见 [发布说明](releases/0.2.1.md)。
@@ -29,7 +31,9 @@ Headless CLI 使用同一控制面：`task observe` 每次显式调用只 poll �
 
 DSH 工作台现也开放同一份显式单步观察（D1 reobserve）：`POST /iris/api/core/task/:id/reobserve` 经 Command Service 命令 `task.reobserve`（与 `task.observe` 同实现），adapter/binding 恢复与 Host 观察节拍共用同一 resolver。用户任务区的 Core 投影行在服务端的行 DTO 标记 `observable`（已受理、有远端 ID、结果未定论、非终态）时显示「重新观察」按钮，点击后单次调用、禁用期间防重复，完成后复用刷新节拍重拉快照；高级诊断卡对符合同一受理事实门的任务提供同一动作。每次调用至多一次 poll，绝不 submit；终态、未受理、无远端 ID 或 binding 漂移的任务在网络与写入前被拒绝并返回稳定错误码。
 
-人工控制面第二项 redeliver（D2）也已开放：`POST /iris/api/core/task/:id/redeliver` 与 CLI `task redeliver` 经 Command Service 命令 `task.redeliver`，只对 outcome=succeeded / deliveryState=failed 的 Task 开放——一次带 redelivery 标志的 re-poll 拿远端产物清单 → 下载 → 新 Artifact，绝不 submit、绝不重新生成、不新建 Attempt。行 DTO 在五类状态中的 `delivery_failed` 上标记 `redeliverable`，工作台相应投影行与高级诊断卡显示「重新取回作品」；成功即 ready 且门反转（再次调用被拒），下载失败回落 failed 可再次显式执行。
+人工控制面第二项 redeliver（D2）也已开放：`POST /iris/api/core/task/:id/redeliver` 与 CLI `task redeliver` 经 Command Service 命令 `task.redeliver`，只对 outcome=succeeded / deliveryState=failed 的 Task 开放——异步任务使用一次带 redelivery 标志的 re-poll 拿远端产物清单 → 下载 → 新 Artifact；同步任务消费原私有缓存，完整字节本地恢复、缺少字节只下载原 URL，绝不 submit、绝不重新生成、不新建 Attempt。行 DTO 在五类状态中的 `delivery_failed` 上标记 `redeliverable`，工作台相应投影行与高级诊断卡显示「重新取回作品」；成功即 ready 且门反转（再次调用被拒），下载失败回落 failed 可再次显式执行。
+
+同步缓存增量尚未包含于 npm 0.2.2。它保留原 Task/Attempt 与预留 Artifact ID，不读取缓存的 reader/普通刷新无副作用；完整本地恢复不要求原供应商仍配置。缓存损坏、旧任务无缓存及签名 URL 失效边界见 [同步交付恢复](SYNC_DELIVERY_RECOVERY.md)。
 
 人工控制面第三项 cancel（D3）同样开放：`POST /iris/api/core/task/:id/cancel` 与 CLI `task cancel` 经 Command Service 命令 `task.cancel`，只对已受理、有远端 ID、未终态且未请求过取消的 Task 开放。结果只有三种，且**绝不伪造已取消**：① 供应商明确确认 → outcome=canceled、cancelState=remote_confirmed；② 供应商不支持远端取消（当前 DashScope 与 OpenAI Images 媒体协议均不提供经过验证的取消实现）→ 取消未发生，回落到可继续观察的真实状态（outcome 不变）；③ 超时或网络失败 → cancelState=unknown、保持非终态，可显式 reobserve 收敛。竞态下远端先沉淀的成功事实不得被取消覆盖；已请求过取消但未确认的任务拒绝再次取消。工作台按钮「取消任务」需要二次确认，五类用户状态保持不变，三种结果态在高级诊断的「取消状态」字段如实区分（已确认 / 已请求未确认 / 无请求）。
 
@@ -59,7 +63,7 @@ t2v/i2v 视频已迁到 Core，与图片共用 Task/Attempt 事实轴但**不共
 
 ## 语音合成迁移（E 阶段第二项）
 
-TTS 是同步完成型，与视频的长轮询不同：一次 submit 内 completed，同一次调用直接交付为 Core Artifact（`DELIVERY_PROFILES.tts`：媒体白名单 `audio/mpeg`/`audio/wav`、kind `generated-audio`；remote-url 走下载，inline base64 直接物化）。Agent 工具 `iris_speak_text`、工作台语音动作与 CLI `run tts` 全部落到 Core，**零 legacy 双写**；同步完成即终态，observe/redeliver/cancel 对终态语音任务全部稳定拒绝，终态失败可用 retry 显式重试为新任务（输入为 `{text, voice?}`，候选链按实况解析）。语义差如实记录：legacy 是"单 Task 多 Attempt、每次尝试独立交付到 outputs/"，Core 是"单 Task 多 Attempt、一次 Artifact 交付"；候选链共用一个 voice（Core providerInput 静态）。同源媒体路由按 ID 播放音频。真实 Provider 语音 canary 待验收。
+TTS 是同步完成型，与视频的长轮询不同：一次 submit 内 completed，同一次调用直接交付为 Core Artifact（`DELIVERY_PROFILES.tts`：媒体白名单 `audio/mpeg`/`audio/wav`、kind `generated-audio`；remote-url 走下载，inline base64 直接物化）。Agent 工具 `iris_speak_text`、工作台语音动作与 CLI `run tts` 全部落到 Core，**零 legacy 双写**；交付 ready 后 observe/redeliver/cancel 全部稳定拒绝；同步交付失败可沿完整缓存 redeliver，零 poll、零重新生成。没有可恢复来源的旧任务仍可用 retry 显式重试为新任务（输入为 `{text, voice?}`，候选链按实况解析）。语义差如实记录：legacy 是"单 Task 多 Attempt、每次尝试独立交付到 outputs/"，Core 是"单 Task 多 Attempt、一次 Artifact 交付"；候选链共用一个 voice（Core providerInput 静态）。同源媒体路由按 ID 播放音频。真实 Provider 语音 canary 待验收。
 
 ## 转写迁移（E 阶段第三项）
 

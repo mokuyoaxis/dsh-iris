@@ -1,97 +1,276 @@
 {
-  "version": 1,
-  "skills": ["iris-compose-media", "iris-verify-ui"],
+  "version": 2,
+  "skills": [
+    "iris-use",
+    "iris-compose-media",
+    "iris-verify-ui"
+  ],
   "cases": [
     {
       "id": "compose-inspect-then-draw",
       "prompt": "分析我上传的产品照，然后按原构图画成水彩海报。",
       "expectedSkill": "iris-compose-media",
-      "expectedTools": ["iris_relook_attachment", "iris_draw_image"],
+      "expectedTools": [
+        "iris_relook_attachment",
+        "iris_draw_image"
+      ],
       "forbiddenTools": [],
       "maxNewTasks": 1,
-      "mustStop": false
+      "mustStop": false,
+      "maxAgentGenerationCalls": 1
     },
     {
       "id": "compose-summary-narration",
       "prompt": "总结这个视频，再把摘要合成为旁白。",
       "expectedSkill": "iris-compose-media",
-      "expectedTools": ["iris_media_summarize", "iris_speak_text"],
-      "forbiddenTools": ["iris_video_frames", "iris_transcribe_audio"],
-      "maxNewTasks": 1,
-      "mustStop": false
+      "expectedTools": [
+        "iris_media_summarize",
+        "iris_speak_text"
+      ],
+      "forbiddenTools": [
+        "iris_video_frames",
+        "iris_transcribe_audio"
+      ],
+      "maxNewTasks": 2,
+      "mustStop": false,
+      "maxAgentGenerationCalls": 1
     },
     {
       "id": "verify-reference-ui",
       "prompt": "比较当前页面截图和设计稿，定位差异并给出可复核结论。",
       "expectedSkill": "iris-verify-ui",
-      "expectedTools": ["iris_pixel_diff", "iris_locate"],
-      "forbiddenTools": ["iris_draw_image", "iris_generate_video"],
+      "expectedTools": [
+        "iris_pixel_diff",
+        "iris_locate"
+      ],
+      "forbiddenTools": [
+        "iris_draw_image",
+        "iris_generate_video"
+      ],
       "maxNewTasks": 0,
-      "mustStop": false
+      "mustStop": false,
+      "maxAgentGenerationCalls": 0
     },
     {
       "id": "route-ui-away-from-compose",
       "prompt": "先截图这段 HTML，再与参考 UI 图进行验收。",
       "expectedSkill": "iris-verify-ui",
-      "expectedTools": ["iris_html_screenshot", "iris_pixel_diff"],
-      "forbiddenTools": ["iris_draw_image"],
+      "expectedTools": [
+        "iris_html_screenshot",
+        "iris_pixel_diff"
+      ],
+      "forbiddenTools": [
+        "iris_draw_image"
+      ],
       "maxNewTasks": 0,
-      "mustStop": false
+      "mustStop": false,
+      "maxAgentGenerationCalls": 0
     },
     {
       "id": "single-operation-no-compose",
       "prompt": "画一只白猫。",
-      "expectedSkill": null,
-      "expectedTools": ["iris_draw_image"],
+      "expectedSkill": "iris-use",
+      "expectedTools": [
+        "iris_draw_image"
+      ],
       "forbiddenTools": [],
       "maxNewTasks": 1,
-      "mustStop": false
+      "mustStop": false,
+      "maxAgentGenerationCalls": 1
     },
     {
       "id": "unrelated-no-skill",
       "prompt": "把这段 JavaScript 重构成两个纯函数。",
       "expectedSkill": null,
       "expectedTools": [],
-      "forbiddenTools": ["iris_draw_image", "iris_generate_video"],
+      "forbiddenTools": [
+        "iris_draw_image",
+        "iris_generate_video"
+      ],
       "maxNewTasks": 0,
-      "mustStop": false
+      "mustStop": false,
+      "maxAgentGenerationCalls": 0
     },
     {
       "id": "accepted-observation-unknown",
       "prompt": "已有 Iris Task t_accepted 已被供应商受理，但现在无法观察结果；继续完成流程。",
       "expectedSkill": "iris-compose-media",
-      "expectedTools": ["iris_task_status"],
-      "forbiddenTools": ["iris_draw_image", "iris_generate_video", "iris_speak_text"],
+      "expectedTools": [
+        "iris_task_status"
+      ],
+      "forbiddenTools": [
+        "iris_draw_image",
+        "iris_generate_video",
+        "iris_speak_text"
+      ],
       "maxNewTasks": 0,
-      "mustStop": true
+      "mustStop": true,
+      "maxAgentGenerationCalls": 0
     },
     {
       "id": "acceptance-unknown",
       "prompt": "已有 Iris Task t_unknown 的 acceptance=unknown，请换个供应商重试。",
       "expectedSkill": "iris-compose-media",
-      "expectedTools": ["iris_task_status"],
-      "forbiddenTools": ["iris_draw_image", "iris_generate_video", "iris_speak_text"],
+      "expectedTools": [
+        "iris_task_status"
+      ],
+      "forbiddenTools": [
+        "iris_draw_image",
+        "iris_generate_video",
+        "iris_speak_text"
+      ],
       "maxNewTasks": 0,
-      "mustStop": true
+      "mustStop": true,
+      "maxAgentGenerationCalls": 0
     },
     {
       "id": "cancel-stops-chain",
       "prompt": "停止这个正在生成图片并准备转视频的 Iris 流程。",
       "expectedSkill": "iris-compose-media",
       "expectedTools": [],
-      "forbiddenTools": ["iris_generate_video", "iris_draw_image"],
+      "forbiddenTools": [
+        "iris_generate_video",
+        "iris_draw_image"
+      ],
       "maxNewTasks": 0,
-      "mustStop": true
+      "mustStop": true,
+      "maxAgentGenerationCalls": 0
     },
     {
       "id": "explicit-terminal-revision",
       "prompt": "上一项 Iris 图片任务已经成功；我确认再生成一个更亮的版本。",
-      "expectedSkill": "iris-compose-media",
-      "expectedTools": ["iris_draw_image"],
+      "expectedSkill": "iris-use",
+      "expectedTools": [
+        "iris_draw_image"
+      ],
       "forbiddenTools": [],
       "maxNewTasks": 1,
+      "mustStop": false,
+      "maxAgentGenerationCalls": 1
+    },
+    {
+      "id": "single-music",
+      "prompt": "用Iris生成一首上世纪抗议摇滚歌曲。",
+      "expectedSkill": "iris-use",
+      "expectedTools": [
+        "iris_generate_music"
+      ],
+      "forbiddenTools": [
+        "iris_speak_text"
+      ],
+      "maxAgentGenerationCalls": 1,
+      "maxNewTasks": 3,
       "mustStop": false
+    },
+    {
+      "id": "single-core-image-edit",
+      "prompt": "用Iris把已有Core图的帽子改成红色，保持其他内容。",
+      "expectedSkill": "iris-use",
+      "expectedTools": [
+        "iris_edit_image"
+      ],
+      "forbiddenTools": [
+        "iris_draw_image",
+        "iris_generate_music"
+      ],
+      "maxAgentGenerationCalls": 1,
+      "maxNewTasks": 1,
+      "mustStop": false
+    },
+    {
+      "id": "single-picture-no-music",
+      "prompt": "生成一张摇滚音乐会海报。",
+      "expectedSkill": "iris-use",
+      "expectedTools": [
+        "iris_draw_image"
+      ],
+      "forbiddenTools": [
+        "iris_generate_music"
+      ],
+      "maxAgentGenerationCalls": 1,
+      "maxNewTasks": 1,
+      "mustStop": false
+    },
+    {
+      "id": "compose-video-no-music",
+      "prompt": "生成一张森林首帧，再做成短视频素材。",
+      "expectedSkill": "iris-compose-media",
+      "expectedTools": [
+        "iris_draw_image",
+        "iris_generate_video"
+      ],
+      "forbiddenTools": [
+        "iris_generate_music"
+      ],
+      "maxAgentGenerationCalls": 2,
+      "maxNewTasks": 2,
+      "mustStop": false
+    },
+    {
+      "id": "compose-cover-and-music",
+      "prompt": "生成一首摇滚歌曲和一张配套封面，两个素材分别交付。",
+      "expectedSkill": "iris-compose-media",
+      "expectedTools": [
+        "iris_draw_image",
+        "iris_generate_music"
+      ],
+      "forbiddenTools": [
+        "iris_speak_text"
+      ],
+      "maxAgentGenerationCalls": 2,
+      "maxNewTasks": 4,
+      "mustStop": false
+    },
+    {
+      "id": "tts-export-before-s2v",
+      "prompt": "生成一段口播并用于数字人视频，先导出已完成的音频Artifact。",
+      "expectedSkill": "iris-compose-media",
+      "expectedTools": [
+        "iris_speak_text",
+        "iris_generate_video"
+      ],
+      "forbiddenTools": [
+        "iris_generate_music"
+      ],
+      "maxAgentGenerationCalls": 2,
+      "maxNewTasks": 2,
+      "mustStop": false
+    },
+    {
+      "id": "verify-confirmed-failure",
+      "prompt": "可比截图证明必需的发送按钮被遮挡，请给出验收结论。",
+      "expectedSkill": "iris-verify-ui",
+      "expectedTools": [
+        "iris_pixel_diff"
+      ],
+      "forbiddenTools": [
+        "iris_generate_music",
+        "iris_draw_image"
+      ],
+      "maxAgentGenerationCalls": 0,
+      "maxNewTasks": 0,
+      "mustStop": false,
+      "expectedVerdict": "Fail"
+    },
+    {
+      "id": "verify-insufficient-evidence",
+      "prompt": "没有实际截图或运行界面，判断页面是否像素匹配设计稿。",
+      "expectedSkill": "iris-verify-ui",
+      "expectedTools": [],
+      "forbiddenTools": [
+        "iris_draw_image"
+      ],
+      "maxAgentGenerationCalls": 0,
+      "maxNewTasks": 0,
+      "mustStop": true,
+      "expectedVerdict": "Indeterminate"
     }
   ],
-  "requiredReportFields": ["taskId", "lastKnownStatus", "assumptions", "partialOutputs", "nextAction"]
+  "requiredReportFields": [
+    "taskId",
+    "lastKnownStatus",
+    "assumptions",
+    "partialOutputs",
+    "nextAction"
+  ]
 }

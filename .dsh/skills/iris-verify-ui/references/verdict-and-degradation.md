@@ -8,7 +8,10 @@ Use exactly one verdict:
 
 - **Pass**: all objective requirements are satisfied and comparable evidence supports the conclusion.
 - **Partial pass**: the primary goal is satisfied, but localized differences or environmental noise remain.
+- **Fail**: comparable evidence confirms a required criterion is unmet. Describe the failed criterion; do not replace a known failure with uncertainty.
 - **Indeterminate**: a reference is missing, capture conditions differ, a required tool is unavailable, or evidence is insufficient.
+
+A reference screenshot is needed for reference-matching claims; explicit acceptance criteria can still support a verdict without one. Use Partial pass only for remaining optional/minor items when the required goal passes. A required criterion that fails takes precedence over missing evidence for other criteria; report those uncertainties alongside Fail.
 
 Report:
 

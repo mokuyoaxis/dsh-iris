@@ -1,11 +1,13 @@
 ---
 name: iris-verify-ui
-description: "Verify web UIs, HTML, and interface screenshots with dsh-iris through repeatable capture, semantic inspection, element location, cropping, pixel-diff analysis, and bounded rechecks. Use when comparing a UI with a reference image, locating visual regressions, validating frontend changes, or matching an implementation to a design. 用于对照参考图检查界面、定位视觉偏差、验证前端修改或比较两张 UI 截图。"
+description: "Reproduce and verify web interfaces against reference screenshots or acceptance criteria using Iris vision, OCR, capture, grounding and pixel comparison. 用于对照参考图检查界面、还原设计、定位视觉偏差与验证前端修改；单步图片理解或媒体创作用 iris-use / iris-compose-media。"
 ---
 
 # Verify UI with Iris
 
 Use vision models to understand and locate problems. Use deterministic pixel tools to measure them. Establish comparable capture conditions before editing, then recheck under the same conditions. Do not declare success from visual impression alone.
+
+Choose checks that answer the actual acceptance criteria. Read the relevant part of the [shared capability and artifact contract](../iris-use/references/media-contract.md) when an input or handoff is unclear; a standalone description or image generation belongs to `iris-use`.
 
 ## Choose the shortest path
 
@@ -22,7 +24,7 @@ Ask one concise question only when a missing reference, target state, theme, or 
 ## Prepare the inputs
 
 1. Identify each image source:
-   - Existing Core image: pass `artifact_id` to look/locate/OCR. Crop and pixel diff still need a supported path or attachment; export the Artifact explicitly if those steps require it.
+   - Existing Core image: pass `artifact_id` to look/locate/OCR. Agent crop/diff need a path or attachment; CLI `run crop` and `media diff` accept Core IDs directly. Use the shared contract's examples, or export only when the chosen consumer needs a file.
    - Host absolute path: pass `image_path`.
    - Current-session or Iris-produced attachment: pass `attachment_id`.
    - Browser-local path, `content://` URI, or ordinary web URL: do not assume the host can read it. Ask for an upload or a host-accessible file.
@@ -46,7 +48,7 @@ When raw HTML needs capture, call `iris_html_screenshot` with the same HTML wrap
 
 ### 2. Inspect semantics
 
-Inspect the current and reference images separately. Call `iris_look_at_image` for a Core Artifact ID or host path and `iris_relook_attachment` for an attachment.
+When semantic interpretation is needed, inspect the current and reference images separately. Call `iris_look_at_image` for a Core Artifact ID or host path and `iris_relook_attachment` for an attachment. Use `iris_long_ocr` when exact interface text matters; preserve its partial-result status.
 
 Each vision call sees only one image. Ask the same structured questions for both images:
 
@@ -58,7 +60,7 @@ Compare the two observation sets and prioritize the differences. Treat vision an
 
 ### 3. Measure the whole image
 
-Call `iris_pixel_diff` with the current and reference images. Record:
+When quantitative screenshot comparison serves the criteria, call `iris_pixel_diff` with the current and reference images, or CLI `media diff` for Core IDs. Record:
 
 - diff ratio
 - changed-pixel count and normalized dimensions
@@ -87,7 +89,7 @@ Run `iris_pixel_diff` on the two crop attachments to verify whether the problem 
 
 Edit source files only when the task authorizes changes. Fix the highest-impact deterministic issue first, keep the patch focused, and preserve existing user changes.
 
-After each modification:
+After an authorized modification, repeat the relevant checks under the same conditions:
 
 1. Capture again under the baseline conditions.
 2. Rerun the whole-image diff.
@@ -95,11 +97,11 @@ After each modification:
 4. Record before-and-after diff ratios and bounding-box changes.
 5. Confirm that the fix did not move the difference elsewhere.
 
-Run at most 3 modify-and-recheck rounds by default. Stop as soon as the user's criteria pass. Also stop when one round gives no improvement, capture conditions cannot be aligned, or remaining differences come from the environment. Explain the stopping reason instead of looping indefinitely.
+Use the task's revision scope and budget. Stop when the criteria pass; if progress stops, capture conditions cannot be aligned, or differences come from the environment, report that limit instead of repeating the same loop. Visual checks do not prove browser interactions or application behavior; verify those with the project's actual browser/test workflow when required.
 
 ## Assign a verdict and degrade safely
 
-Read [references/verdict-and-degradation.md](references/verdict-and-degradation.md) when assigning the final verdict or when Browser, vision, location, offline HTML, or comparable capture conditions are unavailable. Use exactly **Pass**, **Partial pass**, or **Indeterminate**, and apply the reference's evidence limits.
+Read [references/verdict-and-degradation.md](references/verdict-and-degradation.md) when assigning the final verdict or when Browser, vision, location, offline HTML, or comparable capture conditions are unavailable. Use **Pass**, **Partial pass**, **Fail**, or **Indeterminate** according to the evidence. Confirmed unmet requirements are Fail; missing evidence is Indeterminate.
 
 ## Report the result
 

@@ -23,8 +23,8 @@ API、SSE 和 Doctor 只返回凭据存在性或掩码提示。Provider 错误�
 
 - 所有生成 Attempt 在网络副作用前落盘。
 - 只有供应商明确证明未受理时才允许自动 failover。
-- 500、超时、连接重置、响应丢失、轮询失败、事件失败和本地落盘失败都不能授权自动重提。
-- “重新观察”只查询已有远端任务；“重新交付”只查询并下载已成功产物。
+- 通用候选切换不因500、超时、连接重置、响应丢失、轮询失败、事件失败或本地落盘失败自动重提。Music入口按本次配置对明确HTTP502执行有限的新任务重发，保留原受理未知事实并可能消耗额外额度；设置 `retry_502: 0` 可关闭，见 [音乐生成](MUSIC.md)。
+- “重新观察”只查询已有远端任务；“重新交付”只消费已有成功结果。0.2.3 支持同步完整缓存的本地交付或原 URL 下载，异步保持 re-poll；均不重新生成。缓存缺失或损坏不授权自动重提，详见 [同步交付恢复](SYNC_DELIVERY_RECOVERY.md)。
 - “知情重试”必须单独确认可能重复任务或重复计费，并创建带 `retryOf/manualRetries` 关系的新 Task。创建后只归档原提醒，不改写原任务的未知事实；当前只对能从安全记录无损重建的文生图和文生视频开放，文件型输入和截断文本要求用户从原始输入重新发起。
 - “标为已读/恢复提醒”只操作有界的本地 `attentionEvents` 审计元数据，不发送网络请求，也不把用户处置等同于供应商已经受理。
 - Iris 当前没有凭空假设 DashScope 的远端取消协议。停止本地观察后若远端结果无法确认，状态保持 unknown。
@@ -37,6 +37,7 @@ API、SSE 和 Doctor 只返回凭据存在性或掩码提示。Provider 错误�
 - legacy 任务与独立作品的媒体链接使用随机 128-bit 能力令牌。令牌应视为临时访问凭据，不应发布到公网。
 - Core 媒体路由 `/iris/api/core/artifact/<artifact_id>/media` **没有独立 token**。它使用随机 96-bit Artifact ID 作为不可猜测的持有者标识，并叠加默认回环/显式 trusted Host、浏览器 `Origin`/`Sec-Fetch-Site` 拒绝跨站、`Cross-Origin-Resource-Policy: same-origin`、`Referrer-Policy: no-referrer` 与每次 SHA-256 校验。任何能访问受信 Host 且持有 Artifact ID 的客户端都能读取对应媒体；`IRIS_TRUSTED_HOSTS` 不是身份认证。不要把 Core Artifact ID 或媒体 URL 发布到不受信任位置。
 - 清理任务元数据默认不删除作品；legacy 独立作品索引不保存 Prompt、Provider、Model 或任务关系；Core Manifest 保存中性元数据、SHA-256 和来源/派生关系，不保存凭据或私有下载 URL。
+- `delivery-cache/v0/` 是私有同步结果证据，不属于公共 Task/Artifact DTO：可能包含签名下载 URL 和媒体正文，不上传到 Issue，也不由媒体路由暴露。缓存随显式 Task 隔离/恢复，不自动删除；需要为额外磁盘占用留出空间。
 - legacy 删除单件作品、清空作品库或删除真正的孤儿文件都需要独立确认，会保留任务历史，但旧媒体链接将失效。0.2.1 Core 删除使用可恢复隔离，任务/产物引用会阻止删除；同时移除关联的已结束任务记录需要明确选择和确认，恢复不会覆盖冲突文件。见 [工作台作品管理](WORKBENCH_ARTIFACTS.md)。
 - 符号链接不会被私有树权限收紧逻辑跟随。Doctor 会把 Iris 数据根为符号链接视为硬错误。
 

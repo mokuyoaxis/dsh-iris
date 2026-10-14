@@ -1,8 +1,10 @@
 # Headless CLI
 
-本文面向 Iris 0.2.2，涵盖无 DSH 的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为 Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core 内部接口与 Artifact v0 尚未冻结为公共 SDK。
+`run music` 支持音乐生成与模型级协议配置，见 [音乐生成](MUSIC.md)。音乐使用明确分配名单；其余生成能力保留分配优先加池序补齐。
 
-需要 Node.js ≥ 22.0.0。安装 `npm install @mokuyoaxis/dsh-iris@0.2.2` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；安装本地 tarball 后也可运行 `dsh-iris ...`。
+本文面向 Iris 0.2.3，涵盖无 DSH 的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为 Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core 内部接口与 Artifact v0 尚未冻结为公共 SDK。
+
+需要 Node.js ≥ 22.0.0。安装 `npm install @mokuyoaxis/dsh-iris@0.2.3` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；安装本地 tarball 后也可运行 `dsh-iris ...`。
 
 0.2.1 提供 `vision look / locate / ocr / summarize`。文件输入的纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；图片/帧 Artifact ID 输入需显式数据根，以 reader 读取既有 Core 产物，只有主动音轨转写才创建 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)；S2V、HTML、配置、等待及批量管理见 [CLI 管理](CLI_MANAGEMENT.md)。
 
@@ -14,7 +16,7 @@ dsh-iris capabilities list --provider-config /absolute/path/to/providers.json
 dsh-iris doctor --data-root /absolute/path/to/iris-data --json
 ```
 
-前两项只读取显式提供的私有配置文件，不创建 Core Runtime 或数据根，也不请求 Provider。`providers list` 输出供应商身份、启用/配置状态、认证方式、媒体协议及其推断标记、配置能力与模型数；不输出 API Key 或端点。`capabilities list` 按五种配置能力列出 `providerId::modelId` 候选链，沿用 DSH 的“手工分配优先、模型池顺序补齐”规则；空链标为 `gap: no_configured_model`。这些只是配置事实，不证明远端模型或协议可调用。
+前两项只读取显式提供的私有配置文件，不创建 Core Runtime 或数据根，也不请求 Provider。`providers list` 输出供应商身份、启用/配置状态、认证方式、媒体协议及其推断标记、配置能力与模型数；不输出 API Key 或端点。`capabilities list` 按六种配置能力列出 `providerId::modelId` 候选链，音乐只使用明确分配名单，其余能力采用“手工分配优先、模型池顺序补齐”规则；空链标为 `gap: no_configured_model`。这些只是配置事实，不证明远端模型或协议可调用。
 
 显式 `doctor --data-root` 是只读 Core 盘点：检查 Task/Artifact 结构、Index 一致性、孤立/未解析条目和写者租约；不创建缺失的根、不执行写入探针、不重建索引，也不释放租约。活跃写者可能使盘点在读取期间变化。省略 `--data-root` 时仍检查 DSH profile，保留原有写入探针，并纳入该 profile 的 `core-v0`。两种模式都返回 legacy/Core 计数对照，显式模式只统计指定根同层的 legacy 文件。退出码为 `0` 正常、`1` 警告、`2` 硬错误；诊断不会调用 Provider。
 
@@ -158,7 +160,9 @@ dsh-iris task redeliver task_0123456789abcdef01234567 \
   --provider-config /absolute/path/to/providers.json
 ```
 
-每次命令至多一次带 redelivery 语义标志的 `poll`（拿远端产物清单）接一轮下载，写入新的 Core Artifact；不调用 `submit`、不新建 Attempt、不产生第二次生成费用。非 failed、无远端 ID 或 binding 漂移时在调用前拒绝；成功后再次调用被同样拒绝，失败回落 failed 后可再次显式执行。DSH 侧同构开放：`POST /iris/api/core/task/:id/redeliver` 与工作台「重新取回作品」按钮（delivery_failed 投影行的唯一动作）。
+异步任务每次命令至多一次带 redelivery 语义标志的 `poll`（拿远端产物清单）接一轮下载；不调用 `submit`、不新建 Attempt、不产生第二次生成费用。非 failed、缺少可恢复来源或需联网时 binding 漂移，会在调用前拒绝；成功后再次调用被同样拒绝，失败回落 failed 后可再次显式执行。DSH 侧同构开放：`POST /iris/api/core/task/:id/redeliver` 与工作台「重新取回作品」按钮。
+
+0.2.3 支持同步结果的私有缓存恢复：完整字节仅做本地交付，可省略 `--provider-config`；只有 URL 尚需下载时才解析原供应商，且不 poll。旧任务没有完整缓存时不能追溯恢复；详见 [同步交付恢复](SYNC_DELIVERY_RECOVERY.md)。
 
 已受理且尚未终态的 Task 可以显式请求远端取消：
 

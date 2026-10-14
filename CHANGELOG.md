@@ -4,7 +4,30 @@
 
 ## [Unreleased]
 
-后续未归入版本的变更在此记录。
+## [0.2.3] - 待发布
+
+### Added
+
+- 独立音乐生成，支持模型分配、Chat Completions 内嵌MP3/WAV、CLI/Agent工具/API和工作台试听下载；可配置有限502重试，重发保留独立任务关系。见 [音乐生成](docs/MUSIC.md)。
+- 随包 `iris-use`，指导单步媒体操作、音乐、任务查询与作品交付；三项Skill共用能力和产物说明。
+- 同步媒体结果的私有交付缓存。本地交付失败可沿原任务重新交付，不重新生成；完整字节可离线恢复，多产物中断复用已有作品。见 [同步交付恢复](docs/SYNC_DELIVERY_RECOVERY.md)。
+
+### Changed
+
+- 音乐协议选项采用通用名称“Chat Completions（内嵌音频）”，保留现有配置标识。
+- 媒体编排按创作目标选择步骤，配乐保持可选；UI验收补充失败结论，移除固定调用次数限制。宿主诊断包含16工具与三项Skill。
+- 用户文档补齐音乐配置、任务恢复与三项Skill，统一安装和升级说明；个人网关实验与审计记录保留在内部资料中。
+
+### Fixed
+
+- 提示词再次优化失败或取消时保留旧预览和手工编辑，成功迟到不覆盖等待期间的新编辑。单片段忠实整理无需模型调用，预览可查看实际指令。
+- 改写使用正文交付协议，拒绝可识别的新增JSON外壳、外层围栏或整体序列化字符串，保留原稿中的合法格式。
+- 显示文本模型选择原因；无效显式路由、元数据查询失败或明确缺少文本输入能力在生成前拒绝。
+- 配置异常与被忽略的字段给出明确反馈。“仅恢复默认指令”保留模型、生成参数和入口开关；恢复全部设置说明完整范围，读取异常时保护原文件。见 [提示词优化](docs/PROMPT_OPTIMIZER.md)。
+
+### Security
+
+- 交付缓存仅保存在私有数据根，签名URL和媒体正文不进入公开Task/Artifact响应或普通日志；缓存随显式任务隔离和恢复管理。
 
 ## [0.2.2] - 2026-10-11
 
@@ -288,7 +311,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.1.4...v0.2.0

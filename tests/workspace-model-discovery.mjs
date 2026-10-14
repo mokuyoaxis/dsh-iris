@@ -62,8 +62,8 @@ assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'future-tts', ca
 assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'future-vu', capabilities: ['VU'] }), [CAPABILITIES.VISION]);
 assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'qwen-image-3.0' }), [],
   '无元数据时不按名称赋能');
-assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'gemini-music', capabilities: ['MUSIC'] }), [],
-  '未来能力或别名不被归入视觉池');
+assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'gemini-music', capabilities: ['MUSIC'] }), [CAPABILITIES.MUSIC],
+  '明确Music元数据映射音乐能力，不归入视觉或TTS池');
 assert.deepEqual(modelRules.capabilitiesOfDiscoveredModel({ id: 'qwen-image-3.0', capabilities: [] }), [],
   '空元数据不被名称规则穿透');
 

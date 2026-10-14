@@ -1,6 +1,10 @@
 # Text/Vision Model Port v0 契约设计
 
-状态：**Iris 0.2.2。** 0.2.0 已包含 M1 契约；0.2.2 接入 DSH 文本适配器与共享优化消费者、HTTP/DSH Vision Port，以及 look/relook、OCR、定位、拼图摘要和图片自述。端口仍为内部契约，不增加公开 export 或生产依赖，不改变 [Host Adapter v0](HOST_ADAPTER_CONTRACT.md) 的现有方法。新增按次规则与 UI 见 [提示词优化系统](PROMPT_OPTIMIZER.md)，单图预算与宿主附件副作用见 [单图视觉调用](VISION_MODEL.md)，复合操作见 [长图 OCR](OCR_MODEL.md) 和 [定位与摘要](COMPOSITE_VISION.md)。
+状态：**Iris 0.2.3。** 0.2.0 已包含 M1 契约；0.2.2 接入 DSH 文本适配器与共享优化消费者、HTTP/DSH Vision Port，以及 look/relook、OCR、定位、拼图摘要和图片自述。端口仍为内部契约，不增加公开 export 或生产依赖，不改变 [Host Adapter v0](HOST_ADAPTER_CONTRACT.md) 的现有方法。新增按次规则与 UI 见 [提示词优化系统](PROMPT_OPTIMIZER.md)，单图预算与宿主附件副作用见 [单图视觉调用](VISION_MODEL.md)，复合操作见 [长图 OCR](OCR_MODEL.md) 和 [定位与摘要](COMPOSITE_VISION.md)。
+
+DSH Text 绑定按精确元数据检查文本输入声明；明确不接受 text、身份漂移或非法模态字段在生成前拒绝。没有声明时保持 unknown，已有元数据查询失败则返回准备阶段 unavailable，不再吞掉错误继续生成。查询与生成共用取消/预算，Vision 仍由独立桥接检查 image 输入，不借用 Text 的 text 检查。改写格式与路由原因见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
+
+提示词核心为单片段 faithful 提供程序返回路径，在模型绑定/元数据/生成前短路；输入、规则、输出限额和取消仍检查。已调用的提示词结果提供 `processing.request` 完整指令快照，未调用不伪造请求；这是业务响应扩展，不改变 Model Port v0 请求/完成协议或公共 exports。
 
 0.2.1 还提供 [视觉 CLI](VISION_CLI.md)、可选账号/模型 `visionInput` 和设置命令，见 [看图输入预算](CLI_MANAGEMENT.md#看图输入预算)；不改变请求/完成 DTO、契约版本或公开 exports。该设置用于看图、OCR 分块、定位和聊天改图的发送副本，不是供应商能力上限声明；聊天改图的媒体任务语义仍由 Core Runner 管理。
 
@@ -28,7 +32,7 @@ flowchart TD
   VISION --> FA
 ```
 
-图中是目标结构。独立文本 Provider 与新 Headless 命令不在本轮范围；当前自持 Provider 目录尚无 `text` 能力。
+图中是目标结构。独立文本 Provider 与提示词 Headless 命令尚未提供；当前自持 Provider 目录尚无 `text` 能力。
 
 ## 职责归属
 

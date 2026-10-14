@@ -13,15 +13,18 @@ const base = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-file-delivery-'));
 const chunk = Buffer.alloc(1024 * 1024, 0x5a);
 const read = fs.readFileSync, copy = fs.copyFileSync;
 const stagingSegment = path.sep + path.join('provider-staging', 'v0') + path.sep;
+const cacheSegment = path.sep + path.join('delivery-cache', 'v0') + path.sep;
+const materialized = file => String(file).includes(stagingSegment)
+  || (String(file).includes(cacheSegment) && String(file).endsWith('.bin'));
 let guardedReads = 0, copies = 0, failCopy = false;
 fs.readFileSync = (file, ...args) => {
-  if (String(file).includes(stagingSegment)) {
+  if (materialized(file)) {
     guardedReads++; throw new Error('whole staging read forbidden');
   }
   return read(file, ...args);
 };
 fs.copyFileSync = (source, ...args) => {
-  if (String(source).includes(stagingSegment)) {
+  if (materialized(source)) {
     copies++;
     if (failCopy) throw Object.assign(new Error('fixture copy failure'), { code: 'ENOSPC' });
   }
@@ -60,7 +63,8 @@ function verify(dataRoot, task, item, capability, mediaType, expectedKind) {
   assert.deepEqual(artifact.metadata, { taskId: task.id, capability });
   assert.deepEqual(artifact.relations, []);
   assert.equal(task.attempts.length, 1); assert.equal(item.calls.submit, 1);
-  assert.deepEqual(fs.readdirSync(path.join(dataRoot, 'provider-staging/v0')), []);
+  const staging = path.join(dataRoot, 'provider-staging/v0');
+  assert.deepEqual(fs.existsSync(staging) ? fs.readdirSync(staging) : [], []);
   const manifest = fs.readFileSync(path.join(dataRoot, 'artifact-store/v0/manifests', artifact.id + '.json'), 'utf8');
   assert(!manifest.includes(dataRoot) && !manifest.includes('fixture.invalid'), 'Manifest 不保存来源路径/URL');
   return artifact;

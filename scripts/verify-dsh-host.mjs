@@ -75,7 +75,7 @@ try {
   await mount(WebServer, { host: '127.0.0.1', port: 0, compression: 'none' });
   allowedOrigin = 'http://127.0.0.1:' + ctx.get('webServer').port;
   const { createDshHostAdapter, detectDshVersion } = await import('../lib/dsh-host-adapter.js');
-  const { hostRuntimeEvidence, EXPECTED_IRIS_TOOLS, EXPECTED_IRIS_CLIENT_SEATS } = await import('../lib/host-runtime.js');
+  const { hostRuntimeEvidence, EXPECTED_IRIS_TOOLS, EXPECTED_IRIS_SKILLS, EXPECTED_IRIS_CLIENT_SEATS } = await import('../lib/host-runtime.js');
   const sharp = (await import('sharp')).default;
   const source = await sharp({ create: { width: 8, height: 6, channels: 3, background: '#ff0000' } }).png().toBuffer();
   const ref = await ctx.get('attachments').saveImage({ data: source, mediaType: 'image/png', name: 'fixture.png' });
@@ -222,7 +222,7 @@ try {
   const irisFiber = await mount({ name: iris.name, inject: iris.inject, apply: iris.apply });
   await check('all Iris tools and bundled skills register in actual Cordis services', async () => {
     assert.deepEqual(ctx.get('tools').schemas().map(item => item.name).sort(), [...EXPECTED_IRIS_TOOLS].sort());
-    assert.deepEqual((await ctx.get('skills').list()).map(item => item.name).sort(), ['iris-compose-media', 'iris-verify-ui']);
+    assert.deepEqual((await ctx.get('skills').list()).map(item => item.name).sort(), [...EXPECTED_IRIS_SKILLS].sort());
   });
   await check('M3 actual look/relook tool dispatch consumes one complete model call each', async () => {
     const input = path.join(work, 'vision-input.png');

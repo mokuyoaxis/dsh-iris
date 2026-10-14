@@ -1,44 +1,39 @@
-# Iris composition workflow details
+# Iris 创作流程参考
 
-Read only the section matching the chosen workflow. Keep paid steps bounded by the main Skill and Task v2 recovery rules.
+仅阅读本次目标对应的部分。参数、Core ID、附件与文件路径的共同约定见主文链接的共享说明。
 
-## Inspect, then draw
+## 图片创作与版本修改
 
-1. Inspect the source with `iris_look_at_image` or `iris_relook_attachment`. Ask about subject, composition, palette, style, visible text, and the requested transformation.
-2. Turn observations into a self-contained prompt. Separate visible facts from requested changes and preserve exact text.
-3. Call `iris_draw_image` once for each requested artifact.
-4. Inspect the result only when verification or iteration was requested. A mismatch is evidence to report, not automatic permission to regenerate.
+已有Core原图并明确要求修改时，直接用 `iris_edit_image(source_artifact_id, prompt)`。写清改变和保留的内容；当前仅支持单张Core静态图片输入。源图只有附件或路径时，说明改图入口需要Core作品，不把附件ID当作Core ID，也不虚构导入工具。
 
-## Edit a Core image, then inspect
+需要理解参考素材后再创作时，使用 `iris_look_at_image` 或 `iris_relook_attachment`，提取与目标有关的主体、构图、文字和风格，再调用 `iris_draw_image`。保留用户给出的准确文字；生成后的自述可以提供线索，不需要默认再做一次相同的全图描述。
 
-1. Resolve the source Core Artifact ID; one static PNG, JPEG or WebP image up to 20 MiB is supported.
-2. Call `iris_edit_image` with `source_artifact_id` and a focused modification prompt, optionally an explicit model. The original stays intact and the edited Artifact records its source.
-3. Inspect the new Artifact ID only when review is requested. Preserve the Task ID if acceptance or delivery is uncertain; do not repeat the edit automatically.
+用户要求检查时针对具体标准使用看图或 `iris_long_ocr`。已有授权的修改继续用新Artifact作为下一版来源，不从头重画源作品。交付选定版本及其真实ID，保留原版本；模型描述不能证明画面精确满足每一项要求。
 
-## Generate or reuse a still, then animate
+## 图片视频素材
 
-1. Create a still with `iris_draw_image`, reuse an Iris-produced first-frame attachment, or obtain a host-visible path. Do not pass an ordinary session attachment as `first_frame_attachment_id`.
-2. Write a motion prompt that covers camera movement, subject motion, timing, and invariants.
-3. Call `iris_generate_video` with `first_frame_attachment_id` or `first_frame_path`. Use only controls supported by the selected t2v/i2v model.
-4. Observe a returned Task before claiming that the video exists.
+复用Iris生成的首帧附件作为 `first_frame_attachment_id`，或使用真实宿主图片的 `first_frame_path`。其他会话附件不能直接充当该首帧ID。没有首帧且任务需要时才调用 `iris_draw_image`。
 
-## Summarize a video, then narrate
+将运动、镜头、时序及需保留的画面特征写入prompt，调用支持该模式的 `iris_generate_video`。首帧和视频分别保留；等待未完成时报告Task，不宣称已有成片。
 
-1. Call `iris_media_summarize` with `video_path` and `transcribe=true` unless the user wants visual-only analysis. If Core frames already exist, use their `frame_artifact_ids` instead and optionally provide `transcribe_text`; omit `transcribe=true` and sampling options for existing frames.
-2. Do not also call `iris_video_frames` or `iris_transcribe_audio` by default; the summary action already samples frames and can transcribe audio.
-3. Write narration for the requested audience and length without presenting inference as visible fact.
-4. Call `iris_speak_text`; return the summary, contact-sheet attachment, and saved audio path.
+## 视频内容与旁白
 
-Use `iris_video_frames` separately only for individual frames or a custom frame workflow. Use `iris_transcribe_audio` separately for a full transcript or an audio-only input.
+已有Core帧时调用 `iris_media_summarize(frame_artifact_ids, transcribe_text?)`，不重复抽帧，也不传video_path、采样参数或transcribe:true。只有视频文件时按目标决定是否需要音轨；纯画面分析明确transcribe:false，已有转写直接提供。
 
-## Create an S2V talking video
+整理用户需要的摘要和旁白稿，再用 `iris_speak_text`。交付摘要、联系表和音频Artifact/播放链接；只有后续处理需要音频文件时才导出。转写未完成或摘要仅包含画面时说明范围，不补造台词。
 
-1. Resolve or generate a suitable first-frame portrait.
-2. Use existing host audio or call `iris_speak_text` and keep its absolute output path.
-3. Confirm that the audio is a clear human voice in WAV/MP3, smaller than 15 MB, and shorter than 20 seconds.
-4. Call `iris_generate_video` with an S2V model, first-frame input, `audio_path`, and `480P` or `720P`. Do not pass t2v/i2v-only `size` or `duration` controls.
-5. Observe the returned Task; do not submit a duplicate while it is running.
+## 数字人口播
 
-## Turn recognized content into a new artifact
+复用或生成首帧。已有可用宿主人声音频则直接使用；TTS返回Core音频时先按共享说明导出为文件，再传 `audio_path`。音频应是清晰人声WAV/MP3、小于15 MB、时长小于20秒。
 
-Use `iris_long_ocr` for exact image text or `iris_transcribe_audio` for speech, then pass only necessary checked facts into the selected generation tool. Preserve names, numbers, and quoted wording when accuracy matters.
+使用支持S2V的模型和resolution=480P/720P，不传文生/图生专用size/duration。Music不是通用口播输入；音乐与人声混合成新的音轨需要另一个实际可用、已授权的处理步骤。
+
+## 信息再创作
+
+`iris_long_ocr`用于准确图片文字，`iris_transcribe_audio`用于说话音频。OCR为partial时保留已识别部分并说明缺口，按目标决定是否需要补充；不要把部分识别当作完整原文。将必要事实交给用户要求的创作步骤，保留姓名、数量、引文与来源ID。
+
+## 可选配套音乐
+
+用户要求歌曲、配乐或选定含音乐的创作目标时，使用 `iris_generate_music`，把情绪、年代、乐器、人声、语言及期望时长写入prompt。图片和音乐可以共用创作要求，但分别保存，不宣称二者已自动关联或混音。
+
+用户仅要求图片或视频时不添加音乐。可选音乐失败时交付其他完成素材并说明；带配乐成品的要求未满足则明确留为未完成。一次Music工具调用可以按配置包含有限502重试，不再用Agent循环追加调用，也不换成TTS或程序生成节拍。

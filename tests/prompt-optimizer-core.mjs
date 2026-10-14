@@ -25,11 +25,27 @@ for (const make of [createFakeModelPort, createDshTextFixture]) {
   assert.equal(result.original, input.text);
   assert.equal(result.optimized, '  使用摄影师的视角。  \n\n一只猫的照片，不要帽子。\n\n不要添加文字或水印。\n保持原有主体。');
   assert.equal(result.rules[0].source, 'user-selected');
+  const sent = fixture.calls[0].source;
+  assert.deepEqual(result.processing.request, { system: sent ? sent.system : fixture.calls[0].request.system,
+    prompt: sent ? sent.messages[0].content[0].text : fixture.calls[0].request.prompt }, '快照与实际端口/DSH 请求相同');
+  assert(result.processing.request.system.includes('本次输出协议：改写正文'));
   assert.equal(fixture.stats.invocations, 1);
   assert.equal(fixture.stats.active, 0);
 }
 
 const assemble = assemblePrompt({ ...input, rules: plan.input.rules.filter(rule => rule.kind === 'output').map(({ source, ...rule }) => rule) });
+for (const editing of ['faithful', 'suggestions']) {
+  const prepared = preparePromptOptimization({ text: '左眼泪痣。右鬓发饰。', editing }, config);
+  const text = editing === 'faithful' ? '{"groups":[["s1"],["s2"]]}' : '{"suggestions":[],"questions":[]}';
+  for (const make of [createFakeModelPort, createDshTextFixture]) {
+    const fixture = make({ steps: [{ text }] });
+    const out = await runPromptOptimization(fixture.port, prepared);
+    assert.equal(out.processing.request.system, prepared.system);
+    assert.equal(out.processing.request.prompt, prepared.prompt);
+    assert(out.processing.request.system.includes(editing === 'faithful' ? '本次输出协议：忠实整理' : '本次输出协议：可选补充建议'));
+    assert.equal(fixture.stats.invocations, 1);
+  }
+}
 assert.equal(assemble.assembly.body, input.text, '只组装保留原稿空白');
 assert.equal(assemble.optimized, '  使用摄影师的视角。  \n\n  画一只猫，不要帽子。  \n\n不要添加文字或水印。\n保持原有主体。');
 assert.equal(assemble.mode, 'assemble');

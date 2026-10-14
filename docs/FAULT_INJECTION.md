@@ -11,6 +11,7 @@
 | 已受理后轮询 429/500/超时 | `watchState=exhausted`、`outcome=unknown` | 0 | `task-runtime-faults-v2.mjs` |
 | 供应商明确返回任务失败 | `outcome=failed` | 0 | `task-runtime-faults-v2.mjs` |
 | 已成功但下载/本地写入失败 | `outcome=succeeded`、`deliveryState=failed` | 0 | `task-store-v2.mjs`、`image-task-mixed-v2.mjs` |
+| 同步无远端 ID，完整结果/下载/Artifact/Task 提交中断 | 私有缓存、原 Attempt、稳定作品 ID；恢复不重复生成 | 0 | `sync-delivery-recovery.mjs`（含真实 SIGKILL、CLI、缓存损坏、隔离/恢复） |
 | 进程在 submitting 阶段退出 | 无受理证据时转为 unknown，禁止恢复提交 | 0 | `task-store-v2.mjs` |
 | 进程在 accepted/running 阶段退出 | 只恢复观察；供应商缺失则 suspended | 0 | `task-runtime-faults-v2.mjs` |
 | 已成功、交付中途退出 | 保留 succeeded，交付标 failed | 0 | `task-runtime-faults-v2.mjs` |

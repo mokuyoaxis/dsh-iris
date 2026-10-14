@@ -1,93 +1,43 @@
 ---
 name: iris-compose-media
-description: "Compose two or more dsh-iris tools into goal-driven image, video, speech, transcription, and multimodal workflows. Use when a request requires analyzing supplied media and creating a derivative, generating then reviewing an image, turning a video summary into narration, preparing image and audio inputs for video, or coordinating asynchronous Iris tasks. Do not use for a single direct media operation. 用于看图后绘图、生成后自检、视频总结配旁白、图像加语音生成视频等多步骤媒体任务。"
+description: "Complete multi-step Iris creative requests and coordinated media assets: image revisions, image-to-video, video summaries with narration, talking videos, and optional music. 用于看图后绘图、图片修改与版本检查、视频总结配旁白、图片视频素材与可选配乐等创作流程。单步媒体操作用 iris-use，界面还原与验收用 iris-verify-ui。"
 ---
 
-# Compose Media with Iris
+# 用 Iris 完成媒体创作
 
-Turn a media goal into the shortest reliable chain of Iris tools. Preserve useful attachments and paths between steps, keep paid generation bounded, and distinguish an accepted background task from a finished artifact.
+围绕用户要交付的作品组织必要步骤，复用已有素材，保留可以继续修改的版本。本 skill 适用于多步骤创作或多个配套产物；一次生成、改图、识别或查询由 `iris-use` 指导，界面还原与验收由 `iris-verify-ui` 指导。
 
-## Decide whether to use this skill
+## 确定本次作品
 
-Use this skill only when the request needs two or more dependent Iris operations. Typical triggers include:
+从用户要求确定已有素材、最终产物和关键完成条件。仅在缺失信息会实质改变作品时询问，其余采用合理假设继续。
 
-- analyze an image, then create a new image from the findings;
-- generate an image, inspect it, and revise only if requested;
-- summarize a video, then write and synthesize narration;
-- generate or reuse a still image, synthesize speech, then create an S2V video;
-- transcribe or OCR source media, then turn its content into another artifact.
+不要因工具存在而追加分析、转写、检查或配乐。已有明确修改指令和Core原图时，可以直接编辑；不必先描述整张图。用户要求检查或修正时，按其要求复核与继续修改，保留每个有效版本。
 
-For one direct operation such as drawing, describing, OCR, transcription, speech synthesis, or video generation, do not use this skill; call the matching tool directly. For screenshot comparison or frontend visual acceptance, use `iris-verify-ui` instead.
+调用参数、模型能力和素材身份按[共享能力和产物说明](../iris-use/references/media-contract.md)。当前工具与配置决定实际可用路线，目录中的模型名不能证明功能可用。
 
-Ask one concise question only when a missing source, target format, voice, aspect ratio, or intended audience would materially change the result. Otherwise make a conservative assumption and state it in the result.
+## 选择创作流程
 
-## Plan the chain
+按需要阅读[创作流程参考](references/workflows.md)的对应部分：
 
-Before calling tools, identify:
+- 图片创作与版本修改：文字或参考素材 → `iris_draw_image` / `iris_edit_image` → 按要求看图或OCR → 交付选定版本。
+- 图片视频素材：生成或复用首帧 → `iris_generate_video`；有源图时优先保留并复用。
+- 视频内容与旁白：`iris_media_summarize` → 整理旁白稿 → `iris_speak_text`。
+- 数字人口播：首帧 + 已完成的人声音频文件 → `iris_generate_video` 的S2V入口。
+- 信息再创作：`iris_long_ocr` / `iris_transcribe_audio` → 核对可用文字 → 用户要求的新素材。
+- 配套音乐：仅在用户要求或选择含配乐的流程时加入 `iris_generate_music`，和图片/视频分别保存与交付。
 
-1. the source media and how Iris can read it;
-2. the requested final artifact;
-3. the minimum dependent tool chain;
-4. which steps can incur generation cost;
-5. whether a downstream step needs a file path, attachment ID, text, or completed task.
+视频分析优先复用已有 `frame_artifact_ids` 或 `transcribe_text`，无需再调用 `iris_video_frames` 或转写同一素材。依赖步骤顺序执行；独立素材可以在宿主工具允许时并行，不据此承诺供应商限额或更高成功率。
 
-Do not add an analysis, transcription, or review step merely because a tool exists. Parallelize only independent read-only work; dependent media operations must remain ordered.
+## 完成素材衔接
 
-## Resolve media inputs
+每步保留实际返回的Task、Artifact和附件ID。下一步需要Core ID时直接复用；需要宿主文件时先明确导出。TTS与Music当前返回Core音频及播放链接，不能把链接作为 `audio_path`。
 
-- For edits to an existing Core image, pass its ID as `source_artifact_id` to `iris_edit_image` with the requested change. This creates a new Task and Artifact while keeping the source intact; it requires a configured chat image model.
-- PNG, JPEG and WebP can be used directly; do not convert a generated PNG to JPEG merely to call vision or OCR. Core IDs and host paths remain separate inputs.
-- Use `iris_look_at_image` for a host-visible absolute `image_path` or an existing Core image `artifact_id` (choose one).
-- Use `iris_relook_attachment` for an image attachment already present in the session or produced by Iris.
-- Use `iris_long_ocr` when exact text from an image matters more than a visual description; choose exactly one of `image_path`, Core `artifact_id`, or session `attachment_id`. `iris_locate` accepts the same three sources for original-pixel bounding boxes.
-- Video and audio file inputs require host-visible absolute `video_path` or `audio_path` values. Video summaries can instead consume existing Core `frame_artifact_ids`. A browser-local path, `content://` URI, or ordinary web URL is not a host path; request an upload or exported host path.
-- Keep every returned Core Artifact ID, attachment ID, task ID, and output path that a later step needs. Core `artifact_id` and session `attachment_id` are distinct; do not use either as a file path or invent identifiers.
+完成一个步骤后再启动依赖它的生成。排队、运行中或交付失败都不代表文件已经存在。已有完整作品的补交付、人工重试和Music内置502重试的区别，按需阅读[任务恢复说明](references/task-v2-recovery.md)。
 
-An attachment returned by `iris_draw_image` can be passed as `first_frame_attachment_id` to `iris_generate_video`. An existing host image uses `first_frame_path`. The local path returned by `iris_speak_text` can be passed as `audio_path` for S2V.
+## 按目标检查与交付
 
-## Choose a workflow
+检查创作要求中的具体内容：图片的主体、文字和构图；视频的动作与片段用途；旁白的内容与声音。音乐风格与听感由试听判断。像素差异用于可比图片的测量，不是通用创作品质分数。
 
-Choose the minimum chain, then read only the matching section of [references/workflows.md](references/workflows.md):
+音乐为默认不执行的可选步骤。可选音乐失败时保留其他完成素材并报告缺失；用户明确要求带配乐成品时，缺少音乐意味着该要求尚未完成。当前Iris没有自动混音/合成工具，分别交付素材不能表述为已经完成配乐成片。
 
-- inspect an image, then draw: `iris_look_at_image` or `iris_relook_attachment` → `iris_draw_image`;
-- edit a Core image, then inspect: `iris_edit_image` → `iris_look_at_image` using the new Artifact ID;
-- generate/reuse a still, then animate: optional `iris_draw_image` → `iris_generate_video`;
-- summarize a video, then narrate: `iris_media_summarize` → `iris_speak_text`;
-- create an S2V talking video: resolve a first frame and audio → `iris_generate_video`;
-- recognize, then create: `iris_long_ocr` or `iris_transcribe_audio` → the requested creation tool.
-
-Use `iris_video_frames` only for explicit frame extraction or a custom frame-level workflow. Do not load every workflow section when one route is sufficient.
-
-If frames are already saved by `iris_video_frames`, pass its returned `frame_artifact_ids` to `iris_media_summarize` instead of extracting again. This reads the original timestamps and frame order without the video file or ffmpeg. Omit `video_path`, `max_frames`, `target_width`, and `transcribe:true`; supply existing speech as `transcribe_text` when available.
-
-## Control cost and iteration
-
-- Create one new Iris generation **Task** per requested artifact by default. A Provider Attempt is an internal candidate submission inside that Task; do not count failover attempts as user-authorized new Tasks.
-- The original request authorizes its requested artifact. Review alone does not authorize regeneration.
-- Create at most 2 new generation Tasks per artifact, and only when the first Task has a known terminal outcome and the user explicitly requested iteration. Respect a lower or higher bound stated by the user.
-- Do not probe models or create speculative alternatives. Honor an explicit `providerId::modelId`; otherwise use Iris capability assignment and bounded failover.
-- Automatic failover is allowed only while the current Provider Attempt has `acceptance=not_accepted`. Accepted, acceptance-unknown, or outcome-unknown work must never trigger another Provider Attempt or Task automatically.
-
-## Handle Task v2, cancellation, and failures
-
-When a generation tool returns a Task, or the user asks to retry, recover, cancel, or deliver one, read [references/task-v2-recovery.md](references/task-v2-recovery.md). Its stop rules are mandatory.
-
-- Continue immediately only from a completed attachment, text, or local path.
-- Use `iris_task_status` to observe an existing background Task when a dependent next step needs the result. Never describe queued/running work as complete.
-- Observation failure resumes observation; delivery failure resumes delivery. Neither authorizes regeneration. If that recovery action is available only in the Iris workbench, say so and preserve the Task ID.
-- If the user cancels, stop the chain and do not launch downstream generation. Cancellation requested or unknown is not proof that no provider work occurred.
-- Preserve partial outputs. Report which step succeeded, which failed or became uncertain, and whether accepted work may remain active.
-- If an attachment is missing, request a re-upload or host path. If `ffmpeg`/`ffprobe` is unavailable, new video frame extraction cannot run; summaries can still use existing Core frame IDs.
-- If vision is unavailable but the creation prompt is complete, skip source analysis only when the requested result still remains valid.
-
-## Report the result
-
-Return a compact workflow record containing:
-
-1. the completed chain and any material assumptions;
-2. attachment IDs and host paths needed to use the outputs;
-3. task IDs and their last known status;
-4. any omitted or failed step and its effect on the final artifact;
-5. whether further generation would create another potentially billable Task.
-
-Never hide that a summary omitted audio, that a review was skipped, or that the final artifact differs from the request.
+按本次授权的产物、修改范围和预算执行，不固定所有流程的Task数量。不要为一次失败再添加外层重试；用户取消时停止后续生成。报告已完成作品及可用链接/ID、部分结果、关键假设和未完成条件；进一步生成的费用与受理事实以任务记录为准。

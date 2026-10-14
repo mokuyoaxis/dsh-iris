@@ -1,12 +1,14 @@
 # dsh-iris 用户指南
 
-本指南说明如何安装、配置和使用 Iris 0.2.2。升级范围见 [CHANGELOG](CHANGELOG.md) 和 [发布说明](docs/releases/0.2.2.md)。
+本指南说明如何安装、配置和使用 Iris 0.2.3。升级范围见 [CHANGELOG](CHANGELOG.md) 和 [发布说明](docs/releases/0.2.3.md)。
+
+> 0.2.3 当前为发布候选；正式发布前，npm 安装继续固定使用 0.2.2，下文升级命令在发布后使用。
 
 0.2.2 的能力来自明确功能标签、旧能力字段绑定或供应商能力元数据，账号和名称不再自动赋能。已有明确配置保留；仅有裸账号的配置需要先给实际模型设置功能，再加入有序候选池。
 
 ## 安装
 
-先运行 `dsh --version`。Iris `0.2.2` 仅声明支持 DSH `0.2.0-rc.2`；旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 使用固定版本 Iris `0.1.4`。验证边界见[适配说明](docs/DSH_RC2_ADAPTATION.md)。还需要 PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。Iris 0.2.2 要求 Node.js 22.0.0 或更高版本，旧 npm 0.1.4 的历史要求为 20.10.0；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 及后续 0.1.x 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
+先运行 `dsh --version`。Iris `0.2.3` 仅声明支持 DSH `0.2.0-rc.2`；旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 使用固定版本 Iris `0.1.4`。验证边界见[适配说明](docs/DSH_RC2_ADAPTATION.md)。还需要 PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。Iris 0.2.x 要求 Node.js 22.0.0 或更高版本，旧 npm 0.1.4 的历史要求为 20.10.0；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 及后续 0.1.x 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
 
 在上述旧 DSH 范围内，从 npm 安装固定稳定版到 Web profile：
 
@@ -17,12 +19,12 @@ dsh web
 
 npm 上无 scope 的 `dsh-iris` 是另一款插件；安装或更新 Iris Media 时必须使用完整 scoped 包名。
 
-只下载旧稳定包可运行 `npm pack @mokuyoaxis/dsh-iris@0.1.4`，安装为普通 npm 依赖可运行 `npm install @mokuyoaxis/dsh-iris@0.1.4`；后者不会自动加入 DSH profile。固定版本仍可在 latest 更新后安装，0.1.4 不包含新的 Core 媒体 CLI。DSH rc.2 使用 0.2.2。
+只下载旧稳定包可运行 `npm pack @mokuyoaxis/dsh-iris@0.1.4`，安装为普通 npm 依赖可运行 `npm install @mokuyoaxis/dsh-iris@0.1.4`；后者不会自动加入 DSH profile。固定版本仍可在 latest 更新后安装，0.1.4 不包含新的 Core 媒体 CLI。DSH rc.2 使用 0.2.3。
 
 在 DSH `0.2.0-rc.2` 上，从 npm 安装：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.2
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.3
 dsh web
 ```
 
@@ -30,7 +32,7 @@ dsh web
 
 ### 独立 CLI
 
-无需 DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.2`，通过 `npx dsh-iris --help` 查看入口。详见 [Headless CLI](docs/HEADLESS_CLI.md) 和 [视觉 CLI](docs/VISION_CLI.md)。
+无需 DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.3`，通过 `npx dsh-iris --help` 查看入口。详见 [Headless CLI](docs/HEADLESS_CLI.md) 和 [视觉 CLI](docs/VISION_CLI.md)。
 
 其他 DSH 版本，包括 `0.2.0` 正式版与其他 rc，须另行验收。让 Agent 协助安装时，可使用[简要 Prompt](docs/AGENT_QUICKSTART.md)。
 
@@ -129,22 +131,30 @@ Iris 先按画图、视频、语音、转写和视觉功能组织候选池，再
 
 每项能力都可以设置一个有序的“供应商 + 模型”列表。界面显示的是模型名和供应商，配置中保存为 `providerId::modelId` 复合引用，因此不同供应商的同名模型不会冲突。
 
-- 未手工分配时，每个新请求都从模型池第一个匹配项开始；这不是 round-robin。
+- 图片、视频、语音、转写与视觉未手工分配时，从模型池第一个匹配项开始；音乐仅使用明确分配名单。
 - 手工列表中的模型优先，并按列表顺序尝试。
-- 模型池中其余具备该能力的模型仍会作为后续候选。
-- 点击“恢复自动”会清除手工顺序。
+- 除音乐外，模型池中其余具备该能力的模型仍会作为后续候选。
+- 点击“恢复自动”会清除手工顺序；音乐清空名单后需重新分配才能生成。
 
 生成类故障转移只覆盖上传、提交和同步生成阶段。远端一旦受理异步任务，Iris 就会继续跟踪这个任务，不会因轮询或下载失败自动重提，以免重复生成和计费。
 
+## 音乐生成
+
+为音乐服务添加实际模型，设置“音乐”标签，选择 **Chat Completions（内嵌音频）** 协议，再将模型加入音乐能力分配名单。音乐必须明确分配，不从其他模型池自动补齐；这个接口要求服务在聊天响应正文中返回MP3/WAV音频data URL。
+
+配置后可在DSH中说“用Iris生成一首复古摇滚配乐”，或使用工作台音乐卡片。生成结果可试听、下载与导出；音乐和TTS分别配置，配乐按需加入多步骤流程。
+
+音乐入口默认在明确HTTP502后额外重试两次，可能消耗额外额度；可用 `retry_502: 0` 关闭。时长、歌词和人声通过描述表达，精确控制取决于模型。完整配置与CLI示例见 [音乐生成](docs/MUSIC.md)。
+
 ## 从旧工作台显式导入
 
-`ai-paint` 是 Iris 维护者本机未公开的前身项目，不是公开依赖。普通用户不需要、也不应该为了使用 Iris 去下载、安装或自行创建 ai-paint 目录；直接在 Iris 工作台添加供应商即可。
+首次使用请直接在 Iris 工作台添加供应商。已有旧 ai-paint 配置时，可使用下面的一次性导入入口；无需安装旧项目。
 
-旧版读取路径同时承担了本机迁移和密钥保护作用：由运行 DSH 的宿主进程直接读取维护者已有的本地配置，可以避免为了迁移把 API Key 重新粘贴到 Agent 会话、命令行参数或文档中。它不是一个配置服务，也不意味着 Iris 运行时应该长期依赖另一个项目。
+导入由宿主进程读取本地配置，API Key 不需要经过 Agent 会话或命令行参数。
 
 从 0.1.1 起，Iris 独立保存供应商、密钥、模型池和能力分配，位置为 `$DSH_HOME/iris/v1/providers.json`（未设置 `DSH_HOME` 时使用用户目录下的 `.dsh`）。修改 Iris 配置不会影响 ai-paint，反之亦然。
 
-默认启动不会扫描 ai-paint 或其他项目。推荐通过工作台手动添加供应商；需要迁移旧 ai-paint 配置时，先停止目标 DSH 实例并备份其 Iris 配置，再显式指定来源文件的绝对路径。Bash 示例：
+默认启动不会扫描其他项目。推荐通过工作台手动添加供应商；需要迁移旧 ai-paint 配置时，先停止目标 DSH 实例并备份其 Iris 配置，再显式指定来源文件的绝对路径。Bash 示例：
 
 ```bash
 IRIS_IMPORT_WORKBENCH_CONFIG="/absolute/path/ai-paint/data/config.json" dsh web
@@ -243,11 +253,15 @@ Iris 工作台中的文件字段提供三种方式：
 
 直接写工具名最明确；自然语言也可以，由 Agent 判断需要调用哪个 Iris 工具。视频、图片和语音生成可能产生供应商费用。
 
-从 0.1.2 起，插件会在 DSH Skill registry 可用时自动注册 `iris-verify-ui` 和 `iris-compose-media`，不要求会话工作区位于本仓库，也不需要用户复制 `.dsh/skills/`。项目目录中存在同名 Skill 时，DSH 仍优先使用项目版本；宿主未提供 Skill registry 时不影响 Iris 工具（0.2.1共 15 个）。
+插件自动注册三项随包 Skill：单步操作用 `iris-use`，多步骤创作用 `iris-compose-media`，界面验收用 `iris-verify-ui`。无需复制 Skill 或切换到仓库目录；项目中的同名 Skill 优先，宿主未提供 registry 时工具仍可使用。
+
+三项共用[能力与产物说明](.dsh/skills/iris-use/references/media-contract.md)。Core音频返回Artifact ID与播放链接；需要audio_path时先导出成宿主文件。音乐独立于TTS，组合流程仅在用户要求时加入；分别交付音视频素材不代表已经混音成片。
 
 用户想稳定指定方法时，可直接用 DSH 的 `/name` 形式：
 
 ```text
+/iris-use 用已经分配的音乐模型生成一首摇滚配乐
+
 /iris-compose-media 分析我上传的产品照，生成同构图海报，再检查是否符合要求
 
 /iris-verify-ui 对比当前截图和参考图，定位偏差并给出有证据的结论
@@ -265,10 +279,12 @@ Iris 工作台中的文件字段提供三种方式：
 
 1. 在对话框写入草稿，点击“🫧”。
 2. 在一般功能中选择“通用、画图、改图、视频、数字人”（旧 0.2.1 的四目标调用保持兼容）。
-3. 0.2.2 默认“忠实整理”，保持原文与句序，只调整分组/分段。需要润色或明确改变指定内容时选择“改写表达”，再展开本次规则；只组装仍原样拼接草稿与前后缀，不调用模型。旧后端保留“智能优化”。
+3. 默认“忠实整理”，保持原文与句序，只调整分组/分段；单片段直接保留原文，不调用模型。需要润色或明确改变指定内容时选择“改写表达”，再展开本次规则；只组装仍原样拼接草稿与前后缀，不调用模型。旧后端保留“智能优化”。
 4. 编辑预览、检查原文与改动，然后选择“写回输入框、复制、重新生成预览”或“恢复原文”。需要额外创意时展开“可选补充与待确认”，点击获取才调用一次模型；勾选后还需点击采纳才加入预览，可以撤回上次采纳。手动编辑会清除旧建议绑定；建议与待确认问题不代表已验证事实或用户已有要求。折叠不清空选择和结果，Iris 不会自动发送消息。
 
-默认路由是当前会话模型；当前会话没有选择时使用 DSH 默认模型。0.2.2 的“指令与模型设置”可查看当前默认或自定义指令，导出/导入 JSON，或恢复内置默认值。配置单独保存在 `$DSH_HOME/iris/v1/prompt-optimizer.json`，不包含供应商 API Key，也不与 `providers.json` 混合。
+默认路由是当前会话模型；当前会话没有选择时使用 DSH 默认模型，固定配置优先于这两项。预览显示实际选择原因。“指令与模型设置”可查看指令、导出/导入 JSON，选择“仅恢复默认指令”或“恢复全部设置”；前者保留模型、生成参数和入口开关。配置单独保存在 `$DSH_HOME/iris/v1/prompt-optimizer.json`，不包含供应商 API Key，也不与 `providers.json` 混合。
+
+再次优化失败或取消会保留已有预览，等待期间继续编辑时，新结果不会覆盖手工改动。配置异常会说明默认值和原文件保留状态；导入前可先导出备份。
 
 导出文件格式：
 
@@ -367,11 +383,11 @@ npx @mokuyoaxis/dsh-iris doctor --json
 
 已安装包也可以直接运行 `dsh-iris doctor`。退出码为 `0`（正常）、`1`（警告）和 `2`（硬错误）。Doctor 会执行一个随后立即删除的本地写入探针，并检查配置、任务、能力分配、临时文件和产物引用；输出不含完整 API Key。离线模式无法检查 DSH 工具/客户端是否已经装载，也不会用付费请求验证 Provider。
 
-**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 npm 0.2.1 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.2.2 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
+**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 Iris 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.2.3 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
 
 ## Host Doctor
 
-DSH 运行后，打开“设置 → Iris 工作台 → 宿主诊断”。卡片会自动检查当前 DSH 版本、Iris 服务端和客户端版本、工具注册（0.2.1为 15 个）、两项随包 Skill、四组 Web 路由、四个 UI Slot，以及 Browser、附件、会话和宿主模型端口；点击“刷新”可重新读取，展开项可查看全部结果。需要原始 JSON 时，可在已经完成 DSH Web 认证的同一浏览器访问 `/iris/api/doctor`。
+DSH运行后打开“设置 → Iris工作台 → 宿主诊断”。卡片检查宿主/服务端/客户端版本、当前工具和随包Skill、四组路由与四个UI Slot。0.2.3 包含 16 个工具（含音乐）和三项 Skill；升级后需重启服务端、刷新页面，并为要使用的功能分配模型。点击“刷新”查看结果，原始JSON可在已认证的同一浏览器访问 `/iris/api/doctor`。
 
 Host Doctor 不打开 Browser、不读取附件或会话、不调用模型，也不请求供应商。报告中的 `exitCode` 是诊断严重度，不是 HTTP 状态：`0` 全部健康，`1` 有可降级警告，`2` 有硬错误。未安装 HTML Browser 时出现一条 Browser 警告是预期降级；如果提示尚未收到客户端握手，刷新 DSH 页面后再点“刷新”。若显示 `not found`，通常是前端已更新而 DSH 后端仍运行旧插件代码，应重启 DSH 后再刷新页面。
 

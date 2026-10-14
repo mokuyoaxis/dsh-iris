@@ -1,30 +1,31 @@
-# Iris Task v2 recovery
+# Iris 任务恢复与重新生成
 
-Read this reference only after a generation tool has returned a Task, or when the user asks about retrying, cancelling, recovering, or delivering an existing Task.
+本文件保留原路径，供Iris skills共用。已有任务需要等待、恢复、取消或重试时阅读；普通生成无需逐项执行恢复流程。
 
-## Keep the identities separate
+## 三类操作
 
-- A **Task** represents one user-authorized artifact request.
-- A **Provider Attempt** is an internal candidate submission inside that Task.
-- Automatic failover may create another Provider Attempt only while acceptance is explicitly `not_accepted`; it does not authorize a new Task.
-- A new Task is a new potentially billable user operation. Create it only for the original requested artifact or after explicit, informed retry/iteration approval.
+**查询/观察**检查已有任务；**补交付**取回已经生成的作品；**重新生成**创建新Task并可能消耗费用/额度。Provider Attempt是Task内的候选提交，不能把它与Agent再次调用工具混为一谈。
 
-## Decide from facts
+通用候选只在acceptance明确为not_accepted时切换。已受理或受理未知时不由Agent自动换模型或重新提交。用户已经授权的作品修改按该范围执行；单纯查看或检查不增加重新生成授权。
 
-| Observed fact | Agent action | Forbidden action |
-|---|---|---|
-| `acceptance=not_accepted` | Let Iris continue its bounded provider failover inside the same Task | Creating a replacement Task merely to imitate failover |
-| accepted or `acceptance=unknown` | Preserve the Task ID and stop new generation | Resubmitting to another provider/model |
-| queued/running | Observe the existing Task only when the next step depends on it | Claiming the artifact exists or starting a duplicate |
-| `watching_paused` / observation failure | Tell the user to resume/re-observe the same Task in the Iris workbench | Starting generation again |
-| succeeded but delivery unavailable | Tell the user to retry delivery for the same Task in the Iris workbench | Regenerating the media |
-| `needs_attention` / outcome unknown | Report the known facts and request human review | Guessing failure, success, or billing outcome |
-| cancellation requested/unknown | Stop downstream work and preserve the Task ID | Treating cancellation as proof that the provider did no work |
-| terminal failure with known non-acceptance | Report failure and the exhausted attempts | Silently starting a new Task |
-| terminal result reviewed and user explicitly requests another version | Create at most one additional Task unless the user sets a larger bound | Treating review itself as approval to regenerate |
+## 根据实际状态继续
 
-`iris_task_status` observes the existing Task. If an action is not exposed as an Iris Agent tool, direct the user to the existing Task in the Iris workbench; never simulate recovery by calling a generation tool again.
+| 事实 | 操作 |
+|---|---|
+| 排队/运行中 | 用 `iris_task_status` 查询；依赖结果未完成前不启动下一步 |
+| 观察暂停/观察失败 | 通过工作台“重新观察”或CLI task observe继续同一Task，不重新生成 |
+| outcome=succeeded、deliveryState=failed | 对原Task补交付；同步完整结果使用已有缓存，不再生成 |
+| acceptance/outcome未知 | 保留Task与未知事实，不推定上游没有生成或没有扣额度 |
+| 用户请求取消 | 停止后续步骤；本地停止等待不等于远端取消成功 |
+| 终态且未成功交付，用户知情要求重试 | 用工作台重试或CLI task retry创建关联的新Task，确认可能重复计费并重新提供输入 |
+| 已完成作品，用户要求修改/另一版 | 按已授权要求生成新版本，保留已有产物；不是旧Task的恢复 |
 
-## Report uncertainty
+`iris_task_status`本身只查询事实，不执行重新观察或补交付。恢复动作目前主要在工作台/API和CLI，不能靠再次调用生成工具模拟恢复。CLI task retry需要confirm-billing；新任务记录retriedFrom，旧Task保持。
 
-Always include the Task ID, last observed state, acceptance/outcome knowledge, whether a remote operation may still be active, and the exact safe next action. Do not collapse “could not observe” into “generation failed.”
+## Music 的有限502策略
+
+Music工具一次调用可按参数对HTTP502重新生成同一模型：默认额外2次、每次新Task并记录retriedFrom。502可能发生在上游已生成后，因此受理未知仍保留，重试可能额外扣额度。它是已配置的功能行为，不是通用候选切换，也不授权Agent再包一层重试。
+
+Music超时、其他HTTP状态或无音频响应不套用该策略；有完整音频的交付失败先补交付。Music网关没有已证实的远端查询/取消接口，不为它编造可轮询ID或撤销成功。普通task retry只重新生成一次，不接收Music重试参数。
+
+报告Task ID、已知状态、可用产物、未知事实和下一步。用户已明确授权的操作不重复征求同一授权；任务范围扩大或新的知情重试确有必要时再说明影响。

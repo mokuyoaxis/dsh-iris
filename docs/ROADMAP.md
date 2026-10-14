@@ -1,46 +1,35 @@
 # 路线图
 
-Iris 正从 DSH 媒体插件演进为可独立运行、可接入不同 Agent 宿主的媒体生产核心。本文列当前状态与后续方向；版本变化见 [变更记录](../CHANGELOG.md)。
+Iris 的方向是本地优先、Agent 可调用的多模态创作工作台。用户可从描述或已有素材出发，生成、修改、选择和交付作品。本文介绍当前能力与后续方向；版本变化见 [变更记录](../CHANGELOG.md)。
 
 ## 当前状态
 
-当前版本为 **Iris 0.2.2**。包名保持 `@mokuyoaxis/dsh-iris`，同时提供 DSH 插件与无 DSH 的 Headless CLI。本版变化见 [0.2.2 发布说明](releases/0.2.2.md)。
+本文对应 **Iris 0.2.3 发布候选**。包名为 `@mokuyoaxis/dsh-iris`，同时提供 DSH 插件与独立 CLI，详见 [0.2.3 发布说明](releases/0.2.3.md)。
 
-0.2.1 的更新重点是 **完成 OpenAI 兼容图片与视觉工作流**：生成图片 → Core Artifact → 按 ID 看图/OCR → 聊天改图 → 新 Artifact，CLI 与 DSH 工作台共用同一链路。本版已实现以下能力：
+- 图片生成、Artifact ID 看图/OCR/定位和聊天改图，支持按模型配置图片协议。
+- 视频、S2V、TTS、转写与音乐生成，共用任务、音频/视频作品和导出入口；音乐使用明确分配名单。
+- 三项 Agent Skills 分别指导单步操作、多步骤创作和界面验收；配乐与检查按用户目标加入。
+- 提示词的忠实整理、明确改写、可选建议与预览；完整同步媒体结果缓存后的交付恢复。
+- 工作台全媒体筛选、分页、跨页选择和下载，CLI 的配置、查询与可恢复维护。
 
-- 图片生成按模型选择 DashScope、OpenAI Images、聊天生图或 Responses 协议，PNG/JPEG/WebP 按真实字节交付；
-- Artifact ID 看图、OCR、定位，以及“来源 Artifact → 聊天改图 → 新 Artifact”的关系与引用保护；
-- 共享视觉预算、长图分块、取消与完整终态检查；账号/模型输入预算只处理发送副本，定位坐标映射回原图；
-- 图片、视频、S2V、语音、转写与本地处理的 Core 任务链，独立视觉 CLI、HTML 截图及完整配置/查询/维护命令；
-- 工作台统一 Core/旧版全媒体分页过滤，跨页选择、ZIP 下载、详情及 Core 可恢复隔离/恢复；
-- 短时 429 琥珀冷却、明确额度或预算耗尽红色停用，以及既有提示词泡泡的按次规则和可编辑预览。
-
-CLI 与 DSH 共用 Task、Attempt、Artifact 和 Command Service；Host 负责会话、附件、浏览器与 UI。纯视觉和提示词预览消费共享 Model Ports，不自动创建媒体 Task/Artifact。受理未知不会自动重提，同一数据根只允许一个 writer。Core 与 Model Port 内部接口尚未冻结为公共 SDK，详见 [Core 迁移](DSH_CORE_MIGRATION.md)、[CLI](HEADLESS_CLI.md) 和 [Artifact Manifest](ARTIFACT_MANIFEST.md)。
-
-Node.js 最低版本保持 22.0.0，DSH 插件只声明支持准确的 `0.2.0-rc.2`。旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 继续固定安装 Iris `0.1.4`；其他宿主版本需独立验收。第二个真实 Host Adapter 完成并验收后再安排仓库与 npm 包更名，CLI、测试 fixture 与媒体 Provider 不算第二个 Host Adapter。
+DSH与CLI共用Task和Artifact，同一数据根只允许一个写者。纯视觉和提示词预览不自动创建媒体任务；Core与Model Port仍是内部契约。Node.js最低22.0.0，DSH插件支持准确的 `0.2.0-rc.2`，旧宿主使用固定的Iris `0.1.4`。
 
 ## 近期优先：真实使用验收
 
-0.2.2采用明确功能能力：移除裸 DashScope 和名称自动赋能，保留功能入口、按功能分配的有序模型池及安全 failover。工作台提供明确功能标签设置；已有配置不自动迁移。Music 接入与相关网关排查暂缓，恢复前需取得可验证的真实音频。
+优先完善图片创作与配乐、短片素材准备等完整流程：复用已有作品、按需生成、试听或查看结果，再导出可继续处理的素材。分别交付音视频素材不等于自动混音成片。
 
-0.2.2 的 Core 可靠性已补齐 writer 意图与显式恢复证据，非图片交付复用文件接收和分块哈希；普通 writer 不自动抢占，未知/损坏现场继续拒绝。实现及边界见 [Core Runtime](CORE_RUNTIME_CONTRACT.md) 与 [Provider Adapter](PROVIDER_ADAPTER_CONTRACT.md)。
+持续改进浏览器/移动端体验、模型配置说明和异步任务重启后的接管。音乐当前支持Chat Completions内嵌音频接口；新增音乐来源按具体协议与实际需求适配，不要求用户使用特定个人网关。
 
-0.2.2 的提示词一般功能已提供折叠五用途、原文/顺序保持的忠实整理、明确改写与单独获取/采纳的建议，保留自定义 v1 配置和旧 API。特殊功能待定义，独立提示词 CLI 和英文默认指令候选未接入；详见 [提示词优化系统](PROMPT_OPTIMIZER.md)。
+已有完整同步结果时，交付失败可以恢复缓存；缺少缓存的旧任务和过期URL不能保证恢复，详见 [同步交付恢复](SYNC_DELIVERY_RECOVERY.md)。作品管理和可恢复隔离见 [工作台作品管理](WORKBENCH_ARTIFACTS.md)。
 
-0.2.2 的生图尺寸归一、本地未受理校验及网络/正文诊断已实现，受理未知仍停止自动重提；不以本地代码保证公网线路稳定。见 [错误与取消传播](PROVIDER_ADAPTER_CONTRACT.md#错误与取消传播)。
-
-0.2.1 的发布检查覆盖完整测试、lint、实际 tarball、敏感信息、仓库外安装与跨平台 CI。服务层与包安装验收之外，近期优先补齐真实浏览器/移动端及异步重启使用证据。
-
-工作台两轮功能已实现；第三轮仍需补浏览器/移动端的筛选、分页、跨页选择、识别、改图、下载及回收区使用验收，以及真实异步任务重启后的 CLI 接管。已有真实图片生成、按 ID 看图和聊天改图链路验证，完整会话与重启范围继续以 [验证说明](DSH_CORE_MIGRATION.md#验证证据与限制) 为准。上述变化纳入 0.2.2；完整工作台与重启范围的剩余验收仍保留。
-
-DSH 工作台与 Headless CLI 均复用 Core 的引用保护、可恢复隔离和恢复命令；legacy `outputs/` 的永久删除仍由旧工作台处理。两种删除语义与已实现的作品管理见 [工作台作品管理](WORKBENCH_ARTIFACTS.md)。
+DSH 工作台与 Headless CLI 共用 Core 的可恢复隔离和恢复入口，操作见 [CLI 管理](CLI_MANAGEMENT.md)。legacy `outputs/` 的删除仍永久生效；Core 回收区的删除可恢复，尚未提供永久 purge。两种行为在工作台分别显示，操作前应确认作品来源。
 
 ## 后续功能方向
 
 ### 后续 0.2.x
 
 - 适配其他协议，包括原生 Gemini、Fal 和后续 Replicate；网关兼容接口与原生协议接入分别验证；
-- Music 音乐生成：接入音乐生成模型，复用 Core 任务、Artifact 和作品管理；具体协议、模型与入口后续确定，不纳入 0.2.1；
+- 按实际需求增加音乐来源、可控参数和音视频衔接；已有音乐生成入口见 [音乐生成](MUSIC.md)；
 - 收藏、标签与工作台搜索（CLI 及工作台过滤、分页、显式选择/批量下载已完成）；
 - Artifact 关系边冻结 `retried-from` 类型，补全重试谱系（0.2.0 仅有 Task 级 `retriedFrom`）；
 - Core 隔离内容的永久 purge（0.2.1 已开放可恢复隔离/恢复，legacy 永久删除保持原行为）；
@@ -69,7 +58,7 @@ DSH 工作台与 Headless CLI 均复用 Core 的引用保护、可恢复隔离�
 
 ## 质量要求
 
-- 已受理或受理未知的远端任务不得自动重提。
+- Core仅在明确未受理时切换候选；Music的有限502重发遵从本次配置并保留独立Task事实。
 - 同一数据根不得出现两个写者；reader 不产生隐式写入。
 - Core/CLI 在 DSH/Cordis 不可解析时仍能装载和运行本地动作。
 - Task、Attempt 和 Artifact 不保存凭据、私有 URL 或不必要的宿主绝对路径。

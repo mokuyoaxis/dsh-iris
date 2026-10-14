@@ -125,10 +125,24 @@ try {
     '白名单外媒体类型必须交付失败且零 Artifact', badMedia.task);
   assert(badMedia.task.remoteTaskId === undefined || !badMedia.task.remoteTaskId,
     '同步 TTS 没有远端任务 ID', badMedia.task);
-  let redeliverError;
-  try { await commandsFor(badMediaFake).execute('task.redeliver', { task_id: badMedia.taskId }); } catch (caught) { redeliverError = caught; }
-  assert(redeliverError?.code === 'IRIS_TASK_NOT_REDELIVERABLE',
-    '同步 TTS 无远端 ID，redeliver 必须拒绝（恢复走 retry）', redeliverError?.code);
+  const invalidRedelivery = await commandsFor(badMediaFake).execute('task.redeliver', { task_id: badMedia.taskId });
+  assert(invalidRedelivery.task.deliveryState === 'failed'
+      && badMediaFake.calls.submit.length === 1 && badMediaFake.calls.poll.length === 0
+      && badMediaFake.calls.download.length === 0,
+    '同步 TTS 缓存允许恢复，但白名单外媒体仍在下载前拒绝，不重新生成', invalidRedelivery.task);
+
+  const interruptedAudio = createFakeLifecycleProvider({ id: 'tts-fake', capabilities: ['tts'],
+    submitSteps: [{ kind: 'completed', artifacts: [{ kind: 'remote-url', url: 'https://fixture.invalid/voice.mp3', mediaType: 'audio/mpeg' }] }],
+    downloadSteps: [{ throw: new Error('fixture audio download interruption') }] });
+  const lostAudio = await runner.submit({ capability: 'tts',
+    candidates: [{ adapter: interruptedAudio.adapter, model: 'tts-fake::qwen-tts-v0' }] });
+  assert(lostAudio.task.deliveryState === 'failed' && lostAudio.task.deliveryCache === true && !lostAudio.task.remoteTaskId,
+    '同步 TTS 下载失败保留完整响应缓存', lostAudio.task);
+  const recoveredAudio = await commandsFor(interruptedAudio).execute('task.redeliver', { task_id: lostAudio.taskId });
+  assert(recoveredAudio.task.deliveryState === 'ready' && recoveredAudio.task.attempts.length === 1
+      && interruptedAudio.calls.submit.length === 1 && interruptedAudio.calls.poll.length === 0
+      && interruptedAudio.calls.download.length === 2,
+    '同步 TTS 从原 URL 补交付，无远端 ID、零 re-poll 和重新生成', recoveredAudio.task);
   const retryFake = createFakeLifecycleProvider({ id: 'tts-fake', capabilities: ['tts'] });
   const retried = await createCommandService(runtime, {
     resolveTaskCandidates: async () => [{ adapter: retryFake.adapter, model: 'tts-fake::qwen-tts-v0' }]

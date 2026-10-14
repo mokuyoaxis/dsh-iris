@@ -5,7 +5,7 @@ Host Doctor 是 Iris 在运行中的 DSH 实例内提供的兼容性诊断。它
 | 模式 | 入口 | 观察范围 |
 |---|---|---|
 | `offline` | `dsh-iris doctor [--json]` | Node、依赖、私有存储、配置、Task 与产物；不要求 DSH |
-| `host` | 已认证 DSH 中的 `GET /iris/api/doctor` | DSH 版本和 Host Port、插件装载、当前工具（0.2.1为 15 个）、2 项 Skill、4 组路由、Browser/附件/模型能力、客户端版本与 4 个 UI Slot |
+| `host` | 已认证 DSH 中的 `GET /iris/api/doctor` | DSH与Host Port、插件、当前工具/Skill、4组路由、Browser/附件/模型、客户端版本和4个UI Slot；Iris 0.2.3 检查16工具/3项Skill |
 
 两种模式都默认零网络、零计费。Host Doctor 不调用任何 Host Port，不打开 Browser，不读取附件或会话，不调用文本/视觉模型，也不向 Provider 发送请求。它只读取：
 
@@ -36,8 +36,8 @@ Iris `0.2.x` 仅支持 DSH `0.2.0-rc.2`，版本检查与 package 的 DSH engine
 服务端只登记成功完成的注册：
 
 - 插件身份与 npm 版本；
-- Iris Agent 工具名（0.2.1包含 `iris_edit_image`，共 15 个）；
-- `iris-verify-ui`、`iris-compose-media`；
+- Iris Agent工具名（含改图与音乐，共16个）；
+- 随包的 `iris-use`、`iris-compose-media`、`iris-verify-ui`，缺失iris-use明确报告；
 - `/iris/media`、`/iris/api`、`/iris/api/actions`、`/iris/render` 四组逻辑路由。
 
 客户端通过 `POST /iris/api/host-client` 回报插件 ID、静态客户端版本、协议版本和已执行的 Slot 名单。接口拒绝额外字段、未知 Slot、错误插件身份、空版本和无效协议号；同一前端版本的并发报告只做 Slot 单调并集，避免乱序请求把完整证据覆盖成部分证据。报告只保存在内存，不参与认证、任务执行或能力授权，也不接收 API Key、草稿、会话、附件或 Provider 数据。

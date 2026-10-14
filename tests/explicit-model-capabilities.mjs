@@ -30,7 +30,7 @@ for (const name of ['qwen-vl-plus', 'wan2.2-t2i-flash', 'gemini-music', 'gemini-
   assert.deepEqual(providerModels({ id: 'names', models: [name] })[0].capabilities, []);
   assert.deepEqual(capabilitiesOfDiscoveredModel({ id: name }), []);
   assert.deepEqual(capabilitiesOfDiscoveredModel({ id: name, capabilities: [] }), []);
-  assert.deepEqual(capabilitiesOfDiscoveredModel({ id: name, capabilities: ['MUSIC'] }), []);
+  assert.deepEqual(capabilitiesOfDiscoveredModel({ id: name, capabilities: ['MUSIC'] }), ['music-gen']);
 }
 
 const managed = config.upsert({ name: 'managed', enabled: true, auth: 'none',
@@ -60,7 +60,7 @@ try {
   await runAction({}, 'providers_add_model', { id: managed.id, model_id: 'manual-unlabelled' });
   assert.equal(calls.length, 0);
   const found = await runAction({}, 'providers_discover', { id: managed.id });
-  assert.equal(found.media, 5, '元数据声明计数，名称不算能力');
+  assert.equal(found.media, 6, '元数据声明计数，名称不算能力');
   for (const name of ['qwen-vl-plus', 'gemini-music', 'gemini-video', 'wan2.2-t2i-flash']) {
     assert.deepEqual(providerModels(config.providerById(managed.id)).find(model => model.id === name).capabilities, []);
   }
@@ -72,7 +72,7 @@ try {
   assert.deepEqual(providerModels(config.providerById(managed.id)).find(model => model.id === 'configured-vision').capabilities, ['vision'], '无 source 标记的明确标签优先');
   assert.deepEqual(providerModels(config.providerById(managed.id)).find(model => model.id === 'padded-vision').capabilities, ['vision'], '模型 ID 去空格后仍识别已有明确标签');
   assert.deepEqual(providerModels(config.providerById(managed.id)).find(model => model.id === 'explicit-empty').capabilities, []);
-  assert.deepEqual(providerModels(config.providerById(managed.id)).find(model => model.id === 'future-music').capabilities, [], '未来 Music 元数据不能被泛化成 TTS');
+  assert.deepEqual(providerModels(config.providerById(managed.id)).find(model => model.id === 'future-music').capabilities, ['music-gen'], '明确 Music 元数据独立映射，不泛化成 TTS');
   await assert.rejects(runAction({}, 'image', { prompt: 'fixture', model: 'gemini-music' }), /模型|供应商/);
   assert.equal(calls.length, 1, '未标注模型在提交前拒绝，零额外 HTTP');
   directory.push({ id: 'manual-unlabelled', capabilities: ['TTS'] });

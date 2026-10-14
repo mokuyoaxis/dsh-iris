@@ -5,11 +5,12 @@ import { createCommandService } from '../lib/command-service.js';
 import { createCoreRuntime } from '../lib/core-runtime.js';
 import { recoverCoreWriterLease } from '../lib/core-lease-recovery.js';
 import { doctor, formatDoctorReport } from '../lib/doctor.js';
-import { loadProviderCatalog, providerCatalogSnapshot, catalogCapabilitySnapshot, imageCandidatesFromCatalog, providerForTaskFromCatalog, providerTaskBinding, transcribeCandidatesFromCatalog, ttsCandidatesFromCatalog, videoCandidatesFromCatalog } from '../lib/provider-catalog.js';
+import { loadProviderCatalog, providerCatalogSnapshot, catalogCapabilitySnapshot, imageCandidatesFromCatalog, musicCandidatesFromCatalog, providerForTaskFromCatalog, providerTaskBinding, transcribeCandidatesFromCatalog, ttsCandidatesFromCatalog, videoCandidatesFromCatalog } from '../lib/provider-catalog.js';
 import { createConfiguredProviderAdapter } from '../lib/provider-adapters.js';
 import { providerForImageModel } from '../lib/provider-protocol.js';
 import { prepareProviderInput } from '../lib/provider-adapter.js';
 import { createProviderTaskRunner } from '../lib/provider-task-runner.js';
+import { generateMusicTask } from '../lib/music-generation.js';
 import { GenerationInputError, normalizeGenerationInput } from '../lib/generation-input.js';
 import { executeVisionCommand, normalizeVisionInput } from '../lib/headless-vision.js';
 import { videoTaskCandidates } from '../lib/video-input.js';
@@ -47,7 +48,7 @@ function usage() {
     '  dsh-iris providers <add|set> --provider-config <absolute-path> --input <provider-json>',
     '  dsh-iris providers remove <provider-id> --provider-config <absolute-path>',
     '  dsh-iris models list --provider-config <absolute-path>',
-    '  dsh-iris models <add|remove|caps|protocol|vision-input> <providerId::modelId> --provider-config <absolute-path> [--input <json>]',
+    '  dsh-iris models <add|remove|caps|protocol|music-protocol|vision-input> <providerId::modelId> --provider-config <absolute-path> [--input <json>]',
     '  dsh-iris models discover <provider-id> --provider-config <absolute-path> [--apply <true|false>]',
     '  dsh-iris models test <providerId::modelId> --capability <vision|tts|image-gen|video-gen|transcribe> --provider-config <absolute-path> [--data-root <absolute-path>]',
     '  dsh-iris assignments <list|set|clear> --provider-config <absolute-path> [--input <json>]',
@@ -60,6 +61,7 @@ function usage() {
     '  dsh-iris run image --data-root <absolute-path> --provider-config <absolute-path> --input <json>',
     '  dsh-iris run video --data-root <absolute-path> --provider-config <absolute-path> --input <json>',
     '  dsh-iris run tts --data-root <absolute-path> --provider-config <absolute-path> --input <json>',
+    '  dsh-iris run music --data-root <absolute-path> --provider-config <absolute-path> --input <json>',
     '  dsh-iris run transcribe --data-root <absolute-path> --provider-config <absolute-path> --input <json>',
     '  dsh-iris task inspect <id> --data-root <absolute-path>',
     '  dsh-iris task list --data-root <absolute-path>',
@@ -67,7 +69,7 @@ function usage() {
     '  dsh-iris <task|artifact> inspect-many --data-root <absolute-path> --input <json>',
     '  dsh-iris task observe <id> --data-root <absolute-path> --provider-config <absolute-path>',
     '  dsh-iris task wait <id> --data-root <absolute-path> [--provider-config <absolute-path>] [--timeout-ms <1..1200000>] [--poll-interval-ms <50..60000>]',
-    '  dsh-iris task redeliver <id> --data-root <absolute-path> --provider-config <absolute-path>',
+    '  dsh-iris task redeliver <id> --data-root <absolute-path> [--provider-config <absolute-path>]',
     '  dsh-iris task cancel <id> --data-root <absolute-path> --provider-config <absolute-path>',
     '  dsh-iris task retry <id> --data-root <absolute-path> --provider-config <absolute-path> --input <json> --confirm-billing [--model-ref <providerId::modelId>]',
     '  dsh-iris artifact inspect <id> --data-root <absolute-path>',
@@ -231,7 +233,7 @@ async function main(args) {
 
   if (['config', 'providers', 'models', 'assignments'].includes(args[0])) {
     const [group, verb] = args;
-    const verbs = { config: ['init', 'show', 'check'], providers: ['add', 'set', 'remove'], models: ['list', 'add', 'remove', 'caps', 'protocol', 'vision-input', 'discover', 'test'], assignments: ['list', 'set', 'clear'] };
+    const verbs = { config: ['init', 'show', 'check'], providers: ['add', 'set', 'remove'], models: ['list', 'add', 'remove', 'caps', 'protocol', 'music-protocol', 'vision-input', 'discover', 'test'], assignments: ['list', 'set', 'clear'] };
     if (!verbs[group].includes(verb)) throw new CliUsageError('未知配置命令');
     const positional = (group === 'providers' && verb === 'remove') || (group === 'models' && verb !== 'list');
     const id = positional ? required(args[2], group === 'providers' || verb === 'discover' ? 'provider-id' : 'model-ref') : undefined;
@@ -250,6 +252,7 @@ async function main(args) {
     const result = await executeConfigCommand(required(options['provider-config'], 'provider-config'), group === 'config' ? verb : group + '.' + verb, input, {
       signal: cliAbortController.signal,
       probe: async ({ provider, modelId, capability, signal }) => {
+        if (capability === 'music-gen') return { skipped: true, ok: false, reason: 'Music 不发起小样本探测；请使用 run music 提交创作要求' };
         if (capability === 'vision') return probeVisionModel(provider, modelId, { bytes: Buffer.from(RED_TEST_IMAGE.split(',')[1], 'base64'), mediaType: 'image/png' }, { signal });
         if (['video-gen', 'transcribe'].includes(capability) && !options.input) return {
           skipped: true, ok: false, reason: '请用 models test --input 提供与 run video/transcribe 相同的真实素材；未发起请求'
@@ -398,6 +401,22 @@ async function main(args) {
   }
 
   // 语音合成输入冻结（E2 Profile）：同步完成型，一次命令内完成 Task → Artifact。
+  if (args[0] === 'run' && args[1] === 'music') {
+    const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
+    const normalized = generationInput('music', jsonInput(options.input));
+    const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
+    const routes = musicCandidatesFromCatalog(catalog, normalized.modelRef);
+    let result;
+    await withRawRuntime('writer', options['data-root'], async runtime => {
+      result = await generateMusicTask({ runner: createProviderTaskRunner(runtime),
+        candidates: routes.map(route => ({ adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
+          selectionReason: route.selectionReason, providerBinding: providerTaskBinding(route.provider) })),
+        providerInput: normalized.providerInput, options: normalized.musicOptions, signal: cliAbortController.signal });
+      console.log(JSON.stringify(result, null, 2));
+    });
+    return result.task.outcome === 'succeeded' && result.task.deliveryState === 'ready' ? 0 : 1;
+  }
+
   if (args[0] === 'run' && args[1] === 'tts') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
     const { providerInput, modelRef } = generationInput('tts', jsonInput(options.input));
@@ -473,10 +492,10 @@ async function main(args) {
 
   if (args[0] === 'task' && args[1] === 'redeliver' && args[2]) {
     const options = flags(args.slice(3), ['data-root', 'provider-config']);
-    const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
+    const catalog = options['provider-config'] ? loadProviderCatalog(options['provider-config']) : null;
     await withRuntime('reader', options['data-root'], (commands) => commands.execute('task.inspect', { task_id: args[2] }));
     const result = await withRuntime('writer', options['data-root'], (commands) => commands.execute('task.redeliver', { task_id: args[2] }), {
-      resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task)
+      ...(catalog ? { resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task) } : {})
     });
     console.log(JSON.stringify(result, null, 2));
     return 0;
@@ -512,6 +531,8 @@ async function main(args) {
         ? videoCandidatesFromCatalog(catalog, modelRef || undefined)
         : capability === 'tts'
           ? ttsCandidatesFromCatalog(catalog, modelRef || undefined)
+          : capability === 'music'
+            ? musicCandidatesFromCatalog(catalog, modelRef || undefined)
           : capability === 'transcribe'
             ? transcribeCandidatesFromCatalog(catalog, modelRef || undefined)
             : imageCandidatesFromCatalog(catalog, modelRef || undefined)

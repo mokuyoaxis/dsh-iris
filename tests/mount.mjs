@@ -103,15 +103,18 @@ assert(ctx1._savedImages.length === 1 && ctx1._savedImages[0].mediaType === 'ima
 assert(cropResult.blocks[0].text.includes('3x2') && cropResult.blocks[0].text.includes('saved-1')
   && cropResult.blocks[1].attachment.attachmentId === 'saved-1',
   'iris_crop 必须保持文字与图片 block 输出形状', cropResult);
-assert(ctx1._registeredSkills.map((skill) => skill.name).join(',') === 'iris-verify-ui,iris-compose-media',
-  '插件启用时应注册两项随包 Skill：' + ctx1._registeredSkills.map((skill) => skill.name).join(','));
-const { hostRuntimeEvidence } = await import('../lib/host-runtime.js');
+const { hostRuntimeEvidence, EXPECTED_IRIS_SKILLS, EXPECTED_IRIS_TOOLS } = await import('../lib/host-runtime.js');
+assert(ctx1._registeredSkills.map((skill) => skill.name).join(',') === EXPECTED_IRIS_SKILLS.join(','),
+  '插件启用时应注册全部三项随包 Skill：' + ctx1._registeredSkills.map((skill) => skill.name).join(','));
+assert([...names].sort().join(',') === [...EXPECTED_IRIS_TOOLS].sort().join(','),
+  '诊断清单应与实际成功注册的工具一致（含改图、Music）');
 const runtimeEvidence = hostRuntimeEvidence();
 assert(runtimeEvidence.server.loaded && runtimeEvidence.server.pluginId === '@mokuyoaxis/dsh-iris'
   && runtimeEvidence.server.version === JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')).version,
   'Host Doctor 应登记服务端身份与包版本', runtimeEvidence.server);
-assert(runtimeEvidence.tools.length === 15 && runtimeEvidence.skills.length === 2 && runtimeEvidence.routes.length === 4,
-  'Host Doctor 应只登记成功完成的 15 工具（含改图）、2 Skill 与 4 路由组', runtimeEvidence);
+assert(runtimeEvidence.tools.length === names.length && runtimeEvidence.tools.includes('iris_generate_music')
+  && runtimeEvidence.skills.length === 3 && runtimeEvidence.routes.length === 4,
+  'Host Doctor 应登记实际成功注册的工具（含Music）、3 Skill与4路由组', runtimeEvidence);
 
 /* ===== ② 单个工具注册抛错 ===== */
 errs = [];

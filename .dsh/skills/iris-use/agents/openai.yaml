@@ -1,0 +1,4 @@
+interface:
+  display_name: "Iris Use"
+  short_description: "Use Iris media tools and deliver existing artifacts"
+  default_prompt: "Use $iris-use to choose the available Iris tool for my media request and return its actual artifact or task result."

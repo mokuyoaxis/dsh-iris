@@ -17,11 +17,29 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createLintTrace, recordLintTrace } from '../scripts/lint-trace.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const failures = [];
+const traceFile = process.env.IRIS_LINT_TRACE_FILE || createLintTrace(root);
+const started = performance.now();
+let phase;
+const trace = (event, details = {}) => recordLintTrace(traceFile, event, {
+  elapsedMs: Math.round(performance.now() - started), phase, ...details
+});
+const stage = (name, details = {}) => {
+  phase = name;
+  trace('stage', details);
+  console.log(`[lint] ${name} (${Math.round(performance.now() - started)} ms)`);
+};
+trace('start', { parentPid: process.ppid, node: process.version, platform: process.platform, arch: process.arch });
+console.log(`[lint] 现场日志：${path.relative(root, traceFile)}`);
+process.once('beforeExit', () => trace('beforeExit'));
+process.once('exit', code => trace('exit', { code }));
+stage('discovery');
 
 function walk(dir) {
+  trace('walk', { directory: path.relative(root, dir) });
   const out = [];
   for (const f of fs.readdirSync(dir)) {
     const p = path.join(dir, f);
@@ -34,16 +52,28 @@ function walk(dir) {
 
 /* ---------- ① 语法检查 ---------- */
 const files = [...walk(path.join(root, 'lib')), ...walk(path.join(root, 'bin')), ...walk(path.join(root, 'tests')), ...walk(path.join(root, 'scripts'))];
-for (const file of files) {
+stage('syntax', { files: files.length });
+for (const [index, file] of files.entries()) {
+  const rel = path.relative(root, file);
+  const before = performance.now();
+  trace('syntax-start', { sequence: index + 1, file: rel });
   const r = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
+  const durationMs = Math.round(performance.now() - before);
+  trace('syntax-end', { sequence: index + 1, file: rel, childPid: r.pid, durationMs,
+    status: r.status, signal: r.signal, ...(r.error ? { errorCode: r.error.code } : {}) });
+  if (durationMs >= 1000) console.warn(`[lint] 慢检查：${rel} (${durationMs} ms)`);
   if (r.status !== 0) {
-    failures.push(`语法错误 ${path.relative(root, file)}:\n${(r.stderr || r.stdout || '').trim()}`);
+    failures.push(`语法错误 ${rel}:\n${(r.stderr || r.stdout || '').trim()}`);
   }
 }
 if (files.length === 0) failures.push('未找到任何 .js/.mjs 文件');
 
 /* ---------- ② 结构防回归 ---------- */
-const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
+stage('structure');
+const read = (rel) => {
+  trace('read', { file: rel });
+  return fs.readFileSync(path.join(root, rel), 'utf8');
+};
 
 /* Core 候选不得反向导入 DSH/Cordis 运行时。 */
 for (const rel of [
@@ -937,11 +967,12 @@ if (tasksLib) {
 }
 
 /* ---------- ③ 文档守卫：相对链接必须存在 + 折叠不回流 ---------- */
+stage('documents');
 {
   const docFiles = ['README.md', 'README.en.md', 'user_guide.md', 'CHANGELOG.md']
     .concat(fs.readdirSync(path.join(root, 'docs')).filter((f) => /\.md$/.test(f)).map((f) => path.join('docs', f)));
   for (const rel of docFiles) {
-    const raw = fs.readFileSync(path.join(root, rel), 'utf8');
+    const raw = read(rel);
     // 先剥掉围栏代码块与行内代码：文档里用反引号举例"已删除的死链"不是真链接
     //（否则守卫会对示例误报，而误报的守卫早晚被人绕过去废掉）
     const src = raw.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
@@ -986,7 +1017,7 @@ if (tasksLib) {
   for (const contract of ['dsh plugin --profile web add @mokuyoaxis/dsh-iris', 'dsh web', '最小指令']) {
     if (!readme.includes(contract)) failures.push(`README.md 缺少快速开始契约：${contract}`);
   }
-  for (const contract of ['ai-paint` 是 Iris 维护者本机未公开的前身项目', '不是用户需要下载、安装或自行创建的目录', 'IRIS_IMPORT_WORKBENCH_CONFIG']) {
+  for (const contract of ['IRIS_IMPORT_WORKBENCH_CONFIG', 'user_guide.md#从旧工作台显式导入']) {
     if (!readme.includes(contract)) failures.push(`README.md 缺少 ai-paint 配置分离契约：${contract}`);
   }
   const userGuide = read('user_guide.md');
@@ -996,7 +1027,7 @@ if (tasksLib) {
   for (const contract of ['mediaProtocol', 'providerId::modelId', '64 MB', 'iris_task_status']) {
     if (!userGuide.includes(contract)) failures.push(`user_guide.md 缺少配置契约：${contract}`);
   }
-  for (const contract of ['ai-paint` 是 Iris 维护者本机未公开的前身项目', '不应该为了使用 Iris 去下载、安装或自行创建 ai-paint 目录', '值只是来源配置文件的路径，不包含 API Key']) {
+  for (const contract of ['IRIS_IMPORT_WORKBENCH_CONFIG', '值只是来源配置文件的路径，不包含 API Key']) {
     if (!userGuide.includes(contract)) failures.push(`user_guide.md 缺少旧配置安全迁移契约：${contract}`);
   }
   const changelog = read('CHANGELOG.md');
@@ -1068,7 +1099,7 @@ if (tasksLib) {
   if (!fs.existsSync(path.join(root, 'lib', 'bundled-skills.js'))) {
     failures.push('缺少随插件启用的嵌入式 Skill 注册器 lib/bundled-skills.js');
   }
-  for (const skill of ['iris-verify-ui', 'iris-compose-media']) {
+  for (const skill of ['iris-use', 'iris-compose-media', 'iris-verify-ui']) {
     if (!packed.includes('.dsh/skills/' + skill)) {
       failures.push('package.json files 必须包含仓库级 ' + skill + ' Skill');
     }
@@ -1106,9 +1137,11 @@ if (tasksLib) {
 }
 
 /* ---------- 汇总 ---------- */
+stage('summary', { failures: failures.length, files: files.length });
 if (failures.length) {
   console.error(`lint 失败（${failures.length} 项）：`);
   for (const f of failures) console.error(' - ' + f.replace(/\n/g, '\n   '));
   process.exit(1);
 }
 console.log(`lint OK —— ${files.length} 个文件语法通过 + 结构契约守卫通过`);
+trace('complete', { files: files.length });

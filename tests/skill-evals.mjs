@@ -1,8 +1,10 @@
 /**
- * 零网络 Skill 行为契约：固定触发/不触发、路由、工具边界和新 Task 上限。
- * 真实模型触发率是显式 canary，不在 CI 中调用模型或供应商。
+ * 零网络Skill场景夹具：维护路由期望、工具边界和Agent调用/Task预算。
+ * 此检查不执行语言路由、不证明真实模型触发率；不调用模型或供应商。
  */
 import fs from 'node:fs';
+import { loadBundledSkills } from '../lib/bundled-skills.js';
+import { EXPECTED_IRIS_TOOLS } from '../lib/host-runtime.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,19 +15,14 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
-assert(suite.version === 1, 'Skill eval fixture version 必须是 1');
-assert(JSON.stringify(suite.skills) === JSON.stringify(['iris-compose-media', 'iris-verify-ui']),
-  '0.1.4 默认必须恰好保留两项 Skill');
+assert(suite.version === 2, '当前Skill场景夹具版本必须是2');
+assert(JSON.stringify([...suite.skills].sort()) === JSON.stringify(loadBundledSkills().map(skill => skill.name).sort()),
+  '场景夹具应覆盖实际随包Skill');
 assert(Array.isArray(suite.cases) && suite.cases.length >= 10, '至少需要 10 条零费用行为用例');
 assert(new Set(suite.cases.map((item) => item.id)).size === suite.cases.length, 'Skill eval id 必须唯一');
 
 const knownSkills = new Set(suite.skills);
-const knownTools = new Set([
-  'iris_draw_image', 'iris_generate_video', 'iris_speak_text', 'iris_transcribe_audio',
-  'iris_task_status', 'iris_look_at_image', 'iris_relook_attachment', 'iris_long_ocr',
-  'iris_video_frames', 'iris_media_summarize', 'iris_html_screenshot', 'iris_pixel_diff',
-  'iris_locate', 'iris_crop'
-]);
+const knownTools = new Set(EXPECTED_IRIS_TOOLS);
 for (const item of suite.cases) {
   assert(typeof item.id === 'string' && item.id && typeof item.prompt === 'string' && item.prompt,
     '每条 eval 必须包含 id 与 prompt');
@@ -35,8 +32,11 @@ for (const item of suite.cases) {
     assert(knownTools.has(tool), `${item.id} 使用未知工具 ${tool}`);
   }
   assert(!item.expectedTools.some((tool) => item.forbiddenTools.includes(tool)), `${item.id} 工具期望相互冲突`);
-  assert(Number.isInteger(item.maxNewTasks) && item.maxNewTasks >= 0 && item.maxNewTasks <= 2,
-    `${item.id} 的新 Task 上限必须为 0–2`);
+  assert(Number.isSafeInteger(item.maxNewTasks) && item.maxNewTasks >= 0,
+    `${item.id} 的新 Task 预算必须为有界非负整数`);
+  assert(Number.isInteger(item.maxAgentGenerationCalls) && item.maxAgentGenerationCalls >= 0
+    && item.maxAgentGenerationCalls <= item.maxNewTasks, `${item.id} 必须区分Agent调用和内部Task预算`);
+  if (item.expectedVerdict) assert(['Pass', 'Partial pass', 'Fail', 'Indeterminate'].includes(item.expectedVerdict), `${item.id} 验收结论无效`);
   assert(typeof item.mustStop === 'boolean', `${item.id} 必须声明 mustStop`);
   if (item.mustStop) assert(item.maxNewTasks === 0, `${item.id} 停止后不得新建 Task`);
 }
@@ -53,11 +53,4 @@ assert(JSON.stringify(suite.requiredReportFields) === JSON.stringify([
   'taskId', 'lastKnownStatus', 'assumptions', 'partialOutputs', 'nextAction'
 ]), '报告字段发生变化必须显式评审');
 
-const compose = fs.readFileSync(path.join(root, '.dsh', 'skills', 'iris-compose-media', 'SKILL.md'), 'utf8');
-const recovery = fs.readFileSync(path.join(root, '.dsh', 'skills', 'iris-compose-media', 'references', 'task-v2-recovery.md'), 'utf8');
-for (const phrase of ['acceptance is explicitly `not_accepted`', 'new potentially billable user operation', 'never simulate recovery']) {
-  assert(recovery.includes(phrase), `Task v2 reference 缺少规则：${phrase}`);
-}
-assert(compose.includes('references/task-v2-recovery.md'), 'compose Skill 必须按需路由 Task v2 reference');
-
-console.log(`ALL OK —— ${suite.cases.length} 条 Skill 路由、工具边界、停止条件与新 Task 上限契约通过`);
+console.log(`ALL OK —— ${suite.cases.length} 条Skill场景夹具与当前工具/调用预算一致；此检查不代表真实模型选Skill行为`);

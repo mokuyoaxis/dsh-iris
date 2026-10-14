@@ -1,5 +1,7 @@
 # Provider Adapter v0 生命周期契约
 
+Iris 0.2.3 提供 `music` Task能力与 Chat Completions 内嵌音频 Adapter（现有标识 `gemini-web-music`），复用v0同步completed和音频交付契约。音乐模型通过独立 `musicProtocol` 绑定，见 [音乐生成](MUSIC.md)。502重新生成策略在Music功能层执行，Adapter仍只提交一次。
+
 状态：**Iris 0.2.2；沿用 v0 生命周期内部契约。** 0.1.4 建立六操作契约，0.2.0 增加可选输入准备能力，0.2.2 增加聊天/Responses 生图及模型级协议覆盖。 这是 Iris Core 模块与供应商协议实现之间的内部边界，尚未冻结为第三方公开 SDK。DashScope 与 OpenAI Images 兼容实现通过同一套零网络 conformance runner；聊天/Responses 图片协议另有提交、交付与 CLI 回归。
 
 ## 目标与依赖方向

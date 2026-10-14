@@ -77,6 +77,15 @@ const noClient = hostDoctor(fullHost, { ...evidence, client: null }, { packageVe
 assert(noClient.exitCode === 1 && noClient.checks.some((item) => item.id === 'client' && item.status === 'warn'),
   '未打开浏览器只应给出可恢复警告', noClient.summary);
 
+for (const [field, name, checkId, severity] of [
+  ['tools', 'iris_generate_music', 'tools', 'error'],
+  ['skills', 'iris-use', 'skills', 'warn']
+]) {
+  const report = hostDoctor(fullHost, { ...evidence, [field]: evidence[field].filter(item => item !== name) });
+  const check = report.checks.find(item => item.id === checkId);
+  assert(check.status === severity && check.summary.includes(name), '新增 Music/Skill 缺失必须明确诊断', check);
+}
+
 const unavailable = {};
 for (const port of ['attachments', 'browser', 'clientSlots', 'routes', 'sessions', 'skills', 'textModel', 'tools', 'visionModel']) {
   unavailable[port] = { kind: port === 'browser' ? 'incompatible' : 'unavailable', reason: 'fixture ' + port };
@@ -136,8 +145,8 @@ try {
 } catch (_) { rejectedSeat = true; }
 assert(rejectedSeat, '客户端证据必须拒绝未知 Slot');
 const ledger = hostRuntimeEvidence();
-assert(ledger.tools.length === 15 && ledger.skills.length === 2 && ledger.routes.length === 4,
-  '运行时账本应去重并覆盖 15/2/4 注册事实', ledger);
+assert(ledger.tools.length === EXPECTED_IRIS_TOOLS.length && ledger.skills.length === 3 && ledger.routes.length === 4,
+  '运行时账本应去重并覆盖当前工具/3 Skill/4路由注册事实', ledger);
 assert(!JSON.stringify(ledger).includes('must-not-enter-ledger'), '账本不得保存未知字段或密钥');
 
 function fakeRes(resolve) {
@@ -179,4 +188,4 @@ const noHost = fakeRes();
 serveApi({ method: 'GET', url: '/iris/api/doctor', headers: {} }, noHost);
 assert(noHost.status === 503, '没有 Host Adapter 时不得伪造 Host Doctor 结果');
 
-console.log('ALL OK —— Host Doctor 健康/降级/零调用、15+2+4 账本、客户端握手与 API 端点通过');
+console.log('ALL OK —— Host Doctor 健康/降级/零调用、Music及iris-use缺失诊断、16+3+4账本通过');

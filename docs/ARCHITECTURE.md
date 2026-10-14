@@ -64,7 +64,7 @@ DSH Host / Cordis                         Headless CLI
 ## Task、Attempt 与 Artifact
 
 - 一个用户意图对应一个 Core Task；每次候选供应商调用对应一个稳定 Attempt。Attempt 必须在可能发送计费请求前落盘。
-- 只有明确 `not_accepted` 才允许自动切换候选；`accepted` 或 `unknown` 后禁止自动重提。重试会创建新 Task，并要求用户再次提供未持久化的输入和明确确认潜在费用。
+- Core只有明确 `not_accepted` 才自动切换候选；`accepted` 或 `unknown` 后通用Runner停止重提。人工重试会创建新Task，要求重新提供输入并确认潜在费用。Music功能层另按本次配置对明确HTTP502进行有限重发，保留原Task的未知事实和新旧任务关系，详见 [音乐生成](MUSIC.md)。
 - 生成结果与本地交付是两类事实。远端成功后下载失败仍保持 `outcome=succeeded / deliveryState=failed`，可显式重新交付而不重新生成。
 - 新 Attempt 可选保存阶段时间戳与模型选择来源；旧记录缺少这些字段仍可读取。
 - Artifact Manifest v0 保存内容哈希、媒体类型、中性元数据和关系边；不保存 Prompt、API Key、签名 URL、Provider 端点或宿主绝对路径。

@@ -1,4 +1,4 @@
 interface:
   display_name: "Iris Verify UI"
   short_description: "Verify UI changes with visual evidence"
-  default_prompt: "Use $iris-verify-ui to compare the supplied UI with its reference and return a bounded evidence-based verdict."
+  default_prompt: "Use $iris-verify-ui to check my interface against its reference or acceptance criteria and report a verdict supported by evidence."
