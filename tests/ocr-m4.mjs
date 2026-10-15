@@ -8,6 +8,8 @@ import { createDshVisionFixture } from './fixtures/vision-models.mjs';
 import { longOcr, OCR_BUDGET, formatOcrResult } from '../lib/ocr.js';
 import { runOcrRequest } from '../lib/ocr-model-routing.js';
 import { ModelPortError } from '../lib/model-port-contract.js';
+import { HOST_VISION_REF } from '../lib/models.js';
+const hostProviders = [{ id: HOST_VISION_REF }];
 
 const { root } = useTempDshHome('iris-ocr-m4');
 const config = await import('../lib/config.js');
@@ -93,7 +95,7 @@ assert.equal(timed.stats.aborted, 1); assert.equal(nextCandidate.stats.invocatio
 let preparations = 0, prepareSignal;
 await assert.rejects(runOcrRequest({}, { signal: pre.signal, prepareImage() { preparations++; return image; } }), rejectCode('IRIS_MODEL_ABORTED'));
 assert.equal(preparations, 0);
-await assert.rejects(runOcrRequest({}, { prepareImage(signal) { prepareSignal = signal; return new Promise(() => {}); },
+await assert.rejects(runOcrRequest({}, { providers: hostProviders, prepareImage(signal) { prepareSignal = signal; return new Promise(() => {}); },
   budget: { ...budget, timeoutMs: 30 } }), rejectCode('IRIS_MODEL_TIMEOUT'));
 assert(prepareSignal.aborted);
 for (const settings of [{ chunkHeight: NaN }, { chunkHeight: Infinity }, { overlap: NaN }, { maxDimension: 0 }, { maxInvocations: 0 }]) {
@@ -114,7 +116,7 @@ const host = { ports: { attachments: dsh.attachments, textModel: { ...dsh.textMo
   currentSelection() { selections++; return { provider: 'fixture', model: selections === 1 ? 'vision-v0' : 'drifted' }; },
   async resolveModelInfo(provider, id) { metadataReads++; return { provider, id, inputModalities: ['image', 'text'] }; }
 } } };
-const dshResult = await runOcrRequest(host, input);
+const dshResult = await runOcrRequest(host, { ...input, providers: hostProviders });
 assert.equal(dshResult.status, 'complete'); assert.equal(selections, 1); assert.equal(metadataReads, 1);
 assert.equal(dsh.bridge.saves, 3);
 for (let i = 0; i < 3; i++) {
@@ -126,6 +128,7 @@ for (let i = 0; i < 3; i++) {
 const provider = config.upsert({ type: 'openai', baseUrl: 'https://fixture.invalid/v1', apiKey: 'private-key',
   models: [{ id: 'vision', capabilities: ['vision'] }], visionModel: 'vision', enabled: true });
 const file = path.join(root, 'input.png'); fs.writeFileSync(file, bytes);
+config.setAssignmentOrder('vision', [provider.id + '::vision']);
 const fetchOriginal = globalThis.fetch;
 let requests = 0, imageReads = 0, saved = 0, sessionReads = 0;
 const receivedHeights = [];

@@ -83,9 +83,8 @@ try {
     '--provider-config', configFile,
     '--input', JSON.stringify({ prompt: 'pool model fixture' })
   ], { cwd: repo, encoding: 'utf8', shell: false });
-  const pooledResult = JSON.parse(pooled.stdout);
-  assert(pooled.status === 0 && pooledResult.task.attempts[0].selectionReason === 'pool',
-    '无显式模型且无 assignment 时必须持久化 pool 来源', pooled.stderr);
+  assert(pooled.status === 1 && pooled.stderr.includes('IRIS_PROVIDER_MODEL_UNAVAILABLE'),
+    '清空 assignment 后不得从模型池自动生成', pooled.stderr);
 
   console.log('ALL OK —— Headless CLI 经 Provider Adapter 完成 Core Task/Attempt/Artifact 图片闭环');
 } finally {

@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createLintTrace, recordLintTrace } from '../scripts/lint-trace.mjs';
+import { DSH_SUPPORT_RANGE } from '../lib/dsh-compatibility.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const failures = [];
@@ -456,8 +457,8 @@ if (!/userState/.test(clientSource) || !/useCoreUserTasks/.test(clientSource)) {
   const actions = read('lib/actions.js');
   if (!/export function selectionReasonForModel/.test(modelsSrc)
       || !/selectionReason: 'explicit'/.test(catalog)
-      || !/selectionReasonForModel\(pool, capability, assignment, item\)/.test(catalog)) {
-    failures.push('模型候选必须在构造时区分 explicit / assignment / pool，不能在 task.inspect 时重算');
+      || !/selectionReasonForModel\(configuredPool, capability, assignment, item\)/.test(catalog)) {
+    failures.push('模型候选必须在构造时记录 explicit / assignment，保留旧 pool 事实，不能在 task.inspect 时重算');
   }
   if (!/ATTEMPT_SELECTION_REASONS/.test(coreTasks)
       || !/selectionReason: fields\.selectionReason/.test(coreTasks)
@@ -835,15 +836,18 @@ if (tasksLib) {
   if (!/export function assignmentOrder/.test(configSrc) || !/export function setAssignmentOrder/.test(configSrc)) {
     failures.push('lib/config.js 必须导出 assignmentOrder / setAssignmentOrder（有序 failover 分配）');
   }
-  if (!/for \(const ref of assignmentOrder\(capability\)\)/.test(configSrc)) {
-    failures.push('lib/config.js pickFor 必须按分配顺序取首个可用（不再只认单值）');
+  if (!/export function pickFor\(capability\)\s*\{\s*return pickAllFor\(capability\)\[0\] \|\| null;/.test(configSrc)) {
+    failures.push('lib/config.js pickFor 必须与严格有序名单共用选择入口');
   }
   if (!/export function pickAllFor\(capability(?:,[^\n]*)?\)[\s\S]{0,300}models\.orderedModels\(pool, capability, assignments\(\)\[capability\](?:,[^\n;]*)?\)/.test(configSrc)) {
-    failures.push('lib/config.js pickAllFor 必须复用 orderedModels（分配序优先、池序补齐）');
+    failures.push('lib/config.js pickAllFor 必须复用 orderedModels（严格功能分配名单）');
   }
   const modelsSrc = read('lib/models.js');
-  if (!/export function orderedModels\(pool, capability, assignments(?:,[^\n]*)?\)[\s\S]{0,1000}resolvePoolModel\(pool, raw, capability\)[\s\S]{0,300}for \(const model of pool\) add\(model\)/.test(modelsSrc)) {
-    failures.push('lib/models.js orderedModels 必须按分配序解析并按池序补齐去重');
+  const orderedBody = modelsSrc.match(/export function orderedModels\(pool, capability, assignments(?:,[^\n]*)?\)[\s\S]*?return ordered;/)?.[0] || '';
+  if (!/resolvePoolModel\(pool, raw, capability\)/.test(orderedBody)
+      || !/seen\.has\(model\.ref\)/.test(orderedBody)
+      || /for \(const model of pool\)/.test(orderedBody)) {
+    failures.push('lib/models.js orderedModels 必须按分配序解析去重，禁止模型池补齐');
   }
   const actionsSrc = read('lib/actions.js');
   if (!/Array\.isArray\(args\.model_refs\)/.test(actionsSrc) || !/store\.setAssignmentOrder/.test(actionsSrc)) {
@@ -1110,8 +1114,11 @@ stage('documents');
   if (!pkg.engines || pkg.engines.node !== '>=22.0.0') {
     failures.push('package.json 必须声明当前候选最低 Node >=22.0.0');
   }
-  if (pkg.dsh?.engines?.dsh !== '0.2.0-rc.2') {
-    failures.push('当前候选 package.json 必须只声明已验证的 DSH 0.2.0-rc.2');
+  if (pkg.engines?.dsh !== DSH_SUPPORT_RANGE || pkg.dsh?.engines?.dsh !== DSH_SUPPORT_RANGE) {
+    failures.push('package.json 顶层/嵌套 DSH engines 必须与已验证宿主范围一致');
+  }
+  if (lock.packages?.['']?.engines?.dsh !== DSH_SUPPORT_RANGE) {
+    failures.push('package-lock.json 根 DSH engines 必须与 package.json 一致');
   }
   const expectedClientPeers = [
     '@deepseek-ai/dsh-client-locale',
@@ -1121,8 +1128,8 @@ stage('documents');
     '@deepseek-ai/dsh-client-ui-settings'
   ];
   for (const name of expectedClientPeers) {
-    if (pkg.peerDependencies?.[name] !== '0.2.0-rc.2') {
-      failures.push(`package.json ${name} 必须锁定准确 rc.2 的 peer dependency`);
+    if (pkg.peerDependencies?.[name] !== DSH_SUPPORT_RANGE) {
+      failures.push(`package.json ${name} 必须覆盖已验证的两版宿主`);
     }
     if (lock.packages?.['']?.peerDependencies?.[name] !== pkg.peerDependencies?.[name]) {
       failures.push(`package-lock.json ${name} peer 范围必须与 package.json 一致`);

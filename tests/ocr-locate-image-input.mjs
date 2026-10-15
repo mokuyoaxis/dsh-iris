@@ -5,6 +5,7 @@ import { runOcrRequest } from '../lib/ocr-model-routing.js';
 import { runLocateRequest } from '../lib/composite-vision-routing.js';
 import { formatOcrResult } from '../lib/ocr.js';
 import { useTempDshHome } from './test-env.js';
+import { HOST_VISION_REF } from '../lib/models.js';
 useTempDshHome('iris-ocr-locate-budget');
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -12,7 +13,7 @@ const png = await sharp({ create: { width: 800, height: 500, channels: 3, backgr
 const image = { bytes: new Uint8Array(png), mediaType: 'image/png' };
 const originalHash = hash(png);
 const provider = (id, dimension) => ({ id, type: 'openai', auth: 'none', baseUrl: `https://${id}.invalid/v1`,
-  visionInput: { maxDimension: 300 }, models: [{ id: 'same', capabilities: ['vision'], visionInput: { maxDimension: dimension } }] });
+  visionModel: 'same', visionInput: { maxDimension: 300 }, models: [{ id: 'same', capabilities: ['vision'], visionInput: { maxDimension: dimension } }] });
 const a = provider('a', 200), b = provider('b', 400);
 const sse = text => new Response('data: ' + JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: 'stop' }] })
   + '\n\ndata: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } });
@@ -127,11 +128,11 @@ try {
       }
     }
   } };
-  const dsh = await runLocateRequest(host, { image, target: 'red' });
+  const dsh = await runLocateRequest(host, { providers: [{ id: HOST_VISION_REF }], image, target: 'red' });
   assert.equal(streamCalls, 1); assert.equal(dsh.via, 'global');
   assert.deepEqual([dsh.input.sent.width, dsh.input.sent.height], [100, 63]);
   assert.deepEqual([dsh.x1, dsh.y1, dsh.x2, dsh.y2], [80, 80, 160, 160]);
-  const dshOcr = await runOcrRequest(host, { image, chunkHeight: 300, overlap: 0 });
+  const dshOcr = await runOcrRequest(host, { providers: [{ id: HOST_VISION_REF }], image, chunkHeight: 300, overlap: 0 });
   assert.equal(dshOcr.status, 'complete');
   assert.deepEqual(dshOcr.chunks.map(chunk => [chunk.input.sent.width, chunk.input.sent.height]), [[100, 38], [100, 25]]);
   assert.equal(hash(image.bytes), originalHash);

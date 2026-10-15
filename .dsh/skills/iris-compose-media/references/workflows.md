@@ -4,7 +4,7 @@
 
 ## 图片创作与版本修改
 
-已有Core原图并明确要求修改时，直接用 `iris_edit_image(source_artifact_id, prompt)`。写清改变和保留的内容；当前仅支持单张Core静态图片输入。源图只有附件或路径时，说明改图入口需要Core作品，不把附件ID当作Core ID，也不虚构导入工具。
+已有Core原图并明确要求修改时，直接用 `iris_edit_image(source_artifact_id, prompt)`。写清改变和保留的内容；当前仅支持单张Core静态图片输入。源图只有附件或路径时，先用实际可见的 `iris_import_image` 保存为Core作品，再把返回ID传给改图。旧版未装载导入工具时说明缺口，不把附件ID当作Core ID，也不重新生成原图替代导入。
 
 需要理解参考素材后再创作时，使用 `iris_look_at_image` 或 `iris_relook_attachment`，提取与目标有关的主体、构图、文字和风格，再调用 `iris_draw_image`。保留用户给出的准确文字；生成后的自述可以提供线索，不需要默认再做一次相同的全图描述。
 

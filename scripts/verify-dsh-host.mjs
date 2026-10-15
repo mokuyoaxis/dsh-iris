@@ -1,7 +1,8 @@
 /**
  * 手动验证已安装 DSH 的真实服务；不安装依赖，不接触用户 profile/数据，不调用真实模型。
  * node scripts/verify-dsh-host.mjs --dsh-root /absolute/path/to/@deepseek-ai/dsh
- * 目前验收目标为 0.2.0-rc.2。临时数据和 report.json 留在仓库外供复核。
+ * 目标版本见 lib/dsh-compatibility.js。临时数据和 report.json 留在仓库外供复核。
+ * Node客户端夹具另需目标版本的官方 dsh-client-ui-slots SDK（真实Web前端内嵌此模块）。
  */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -12,13 +13,14 @@ import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
+import { isSupportedDshVersion } from '../lib/dsh-compatibility.js';
 
 const args = process.argv.slice(2);
 assert(args.length === 2 && args[0] === '--dsh-root' && path.isAbsolute(args[1]), '需要显式 --dsh-root 绝对路径');
 const dshRoot = fs.realpathSync(args[1]);
 const manifest = JSON.parse(fs.readFileSync(path.join(dshRoot, 'package.json'), 'utf8'));
 assert.equal(manifest.name, '@deepseek-ai/dsh');
-assert.equal(manifest.version, '0.2.0-rc.2', '该验收脚本目前仅验证 rc.2');
+assert(isSupportedDshVersion(manifest.version), '该验收脚本只检查明确支持的 DSH 版本');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-dsh-host-'));
 const reportFile = path.join(work, 'report.json');
 const report = { status: 'running', dsh: { root: dshRoot, version: manifest.version }, work, checks: [] };
@@ -91,7 +93,7 @@ try {
   });
   const host = () => createDshHostAdapter(ctx, { version: manifest.version });
   const currentPackage = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  await check('actual rc.2 loader accepts manifest without exemptions', () => {
+  await check('actual host loader accepts the final manifest without exemptions', () => {
     assert.equal(evaluatePluginCompatibility(currentPackage, {}, manifest.version), undefined);
     assert.equal(detectDshVersion({ entry: path.join(dshRoot, 'lib/bin.js') }), manifest.version);
   });
@@ -183,15 +185,19 @@ try {
     } finally { fixtureFailure = ''; }
   });
   const { runVisionRequest, buildVisionModelCandidates } = await import('../lib/vision-model-routing.js');
+  const { HOST_VISION_REF } = await import('../lib/models.js');
+  const hostProviders = [{ id: HOST_VISION_REF }];
+  const fixtureConfig = await import('../lib/config.js');
+  fixtureConfig.setAssignmentOrder('vision', [HOST_VISION_REF]);
   const visionInput = { bytes: new Uint8Array(source), mediaType: 'image/png' };
   await check('M3 candidate snapshots never invoke a model or save an image', () => {
     const before = modelCalls;
-    for (const candidate of buildVisionModelCandidates(host())) candidate.port.describe();
+    for (const candidate of buildVisionModelCandidates(host(), { providers: hostProviders })) candidate.port.describe();
     assert.equal(modelCalls, before);
   });
   await check('M3 actual Runtime receives exactly the shared image bytes', async () => {
     const before = modelCalls;
-    const result = await runVisionRequest(host(), { question: 'fixture', image: visionInput });
+    const result = await runVisionRequest(host(), { providers: hostProviders, question: 'fixture', image: visionInput });
     assert.equal(result.answer, 'fixture answer');
     assert.equal(result.model, 'fixture-vision');
     assert.equal(modelCalls, before + 1);
@@ -206,7 +212,7 @@ try {
   await check('M3 actual Runtime error terminal rejects partial text', async () => {
     try {
       fixtureFailure = 'after';
-      await assert.rejects(runVisionRequest(host(), { question: 'fixture', image: visionInput }), error =>
+      await assert.rejects(runVisionRequest(host(), { providers: hostProviders, question: 'fixture', image: visionInput }), error =>
         error.code === 'IRIS_MODEL_REQUEST_FAILED' && error.invocation === 'responded' && !error.message.includes('private'));
     } finally { fixtureFailure = ''; }
   });
@@ -223,6 +229,30 @@ try {
   await check('all Iris tools and bundled skills register in actual Cordis services', async () => {
     assert.deepEqual(ctx.get('tools').schemas().map(item => item.name).sort(), [...EXPECTED_IRIS_TOOLS].sort());
     assert.deepEqual((await ctx.get('skills').list()).map(item => item.name).sort(), [...EXPECTED_IRIS_SKILLS].sort());
+  });
+  await check('image import persists uploads and session attachments through real tools and HTTP without models', async () => {
+    const before = modelCalls;
+    const uploaded = await (await fetch(allowedOrigin + '/iris/api/upload?name=import-fixture.bin', { method: 'POST', body: source })).json();
+    assert(uploaded.ok);
+    const response = await fetch(allowedOrigin + '/iris/api/actions/image_import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image_path: uploaded.path })
+    });
+    const imported = await response.json(); assert.equal(response.status, 200);
+    assert.equal(imported.artifact.kind, 'imported-image'); assert.equal(imported.artifact.mediaType, 'image/png');
+    assert.deepEqual(Buffer.from(await (await fetch(allowedOrigin + imported.imageUrl)).arrayBuffer()), source);
+    assert.deepEqual(fs.readFileSync(uploaded.path), source, '导入保留上传源文件');
+    assert(!JSON.stringify(imported).includes(work), '导入结果不暴露宿主路径');
+    for (const arguments_ of [{ image_path: uploaded.path }, { attachment_id: ref.attachmentId }]) {
+      const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_import_image', arguments: arguments_,
+        agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
+      assert.equal(result.isError, false, JSON.stringify(result));
+      const text = result.content.find(block => block.type === 'text').text;
+      const id = /artifact_[a-f0-9]{24}/.exec(text)?.[0]; assert(id);
+      const { readCoreArtifactBytes } = await import('../lib/core-artifacts.js');
+      const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+      assert.deepEqual(readCoreArtifactBytes(dshCoreDataRoot(), id).bytes, source);
+    }
+    assert.equal(modelCalls, before);
   });
   await check('M3 actual look/relook tool dispatch consumes one complete model call each', async () => {
     const input = path.join(work, 'vision-input.png');
@@ -282,7 +312,7 @@ try {
     const before = modelCalls;
     try {
       fixtureFailure = 'ocr-cancel';
-      const pending = runOcrRequest(host(), { image: { bytes: new Uint8Array(ocrSource), mediaType: 'image/png' },
+      const pending = runOcrRequest(host(), { providers: hostProviders, image: { bytes: new Uint8Array(ocrSource), mediaType: 'image/png' },
         chunkHeight: 100, overlap: 0, signal: controller.signal });
       pending.catch(() => {});
       const deadline = performance.now() + 2000;
@@ -475,13 +505,13 @@ try {
   await check('M4 generated-image description shares strict completion and cancellation', async () => {
     const { describeGeneratedImage } = await import('../lib/composite-vision-routing.js');
     const before = modelCalls;
-    assert.equal(await describeGeneratedImage(host(), { image: visionInput, originalPrompt: 'fixture' }), 'fixture answer');
+    assert.equal(await describeGeneratedImage(host(), { providers: hostProviders, image: visionInput, originalPrompt: 'fixture' }), 'fixture answer');
     const controller = new AbortController(); controller.abort();
     assert.equal(await describeGeneratedImage(host(), { image: visionInput, signal: controller.signal }), '');
     assert.equal(modelCalls, before + 1);
     try {
       fixtureFailure = 'after';
-      assert.equal(await describeGeneratedImage(host(), { image: visionInput }), '');
+      assert.equal(await describeGeneratedImage(host(), { providers: hostProviders, image: visionInput }), '');
     } finally { fixtureFailure = ''; }
     assert.equal(modelCalls, before + 2);
   });
@@ -572,7 +602,7 @@ try {
   vm.runInNewContext(clientSource, sandbox);
   const client = entry.factory(clientRequire);
   const clientFiber = await mount(client);
-  await check('actual rc.2 SlotRegistry accepts all four Iris client seats', () => {
+  await check('actual host SlotRegistry accepts all four Iris client seats', () => {
     for (const seat of EXPECTED_IRIS_CLIENT_SEATS) assert.equal(ctx.get('slots').entries(seat).length, 1);
     assert.deepEqual(reports.at(-1).seats, [...EXPECTED_IRIS_CLIENT_SEATS]);
   });
@@ -589,6 +619,7 @@ try {
     const before = modelCalls;
     const provider = config.upsert({ name: 'health fixture', auth: 'none', baseUrl: 'https://health.fixture.invalid/v1',
       mediaProtocol: 'openai-images', models: [{ id: 'fixture-vision', capabilities: ['vision'] }] });
+    config.setAssignmentOrder('vision', [provider.id + '::fixture-vision']);
     const list = async () => {
       const response = await fetch(allowedOrigin + '/iris/api/actions/providers_list', { method: 'POST',
         headers: { 'Content-Type': 'application/json' }, body: '{}' });

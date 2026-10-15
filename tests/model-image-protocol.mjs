@@ -23,6 +23,8 @@ const account = config.upsert({ name: 'one-account', type: 'openai', apiKey: 'pr
   ] });
 const nativeRef = modelRef(account.id, 'wan2.2-t2i-flash'), imagesRef = modelRef(account.id, 'custom-image');
 config.setAssignmentOrder('image-gen', [nativeRef, imagesRef]);
+config.setAssignmentOrder('vision', [imagesRef]);
+config.setAssignmentOrder('video-gen', [modelRef(account.id, 'custom-video')]);
 const catalog = () => ({ providers: config.allProviders(), assignments: config.assignments() });
 const routes = imageCandidatesFromCatalog(catalog());
 assert.deepEqual(routes.map(route => [route.modelRef, route.provider.mediaProtocol]), [[nativeRef, 'dashscope'], [imagesRef, 'openai-images']]);
@@ -119,6 +121,7 @@ try {
   const other = config.upsert({ name: 'same-model-other-account', baseUrl: account.baseUrl, apiKey: 'other-fixture-key',
     mediaProtocol: 'openai-images', models: [{ id: 'wan2.2-t2i-flash', capabilities: ['image-gen'] }] });
   const beforeOther = requests.length;
+  config.setAssignmentOrder('image-gen', [nativeRef, imagesRef, modelRef(other.id, 'wan2.2-t2i-flash')]);
   const otherResult = await runAction({}, 'image', { prompt: 'other account', model: modelRef(other.id, 'wan2.2-t2i-flash') });
   assert.equal(otherResult.providerId, other.id); assert.equal(requests.length, beforeOther + 1);
   assert.equal(requests.at(-1).auth, 'Bearer other-fixture-key'); assert(requests.at(-1).url.endsWith('/images/generations'));
@@ -129,11 +132,13 @@ try {
   const legacyFields = config.upsert({ baseUrl: account.baseUrl, apiKey: 'legacy-fields-key',
     imageModel: 'legacy-image', visionModel: 'legacy-vision' });
   config.setModelImageProtocol(legacyFields.id, 'legacy-image', 'openai-images');
+  config.setAssignmentOrder('image-gen', [...config.assignmentOrder('image-gen'), modelRef(legacyFields.id, 'legacy-image')]);
   const legacyResult = await runAction({}, 'image', { prompt: 'legacy fields', model: modelRef(legacyFields.id, 'legacy-image') });
   assert.equal(legacyResult.providerId, legacyFields.id); assert(requests.at(-1).url.endsWith('/images/generations'));
   assert(providerModels(config.providerById(legacyFields.id)).some(model => model.id === 'legacy-vision' && model.capabilities.includes('vision')));
   const padded = config.upsert({ baseUrl: account.baseUrl, apiKey: 'padded-fixture-key', mediaProtocol: 'dashscope',
     models: [{ id: ' padded-image ', capabilities: ['image-gen'], imageProtocol: 'openai-images' }] });
+  config.setAssignmentOrder('image-gen', [...config.assignmentOrder('image-gen'), modelRef(padded.id, 'padded-image')]);
   const paddedResult = await runAction({}, 'image', { prompt: 'padded ID', model: modelRef(padded.id, 'padded-image') });
   assert.equal(paddedResult.providerId, padded.id); assert(requests.at(-1).url.endsWith('/images/generations'));
   assert.equal(requests.at(-1).model, 'padded-image', '模型 ID 与现有选型一样去除空格，覆盖不丢失');

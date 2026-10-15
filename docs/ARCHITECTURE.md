@@ -1,6 +1,6 @@
 # Iris 架构与边界
 
-状态：本文面向 **Iris 0.2.2**。0.2.0 建立实例化 Core Runtime、Headless CLI、共享 Provider 生命周期与 Task/Artifact 事实；0.2.2 补共享视觉、模型级图片协议、Artifact 编辑及维护入口。DSH 插件仅支持 `0.2.0-rc.2`，Node.js 最低为 22.0.0；旧宿主固定使用 npm `0.1.4`。Core 内部 API 尚未冻结为公共 SDK。
+状态：本文面向 **Iris 0.2.4**。0.2.0建立实例化Core Runtime、Headless CLI及共享Task/Artifact事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.4补图片导入、原生Qwen改图、统一功能分配及DSH双版本声明。插件支持rc.2或alpha.4，Node.js最低22.0.0；旧宿主固定Iris0.1.4，详见 [兼容矩阵](DSH_COMPATIBILITY.md)。Core内部API尚未冻结为公共SDK。
 
 ## 当前形态
 
@@ -73,6 +73,8 @@ DSH Host / Cordis                         Headless CLI
 0.1.4 的 `tasks.json`、`artifacts.json`、`outputs/` 与上传目录继续作为 legacy 数据存在；Core 使用隔离的 `core-v0`。已迁移的新图片、视频、S2V、TTS 与转写任务不双写 legacy，回退到 0.1.4 时也不删除或改写 Core 数据。
 
 ## Provider 边界
+
+0.2.4将六类功能统一为严格有序分配名单：不补入全局池，临时指定只绑定名单内单项。DSH默认视觉为显式宿主资源，不作为隐式兜底；手动实测与旧任务恢复保持独立。配置格式、Core受理纪律与生产依赖保持。升级范围见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。下方0.2.2描述保留当时能力声明变更的背景。
 
 0.2.2按功能组织有序模型候选池，能力来自明确模型标签、旧能力字段绑定或供应商能力元数据。裸账号不物化默认模型，模型名称不授权进入候选链；明确空池与空标签保持权威。模型与供应商复合身份用于底层执行器，功能入口、分配排序及安全 failover 没有改为模型中心产品或默认轮转。旧 0.2.1 的能力推断行为不再用于裸账号或模型名称赋能。
 

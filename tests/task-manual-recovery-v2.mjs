@@ -23,6 +23,8 @@ const provider = config.upsert({ name: 'Manual Provider', enabled: true,
   ]
 });
 const imageRef = models.modelRef(provider.id, 'wan2.2-t2i-flash');
+config.setAssignmentOrder('image-gen', [imageRef]);
+config.setAssignmentOrder('video-gen', [models.modelRef(provider.id, 'wan2.2-t2v-flash')]);
 
 function makeAttempt(task, acceptance, remoteTaskId) {
   const attempt = tasks.beginAttempt(task.id, {

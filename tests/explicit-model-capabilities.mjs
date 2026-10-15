@@ -106,8 +106,8 @@ try {
   const order = [modelRef('b', 'image'), modelRef('a', 'shared')];
   for (let run = 0; run < 2; run++) {
     assert.deepEqual(orderedModels(pool, 'image-gen', order).map(model => model.ref), order, '功能池保留固定分配顺序，不新增轮转');
-    assert.deepEqual(orderedModels(pool, 'vision').map(model => model.ref), [modelRef('a', 'shared')]);
-    assert.deepEqual(orderedModels(pool, 'tts').map(model => model.ref), [modelRef('a', 'speech')]);
+    assert.deepEqual(orderedModels(pool, 'vision').map(model => model.ref), [], '能力标签不自动授权功能调用');
+    assert.deepEqual(orderedModels(pool, 'tts').map(model => model.ref), [], '空分配不自动补齐');
   }
 } finally { global.fetch = originalFetch; }
 console.log('PASS 明确功能能力：裸账号零赋能、旧绑定兼容、DSH/CLI 未标注目录、可信元数据、手工优先、固定功能池与零生成');

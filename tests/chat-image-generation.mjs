@@ -23,7 +23,8 @@ const account = config.upsert({ name: 'mixed', apiKey: 'mixed-fixture-key', base
   ] });
 const other = config.upsert({ name: 'other', apiKey: 'other-fixture-key', baseUrl: 'https://other.fixture.invalid/v1',
   models: [{ id: 'chat-image', capabilities: ['image-gen'], imageProtocol: 'openai-chat-images' }] });
-config.setAssignmentOrder('image-gen', [account.id + '::chat-image', account.id + '::images-image']);
+config.setAssignmentOrder('image-gen', [account.id + '::chat-image', account.id + '::images-image', account.id + '::qwen-image-3.0', other.id + '::chat-image']);
+config.setAssignmentOrder('vision', [account.id + '::chat-image']);
 const calls = [], originalFetch = globalThis.fetch;
 let format = 'jpeg', shape = 'markdown', status = 200, downloadOk = true;
 let invalidBytes = false, declaredMime = 'image/png';

@@ -15,6 +15,7 @@ const p1 = config.upsert({
   mediaProtocol: 'openai-images',
   models: [{ id: 'gpt-image-1', capabilities: ['image-gen'] }]
 });
+config.setAssignmentOrder('image-gen', [p1.id + '::gpt-image-1']);
 let snapshot = config.providerHealthSnapshot();
 assert.equal(snapshot.capabilities['image-gen'].status, 'configured');
 assert.equal(snapshot.overall, 'configured');
@@ -79,6 +80,7 @@ const p2 = config.upsert({
   mediaProtocol: 'openai-images',
   models: [{ id: 'gpt-image-2', capabilities: ['image-gen'] }]
 });
+config.setAssignmentOrder('image-gen', [p1.id + '::gpt-image-1', p2.id + '::gpt-image-2']);
 snapshot = config.providerHealthSnapshot();
 assert.equal(snapshot.capabilities['image-gen'].status, 'configured',
   '红色候选加未验证 fallback 应汇总为蓝色');
@@ -111,6 +113,7 @@ const p4 = config.upsert({
   mediaProtocol: 'openai-images', models: [{ id: 'transient-image', capabilities: ['image-gen'] }]
 });
 const successAt = '2026-09-09T10:00:00.000Z';
+config.setAssignmentOrder('image-gen', [p3.id + '::winner-image', p4.id + '::transient-image']);
 config.recordProviderHealth(p3.id, 'winner-image', 'image-gen', { ok: true, source: 'task', at: successAt, note: '' });
 config.recordProviderHealth(p4.id, 'transient-image', 'image-gen', {
   ok: false, source: 'task', at: '2026-09-09T11:00:00.000Z', category: 'rate_limit', httpStatus: 429, note: 'later transient'

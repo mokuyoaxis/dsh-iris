@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-task-wait-'));
 const config = path.join(root, 'providers.json'), stateFile = path.join(root, 'state.json'), dataRoot = path.join(root, 'core');
 fs.writeFileSync(config, JSON.stringify({ providers: [{ id: 'cli', apiKey: 'fixture', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-  models: [{ id: 'wan2.6-t2v', capabilities: ['video-gen'] }] }] }), { mode: 0o600 });
+  models: [{ id: 'wan2.6-t2v', capabilities: ['video-gen'] }] }], assignments: { 'video-gen': ['cli::wan2.6-t2v'] } }), { mode: 0o600 });
 const cli = (args, status = 0) => {
   const result = spawnSync(process.execPath, ['--import', new URL('./fixtures/headless-vision-fetch.mjs', import.meta.url).href, 'bin/dsh-iris.js', ...args,
     '--data-root', dataRoot], { encoding: 'utf8', timeout: 10000, env: { ...process.env, IRIS_ASYNC_FIXTURE_STATE: stateFile, DSH_HOME: path.join(root, 'unused-dsh') } });

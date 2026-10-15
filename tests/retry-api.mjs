@@ -20,7 +20,7 @@ const { root, cleanup } = useTempDshHome('iris-retry-api');
 process.env.IRIS_ASYNC_FIXTURE_STATE = path.join(root, 'fixture-state.json');
 await import('./fixtures/headless-async-fetch.mjs');
 
-const { upsert } = await import('../lib/config.js');
+const { upsert, setAssignmentOrder } = await import('../lib/config.js');
 const {
   dshCoreDataRoot,
   inspectProviderTaskForDsh,
@@ -107,7 +107,8 @@ function cliRetry(taskId, extraArgs) {
 
 try {
   const saved = upsert(provider());
-  fs.writeFileSync(configFile, JSON.stringify({ providers: [saved] }, null, 2) + '\n', { mode: 0o600 });
+  setAssignmentOrder('image-gen', [saved.id + '::' + saved.models[0].id]);
+  fs.writeFileSync(configFile, JSON.stringify({ providers: [saved], assignments: { 'image-gen': [saved.id + '::' + saved.models[0].id] } }, null, 2) + '\n', { mode: 0o600 });
   fs.chmodSync(configFile, 0o600);
 
   async function submitFixture(prompt) {

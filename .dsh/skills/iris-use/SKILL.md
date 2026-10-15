@@ -1,6 +1,6 @@
 ---
 name: iris-use
-description: "Use dsh-iris for a single media operation or an existing task: image creation/editing, vision/OCR, video, speech, music, and artifact delivery. 用于 Iris 单步媒体操作、音乐生成、作品取回与任务状态查询；多步骤创作选 iris-compose-media，界面对照验收选 iris-verify-ui。"
+description: "Use dsh-iris for a single media operation or an existing task: image import/creation/editing, vision/OCR, video, speech, music, and artifact delivery. 用于 Iris 图片导入、单步媒体操作、音乐生成、作品取回与任务状态查询；多步骤创作选 iris-compose-media，界面对照验收选 iris-verify-ui。"
 ---
 
 # 使用 Iris 媒体能力
@@ -11,6 +11,7 @@ description: "Use dsh-iris for a single media operation or an existing task: ima
 
 | 用户目标 | Iris 工具 |
 |---|---|
+| 保存上传图片或本地图片，供后续改图和导出 | `iris_import_image`，输入 image_path 或 attachment_id |
 | 生成图片 | `iris_draw_image` |
 | 修改已有 Core 图片 | `iris_edit_image`，输入 `source_artifact_id` |
 | 理解图片 | `iris_look_at_image`；会话附件用 `iris_relook_attachment` |

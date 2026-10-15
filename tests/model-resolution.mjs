@@ -25,6 +25,7 @@ assert.equal(legacy.models, undefined, 'bare account writes must not materialize
 const stored = JSON.parse(fs.readFileSync(path.join(config.irisHome(), 'providers.json'), 'utf8'));
 assert.deepEqual(stored.providers.find((p) => p.id === legacy.id).models, legacy.models);
 config.removeProvider(legacy.id);
+config.setAssignmentOrder('image-gen', [models.modelRef(provider.id, 'custom-image')]);
 const catalog = { providers: config.allProviders(), assignments: config.assignments() };
 assert.equal(imageCandidatesFromCatalog(catalog, 'custom-image')[0].modelRef, models.modelRef(provider.id, 'custom-image'));
 assert.deepEqual(imageCandidatesFromCatalog(catalog).map((r) => r.modelRef),

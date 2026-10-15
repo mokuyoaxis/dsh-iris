@@ -18,6 +18,8 @@ const React = {
   useEffect(callback) { effects.push(callback); }
 };
 const assigned = 'gateway::gemini-music';
+const capabilityRefs = Object.fromEntries(['image-gen', 'video-gen', 'tts', 'music-gen', 'transcribe', 'vision']
+  .map(capability => [capability, capability === 'music-gen' ? assigned : 'gateway::' + capability]));
 vm.runInNewContext(source.replace(anchor, 'window.MusicComponents = { ModelPool, ActionCard, CARD_DEFS };\n    ' + anchor), {
   window, document: { getElementById() { return {}; } }, console: { log() {} },
   CustomEvent: class { constructor(type) { this.type = type; } },
@@ -25,8 +27,10 @@ vm.runInNewContext(source.replace(anchor, 'window.MusicComponents = { ModelPool,
     const body = JSON.parse(options.body);
     requests.push({ url, body });
     return { ok: true, json: async () => url.endsWith('assignments_get') ? {
-      poolByCapability: { 'music-gen': [{ ref: assigned, label: 'Assigned Music' }, { ref: 'gateway::unassigned', label: 'Unassigned Music' }] },
-      order: { 'music-gen': [assigned] }
+      poolByCapability: Object.fromEntries(Object.entries(capabilityRefs).map(([capability, ref]) => [capability,
+        [{ ref, label: 'Assigned ' + capability }, { ref: 'gateway::unassigned', label: 'Unassigned' },
+          { ref: ref + '-cooling', label: 'Cooling', unavailable: true }]])),
+      order: Object.fromEntries(Object.entries(capabilityRefs).map(([capability, ref]) => [capability, capability === 'music-gen' ? [ref] : [ref, ref + '-cooling']]))
     } : url.endsWith('/music') ? { storage: 'core', audioUrl: '/iris/api/core/artifact/fixture/media', text: 'fixture music ready' } : {} };
   }
 });
@@ -70,4 +74,24 @@ assert(events.includes('iris-core-artifacts-changed'));
 values[3] = { assigned: '', assignedRef: '', options: [], loaded: true };
 assert(JSON.stringify(render()).includes('未分配'), 'Music缺少分配时准确显示配置状态');
 assert(requests.every(request => !request.url.includes('test_model')), '配置与组件加载不提交生成探针');
+for (const [capability, ref] of Object.entries(capabilityRefs)) {
+  if (capability === 'music-gen') continue;
+  const card = window.MusicComponents.CARD_DEFS.find(card => card.capability === capability && card.fields.some(field => field.key === 'model'))
+    || window.MusicComponents.CARD_DEFS.find(card => card.capability === capability);
+  values = [true, {}]; cursor = 0; effects = [];
+  window.MusicComponents.ActionCard(card);
+  effects.find(callback => callback.toString().includes('loadModels'))();
+  await new Promise(setImmediate);
+  cursor = 0; effects = [];
+  const rendered = nodes(window.MusicComponents.ActionCard(card));
+  if (!card.fields.some(field => field.key === 'model')) {
+    assert(JSON.stringify(rendered).includes('Assigned ' + capability), capability + ' 显示所属功能分配');
+    assert(!JSON.stringify(rendered).includes('Unassigned'));
+    continue;
+  }
+  const chooser = rendered.find(node => node.type === 'select' && nodes(node).some(option => option.props?.value === ref));
+  const options = nodes(chooser).filter(node => node.type === 'option');
+  assert.deepEqual(options.map(option => option.props.value), ['', ref, ref + '-cooling'], capability + ' 只显示本功能有序名单');
+  assert.equal(options.at(-1).props.disabled, true, '已分配但不可用的项仍显示并禁用');
+}
 console.log('PASS Music工作台组件：协议绑定、明确模型名单、重试配置请求、试听/下载与作品刷新');

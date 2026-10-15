@@ -48,7 +48,7 @@ const realId = typeof saved === 'string' ? saved : saved.id;
 
 /* ---------- 3. CLI 候选链包含本地 provider ---------- */
 {
-  const catalog = { providers: config.allProviders(), assignments: {} };
+  const catalog = { providers: config.allProviders(), assignments: { 'image-gen': [realId + '::sd-xl'] } };
   const cands = imageCandidatesFromCatalog(catalog, '');
   assert.ok(cands.some((c) => c.provider.id === realId),
     'CLI 候选链必须包含 auth:none 的本地 provider');
@@ -77,7 +77,7 @@ assert.ok(!configured.includes(noAuth.id) && !configured.includes(bearer.id),
   '缺省与显式 bearer 都必须继续要求 API Key');
 assert.ok(configured.includes(keyed.id), '提供 API Key 的旧配置必须继续可用');
 const candidateIds = imageCandidatesFromCatalog({
-  providers: config.allProviders(), assignments: {}
+  providers: config.allProviders(), assignments: { 'image-gen': [noAuth.id + '::fixture-image', bearer.id + '::fixture-image', keyed.id + '::fixture-image'] }
 }, '').map((candidate) => candidate.provider.id);
 assert.ok(!candidateIds.includes(noAuth.id) && !candidateIds.includes(bearer.id)
   && candidateIds.includes(keyed.id), 'CLI 候选链必须保持 bearer 兼容门');

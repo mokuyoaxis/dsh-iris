@@ -32,6 +32,10 @@ dsh-iris media html --data-root /path/core --input-file /path/html-input.json \
 
 ## 账号、模型与配置
 
+已有本地图片可先用0.2.4的 `artifact import` 保存为作品ID，再执行看图或改图；导入无需账号或模型，见 [图片导入](IMAGE_IMPORT.md)。
+
+0.2.4的六类功能均需明确分配；`assignments clear`停止新调用，已有Task仍按原绑定观察和补交付。临时指定须在名单内。旧自动池升级及DSH宿主资源见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。
+
 | 命令 | 行为 |
 | --- | --- |
 | `config init/show/check` | 创建空私有配置（不覆盖）、脱敏查看、检查重复账号和失效分配 |
@@ -52,6 +56,8 @@ dsh-iris media html --data-root /path/core --input-file /path/html-input.json \
 | `assignments list/set/clear` | 查询路由候选、保存有序复合引用或清除指定能力分配 |
 
 上述命令均需 `--provider-config /path/providers.json`。`<ref>` 必须是 `providerId::modelId`；媒体 run 的既有输入规则不变。`models test` 本身是显式真实请求，可能消耗额度，只调用指定模型，成功后解除该模型的冷却或耗尽停用。视频/转写未提供 `--input` 时返回 `skipped:true`，不请求供应商、不记录成功。`models list` 对受阻模型显示 `rateLimited`，短时限流另有 `retryAt`，明确耗尽另有 `reason`。
+
+视觉分配还可保存宿主资源 `host:current-vision`，供 DSH 使用；它不是 Provider 模型，独立 CLI 不执行该项，`models` 命令仍只管理普通复合引用。
 
 ```bash
 dsh-iris providers add --provider-config /path/providers.json --input-file /path/private-provider.json
@@ -125,16 +131,18 @@ dsh-iris run image --data-root /path/core --provider-config /path/providers.json
 
 ## Artifact 聊天改图
 
-为 `run image` 提供 `source_artifact_id`，将当前 Core 中的原图与修改指令一起发送给支持带图编辑的 `openai-chat-images` 模型：
+为 `run image` 提供 `source_artifact_id`，将当前Core原图与修改指令一起发送给带图编辑模型。支持openai-chat-images，0.2.4另支持DashScope原生Qwen改图：
 
 ```bash
 dsh-iris run image --data-root /path/core --provider-config /path/providers.json \
   --input '{"source_artifact_id":"artifact_ID","prompt":"把蓝色发饰改成白色，保留人物、服装和构图","model_ref":"gateway::gemini-image"}'
 ```
 
-来源必须是同一数据根中的有效 Artifact ID（`artifact_` 后 24 位十六进制），最多 20 MiB 的静态 PNG/JPEG/WebP；创建 Task 前核验哈希、MIME 和真实格式。不需要导出原图，不支持 GIF/动画或蒙版。省略 `model_ref` 时沿用生图候选顺序，只保留聊天生图协议；显式指定其他协议会在 HTTP 前拒绝，不误发普通文生图。模型是否实际支持编辑由上游决定。
+来源必须是同一数据根中的有效 Artifact ID（`artifact_` 后 24 位十六进制），最多 20 MiB 的静态 PNG/JPEG/WebP；创建 Task 前核验哈希、MIME 和真实格式。不需要导出原图，不支持 GIF/动画或蒙版。省略 `model_ref` 时沿用当前生图分配顺序，只保留已接入的带图编辑模型；显式指定仍须在生图名单内，不支持的模型会在 HTTP 前拒绝，不误发普通文生图。模型实际可用性由上游决定。
 
-原图只读，发送副本复用默认 8 MiB 与账号/模型 `visionInput`，按每个实际候选分别处理。新 Task 保存 `sourceArtifactId`，新 Artifact 保存 `derived-from` 来源关系；输出原字节及 MIME 保留。返回的新 Artifact ID 可继续 `vision look/ocr`、导出或编辑。
+DashScope 原生改图使用 `imageProtocol: dashscope`（或继承同协议账号），当前接入 `qwen-image-edit`、`qwen-image-edit-max/plus`、`qwen-image-2.0/pro` 及其日期快照。模型还须显式声明 `image-gen` 并加入生图分配名单；名称本身不会授予能力。可将上例的 `model_ref` 换成已分配的 `bailian::qwen-image-edit-max`。原图以 data URL 发送到 `/api/v1/services/aigc/multimodal-generation/generation`，返回图片 URL 后立即保存为 Core 作品。`qwen-image-plus/max` 等纯文生图模型，以及尚未接入的其他 Qwen 版本，不作为原生改图候选。请求结构参考[百炼原生改图文档](https://help.aliyun.com/en/model-studio/qwen-image-edit-api)。
+
+原图只读，发送副本复用默认 8 MiB 与账号/模型 `visionInput`，按每个实际候选分别处理；原生 Qwen 发送副本另限制在 10 MiB 内。新 Task 保存 `sourceArtifactId`，新 Artifact 保存 `derived-from` 来源关系；输出原字节及 MIME 保留。返回的新 Artifact ID 可继续 `vision look/ocr`、导出或编辑。
 
 未知受理、纯文字响应和交付失败不会自动重提或切换端点。知情 `task retry --confirm-billing true` 必须在新的 `--input` 中重新提供 `prompt` 和 `source_artifact_id`，模型覆盖使用外层 `--model-ref`。Core 删除预览会识别原图被编辑任务与新作品引用的情况。DSH 对应工具为 `iris_edit_image`，动作是 `image_edit`，工作台图片卡提供“改图”。
 

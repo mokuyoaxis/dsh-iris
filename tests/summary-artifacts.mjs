@@ -55,6 +55,7 @@ const writer = createCoreRuntime({ dataRoot, mode: 'writer' }); writer.start();
 const sourceFrames = [], artifacts = [], disposers = [];
 const definitions = new Map();
 const dsh = createDshVisionFixture();
+config.setAssignmentOrder('vision', ['host:current-vision']);
 const ctx = { get: name => ({
   tools: { register(def) { definitions.set(def.name, def); return () => {}; } }, attachments: dsh.attachments,
   agentDefaultModel: { currentSelection: () => ({ provider: 'fixture', model: 'vision-v0' }) },

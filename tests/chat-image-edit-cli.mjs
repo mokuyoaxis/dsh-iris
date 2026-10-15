@@ -10,7 +10,7 @@ fs.writeFileSync(file, JSON.stringify({ providers: [{ id: 'gateway', baseUrl: 'h
     { id: 'ordinary', capabilities: ['image-gen'] },
     { id: 'gemini-image', capabilities: ['image-gen'], imageProtocol: 'openai-chat-images' },
     { id: 'flash', capabilities: ['vision'] }
-  ] }], assignments: { 'image-gen': ['gateway::ordinary', 'gateway::gemini-image'] } }), { mode: 0o600 });
+  ] }], assignments: { 'image-gen': ['gateway::ordinary', 'gateway::gemini-image'], vision: ['gateway::flash'] } }), { mode: 0o600 });
 const calls = () => fs.existsSync(state) ? fs.readFileSync(state, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)) : [];
 function cli(args, mode = '', status = 0) {
   const result = spawnSync(process.execPath, ['--import', new URL('./fixtures/chat-image-fetch.mjs', import.meta.url).href,

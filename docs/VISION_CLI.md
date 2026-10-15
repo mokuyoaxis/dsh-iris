@@ -95,9 +95,9 @@ dsh-iris vision summarize \
 }
 ```
 
-省略 `--model-ref` 时按 `assignments.vision` 排序，再以配置模型池补齐。只有本地不可用、明确拒绝或正常空正文才允许下一候选；截断、未知终态、收到正文后的失败、取消和超时停止调用。显式 `--model-ref providerId::modelId` 严格只绑定该账号与模型，失败不会替换；新视觉命令不接受裸模型名。模型需启用并声明 `vision` 能力，未配置时直接失败。当前自持视觉端口支持 OpenAI-compatible Chat Completions SSE，不追加 DSH 宿主候选。
+0.2.4省略 `--model-ref` 时仅按 `assignments.vision` 名单排序，不补入模型池。只有本地不可用、明确拒绝或正常空正文才允许下一候选；截断、未知终态、收到正文后的失败、取消和超时停止调用。显式 `--model-ref providerId::modelId` 须已分配且只绑定该账号与模型，失败不会替换；新视觉命令不接受裸模型名。模型需启用并声明vision能力，未配置时直接失败。自持视觉支持OpenAI-compatible Chat Completions SSE；CLI不能执行DSH宿主视觉资源。见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。
 
-成功 JSON 携带实际 `modelRef`、`selectionReason`（`explicit` / `assignment` / `pool`）、模型身份、正常终态及可用的 usage。OCR 的实际选择保留在每个成功块上。配置凭据、端点和原始错误响应不会出现在诊断中；模型回答和 OCR 正文是用户内容。
+成功JSON携带实际`modelRef`、`selectionReason`（`explicit` / `assignment`）、模型身份、正常终态及可用usage；旧记录的`pool`来源仍可读取。OCR实际选择保留在每个成功块上。配置凭据、端点和原始错误响应不会出现在诊断中；模型回答和OCR正文是用户内容。
 
 ## 输出、预算与退出码
 
@@ -127,6 +127,6 @@ dsh-iris vision summarize \
   --input '{"video_path":"/absolute/path/clip.mp4","transcribe":true,"transcribe_model_ref":"aliyun::qwen-audio-3.0-asr-flash-filetrans"}'
 ```
 
-配置需声明 `transcribe` 模型，并使用既有上传型转写协议（当前 DashScope）。省略 `transcribe_model_ref` 时沿用转写 assignment/模型池，显式指定时只使用该项；不能同时提供 `transcribe_text`。本次命令观察已受理的同一 Core Task，读取成功的文本 Artifact 后摘要；普通转写失败则返回画面摘要并将 `transcription.status` 标为 `failed`。无音轨标为 `no_audio`；取消/超时直接终止摘要，已经提交的转写任务保留事实，可按 [Headless CLI](HEADLESS_CLI.md) 的任务命令继续检查、观察或重新取回，不会自动重提。
+配置需声明并分配`transcribe`模型，使用既有上传型转写协议（当前DashScope）。省略`transcribe_model_ref`时只使用转写名单，显式指定须属于名单且只使用该项；不能同时提供`transcribe_text`。本次命令观察已受理的同一Core Task，读取成功的文本Artifact后摘要；普通转写失败则返回画面摘要并将`transcription.status`标为`failed`。无音轨标为`no_audio`；取消/超时直接终止摘要，已提交任务保留事实，可按 [Headless CLI](HEADLESS_CLI.md) 继续检查、观察或补交付，不会自动重提。
 
 文件输入的纯视觉命令不要求数据根，不创建 Core Runtime、Task 或 Artifact；使用图片/帧 Artifact ID 时只使用显式数据根的 reader，主动音轨转写时才持有 writer 租约。独立提示词优化入口不属于本次交付。

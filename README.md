@@ -44,21 +44,24 @@ dsh-iris 为 Agent、Iris 工作台和独立 CLI 提供图像、视频、音乐�
 
 项目目前处于早期版本，接口和配置格式仍可能随版本迭代调整。
 
-Iris 0.2.3 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和模型路由，加入音乐生成、三项 Agent Skills 和同步媒体交付恢复，并完善提示词编辑。Core 内部接口尚未冻结为公共 SDK。
+Iris 0.2.4 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和模型路由，支持图片导入、原生 Qwen 改图及统一功能分配。音乐、三项 Agent Skills 和同步媒体交付恢复继续可用。Core 内部接口尚未冻结为公共 SDK。
 
-> 版本支持：Iris `0.2.x` 要求 Node.js `>=22.0.0`，DSH 插件仅支持准确版本 `0.2.0-rc.2`。旧 DSH 使用下文列出的 `@mokuyoaxis/dsh-iris@0.1.4`，不要直接跟随 npm latest 更新。Iris 与 DSH 的版本号独立。
+> 发布状态：0.2.4尚未发布，当前npm发布版为0.2.3。下文0.2.4安装命令在该版本发布后可用；rc.2用户现在可固定安装0.2.3。
 
-## 0.2.3 更新重点
+> 版本支持：Iris 0.2.4支持DSH `0.2.0-rc.2` 或 `0.2.1-alpha.4`，Iris 0.2.0–0.2.3仅支持rc.2。Node.js最低22.0.0；宿主若要求更高，以宿主为准。旧DSH固定使用Iris0.1.4，详见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。
 
-**音乐创作、Agent 使用引导与媒体交付恢复**。
+## 0.2.4 更新重点
 
-- **音乐生成**：独立分配音乐模型，通过 Agent、工作台或 CLI 生成 MP3/WAV，可试听、下载和导出；支持配置有限的 502 重试。
-- **三项 Agent Skills**：分别指导单步媒体操作、多步骤创作与界面验收；配乐按需加入。
-- **交付恢复**：完整同步结果已缓存时，可沿原任务重新交付，无需重新生成。
-- **提示词编辑**：失败和取消保留已有预览，单片段忠实整理无需模型调用，配置恢复可只重置默认指令。
-- **路由与格式说明**：显示文本模型选择原因，检查改写正文格式，保留自定义 v1 配置。
+**图片续作、明确的功能模型分配与新版宿主兼容**。
 
-完整变化和升级说明见 [0.2.3 发布说明](docs/releases/0.2.3.md) 与 [CHANGELOG](CHANGELOG.md)。
+- **图片导入**：通过工作台、Agent或CLI把已有图片保存为持久作品，继续看图、改图和导出；保留源文件，不调用模型。
+- **原生 Qwen 改图**：除聊天生图外，支持DashScope Qwen带图编辑，修改版另存为关联原图的新作品。
+- **统一功能分配**：生图、视频、TTS、Music、转写和视觉只使用各自明确分配的有序名单；临时指定也须已分配。
+- **双版本宿主**：兼容DSH rc.2及alpha.4，manifest、客户端peer和Doctor使用相同范围。
+
+**升级前请检查功能分配**：空名单会停止新调用，不再自动补入模型池；已有任务仍可按原绑定查询和恢复。DSH默认视觉须明确加入视觉名单。详见 [升级说明](docs/FUNCTION_MODEL_ASSIGNMENTS.md)。
+
+完整变化见 [0.2.4 发布说明](docs/releases/0.2.4.md) 与 [CHANGELOG](CHANGELOG.md)；上一版音乐与Skills见 [0.2.3](docs/releases/0.2.3.md)。
 
 音乐的接口格式、模型分配与使用示例见 [Music](docs/MUSIC.md)。其他协议与后续能力见 [路线图](docs/ROADMAP.md#后续功能方向)。
 
@@ -70,7 +73,7 @@ Iris 0.2.3 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和�
 | 入口 | 按下文「最快开始」选择固定版本 | `dsh-iris run ...`，见 [Headless CLI](docs/HEADLESS_CLI.md) |
 | 数据位置 | `$DSH_HOME/iris/v1/`（Core 数据根 `core-v0`） | 显式 `--data-root` 指定的任意绝对路径 |
 | 自动观察 | 有（DSH Host 有界节拍 + 重启接管） | 显式 `task observe`；0.2.2 另提供有界 `task wait` |
-| 依赖 | DSH `0.2.0-rc.2`、Node.js ≥ 22 | 仅 Node.js ≥ 22 与 `sharp`（视频抽帧另需 `ffmpeg`） |
+| 依赖 | DSH rc.2或alpha.4、Node.js ≥ 22（满足宿主要求） | 仅 Node.js ≥ 22 与 `sharp`（视频抽帧另需 `ffmpeg`） |
 
 两条路径读写同一份 Core Task/Artifact 事实：CLI 指向 DSH profile 的 `core-v0` 数据根即可 inspect/export DSH 生成的作品，反之亦然。同一数据根只允许一个写者。
 
@@ -88,7 +91,7 @@ Iris 0.2.3 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和�
 
 | 你的 DSH | Iris 选择 | 安装来源 |
 |---|---|---|
-| `0.2.0-rc.2` | `0.2.3` | 固定 npm 版本 |
+| `0.2.0-rc.2` 或 `0.2.1-alpha.4` | `0.2.4` | 发布后固定npm版本；发布前仅rc.2可安装0.2.3 |
 | `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` | 稳定版 `0.1.4` | 固定 npm 版本 |
 | 其他版本 | 暂无当前支持声明 | 先核对宿主适配，不能按相邻版本推定兼容 |
 
@@ -109,33 +112,33 @@ npm pack @mokuyoaxis/dsh-iris@0.1.4
 
 命令会在当前目录生成 `.tgz`。只需安装为普通 npm 依赖时可使用 `npm install @mokuyoaxis/dsh-iris@0.1.4`；这不会自动把插件加入 DSH profile。固定 `@0.1.4` 可在 latest 更新后继续取得旧稳定版本，见 [npm pack 文档](https://docs.npmjs.com/cli/v11/commands/npm-pack/)。0.1.4 不包含 0.2.0 的 Core 媒体 CLI，也不包含 DSH rc.2 的后续适配。
 
-### DSH 0.2.0-rc.2：安装 0.2.3
+### DSH rc.2或alpha.4：安装 0.2.4
 
 安装固定版本到 Web profile：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.3
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.4
 dsh web
 ```
 
 插件在下一次 DSH 启动时装载。Web UI 默认位于 `http://127.0.0.1:3080`；启动输出带认证参数时请打开完整 URL。更新后需重新加载后端并刷新客户端。
 
-### 独立 CLI：安装 0.2.3
+### 独立 CLI：安装 0.2.4
 
 在自己的项目中安装，无需 DSH：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.2.3
+npm install @mokuyoaxis/dsh-iris@0.2.4
 npx dsh-iris --help
 ```
 
 ### dsh-market 安装时的版本选择
 
-市场条目应对应完整包名 `@mokuyoaxis/dsh-iris`。安装前同时核对市场显示的 Iris 版本与本机 `dsh --version`：Iris 0.2.x 仅用于 DSH rc.2；旧宿主使用上面的固定 `@0.1.4` 命令。市场目录与 npm 信息可能有缓存，以实际 npm 包的 `dsh.engines.dsh` 和 Node engines 为准；市场中可见不代表任意 DSH 版本兼容。
+市场条目应对应完整包名 `@mokuyoaxis/dsh-iris`。安装前同时核对市场显示的Iris版本与本机 `dsh --version`，按 [兼容矩阵](docs/DSH_COMPATIBILITY.md) 选择；旧宿主使用固定 `@0.1.4`。市场目录与npm信息可能有缓存，以实际包的顶层 `engines.dsh`、Node要求及客户端peer为准；市场中可见不代表任意DSH版本兼容。
 
 > npm 上无 scope 的 `dsh-iris` 属于另一款插件。安装和更新 Iris Media 时必须保留完整包名 `@mokuyoaxis/dsh-iris`。
 
-首次启动后，打开“设置 → Iris 工作台 → + 添加供应商”，填入供应商 Base URL 和 API Key，再点“发现模型”。单供应商可以先使用自动能力分配。完整步骤、图片协议选择和故障转移说明见[用户指南](user_guide.md)。
+首次启动后，打开“设置 → Iris 工作台 → + 添加供应商”，填入供应商Base URL和API Key，再点“发现模型”，标注能力并为所需功能分配模型。0.2.4统一严格名单，升级差异见 [功能模型分配](docs/FUNCTION_MODEL_ASSIGNMENTS.md)；完整步骤和协议选择见 [用户指南](user_guide.md)。
 
 配置完成后，最小指令可以是：
 
@@ -175,7 +178,9 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 
 ## DeepSeek Harness 适配
 
-dsh-iris 仍按 DSH 原生插件装载。0.2.3 服务端注册 16 个 Agent 工具（含改图与音乐），并使用宿主提供的路由、附件、模型和生命周期能力；Web 客户端接入设置页、会话输入区与全局悬浮层。插件不会启动额外服务或监听端口。
+dsh-iris仍按DSH原生插件装载。0.2.4服务端注册17个Agent工具，包含图片导入、改图与音乐；使用宿主提供的路由、附件、模型和生命周期能力。Web客户端接入设置页、会话输入区与全局悬浮层，不启动额外服务或监听端口。
+
+上传图片或本地图片可保存为持久作品，继续看图、改图及导出，见 [图片导入](docs/IMAGE_IMPORT.md)。
 
 | Iris 范围 | DSH 范围 | 验证记录 |
 |---|---|---|
@@ -184,8 +189,9 @@ dsh-iris 仍按 DSH 原生插件装载。0.2.3 服务端注册 16 个 Agent 工�
 | `0.2.0` | 仅 `0.2.0-rc.2` | 真实安装服务隔离验收、Core diff 与 SlotRegistry；已有用户实机演示反馈，逐项浏览器操作与异步重启/回退继续验收 |
 | `0.2.2` | 仅 `0.2.0-rc.2` | 真实安装服务隔离检查覆盖 15 个工具与 31 项边界；完整浏览器/移动端及真实异步重启验收仍待完成 |
 | `0.2.3` | 仅 `0.2.0-rc.2` | 增加音乐工具和第三项 Skill；升级后用宿主诊断检查实际装载 |
+| `0.2.4`（筹备中） | `0.2.0-rc.2` 或 `0.2.1-alpha.4` | 17工具/3项Skill；两版实际SDK、加载器与界面插槽隔离验收，完整浏览器/热更新另验 |
 
-rc.2 修正与验证范围见[适配说明](docs/DSH_RC2_ADAPTATION.md)；已发布 npm 0.1.4 包不包含这项后续适配。
+当前声明与验收范围见 [版本兼容](docs/DSH_COMPATIBILITY.md)，早期rc.2修正见 [历史适配记录](docs/DSH_RC2_ADAPTATION.md)；npm0.1.4不包含这些后续适配。
 
 Iris 0.2.x 不再声明支持旧 DSH；旧版的历史验收不自动覆盖当前版本。DSH `0.2.0` 正式版及其他 rc 同样未列入支持范围。自动化测试分别检查服务端装载、工具与 Skill 注册、路由、客户端 bundle 和 Slot；其中一层失效时，Doctor 应指出具体边界。
 
@@ -198,7 +204,8 @@ Core 与 DSH Adapter 正在分离，DSH 继续加载同一个 npm 包，Adapter 
 | 工具 | 用途 |
 |---|---|
 | `iris_draw_image` | 根据提示词生成图片 |
-| `iris_edit_image` | 按原图 Artifact ID 和修改指令创建关联来源的新图片（聊天生图模型） |
+| `iris_import_image` | 将本地图片或会话图片保存为持久作品，返回后续操作使用的作品ID |
+| `iris_edit_image` | 按原图 Artifact ID 和修改指令创建关联来源的新图片（聊天生图或已接入的原生 Qwen 改图模型） |
 | `iris_generate_video` | 生成文生视频、图生视频或 S2V 数字人视频 |
 | `iris_generate_music` | 根据描述生成音乐，保存为可试听、下载的音频作品 |
 | `iris_speak_text` | 将文本合成为语音 |
@@ -230,7 +237,7 @@ Core 与 DSH Adapter 正在分离，DSH 继续加载同一个 npm 包，Adapter 
 
 看图、OCR 每块、定位和聊天改图按账号/模型预算准备发送副本，默认 8 MiB，可调整大小与最长边；Core 原图、下载尺寸和哈希保持不变。OCR 标明缩小后的实际尺寸与细字风险，定位返回原图像素坐标。详见 [视觉输入预算](docs/CLI_MANAGEMENT.md#看图输入预算)。
 
-Core 图片改图直接使用来源 ID，修改版另存为新作品；[聊天改图](docs/CLI_MANAGEMENT.md#artifact-聊天改图)仅支持配置了聊天生图协议的模型。作品分页、过滤、跨页选择、下载与回收操作见 [工作台作品管理](docs/WORKBENCH_ARTIFACTS.md)。
+Core图片改图直接使用来源ID，修改版另存为新作品；[改图](docs/CLI_MANAGEMENT.md#artifact-聊天改图)支持聊天生图协议及0.2.4的DashScope原生Qwen改图。作品分页、过滤、跨页选择、下载与回收操作见 [工作台作品管理](docs/WORKBENCH_ARTIFACTS.md)。
 
 Iris 支持三种文件来源，推荐顺序如下：
 
@@ -279,7 +286,7 @@ npx @mokuyoaxis/dsh-iris doctor --json
 
 安装后的二进制名是 `dsh-iris`。退出码 `0` 表示正常、`1` 表示有警告、`2` 表示有硬错误。离线 Doctor 检查 Node、sharp、ffmpeg/ffprobe、数据目录真实写入、配置、模型/分配、任务语义、临时文件和孤儿/缺失产物。
 
-运行中的 DSH 另在 Iris 工作台提供“宿主诊断”卡片，并公开已认证的 `/iris/api/doctor` JSON：检查 DSH 版本、插件、当前工具与随包 Skill、四组路由、Browser/附件/模型能力、客户端版本和四个 UI Slot。0.2.3 检查 16 个工具和三项 Skill。它只读取安全快照与注册证据，不调用 Browser、模型或 Provider；详见 [Host Doctor](docs/HOST_DOCTOR.md)。
+运行中的DSH另在Iris工作台提供“宿主诊断”卡片及已认证的 `/iris/api/doctor` JSON，检查宿主版本、插件、17工具/3项Skill、四组路由、宿主能力、客户端版本和四个UI Slot。它只读取安全快照与注册证据，不调用Browser、模型或Provider，详见 [Host Doctor](docs/HOST_DOCTOR.md)。
 
 ## 组合工作流示例
 

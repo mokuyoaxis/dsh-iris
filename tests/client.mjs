@@ -171,12 +171,12 @@ for (const act of ["action: 'image'", "action: 'video'", "action: 'tts'", "actio
 /* ⑤ 阶段 6 条目 4：能力分配 UI（有序 failover 列表编辑） */
 assert(new RegExp('function\\s+CapabilityAssigner\\s*\\(').test(src), '缺少 CapabilityAssigner 组件');
 assert(src.includes("React.createElement(CapabilityAssigner"), '缺少 CapabilityAssigner 挂载到工作台');
-assert(src.includes("'能力分配（failover 顺序）'"), '缺少能力分配区标题');
+assert(src.includes("'功能分配（调用顺序）'"), '缺少功能分配区标题');
 assert(src.includes("capability: cap, model_refs: refs"), '缺少复合引用有序列表保存调用（model_refs 数组）');
 for (const capRow of ["cap: 'image-gen'", "cap: 'video-gen'", "cap: 'tts'", "cap: 'transcribe'", "cap: 'vision'"]) {
   assert(src.includes(capRow), '缺少能力行 ' + capRow);
 }
-assert(src.includes("'↑'") && src.includes("'↓'") && src.includes("'恢复自动'"), '缺少排序/清除操作');
+assert(src.includes("'↑'") && src.includes("'↓'") && src.includes("'清空分配'"), '缺少排序/清空操作');
 
 /* ⑥ 阶段 4 续：泡泡瘦身（标签页）+ 卡片注册表 + 历史分组 + 常用选择器 + 清理区 */
 assert(new RegExp('var\\s+CARD_DEFS\\s*=').test(src), '缺少 CARD_DEFS 卡片注册表');
@@ -269,7 +269,7 @@ assert(src.includes("['来源任务', detail.retryOf") && src.includes("['后续
 /* ⑦ P1：分配唯一入口——ActionCard 不再写 assignments（消除互相覆盖） */
 assert(!/capability:\s*capability,\s*model_id:/.test(src), 'ActionCard 仍在写单值 model_id 分配（应移除，唯一入口是 CapabilityAssigner）');
 assert(!/function\s+assignModel/.test(src), '残留 assignModel（旧下拉写入口）');
-assert(src.includes('改分配 → 上方「能力分配'), '卡片缺少只读模型提示（引导去唯一入口）');
+assert(src.includes('改分配 → 上方「功能分配'), '卡片缺少只读模型提示（引导去唯一入口）');
 // 唯一写入口：CapabilityAssigner 用 provider+model 复合引用数组
 assert((src.match(/model_refs:/g) || []).length >= 1, 'CapabilityAssigner 应通过 model_refs 复合引用数组写分配');
 

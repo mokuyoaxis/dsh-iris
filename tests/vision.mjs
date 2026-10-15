@@ -49,7 +49,8 @@ function writeProviders(patch) {
       mediaProtocol: 'dashscope',
       visionModel: 'qwen-vl-plus', // 阶段 6 模型池需要模型名，仅声明能力不够
       ...patch
-    }]
+    }],
+    assignments: { vision: ['iris_testp::qwen-vl-plus', 'host:current-vision'] }
   }, null, 2));
 }
 writeProviders({});

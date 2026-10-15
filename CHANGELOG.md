@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-15
+
+### Added
+
+- 图片持久导入：工作台“导入图片”、`iris_import_image`及CLI `artifact import`共用本地命令，保存最多20 MiB的静态PNG/JPEG/WebP，保留原字节与源文件。导入ID可继续看图、改图和导出，不调用模型。见 [图片导入](docs/IMAGE_IMPORT.md)。
+- DashScope 原生 Qwen 改图：复用生图名单、Core 原图及来源关系，支持 Qwen edit/max/plus、2.0/pro 系列与日期快照；CLI、Agent和工作台均可使用，发送副本遵守账号/模型预算。模型在具体账号及地域是否可用仍以上游响应为准。见 [Artifact 改图](docs/CLI_MANAGEMENT.md#artifact-聊天改图)。
+
+### Changed
+
+- DSH支持范围扩为 `0.2.0-rc.2 || 0.2.1-alpha.4`，顶层engines、现有嵌套声明、五项可选客户端peer和Doctor使用相同范围。Node.js最低22.0.0，未新增生产依赖。见 [版本兼容](docs/DSH_COMPATIBILITY.md)。
+- 六类媒体/视觉功能统一为严格有序分配名单；空名单不再自动使用模型池，临时指定也须已分配。升级后依赖自动选型的功能需要明确分配，已有名单及个人配置不自动改写。见 [功能模型分配](docs/FUNCTION_MODEL_ASSIGNMENTS.md)。
+- DSH默认视觉改为可排序的显式资源，指定模型失败不再回退到宿主；手动实测与旧任务恢复仍独立于新请求分配。
+- 工作台改为“清空分配”，生成与改图选择器只展示所属功能名单。
+
 ## [0.2.3] - 2026-10-14
 
 ### Added
@@ -311,7 +325,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.0...v0.2.1

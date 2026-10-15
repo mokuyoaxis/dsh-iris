@@ -64,6 +64,19 @@ function exportMatches(artifactId, expected, label) {
 
 try {
   await apply(ctx);
+  const imported = await registered.get('iris_import_image').execute({ image_path: aPath }, {});
+  assert.equal(imported.artifact.kind, 'imported-image');
+  assert.deepEqual(readCoreArtifactBytes(dshCoreDataRoot(), imported.artifactId).bytes, a);
+  exportMatches(imported.artifactId, a, 'imported-path');
+  const importedAttachment = await registered.get('iris_import_image').execute({ attachment_id: 'input-a' }, {
+    agent: { session: { id: 'fixture-session' } }
+  });
+  assert.deepEqual(readCoreArtifactBytes(dshCoreDataRoot(), importedAttachment.artifactId).bytes, a);
+  await assert.rejects(registered.get('iris_import_image').execute({ image_path: aPath, attachment_id: 'input-a' }, {}), /选择/);
+  const importCount = listCoreArtifacts(dshCoreDataRoot()).total;
+  const canceledImport = new AbortController(); canceledImport.abort();
+  await assert.rejects(runAction({}, 'image_import', { image_path: aPath }, { signal: canceledImport.signal }), { name: 'AbortError' });
+  assert.equal(listCoreArtifacts(dshCoreDataRoot()).total, importCount);
   const diffTool = registered.get('iris_pixel_diff');
   const diff = await diffTool.execute({ image_a_path: aPath, image_b_path: bPath, grid: 4, top_regions: 2 }, {});
   const diffMedia = readCoreArtifactBytes(dshCoreDataRoot(), diff.artifactIds[0]);

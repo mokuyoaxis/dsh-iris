@@ -29,6 +29,7 @@ function snapshot(directory) {
 const provider = config.upsert({ enabled: true, type: 'openai', apiKey: 'fixture-key', baseUrl: 'https://fixture.invalid/v1',
   models: [{ id: 'vision', capabilities: ['vision'] }], visionModel: 'vision' });
 fs.writeFileSync(providerFile, JSON.stringify({ providers: [provider], assignments: { vision: [provider.id + '::vision'] } }), { mode: 0o600 });
+config.setAssignmentOrder('vision', [provider.id + '::vision']);
 const configBefore = fs.readFileSync(providerFile);
 const reset = extra => fs.writeFileSync(stateFile, JSON.stringify({ submit: 0, poll: 0, download: 0, tasks: {}, ...extra }));
 const state = () => JSON.parse(fs.readFileSync(stateFile, 'utf8'));

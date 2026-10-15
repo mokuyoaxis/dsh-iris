@@ -35,7 +35,7 @@ fs.writeFileSync(file, JSON.stringify({ preserved: true, providers: [
   { id: 'a', auth: 'none', baseUrl: 'https://a.invalid/v1', visionInput: { maxBytes: 100000, maxDimension: 300 },
     models: [{ id: 'same', capabilities: ['vision'] }] },
   { id: 'b', auth: 'none', baseUrl: 'https://b.invalid/v1', models: [{ id: 'same', capabilities: ['vision'] }] }
-] }), { mode: 0o600 });
+], assignments: { vision: ['a::same', 'b::same'] } }), { mode: 0o600 });
 const png = await sharp({ create: { width: 800, height: 500, channels: 3, background: '#e35' } }).png().toBuffer();
 fs.writeFileSync(imagePath, png); fs.writeFileSync(stateFile, '{}');
 const digest = createHash('sha256').update(png).digest('hex');

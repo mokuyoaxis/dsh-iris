@@ -9,7 +9,7 @@ const file = path.join(root, 'providers.json'), state = path.join(root, 'calls.j
 fs.writeFileSync(file, JSON.stringify({ providers: [{ id: 'gateway', baseUrl: 'https://gateway.fixture.invalid/v1',
   apiKey: 'responses-cli-fixture-key', mediaProtocol: 'openai-images',
   models: [{ id: 'gemini-image', capabilities: ['image-gen'] }, { id: 'flash', capabilities: ['vision'] }]
-}], assignments: {} }), { mode: 0o600 });
+}], assignments: { 'image-gen': ['gateway::gemini-image'], vision: ['gateway::flash'] } }), { mode: 0o600 });
 const calls = () => fs.existsSync(state) ? fs.readFileSync(state, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)) : [];
 function cli(args, mode = '', status = 0) {
   const result = spawnSync(process.execPath, ['--import', new URL('./fixtures/responses-image-fetch.mjs', import.meta.url).href,

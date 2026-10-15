@@ -4,6 +4,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { useTempDshHome } from './test-env.js';
+import { assignFixtureModels } from './fixtures/assigned-models.mjs';
 import { FAKE_WAV, createFakeLifecycleProvider } from './fixtures/fake-lifecycle-provider.mjs';
 import { createCoreRuntime } from '../lib/core-runtime.js';
 import { createCommandService } from '../lib/command-service.js';
@@ -30,7 +31,8 @@ const provider = config.upsert({
   }))
 });
 const configFile = path.join(root, 'cli-providers.json');
-fs.writeFileSync(configFile, JSON.stringify({ providers: config.allProviders() }), { mode: 0o600 });
+assignFixtureModels(config);
+fs.writeFileSync(configFile, JSON.stringify({ providers: config.allProviders(), assignments: config.assignments() }), { mode: 0o600 });
 const stateFile = path.join(root, 'fixture-state.json');
 const cliRoot = path.join(root, 'cli-data');
 function cli(capability, input) {

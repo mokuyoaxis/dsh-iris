@@ -71,6 +71,8 @@ try {
     enabled: true, auth: 'none', baseUrl: compatible, mediaProtocol: 'future-media',
     models: [{ id: 'future-video', capabilities: ['video-gen'] }, { id: 'future-tts', capabilities: ['tts'] }]
   });
+  config.setAssignmentOrder('video-gen', [future.id + '::future-video']);
+  config.setAssignmentOrder('tts', [future.id + '::future-tts']);
   await assert.rejects(runAction({}, 'video', { prompt: 'fixture', model: future.id + '::future-video' }),
     { code: 'IRIS_PROVIDER_PROTOCOL_UNSUPPORTED' });
   await assert.rejects(runAction({}, 'tts', { text: 'fixture', model: future.id + '::future-tts' }),

@@ -10,6 +10,8 @@ import { locateObject } from '../lib/locate.js';
 import { summarizeMedia, buildContactSheet } from '../lib/summarize.js';
 import { runLocateRequest, runSummaryRequest, describeGeneratedImage } from '../lib/composite-vision-routing.js';
 import { VISION_BUDGET } from '../lib/vision-core.js';
+import { HOST_VISION_REF } from '../lib/models.js';
+const hostProviders = [{ id: HOST_VISION_REF }];
 const { root } = useTempDshHome('iris-composite-m4');
 const config = await import('../lib/config.js');
 const { runAction } = await import('../lib/actions.js');
@@ -38,7 +40,7 @@ await assert.rejects(runLocateRequest({}, { target: ' ', prepareImage() { prepar
 await assert.rejects(runLocateRequest({}, { target: 'button', signal: pre.signal, prepareImage() { preparations++; return image; } }), code('IRIS_MODEL_ABORTED'));
 await assert.rejects(runSummaryRequest({}, { signal: pre.signal, prepareMedia() { preparations++; return { frames }; } }), code('IRIS_MODEL_ABORTED'));
 assert.equal(preparations, 0);
-await assert.rejects(runSummaryRequest({}, { prepareMedia: () => new Promise(() => {}), budget: { ...VISION_BUDGET, timeoutMs: 30 } }), code('IRIS_MODEL_TIMEOUT'));
+await assert.rejects(runSummaryRequest({}, { providers: hostProviders, prepareMedia: () => new Promise(() => {}), budget: { ...VISION_BUDGET, timeoutMs: 30 } }), code('IRIS_MODEL_TIMEOUT'));
 
 // 一张拼图只生成一次；模型与展示使用同一份拼图，时间戳标签有真实像素。
 const summary = fake([{ text: 'three red frames' }]);
@@ -57,7 +59,7 @@ const dsh = createDshVisionFixture({ steps: [{ text: 'actual bridge summary' }] 
 const host = { ports: { attachments: dsh.attachments, textModel: { ...dsh.textModel,
   currentSelection: () => ({ provider: 'fixture', model: 'vision-v0' }),
   async resolveModelInfo() { return { provider: 'fixture', id: 'vision-v0', inputModalities: ['image'] }; } } } };
-const dshSummary = await runSummaryRequest(host, { frames });
+const dshSummary = await runSummaryRequest(host, { providers: hostProviders, frames });
 assert.equal(dsh.stats.invocations, 1); assert.deepEqual(Buffer.from(dsh.calls[0].request.image.bytes), dshSummary.sheet.buffer);
 assert.equal(await describeGeneratedImage(host, { image, signal: pre.signal }), '');
 assert.equal(dsh.stats.invocations, 1, '已取消的自述不得调用模型或妨碍图片交付');
@@ -66,6 +68,7 @@ assert.equal(dsh.stats.invocations, 1, '已取消的自述不得调用模型或�
 const provider = config.upsert({ type: 'openai', baseUrl: 'https://fixture.invalid/v1', apiKey: 'private-fixture-key',
   models: [{ id: 'vision', capabilities: ['vision'] }], visionModel: 'vision', enabled: true });
 const file = path.join(root, 'source.png'); fs.writeFileSync(file, source);
+config.setAssignmentOrder('vision', [provider.id + '::vision']);
 const originalFetch = globalThis.fetch;
 let received = [], finish = 'stop', text = '{"x1":62.5,"y1":200,"x2":312.5,"y2":800}', cancelSignal;
 let wait = false;

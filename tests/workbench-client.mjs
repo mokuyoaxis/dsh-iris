@@ -16,9 +16,11 @@ function fixture() {
   let holdWorks = false, confirmation = true, workError = '', referencingTasks = [], listSize = 0;
   let transactionState = 'committed';
   let editModels = [
-    { id: 'chat-image', capabilities: ['image-gen'], imageRouting: { mediaProtocol: 'openai-chat-images' } },
-    { id: 'ordinary', capabilities: ['image-gen'], imageRouting: { mediaProtocol: 'openai-images' } },
-    { id: 'cooling', capabilities: ['image-gen'], imageRouting: { mediaProtocol: 'openai-chat-images' }, health: { 'image-gen': { rateLimited: true } } }
+    { id: 'chat-image', capabilities: ['image-gen'], imageRouting: { mediaProtocol: 'openai-chat-images', editSupported: true } },
+    { id: 'ordinary', capabilities: ['image-gen'], imageRouting: { mediaProtocol: 'openai-images', editSupported: false } },
+    { id: 'cooling', capabilities: ['image-gen'], imageRouting: { mediaProtocol: 'openai-chat-images', editSupported: true }, health: { 'image-gen': { rateLimited: true } } },
+    { id: 'qwen-image-edit-max', capabilities: ['image-gen'], imageRouting: { mediaProtocol: 'dashscope', editSupported: true } },
+    { id: 'qwen-image-plus', capabilities: ['image-gen'], imageRouting: { mediaProtocol: 'dashscope', editSupported: false } }
   ];
   const instances = new Map(), effects = [], events = new Map(), requests = [], pending = [], copied = [], downloads = [], blobs = new Map(), scrolls = [];
   const image = { id: 'artifact_' + 'a'.repeat(24), file: 'original.png', mime: 'image/png', source: 'core', kind: 'generated-image', size: 123, createdAt: '2026-10-08', url: '/image' };
@@ -72,7 +74,10 @@ function fixture() {
       if (holdWorks) return new Promise(resolve => pending.push({ record, download, resolve: () => resolve(result) }));
       return result;
     }
-    if (url.endsWith('/providers_list')) return response({ ok: true, providers: [{ id: 'gateway', name: '网关', enabled: true, models: editModels }] });
+    if (url.endsWith('/assignments_get')) return response({ ok: true,
+      order: { 'image-gen': editModels.map(entry => 'gateway::' + entry.id) },
+      poolByCapability: { 'image-gen': editModels.map(entry => ({ ref: 'gateway::' + entry.id, label: entry.id,
+        imageRouting: entry.imageRouting, unavailable: entry.health?.['image-gen']?.rateLimited === true })) } });
     const body = { ok: actionStatus !== 'failed', status: actionStatus, artifactId: record.body?.artifact_id,
       ...(url.endsWith('/image_edit') ? { artifactIds: ['artifact_' + 'f'.repeat(24)], taskId: 'task_' + 'e'.repeat(24) } : {}),
       text: httpOk ? '识别正文 · ' + actionStatus : undefined, error: httpOk ? undefined : '模型不可用' };
@@ -241,7 +246,8 @@ edits.click('改图'); await tick();
 assert.equal(edits.actionRequests.filter(request => request.url.endsWith('/image_edit')).length, 0, '打开面板不调用模型');
 assert(edits.button('生成修改版').props.disabled, '修改指令必填');
 const editOptions = nodes(edits.render()).filter(node => node.type === 'option');
-assert(!editOptions.some(node => node.props.value === 'gateway::ordinary'), '只列出聊天生图模型');
+assert(!editOptions.some(node => ['gateway::ordinary', 'gateway::qwen-image-plus'].includes(node.props.value)), '跳过未接入带图编辑的模型');
+assert(editOptions.some(node => node.props.value === 'gateway::qwen-image-edit-max'), '原生 Qwen 改图模型可选');
 assert(editOptions.find(node => node.props.value === 'gateway::cooling').props.disabled, '冷却模型不能选择');
 edits.input('修改指令', '  把红色改成绿色  '); edits.change('改图模型', 'gateway::chat-image');
 edits.click('生成修改版'); await tick();
@@ -249,6 +255,8 @@ const editRequest = edits.actionRequests.find(request => request.url.endsWith('/
 assert.deepEqual(editRequest.body, { source_artifact_id: 'artifact_' + 'a'.repeat(24), prompt: '把红色改成绿色', model: 'gateway::chat-image' });
 assert(nodes(edits.render()).some(node => node.type === 'a' && label(node).startsWith('打开新作品：')));
 assert(edits.requests.at(-1).url.startsWith('/iris/api/works?'), '成功生成刷新作品区');
+edits.change('改图模型', 'gateway::qwen-image-edit-max'); edits.click('生成修改版'); await tick();
+assert.equal(edits.actionRequests.filter(request => request.url.endsWith('/image_edit')).at(-1).body.model, 'gateway::qwen-image-edit-max');
 edits.setHoldActions(true); edits.click('生成修改版'); const stoppedEdit = edits.pending.at(-1);
 assert(edits.button('编辑中…').props.disabled, '正在编辑不能再次提交');
 edits.click('停止等待'); assert(stoppedEdit.record.signal.aborted);

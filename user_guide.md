@@ -1,12 +1,12 @@
 # dsh-iris 用户指南
 
-本指南说明如何安装、配置和使用 Iris 0.2.3。升级范围见 [CHANGELOG](CHANGELOG.md) 和 [发布说明](docs/releases/0.2.3.md)。
+本指南对应Iris 0.2.4。发布状态见 [README](README.md)，升级范围见 [CHANGELOG](CHANGELOG.md) 和 [发布说明](docs/releases/0.2.4.md)。
 
-0.2.2 的能力来自明确功能标签、旧能力字段绑定或供应商能力元数据，账号和名称不再自动赋能。已有明确配置保留；仅有裸账号的配置需要先给实际模型设置功能，再加入有序候选池。
+功能来自明确标签、旧能力字段绑定或供应商能力元数据，账号和名称不会自动赋能。0.2.4还要求把模型明确加入对应功能名单；空名单停止新调用。已有配置保留，详见 [升级说明](docs/FUNCTION_MODEL_ASSIGNMENTS.md)。
 
 ## 安装
 
-先运行 `dsh --version`。Iris `0.2.3` 仅声明支持 DSH `0.2.0-rc.2`；旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 使用固定版本 Iris `0.1.4`。验证边界见[适配说明](docs/DSH_RC2_ADAPTATION.md)。还需要 PATH 中的 `pnpm`，以及至少一个媒体或视觉服务供应商。Iris 0.2.x 要求 Node.js 22.0.0 或更高版本，旧 npm 0.1.4 的历史要求为 20.10.0；如果所用 DSH 版本要求更高，以 DSH 为准。Iris 0.1.1 及后续 0.1.x 不兼容 DSH 0.1.0/0.1.1 的旧客户端 Runtime。
+先运行 `dsh --version`。Iris 0.2.4支持DSH `0.2.0-rc.2` 或 `0.2.1-alpha.4`；Iris0.2.0–0.2.3仅支持rc.2。旧DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 固定使用Iris0.1.4，见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。还需要PATH中的pnpm及至少一个所需功能的供应商。Iris最低Node.js为22.0.0，宿主要求更高时以宿主为准；旧npm0.1.4的历史要求为20.10.0。
 
 在上述旧 DSH 范围内，从 npm 安装固定稳定版到 Web profile：
 
@@ -17,12 +17,12 @@ dsh web
 
 npm 上无 scope 的 `dsh-iris` 是另一款插件；安装或更新 Iris Media 时必须使用完整 scoped 包名。
 
-只下载旧稳定包可运行 `npm pack @mokuyoaxis/dsh-iris@0.1.4`，安装为普通 npm 依赖可运行 `npm install @mokuyoaxis/dsh-iris@0.1.4`；后者不会自动加入 DSH profile。固定版本仍可在 latest 更新后安装，0.1.4 不包含新的 Core 媒体 CLI。DSH rc.2 使用 0.2.3。
+只下载旧稳定包可运行 `npm pack @mokuyoaxis/dsh-iris@0.1.4`，安装为普通npm依赖可运行 `npm install @mokuyoaxis/dsh-iris@0.1.4`；后者不会自动加入DSH profile。0.1.4不包含新的Core媒体CLI。
 
-在 DSH `0.2.0-rc.2` 上，从 npm 安装：
+在DSH rc.2或alpha.4上，0.2.4发布后固定安装：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.3
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.4
 dsh web
 ```
 
@@ -30,7 +30,7 @@ dsh web
 
 ### 独立 CLI
 
-无需 DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.3`，通过 `npx dsh-iris --help` 查看入口。详见 [Headless CLI](docs/HEADLESS_CLI.md) 和 [视觉 CLI](docs/VISION_CLI.md)。
+无需DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.4`，通过 `npx dsh-iris --help` 查看入口。发布状态见README，完整说明见 [Headless CLI](docs/HEADLESS_CLI.md) 和 [视觉CLI](docs/VISION_CLI.md)。
 
 其他 DSH 版本，包括 `0.2.0` 正式版与其他 rc，须另行验收。让 Agent 协助安装时，可使用[简要 Prompt](docs/AGENT_QUICKSTART.md)。
 
@@ -44,6 +44,12 @@ dsh --profile web --dump-config
 
 输出中应出现 `@mokuyoaxis/dsh-iris` 配置层和唯一行 ID `mokuyoaxis-dsh-iris`。DSH 的插件命令和 profile 机制见[官方说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)。
 
+## 导入已有图片（0.2.4）
+
+在作品区展开“导入图片”，选择上传文件、会话附件或宿主路径，点击“保存到作品”。支持最多20 MiB的静态PNG/JPEG/WebP，保存原字节副本、保留原文件，不需要供应商或模型分配。成功后可使用图片卡的看图、OCR、改图及下载。
+
+导入要求Iris0.2.4，0.2.3没有此工具。Agent入口为 `iris_import_image`，CLI入口为 `artifact import`；上传临时副本与持久作品的区别及示例见 [图片导入](docs/IMAGE_IMPORT.md)。
+
 ## 最快配置：DashScope
 
 打开“设置 → Iris 工作台”，然后：
@@ -55,7 +61,7 @@ dsh --profile web --dump-config
 5. 展开刚添加的供应商，点击“发现模型”。
 6. 若模型显示“未标注功能”，点击其“设置功能”，勾选已确认支持的功能并保存。
 
-如果只有一个供应商，可以先保留“能力分配”为自动。Iris 会从模型池中为画图、视频、语音、转写和视觉能力选择第一个匹配模型。需要固定模型或设置故障转移顺序时，再到“能力分配（failover 顺序）”中调整。
+0.2.4中，单个供应商也需要在“功能分配（调用顺序）”为所需功能选择模型；未分配时不调用模型池。0.2.3仅Music采用严格名单，升级影响见 [功能模型分配](docs/FUNCTION_MODEL_ASSIGNMENTS.md)。
 
 保存供应商和修改能力分配都会立即生效，不需要重启 DSH。
 
@@ -129,10 +135,10 @@ Iris 先按画图、视频、语音、转写和视觉功能组织候选池，再
 
 每项能力都可以设置一个有序的“供应商 + 模型”列表。界面显示的是模型名和供应商，配置中保存为 `providerId::modelId` 复合引用，因此不同供应商的同名模型不会冲突。
 
-- 图片、视频、语音、转写与视觉未手工分配时，从模型池第一个匹配项开始；音乐仅使用明确分配名单。
-- 手工列表中的模型优先，并按列表顺序尝试。
-- 除音乐外，模型池中其余具备该能力的模型仍会作为后续候选。
-- 点击“恢复自动”会清除手工顺序；音乐清空名单后需重新分配才能生成。
+- 六类功能仅使用各自分配名单，每次按名单顺序选择，不补入其他模型。
+- 临时指定模型须已分配，本次只调用该项。
+- “清空分配”停止新调用，模型、任务与作品保留；已有任务按原绑定观察和补交付。
+- 视觉可明确加入“DSH 当前默认模型”并排序；未加入时不使用宿主视觉。
 
 生成类故障转移只覆盖上传、提交和同步生成阶段。远端一旦受理异步任务，Iris 就会继续跟踪这个任务，不会因轮询或下载失败自动重提，以免重复生成和计费。
 
@@ -172,9 +178,9 @@ Core 图片卡可直接点击“看图”或“OCR”；结果可以复制、下
 
 ### 按 Artifact ID 改图
 
-Core 静态 PNG/JPEG/WebP 图片卡可点击“改图”，填写修改指令，再选择聊天生图模型。点击“生成修改版”才调用模型，修改版保存为关联原图的新作品，原图保留；可继续看图、OCR、下载或编辑。
+Core 静态 PNG/JPEG/WebP 图片卡可点击“改图”，填写修改指令，再选择已分配的带图编辑模型。点击“生成修改版”才调用模型，修改版保存为关联原图的新作品，原图保留；可继续看图、OCR、下载或编辑。
 
-Agent 可调用 `iris_edit_image`，提供 `source_artifact_id`、`prompt` 与可选 `model_ref`。CLI 使用 `run image` 的同名字段，详见 [Artifact 聊天改图](docs/CLI_MANAGEMENT.md#artifact-聊天改图)。仅支持 `openai-chat-images` 的带图生成，不提供 mask、多参考图或连续编辑历史。
+Agent可调用 `iris_edit_image`，提供 `source_artifact_id`、`prompt` 与可选 `model`；CLI使用 `run image`，模型字段为 `model_ref`，见 [Artifact改图](docs/CLI_MANAGEMENT.md#artifact-聊天改图)。支持openai-chat-images带图生成，0.2.4另支持DashScope原生Qwen edit/max/plus、2.0/pro及日期快照。不提供mask、多参考图或连续编辑历史。
 
 ## 高级配置文件
 
@@ -381,11 +387,13 @@ npx @mokuyoaxis/dsh-iris doctor --json
 
 已安装包也可以直接运行 `dsh-iris doctor`。退出码为 `0`（正常）、`1`（警告）和 `2`（硬错误）。Doctor 会执行一个随后立即删除的本地写入探针，并检查配置、任务、能力分配、临时文件和产物引用；输出不含完整 API Key。离线模式无法检查 DSH 工具/客户端是否已经装载，也不会用付费请求验证 Provider。
 
-**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 Iris 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.2.3 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
+**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 Iris 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.2.4 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
 
 ## Host Doctor
 
-DSH运行后打开“设置 → Iris工作台 → 宿主诊断”。卡片检查宿主/服务端/客户端版本、当前工具和随包Skill、四组路由与四个UI Slot。0.2.3 包含 16 个工具（含音乐）和三项 Skill；升级后需重启服务端、刷新页面，并为要使用的功能分配模型。点击“刷新”查看结果，原始JSON可在已认证的同一浏览器访问 `/iris/api/doctor`。
+DSH运行后打开“设置 → Iris工作台 → 宿主诊断”。卡片检查宿主/服务端/客户端版本、当前工具和随包Skill、四组路由与四个UI Slot。0.2.4包含17个工具和三项Skill；升级后检查服务端实际装载、刷新页面，并为所需功能分配模型。点击“刷新”查看结果，原始JSON可在已认证的同一浏览器访问 `/iris/api/doctor`。
+
+0.2.4新增图片导入后检查17个工具，三项Skill保持；0.2.3为16个工具。
 
 Host Doctor 不打开 Browser、不读取附件或会话、不调用模型，也不请求供应商。报告中的 `exitCode` 是诊断严重度，不是 HTTP 状态：`0` 全部健康，`1` 有可降级警告，`2` 有硬错误。未安装 HTML Browser 时出现一条 Browser 警告是预期降级；如果提示尚未收到客户端握手，刷新 DSH 页面后再点“刷新”。若显示 `not found`，通常是前端已更新而 DSH 后端仍运行旧插件代码，应重启 DSH 后再刷新页面。
 
@@ -425,7 +433,7 @@ dsh plugin --profile web remove @mokuyoaxis/dsh-iris
 - **没有可用模型**：先确认供应商已启用且 Key 有效，再运行“发现模型”；未标注模型需通过“设置功能”选择用途，不支持 `/models` 时手动添加并标注。
 - **OpenAI 兼容图片请求走错协议**：核对模型的有效图片协议；`/images/generations` 使用 `openai-images`，网关聊天图片扩展使用 `openai-chat-images`，同步 `/responses` 生图使用 `openai-responses-images`。可在生图模型行或 CLI `models protocol` 设置模型级覆盖，不需要改变同账号其他模型的接口。
 - **反向代理访问返回 `untrusted host`**：把浏览器实际使用的域名或 `host:port` 加入 `IRIS_TRUSTED_HOSTS`，保留 Host，并确认代理层已经启用认证。
-- **看图可用但 Iris 模型池显示为空**：Agent 视觉工具可以回退到 DSH 全局视觉模型；需要在工作台操作时仍建议配置 Iris 的 `vision` 模型。
+- **模型池为空时使用宿主看图**：0.2.4需在视觉分配中明确加入“DSH 当前默认模型”；宿主默认模型须声明图片输入。也可配置并分配自持 `vision` 模型。
 - **视频摘要提示 ffmpeg 不可用**：安装系统级 `ffmpeg` 和 `ffprobe`，并确保 DSH 进程的 PATH 能找到它们。
 - **本地文件不存在**：这里的“本地”指 DSH 宿主，不一定是浏览器所在设备；优先用“上传文件”。
 - **视频任务长时间运行**：不要重复提交。用 `iris_task_status` 或工作台任务详情查询原任务。

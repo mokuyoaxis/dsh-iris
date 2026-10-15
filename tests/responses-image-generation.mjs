@@ -25,7 +25,7 @@ const account = config.upsert({ name: 'mixed', apiKey: 'responses-fixture-key',
   ] });
 const other = config.upsert({ name: 'other', apiKey: 'other-fixture-key', baseUrl: 'https://other.fixture.invalid/v1',
   models: [{ id: 'responses-image', capabilities: ['image-gen'], imageProtocol: 'openai-responses-images' }] });
-config.setAssignmentOrder('image-gen', [account.id + '::responses-image', account.id + '::images-image']);
+config.setAssignmentOrder('image-gen', [account.id + '::responses-image', account.id + '::images-image', account.id + '::chat-image', account.id + '::qwen-image-3.0', other.id + '::responses-image']);
 const calls = [], originalFetch = globalThis.fetch;
 let format = 'jpeg', shape = 'tool', status = 200;
 globalThis.fetch = async (input, options = {}) => {

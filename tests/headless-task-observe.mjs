@@ -36,7 +36,7 @@ const provider = (overrides = {}) => ({
 });
 
 function writeConfig(value) {
-  fs.writeFileSync(configFile, JSON.stringify({ providers: [value] }, null, 2) + '\n', { mode: 0o600 });
+  fs.writeFileSync(configFile, JSON.stringify({ providers: [value], assignments: { 'image-gen': [value.id + '::' + value.models[0].id] } }, null, 2) + '\n', { mode: 0o600 });
   fs.chmodSync(configFile, 0o600);
 }
 

@@ -97,6 +97,7 @@ try {
   assert.equal(config.modelHealth(primary.id, model, 'vision').status, 'verified');
 
   config.addProviderModel(primary.id, 'sibling-image', ['image-gen']);
+  config.setAssignmentOrder('image-gen', [...config.assignmentOrder('image-gen'), modelRef(primary.id, 'sibling-image')]);
   await assert.rejects(runAction({}, 'image', { prompt: '500', model: modelRef(primary.id, 'sibling-image') }));
   assert.equal(config.modelHealth(primary.id, 'sibling-image', 'image-gen').rateLimited, undefined, '500 不停用');
   for (const status of [401, 403]) {

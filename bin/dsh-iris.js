@@ -73,6 +73,7 @@ function usage() {
     '  dsh-iris task cancel <id> --data-root <absolute-path> --provider-config <absolute-path>',
     '  dsh-iris task retry <id> --data-root <absolute-path> --provider-config <absolute-path> --input <json> --confirm-billing [--model-ref <providerId::modelId>]',
     '  dsh-iris artifact inspect <id> --data-root <absolute-path>',
+    '  dsh-iris artifact import --data-root <absolute-path> --input <json with image_path>',
     '  dsh-iris artifact list --data-root <absolute-path>',
     '    artifact list supports --offset, --limit, --kind, --media-type, --task-id.',
     '  dsh-iris artifact export-many --data-root <absolute-path> --input <json> --output <absolute-directory>',
@@ -560,6 +561,13 @@ async function main(args) {
     const input = Object.fromEntries(Object.entries(options).filter(([key]) => key !== 'data-root').map(([key, value]) => [key.replaceAll('-', '_'), ['offset', 'limit'].includes(key) ? Number(value) : value]));
     const result = await withRuntime('reader', options['data-root'], (commands) =>
       commands.execute('task.list', input));
+    console.log(JSON.stringify(result, null, 2));
+    return 0;
+  }
+
+  if (args[0] === 'artifact' && args[1] === 'import') {
+    const options = flags(args.slice(2), ['data-root', 'input']);
+    const result = await withRuntime('writer', options['data-root'], commands => commands.execute('artifact.import', jsonInput(options.input)));
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }

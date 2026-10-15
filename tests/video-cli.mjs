@@ -30,7 +30,7 @@ const provider = {
   mediaProtocol: 'dashscope',
   models: [{ id: 'wan2.2-t2v-flash', capabilities: ['video-gen'] }]
 };
-fs.writeFileSync(configFile, JSON.stringify({ providers: [provider] }, null, 2) + '\n', { mode: 0o600 });
+fs.writeFileSync(configFile, JSON.stringify({ providers: [provider], assignments: { 'video-gen': [provider.id + '::' + provider.models[0].id] } }, null, 2) + '\n', { mode: 0o600 });
 fs.chmodSync(configFile, 0o600);
 
 function state() {

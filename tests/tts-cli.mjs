@@ -27,7 +27,7 @@ const provider = {
   mediaProtocol: 'dashscope',
   models: [{ id: 'qwen-tts-latest', capabilities: ['tts'] }]
 };
-fs.writeFileSync(configFile, JSON.stringify({ providers: [provider] }, null, 2) + '\n', { mode: 0o600 });
+fs.writeFileSync(configFile, JSON.stringify({ providers: [provider], assignments: { tts: [provider.id + '::' + provider.models[0].id] } }, null, 2) + '\n', { mode: 0o600 });
 fs.chmodSync(configFile, 0o600);
 
 function state() {

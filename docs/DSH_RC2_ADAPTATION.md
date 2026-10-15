@@ -1,5 +1,7 @@
 # DSH 0.2.0-rc.2 适配
 
+本文保留Iris0.2.0/0.2.1适配rc.2时的背景与验证记录。当前0.2.4兼容rc.2及alpha.4，声明规则、使用步骤和验证边界见 [DSH版本兼容](DSH_COMPATIBILITY.md)。以下准确rc.2限制属于当时发行范围。
+
 本适配随 Iris `0.2.0` 发布；npm 0.1.4 包不包含这些后续修正。Iris 0.2.0 要求 Node.js `>=22.0.0`，DSH engines、五项客户端 peers 与 Host Doctor 仅放行准确版本 `0.2.0-rc.2`，不再沿用旧版支持窗口，也不推定其他 0.2 预览版或正式版兼容。
 
 旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 按历史验证范围使用稳定包 `@mokuyoaxis/dsh-iris@0.1.4`。安装与 npm tarball 下载方式见 [README](../README.md#最快开始)。保留的旧桥接与 fixture 测试不构成 Iris 0.2.0 的旧宿主支持承诺。
@@ -10,7 +12,7 @@ Iris 0.2.1 沿用相同 Node/DSH 要求，新增 Artifact 改图工具后共注�
 
 | 边界 | 问题与修正 |
 |---|---|
-| 加载器与诊断 | rc.2 加载器检查 `peerDependencies`，原旧版客户端范围会被拒绝。当前客户端 peers、DSH engines、锁文件和 Host Doctor 均收敛到准确 rc.2，无需版本豁免。 |
+| 加载器与诊断 | rc.2加载器检查peerDependencies，原旧版客户端范围会被拒绝。当时客户端peers、DSH engines、锁文件和Doctor收敛到准确rc.2，无需版本豁免；0.2.4按两版范围同步。 |
 | 会话附件 | 扫描引用时曾丢弃 `bytes/width/height`，真实 `readImage()` 因完整性不匹配拒绝读取。适配器保留这些已知事实及 `originalDimensions` 的独立副本，不猜测缺失值，不复制额外 Host 字段。 |
 | 宿主视觉 | rc.2 的 `llm.stream()` 需要明确 Provider/模型路由。默认选择仅在精确模型元数据确认接受 `image` 时成为视觉候选；文本模型、未知能力和身份漂移在生成前拒绝，错误事件以及 `finish.reason.kind` 的 `error/aborted` 不再被当作空回答或部分成功。 |
 | 客户端会话 | rc.2 列表没有旧 `current` 字段。适配器使用唯一的 `retainedBy.mainView` 持有者，通知时回读 `getSnapshot()`，卸载时释放订阅；保留旧接口，有歧义或无选择时不取任意列表项。 |
@@ -29,7 +31,7 @@ node scripts/verify-dsh-host.mjs --dsh-root /absolute/path/to/@deepseek-ai/dsh
 
 脚本在仓库外创建新临时数据根，载入实际安装的 Cordis、加载器兼容检查、附件、工具、Skill、LLM、默认模型、WebServer 与客户端 SlotRegistry。模型使用本地 Fake Adapter，正常流遵循安装包的 `index` 和对象终态格式，并验证真实 Runtime 将异常转换为失败终态；禁止外部请求。会话日志和列表是显式 fixture，宿主进程入口是已核实 DSH bin 的模拟。实际 WebServer 只绑定临时 loopback 端口，退出时卸载所有 Fiber。临时目录与 `report.json` 保留供复核。
 
-当前脚本检查 15 个工具、2 项 Skill、Doctor 路由、DSH → Core diff → DSH 附件，以及四个客户端座位的注册和卸载。SlotRegistry 使用安装包中的真实代码，React/DOM 为 stub，因此不证明完整 Web profile 装载、实际组件渲染、点击和草稿写回。另用 `scripts/verify-headless-package.mjs --offline` 验证当前 tarball 在无 DSH/Cordis 安装树中执行 CLI 和 Artifact 导出。
+当时脚本检查15工具、2项Skill、Doctor路由、Core diff与附件，以及四个客户端座位。0.2.4检查17工具/3项Skill及两版宿主。SlotRegistry使用实际安装包代码，React/DOM为stub，不证明完整Web profile、实际渲染、点击和草稿写回。另用 `scripts/verify-headless-package.mjs --offline` 验证无DSH/Cordis安装树中的CLI和作品导出。
 
 ## 当前限制
 

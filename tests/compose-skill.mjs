@@ -25,4 +25,4 @@ function inspect(file) {
 }
 for (const skill of loadBundledSkills()) inspect(skill.path);
 assert.deepEqual([...mentioned].sort(), [...known].sort(), '共享能力表应覆盖实际注册工具，不能遗漏改图或Music');
-console.log('ALL OK —— 三项 Skill 的按需参考图可读取，工具名与当前16项契约一致');
+console.log(`ALL OK —— 三项 Skill 的按需参考图可读取，工具名与当前${known.size}项契约一致`);

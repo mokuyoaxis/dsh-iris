@@ -283,8 +283,15 @@ try {
   for (const [index, background] of ['#ff0000', '#0000ff'].entries()) {
     const image = path.join(inputs, 'image-' + index + '.png');
     await sharp({ create: { width: 16, height: 12, channels: 3, background } }).png().toFile(image);
+    let imported;
+    if (index === 0) {
+      imported = cli(['artifact', 'import', ...rootArgs, '--input', JSON.stringify({ image_path: image })]).artifact;
+      assert.equal(imported.kind, 'imported-image');
+      const exported = await verifyArtifact(imported, 'imported-image');
+      assert.deepEqual(exported.bytes, fs.readFileSync(image), '显式导入保留真实原字节');
+    }
     const crop = cli(['run', 'crop', ...rootArgs, '--input', JSON.stringify({
-      image_path: image, left: 2, top: 1, width: 8, height: 6
+      ...(imported ? { artifact_id: imported.id } : { image_path: image }), left: 2, top: 1, width: 8, height: 6
     })]);
     assert.equal(crop.artifact.metadata.width, 8);
     assert.equal(crop.artifact.metadata.height, 6);
@@ -322,7 +329,7 @@ try {
   fs.writeFileSync(visionConfigFile, JSON.stringify({ providers: [{ id: 'vision-fixture', type: 'openai', enabled: true,
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', mediaProtocol: 'dashscope', apiKey: 'fixture-key',
     models: [{ id: 'vision', capabilities: ['vision'] }, { id: 'asr', capabilities: ['transcribe'] }] }],
-    assignments: { vision: ['vision-fixture::vision'] } }), { mode: 0o600 });
+    assignments: { vision: ['vision-fixture::vision'], transcribe: ['vision-fixture::asr'] } }), { mode: 0o600 });
   const visionConfigBefore = digest(fs.readFileSync(visionConfigFile));
   const coreBeforeVision = snapshot(dataRoot);
   const visionEnv = { DSH_HOME: unusedDsh, NODE_OPTIONS: '--import=' + pathToFileURL(visionFixture).href,
@@ -393,7 +400,9 @@ try {
     models: Object.entries(models).map(([capability, id]) => ({
       id, capabilities: [{ image: 'image-gen', video: 'video-gen' }[capability] || capability]
     }))
-  }] }) + '\n', { mode: 0o600 });
+  }], assignments: Object.fromEntries(Object.entries(models).map(([capability, id]) => [
+    { image: 'image-gen', video: 'video-gen' }[capability] || capability, ['package-fixture::' + id]
+  ])) }) + '\n', { mode: 0o600 });
   const audioPath = path.join(inputs, 'audio.wav');
   fs.writeFileSync(audioPath, Buffer.from('UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=', 'base64'));
   const scenarios = [
@@ -488,6 +497,8 @@ try {
   cli(['models', 'add', 'completion::qwen3-vl-flash', ...completionConfigArgs, '--input', '{"capabilities":["vision"]}']);
   cli(['models', 'caps', 'completion::qwen3-vl-flash', ...completionConfigArgs, '--input', '{"capabilities":["vision"]}']);
   cli(['assignments', 'set', ...completionConfigArgs, '--input', '{"capability":"video-gen","model_refs":["completion::wan2.2-s2v"]}']);
+  cli(['assignments', 'set', ...completionConfigArgs, '--input', '{"capability":"tts","model_refs":["completion::qwen3-tts-flash"]}']);
+  cli(['assignments', 'set', ...completionConfigArgs, '--input', '{"capability":"vision","model_refs":["completion::qwen3-vl-flash"]}']);
   assert.equal(cli(['config', 'check', ...completionConfigArgs]).valid, true);
   assert.equal(cli(['models', 'list', ...completionConfigArgs]).models.length, 3);
   const s2vBefore = state();

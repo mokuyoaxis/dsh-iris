@@ -66,7 +66,7 @@ try {
   fs.writeFileSync(config, JSON.stringify({ providers: [{ id: 'cli', enabled: true, apiKey: 'fixture',
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: [
       { id: 'wan2.6-t2v', capabilities: ['video-gen'] }, { id: 'wan2.2-s2v', capabilities: ['video-gen'] }
-    ] }] }), { mode: 0o600 });
+    ] }], assignments: { 'video-gen': ['cli::wan2.6-t2v', 'cli::wan2.2-s2v'] } }), { mode: 0o600 });
   const cli = (args, code = 0) => {
     const run = spawnSync(process.execPath, ['--import', new URL('./fixtures/headless-async-fetch.mjs', import.meta.url).href,
       path.join(repo, 'bin/dsh-iris.js'), ...args], { cwd: work, encoding: 'utf8', timeout: 10000,

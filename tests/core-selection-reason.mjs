@@ -27,13 +27,15 @@ try {
         models: [{ id: 'image-v0', capabilities: ['image-gen'] }]
       }
     ],
-    assignments: { 'image-gen': ['assigned-fake::image-v0'] }
+    assignments: { 'image-gen': ['assigned-fake::image-v0', 'pool-fake::image-v0'] }
   };
   const routes = imageCandidatesFromCatalog(catalog);
   assert.deepEqual(routes.map((route) => [route.modelRef, route.selectionReason]), [
     ['assigned-fake::image-v0', 'assignment'],
-    ['pool-fake::image-v0', 'pool']
-  ], '候选链必须在构造时区分 assignment 与池序补齐');
+    ['pool-fake::image-v0', 'assignment']
+  ], '候选链仅包含明确分配的模型');
+  assert.throws(() => imageCandidatesFromCatalog({ ...catalog, assignments: { 'image-gen': ['assigned-fake::image-v0'] } }, 'pool-fake::image-v0'),
+    { code: 'IRIS_PROVIDER_MODEL_UNAVAILABLE' }, '显式指定不得越过名单');
   const explicitRoutes = imageCandidatesFromCatalog(catalog, 'pool-fake::image-v0');
   assert.deepEqual(explicitRoutes.map((route) => [route.modelRef, route.selectionReason]), [
     ['pool-fake::image-v0', 'explicit']
@@ -68,7 +70,7 @@ try {
   });
   assert.deepEqual(
     failover.task.attempts.map((attempt) => [attempt.ordinal, attempt.selectionReason]),
-    [[1, 'assignment'], [2, 'pool']],
+    [[1, 'assignment'], [2, 'assignment']],
     'failover 的每个 Attempt 必须保存各自真实来源，ordinal 独立表达降级顺序'
   );
 

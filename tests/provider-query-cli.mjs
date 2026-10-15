@@ -36,7 +36,7 @@ for (const capability of Object.values(CAPABILITIES)) {
   assert.deepEqual(snapshot.capabilities.find((row) => row.capability === capability).candidates, hostRefs);
 }
 assert.deepEqual(snapshot.capabilities[0].candidates, [
-  modelRef(second.id, 'shared'), modelRef(first.id, 'shared'), modelRef(first.id, 'other')
+  modelRef(second.id, 'shared'), modelRef(first.id, 'shared')
 ]);
 assert.deepEqual(imageCandidatesFromCatalog(catalog).map((route) => route.modelRef), snapshot.capabilities[0].candidates);
 assert.equal(snapshot.capabilities.find((row) => row.capability === 'transcribe').gap, 'no_configured_model');

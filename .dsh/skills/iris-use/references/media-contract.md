@@ -1,11 +1,12 @@
 # Iris 能力与产物衔接
 
-三项 Iris skills 共用本说明。按当前工具 schema 调用；下表描述 Iris 0.2.3 的入口，是否可用须看实际工具列表。不要为阅读本说明调用模型或读取供应商凭据。
+三项Iris skills共用本说明。图片导入、统一功能分配及原生Qwen改图要求Iris0.2.4，0.2.3不含这些增量；发布状态见README。按实际已装载工具schema调用，工具可用性以工具列表和安装版本为准。不要为阅读本说明调用模型或读取供应商凭据。
 
 ## 工具、输入和输出
 
 | 工具 | 主要输入 | 完成后的输出 |
 |---|---|---|
+| `iris_import_image` | image_path 或当前会话 attachment_id 二选一 | imported-image作品、稳定Core Artifact ID和图片链接；保留原字节及源文件，不调用模型 |
 | `iris_draw_image` | prompt，可选 size、n、model | Task、Core 图片 Artifact、DSH 图片附件；可能附有图片自述 |
 | `iris_edit_image` | source_artifact_id、修改 prompt | 新图片 Artifact 与附件，保留原图和来源关系 |
 | `iris_look_at_image` | image_path 或 artifact_id 二选一 | 图片理解文字 |
@@ -27,7 +28,7 @@
 
 ## 功能与模型选择
 
-生图、视频、TTS、转写和视觉沿用当前功能配置。改图只接受带图编辑的聊天图片协议，当前是 `openai-chat-images`，源图为一个 Core 静态 PNG/JPEG/WebP，最多20 MiB；不提供蒙版或多张参考图输入。
+生图、视频、TTS、Music、转写和视觉只使用各自明确分配的有序名单；空名单不调用，临时指定须已分配且只用该项。DSH默认视觉须明确加入视觉名单，不能在指定模型失败后隐式回退。手动实测独立于生产分配，旧任务查询/补交付仍绑定原模型。改图复用生图名单，接受 `openai-chat-images` 或 `dashscope` 原生 Qwen edit/max/plus、2.0/pro及日期快照；其他原生Qwen版本尚未接入。源图为一个Core静态PNG/JPEG/WebP，最多20 MiB；不提供蒙版或多张参考图输入。默认发送预算8 MiB，可按账号/模型调整；原生Qwen发送副本另限10 MiB，原作品保留。
 
 Music 为独立 `music-gen` 功能，仅使用明确分配名单。模型须配置 `musicProtocol: gemini-web-music`；它不改变账号图片默认协议。其他 Music Adapter 尚未实现。当前正式参数控制客户端超时与502重试；曲长、人声、歌词、语言等是描述意图。
 
@@ -39,6 +40,15 @@ Music 为独立 `music-gen` 功能，仅使用明确分配名单。模型须配�
 - `/iris/api/core/artifact/.../media` 是播放/下载链接，不是宿主 `audio_path` 或 `video_path`。
 - `content://`、浏览器本地路径与普通网络URL不能直接充当宿主文件路径。已经有可用Core作品时优先复用，确需文件输入时才导出。
 - 保存每步实际返回的ID。图片编辑保留原作品并创建新版本；不要为继续操作重新生成源素材。
+
+用户上传或宿主本地图片要保存为可续作作品时，用iris_import_image显式导入；当前支持最多20 MiB的静态PNG/JPEG/WebP。已有Core图片直接复用其ID，不反复导入。导入不创建生成Task，返回ID可交给iris_edit_image的source_artifact_id。上传副本的临时路径不是持久作品ID。
+
+CLI使用同一导入命令：
+
+```bash
+dsh-iris artifact import --data-root /absolute/path/iris-core \
+  --input '{"image_path":"/absolute/path/source.png"}'
+```
 
 ## 需要文件时导出
 

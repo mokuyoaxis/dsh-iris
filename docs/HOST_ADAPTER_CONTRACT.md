@@ -19,8 +19,8 @@ Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、�
 | `attachments` | `ctx.get('attachments')` | 保存/读取图片字节，返回 Iris 自有引用 DTO | DSH 图片投影或会话图片读取不可用 |
 | `sessions` | `ctx.get('sessionQuery')` / Client sessions | 列出当前会话的受支持附件和最小模型选择信息 | 只使用 Iris 自有产物或显式上传 |
 | `browser` | `ctx.get('browser')` | 将受限 HTML 渲染为图片；不向 Command 暴露 DSH page/session 对象 | HTML 截图不可用 |
-| `textModel` | DSH LLM/default-model 服务 | 执行无工具的文本生成并解析当前/默认模型 | 对话框提示词优化不可用 |
-| `visionModel` | DSH 全局视觉模型 | 作为 Iris 自持视觉 Provider 之外的可选后端 | 有自持视觉配置时降级；否则视觉动作失败 |
+| `textModel` | DSH LLM/default-model 服务 | 文本生成及精确模型元数据；当前宿主视觉也由此绑定默认选择 | 宿主文本/视觉不可用，自持 Provider 按各功能名单执行 |
+| `visionModel` | DSH 旧视觉桥接 | 保留 `analyze()` 兼容入口；当前视觉共享端口经 `textModel` 与附件桥接执行 | 旧桥接不可用，不自动授予视觉功能调用资格 |
 
 `ports` 只包含真实可调用的方法对象。缺失或版本不兼容的能力进入 `unavailable`，并提供 `kind` 与人类可读 `reason`；Doctor 与运行错误必须消费同一份事实。
 
@@ -28,20 +28,22 @@ Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、�
 
 | Command/入口 | 必需端口 | 可选端口 | 说明 |
 |---|---|---|---|
-| `image` | 无 | `visionModel` | 生成与 Task 不依赖宿主；成功后的简短视觉描述可以降级 |
-| `video`、`tts`、`transcribe` | 无 | 无 | Provider、Task 与产物落盘属于 Iris Core |
-| `look`、`locate`、`ocr` | 无 | `visionModel` | 优先使用 Iris Provider；没有任何视觉后端才失败 |
+| `image` | 无 | `textModel` + `attachments` | 生图按图片名单执行；成功后可选描述按视觉名单执行，不影响生成事实 |
+| `video`、`tts`、`music`、`transcribe` | 无 | 无 | Provider、Task 与产物落盘属于 Iris Core，分别使用功能名单 |
+| `look`、`locate`、`ocr` | 无 | `textModel` + `attachments` | 只按视觉名单尝试自持或显式宿主资源，无可用项时失败 |
 | `crop`、`diff`、`video_frames` | 无 | 无 | 确定性本地动作 |
-| `media_summarize` | 无 | `visionModel` | 帧提取是本地动作，理解阶段允许宿主视觉降级 |
+| `media_summarize` | 无 | `textModel` + `attachments` | 帧提取是本地动作，理解阶段只使用视觉名单 |
 | `html` | `browser` | 无 | Command 只调用语义级 `renderHtml` |
 | `relook` | 条件必需 `attachments` + `sessions` | 无 | Iris 自有附件可直接解析；会话附件必须走宿主端口 |
 | `attachments_list`、`attachment_export` | 条件必需 `attachments` + `sessions` | 无 | Iris 自有产物不依赖宿主；会话来源不得读取宿主私有文件 |
 | Task 查询、观察、交付、提醒和知情重试 | 无 | 无 | 事实、费用确认和新旧 Task 关系归 Iris 所有 |
-| Provider/模型/能力配置 | 无 | `visionModel` | 普通发现与配置不依赖宿主；视觉实测可选宿主后端且必须显式触发 |
+| Provider/模型/能力配置 | 无 | 无 | 普通发现与配置不依赖宿主；手动实测只调用指定Provider，不按生产名单或回退宿主 |
 | Prompt Optimize | `textModel` | `sessions` | 客户端可显式传模型；否则从宿主获取当前/默认选择 |
 | DSH 工具结果投影 | `tools` | `attachments` | 注册与结果转为 DSH attachment 属于 DSH Adapter，不进入 Command |
 | Workbench/API/媒体路由 | `routes` | `clientSlots` | HTTP/UI 只是投影，不是真相来源 |
 | 随包 Skill | `skills` | 无 | Skill 不得绕过 Command、Task 或费用边界 |
+
+开发树中的宿主视觉必须以 `host:current-vision` 加入视觉名单并排序；读取的是DSH当前默认选择，不是当前对话选择。不自动追加宿主候选，临时指定失败也不回退。升级规则见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。
 
 ## 不可违反规则
 
@@ -89,6 +91,7 @@ Iris 继续作为普通 DSH/Cordis 插件装载：`cordis.patch.yml` 只把 npm 
 - Host Doctor 对服务端注册账本、客户端版本和 Slot 握手分别给出结果；
 - 已发布 Iris `0.1.4` 在 DSH `0.1.2-rc.1` 与 `0.1.5-rc.1` 上有历史宿主验证记录，不继承为当前版本的支持声明。
 - Iris `0.2.1` 只声明 DSH `0.2.0-rc.2`，已通过真实安装服务隔离验收，保留附件完整引用、绑定明确图片模型路由并适配客户端主视图选择；边界与尚未完成的浏览器实机检查见 [rc.2 适配说明](DSH_RC2_ADAPTATION.md)。
+- Iris0.2.4扩大为rc.2与alpha.4两项准确版本，顶层engines.dsh、嵌套字段、五项可选peer及Doctor同步；Core/Provider契约保持。当前范围和服务/浏览器验证区别见 [DSH版本兼容](DSH_COMPATIBILITY.md)。
 
 Local Host 不模拟 Browser、会话或附件。测试需要这些能力时必须显式注入，缺失行为也属于契约。
 

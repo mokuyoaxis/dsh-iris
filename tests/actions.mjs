@@ -209,7 +209,7 @@ assert(aerr && /不具备该能力|不在全局池/.test(aerr.message), '给 vis
 await runAction(stubHost, 'assignments_set', { capability: 'vision', model_ids: [] });
 const getR2 = await runAction(stubHost, 'assignments_get', {});
 assert(!getR2.order.vision || getR2.order.vision.length === 0, '空数组清除分配', getR2.order);
-assert(config.pickFor('vision').visionModel === 'qwen-vl-plus', '清除后回退池顺序', config.pickFor('vision').visionModel);
+assert(config.pickFor('vision') === null, '清空分配后不调用全局池');
 // ⑩g 旧单字符串向后兼容
 config.setAssignment('vision', 'qwen3-vl-235b-a22b-thinking');
 assert(JSON.stringify(config.assignmentOrder('vision')) === JSON.stringify([strongRef]), '旧纯 model id 归一化为复合引用', config.assignmentOrder('vision'));

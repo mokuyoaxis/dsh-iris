@@ -38,7 +38,8 @@ fs.writeFileSync(path.join(irisV1, 'providers.json'), JSON.stringify({
     videoModel: 'wan2.2-t2v-flash',
     ttsModel: 'qwen-tts-latest',
     visionModel: 'qwen-vl-plus'
-  }]
+  }],
+  assignments: { 'image-gen': ['iris_testp::wan2.2-t2i-flash'], 'video-gen': ['iris_testp::wan2.2-t2v-flash'], tts: ['iris_testp::qwen-tts-latest'], vision: ['iris_testp::qwen-vl-plus'] }
 }, null, 2));
 
 const now = new Date();

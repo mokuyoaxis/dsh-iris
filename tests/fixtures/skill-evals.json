@@ -7,6 +7,26 @@
   ],
   "cases": [
     {
+      "id": "single-image-import",
+      "prompt": "把我上传的图片存入Iris作品区，暂时不要修改或生成。",
+      "expectedSkill": "iris-use",
+      "expectedTools": ["iris_import_image"],
+      "forbiddenTools": ["iris_draw_image", "iris_edit_image", "iris_generate_music"],
+      "maxAgentGenerationCalls": 0,
+      "maxNewTasks": 0,
+      "mustStop": false
+    },
+    {
+      "id": "import-session-image-before-edit",
+      "prompt": "用Iris把我刚上传的照片背景改成蓝色，保持人物。",
+      "expectedSkill": "iris-compose-media",
+      "expectedTools": ["iris_import_image", "iris_edit_image"],
+      "forbiddenTools": ["iris_draw_image", "iris_generate_music"],
+      "maxAgentGenerationCalls": 1,
+      "maxNewTasks": 1,
+      "mustStop": false
+    },
+    {
       "id": "compose-inspect-then-draw",
       "prompt": "分析我上传的产品照，然后按原构图画成水彩海报。",
       "expectedSkill": "iris-compose-media",

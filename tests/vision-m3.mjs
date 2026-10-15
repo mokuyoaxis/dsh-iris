@@ -10,6 +10,7 @@ const { VISION_BUDGET } = await import('../lib/vision-core.js');
 const { RED_TEST_IMAGE } = await import('../lib/vision.js');
 const { runAction } = await import('../lib/actions.js');
 const config = await import('../lib/config.js');
+const { HOST_VISION_REF } = await import('../lib/models.js');
 const iris = await import('../lib/index.js');
 const fixture = createDshVisionFixture({ steps: [{ text: 'DSH answer' }] });
 let resolves = 0;
@@ -22,7 +23,7 @@ const image = { bytes: new Uint8Array([1, 2, 3]), mediaType: 'image/png' };
 const candidates = buildVisionModelCandidates(host, { providers: [provider] });
 candidates.forEach(candidate => candidate.port.describe());
 assert.equal(resolves + fixture.bridge.saves + fixture.stats.invocations, 0, '候选快照零元数据/模型/附件调用');
-assert.equal(buildVisionModelCandidates({}, {})[0].port.describe().availability, 'unavailable');
+assert.throws(() => buildVisionModelCandidates({}, {}), { code: 'IRIS_MODEL_UNAVAILABLE' });
 const originalFetch = globalThis.fetch;
 const stop = 'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n';
 let calls = 0, httpImage;
@@ -39,7 +40,7 @@ try {
   assert.equal(resolves, 0); assert.equal(fixture.bridge.saves, 0);
   assert.deepEqual(httpImage, image);
   globalThis.fetch = async () => { calls++; return new Response('private rejection', { status: 401 }); };
-  const result = await runVisionRequest(host, { providers: [provider], question: 'fixture', image });
+  const result = await runVisionRequest(host, { providers: [provider, { id: HOST_VISION_REF }], question: 'fixture', image });
   assert.equal(result.answer, 'DSH answer'); assert.equal(result.model, 'vision-v0');
   assert.equal(result.errors[0].category, 'auth'); assert.equal(result.errors[0].backendId, 'p');
   assert.deepEqual(fixture.calls[0].request.image, httpImage);
@@ -72,6 +73,7 @@ try {
 
   // 真正的动作与工具共用结果语义；只写明确的 Provider 健康反馈，没有 Core/legacy Task/Artifact。
   const configured = config.upsert({ ...provider, id: undefined, health: undefined });
+  config.setAssignmentOrder('vision', [configured.id + '::vision']);
   globalThis.fetch = async () => new Response('data: {"choices":[{"delta":{"content":"红色"}}]}\n\n' + stop,
     { headers: { 'Content-Type': 'text/event-stream' } });
   const file = path.join(root, 'input.png'); fs.writeFileSync(file, image.bytes);

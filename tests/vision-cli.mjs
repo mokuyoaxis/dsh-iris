@@ -16,7 +16,8 @@ const dshHome = path.join(work, 'unused-dsh'), output = path.join(work, 'result.
 const provider = (id, models) => ({ id, enabled: true, type: 'openai', baseUrl: 'https://' + id + '.invalid/compatible-mode/v1',
   mediaProtocol: 'dashscope', mediaBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   apiKey: 'fixture-key', models: models.map(id => ({ id, capabilities: [id === 'asr' ? 'transcribe' : 'vision'] })) });
-const catalog = { providers: [provider('first', ['backup', 'selected', 'asr']), provider('second', ['selected'])], assignments: { vision: ['first::selected'] } };
+const catalog = { providers: [provider('first', ['backup', 'selected', 'asr']), provider('second', ['selected'])],
+  assignments: { vision: ['first::selected', 'first::backup', 'second::selected'], transcribe: ['first::asr'] } };
 fs.writeFileSync(config, JSON.stringify(catalog), { mode: 0o600 });
 const configBefore = fs.readFileSync(config);
 const state = () => JSON.parse(fs.readFileSync(stateFile, 'utf8'));
@@ -54,7 +55,7 @@ try {
 
   reset({ modes: { selected: 'auth' } });
   const fallback = json('look', { image_path: image });
-  assert.equal(fallback.modelRef, 'first::backup'); assert.equal(fallback.selectionReason, 'pool');
+  assert.equal(fallback.modelRef, 'first::backup'); assert.equal(fallback.selectionReason, 'assignment');
   assert.deepEqual(state().vision.map(value => value.model), ['selected', 'backup']);
   reset({ modes: { selected: 'rate' } });
   assert(cli('look', { image_path: image }, ['--model-ref', 'first::selected'], 1, true).stderr.includes('IRIS_MODEL_RATE_LIMITED'));

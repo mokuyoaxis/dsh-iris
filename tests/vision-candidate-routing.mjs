@@ -6,7 +6,7 @@ import { useTempDshHome } from './test-env.js';
 
 const { root } = useTempDshHome('iris-vision-candidate-routing');
 const config = await import('../lib/config.js');
-const { modelRef } = await import('../lib/models.js');
+const { modelRef, HOST_VISION_REF } = await import('../lib/models.js');
 const { buildVisionModelCandidates, runVisionRequest } = await import('../lib/vision-model-routing.js');
 const { runLocateRequest, runSummaryRequest } = await import('../lib/composite-vision-routing.js');
 const { runOcrRequest } = await import('../lib/ocr-model-routing.js');
@@ -17,12 +17,12 @@ const modelIds = ['vision-main', 'vision-other', 'shared/vision'];
 const makeProvider = name => config.upsert({ name, type: 'openai', baseUrl: 'https://fixture.invalid/v1',
   apiKey: name + '-fixture-key', models: modelIds.map(id => ({ id, capabilities: ['vision'] })) });
 const first = makeProvider('first'), second = makeProvider('second');
-const assigned = [modelRef(first.id, modelIds[1]), modelRef(second.id, modelIds[2])];
+const assigned = [modelRef(first.id, modelIds[1]), modelRef(second.id, modelIds[2]), modelRef(first.id, modelIds[0]),
+  modelRef(first.id, modelIds[2]), modelRef(second.id, modelIds[0]), modelRef(second.id, modelIds[1]), HOST_VISION_REF];
 config.setAssignmentOrder('vision', assigned);
 const providers = config.pickAllFor('vision');
-const expectedOrder = [...assigned, modelRef(first.id, modelIds[0]), modelRef(first.id, modelIds[2]),
-  modelRef(second.id, modelIds[0]), modelRef(second.id, modelIds[1])];
-assert.equal(providers.length, 6, '真实配置返回同账号的多份模型候选');
+const expectedOrder = assigned.filter(ref => ref !== HOST_VISION_REF);
+assert.equal(providers.length, 7, '明确分配六个自持模型及一个宿主资源');
 
 function makeHost(answers) {
   const fixture = createDshVisionFixture({ steps: answers.map(text => ({ text })) });
@@ -53,13 +53,12 @@ try {
   // 先检查实际 DSH 动作的 401 副作用；旧实现会请求同一个模型三次。
   respond(() => new Response('', { status: 401 }));
   const fallback = makeHost(['host answer']);
-  const looked = await runAction(fallback.host, 'look', { image_path: imageFile, question: 'fixture',
-    model: modelRef(first.id, modelIds[0]) });
+  await assert.rejects(runAction(fallback.host, 'look', { image_path: imageFile, question: 'fixture',
+    model: modelRef(first.id, modelIds[0]) }), { code: 'IRIS_MODEL_AUTH_FAILED' });
   assert.equal(requests.length, 1, '显式模型遇到 401 只允许一次 HTTP 请求');
   assert.deepEqual(requests[0], { model: modelIds[0], authorization: 'Bearer first-fixture-key' });
-  assert(looked.text.includes('host answer') && looked.text.includes('DSH 全局视觉模型'));
-  assert.equal(fallback.fixture.stats.invocations, 1);
-  assert.equal(fallback.resolutions(), 1);
+  assert.equal(fallback.fixture.stats.invocations, 0, '临时指定失败不回退宿主');
+  assert.equal(fallback.resolutions(), 0);
 
   const lazy = makeHost([]);
   const implicit = buildVisionModelCandidates(lazy.host, { providers });
@@ -68,7 +67,7 @@ try {
   '默认选型保留分配顺序、同账号不同模型和跨账号同名模型');
   const explicit = buildVisionModelCandidates(lazy.host, { providers, model: modelRef(second.id, modelIds[2]) });
   assert.equal(explicit.filter(candidate => candidate.port.describe().availability === 'available' && candidate.via === 'selfstack').length, 1);
-  assert.equal(explicit.filter(candidate => candidate.via === 'global').length, 1);
+  assert.equal(explicit.filter(candidate => candidate.via === 'global').length, 0);
   assert.equal(lazy.resolutions() + lazy.fixture.bridge.saves + lazy.fixture.stats.invocations, 0, '构造候选不读取宿主元数据或调用模型');
 
   respond(() => success('explicit second account'));
@@ -81,43 +80,43 @@ try {
   assert.deepEqual(requests.map(request => request.model), [modelIds[1], modelIds[0]], '同账号不同模型仍可按分配顺序回退');
   assert.equal(next.model, modelIds[0]); assert.equal(next.errors[0].model, modelIds[1]);
 
-  // 裸名称沿用跨账号回退；账号认证和成功结果不能因去重合并。
+  // 旧裸名称绑定名单内的首个匹配项；临时指定不跨账号回退。
   respond(request => request.authorization === 'Bearer first-fixture-key'
     ? new Response('', { status: 401 }) : success('second account'));
-  const shared = await runVisionRequest(lazy.host, { providers, model: modelIds[0], question: 'fixture', image });
-  assert.deepEqual(requests.map(request => request.authorization), ['Bearer first-fixture-key', 'Bearer second-fixture-key']);
-  assert.equal(shared.backendId, second.id); assert.equal(shared.model, modelIds[0]);
-  assert.equal(shared.errors.filter(error => error.category === 'auth').length, 1);
+  await assert.rejects(runVisionRequest(lazy.host, { providers, model: modelIds[0], question: 'fixture', image }), { code: 'IRIS_MODEL_AUTH_FAILED' });
+  assert.deepEqual(requests.map(request => request.authorization), ['Bearer first-fixture-key']);
   assert.equal(lazy.resolutions(), 0, '自持栈成功仍不解析宿主');
 
   // 定位与摘要使用同一候选边界，401 之后各只回退一次。
   respond(() => new Response('', { status: 401 }));
+  const withHost = providers.filter(provider => provider.id === HOST_VISION_REF || provider.id === first.id && provider.visionModel === modelIds[0]);
   const locator = makeHost(['{"x1":83.34,"y1":90.91,"x2":416.66,"y2":363.63}']);
-  const located = await runLocateRequest(locator.host, { providers, model: modelRef(first.id, modelIds[0]), target: 'box', image });
+  const located = await runLocateRequest(locator.host, { providers: withHost, target: 'box', image });
   assert.equal(requests.length, 1); assert.equal(located.x1, 10); assert.equal(located.via, 'global');
   assert.equal(located.errors.filter(error => error.category === 'auth').length, 1);
   respond(() => new Response('', { status: 401 }));
   const summaryHost = makeHost(['summary answer']);
-  const summarized = await runSummaryRequest(summaryHost.host, { providers, model: modelRef(first.id, modelIds[0]),
+  const summarized = await runSummaryRequest(summaryHost.host, { providers: withHost,
     frames: [{ buffer: png, width: 120, height: 220, atSec: 0 }] });
   assert.equal(requests.length, 1); assert.equal(summarized.answer, 'summary answer');
   assert.equal(summaryHost.fixture.stats.invocations, 1);
 
   // 健康记录尚不存在的账号：首次 429 不能依赖旧共享 health 对象阻止重复调用。
   const fresh = makeProvider('fresh');
+  config.setAssignmentOrder('vision', [...expectedOrder, modelRef(fresh.id, modelIds[0]), modelRef(fresh.id, modelIds[1]), HOST_VISION_REF]);
   assert.equal(fresh.health, undefined);
-  const freshRows = config.pickAllFor('vision').filter(provider => provider.id === fresh.id);
+  const freshRows = config.pickAllFor('vision').filter(provider => provider.id === fresh.id && provider.visionModel === modelIds[0] || provider.id === HOST_VISION_REF);
   respond(() => Response.json({ error: { code: 'RateLimitExceeded', message: 'Too many requests' } },
     { status: 429, headers: { 'Retry-After': '120' } }));
   const cooldownHost = makeHost(['cooldown fallback', 'reloaded fallback']);
-  const limited = await runVisionRequest(cooldownHost.host, { providers: freshRows, model: modelRef(fresh.id, modelIds[0]),
+  const limited = await runVisionRequest(cooldownHost.host, { providers: freshRows,
     question: 'fixture', image, onRateLimit: config.recordRateLimit });
   assert.equal(requests.length, 1); assert.equal(limited.answer, 'cooldown fallback');
   assert.equal(limited.errors.filter(error => error.category === 'rate_limit').length, 1);
   assert.equal(config.modelHealth(fresh.id, modelIds[0], 'vision').rateLimited, true);
   config.resetCache();
-  await runVisionRequest(cooldownHost.host, { providers: config.pickAllFor('vision').filter(provider => provider.id === fresh.id),
-    model: modelRef(fresh.id, modelIds[0]), question: 'fixture', image, onRateLimit: config.recordRateLimit });
+  await assert.rejects(runVisionRequest(cooldownHost.host, { providers: config.pickAllFor('vision').filter(provider => provider.id === fresh.id),
+    model: modelRef(fresh.id, modelIds[0]), question: 'fixture', image, onRateLimit: config.recordRateLimit }), { code: 'IRIS_MODEL_UNAVAILABLE' });
   assert.equal(requests.length, 1, '持久化并重载后不再次请求冷却中的显式模型');
   const reloaded = config.providerById(fresh.id);
   respond(() => success('sibling answer'));
@@ -128,12 +127,13 @@ try {
 
   // 新账号 OCR 多切片：第一块首次耗尽，随后各块复用宿主，HTTP 总计一次。
   const ocrProvider = makeProvider('ocr');
+  config.setAssignmentOrder('vision', [modelRef(ocrProvider.id, modelIds[0]), ...config.assignmentOrder('vision')]);
   assert.equal(ocrProvider.health, undefined);
   respond(() => Response.json({ error: { code: 'BudgetLimitExceeded', message: 'Budget exceeded' } }, { status: 429 }));
   const ocrHost = makeHost(['OCR one', 'OCR two', 'OCR three']);
   const ocr = await runOcrRequest(ocrHost.host, {
-    providers: config.pickAllFor('vision').filter(provider => provider.id === ocrProvider.id),
-    model: modelRef(ocrProvider.id, modelIds[0]), image, chunkHeight: 100, overlap: 0, onRateLimit: config.recordRateLimit });
+    providers: config.pickAllFor('vision').filter(provider => provider.id === ocrProvider.id || provider.id === HOST_VISION_REF),
+    image, chunkHeight: 100, overlap: 0, onRateLimit: config.recordRateLimit });
   assert.equal(ocr.status, 'complete'); assert.equal(ocr.totalChunks, 3);
   assert.equal(requests.length, 1); assert.equal(ocrHost.fixture.stats.invocations, 3);
   assert.equal(ocrHost.resolutions(), 1, '切片沿用同一宿主路由');

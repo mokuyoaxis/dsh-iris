@@ -27,7 +27,7 @@ const provider = {
   mediaProtocol: 'dashscope',
   models: [{ id: 'qwen-audio-3.0-asr-flash-filetrans', capabilities: ['transcribe'] }]
 };
-fs.writeFileSync(configFile, JSON.stringify({ providers: [provider] }, null, 2) + '\n', { mode: 0o600 });
+fs.writeFileSync(configFile, JSON.stringify({ providers: [provider], assignments: { transcribe: [provider.id + '::' + provider.models[0].id] } }, null, 2) + '\n', { mode: 0o600 });
 fs.chmodSync(configFile, 0o600);
 
 function state() {
@@ -158,7 +158,7 @@ try {
   assert(!fs.existsSync(path.join(base, 'must-not-be-used')),
     '转写 CLI 使用显式数据根与配置时不得依赖 DSH_HOME');
   const beforeUnsupported = JSON.stringify(state());
-  fs.writeFileSync(configFile, JSON.stringify({ providers: [{ ...provider, mediaProtocol: 'openai-images' }] }));
+  fs.writeFileSync(configFile, JSON.stringify({ providers: [{ ...provider, mediaProtocol: 'openai-images' }], assignments: { transcribe: [provider.id + '::' + provider.models[0].id] } }));
   const unsupported = cli(['run', 'transcribe', '--data-root', path.join(base, 'unsupported-data'),
     '--provider-config', configFile, '--input', JSON.stringify({ audio_path: audioFile })]);
   assert(unsupported.status === 1 && unsupported.stderr.includes('IRIS_PROVIDER_INPUT_PREPARATION_UNSUPPORTED'),

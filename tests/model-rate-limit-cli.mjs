@@ -32,7 +32,7 @@ fs.writeFileSync(file, JSON.stringify({ version: 1, other: { preserved: true }, 
   baseUrl: `http://127.0.0.1:${server.address().port}/v1`, mediaProtocol: 'openai-images', models: [
     { id: 'qwen-image-3.0-pro', capabilities: ['image-gen'] }, { id: 'fallback-image', capabilities: ['image-gen'] },
     { id: 'bad-vision', capabilities: ['vision'] }, { id: 'fallback-vision', capabilities: ['vision'] }
-  ] }], assignments: {} }), { mode: 0o600 });
+  ] }], assignments: { 'image-gen': ['account::qwen-image-3.0-pro', 'account::fallback-image'], vision: ['account::bad-vision', 'account::fallback-vision'] } }), { mode: 0o600 });
 const run = promisify(execFile);
 const cli = async (args, expected = 0) => {
   let output;

@@ -95,8 +95,8 @@ try {
     'Core Attempt 保存明确拒绝与受理事实', firstTask.attempts);
   assert(tasks.all().length === legacyBefore, 'Core 视频任务零 legacy 双写', tasks.all().length);
 
-  // 后续明确只把 good 放首位；自动池补齐项不会被触发，因为首项提交成功。
-  config.setAssignmentOrder('video-gen', [goodRef]);
+  // 后续只使用 good 的两个明确分配模式。
+  config.setAssignmentOrder('video-gen', [goodRef, models.modelRef(providerIds.good, 'wan2.2-s2v-flash')]);
   const frame = path.join(root, 'outputs', 'frame.png');
   fs.writeFileSync(frame, Buffer.from('fake-png'));
   const i2v = await runAction({}, 'video', { prompt: 'move', first_frame_path: frame, size: '640*480' });

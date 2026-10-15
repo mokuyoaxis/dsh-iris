@@ -55,6 +55,7 @@ const provider = config.upsert({
   models: [{ id: 'wan2.2-t2v-flash', capabilities: ['video-gen'] }]
 });
 config.setAssignmentOrder('video-gen', [provider.id + '::wan2.2-t2v-flash']);
+config.setAssignmentOrder('video-gen', [provider.id + '::wan2.2-t2v-flash']);
 
 const originalFetch = global.fetch;
 const calls = { submit: 0, poll: 0, download: 0 };
@@ -202,6 +203,7 @@ try {
     mediaProtocol: 'dashscope',
     models: [{ id: 'wan2.2-s2v-flash', capabilities: ['video-gen'] }]
   });
+  config.setAssignmentOrder('video-gen', [...config.assignmentOrder('video-gen'), s2vModel.id + '::wan2.2-s2v-flash']);
   global.fetch = async (input) => { throw new Error('s2v upload fixture not stubbed: ' + input); };
   let s2vError;
   try {
