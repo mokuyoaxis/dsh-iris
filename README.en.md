@@ -48,8 +48,6 @@ The project is at an early stage; interfaces and configuration formats may still
 
 Iris 0.2.4 provides a DSH plugin and a headless CLI sharing tasks, artifacts and model routing, with persistent image import, native Qwen editing, and explicit function assignments. Music, three agent skills, and synchronous delivery recovery remain available. Core internals have not been frozen as a public SDK.
 
-> Release status: 0.2.4 has not been published; the current npm release is 0.2.3. The 0.2.4 installation commands below become available after its publication. Until then, rc.2 users can pin 0.2.3.
-
 > Version support: Iris 0.2.4 supports DSH `0.2.0-rc.2` or `0.2.1-alpha.4`; Iris 0.2.0–0.2.3 supports rc.2 only. Node.js must be at least 22.0.0 and meet any higher host requirement. Older DSH hosts should pin Iris 0.1.4. See the [compatibility matrix](docs/DSH_COMPATIBILITY.md).
 
 ## What's new in 0.2.4
@@ -93,7 +91,7 @@ Check the host with `dsh --version` and ensure `pnpm` is on your PATH. Iris and 
 
 | Your DSH | Iris choice | Source |
 |---|---|---|
-| `0.2.0-rc.2` or `0.2.1-alpha.4` | `0.2.4` | Pin after publication; rc.2 can use published 0.2.3 until then |
+| `0.2.0-rc.2` or `0.2.1-alpha.4` | `0.2.4` | Pinned npm release |
 | `>=0.1.2-rc.1 <0.1.3-0` or `0.1.5-rc.1` | Stable `0.1.4` | Pinned npm release |
 | Other versions | No current support claim | Check host adaptation before installing |
 
@@ -190,7 +188,7 @@ Save an uploaded or local image as a persistent Artifact for viewing, editing an
 | `0.2.0` | Only `0.2.0-rc.2` | Installed-service isolation checks, Core diff, and SlotRegistry; user demonstration reported successful, with detailed browser actions and asynchronous restart/rollback verification continuing |
 | `0.2.2` | Only `0.2.0-rc.2` | Installed-service checks cover 15 tools and 31 boundaries; complete browser/mobile and real asynchronous restart acceptance remain pending |
 | `0.2.3` | Only `0.2.0-rc.2` | Adds music and a third skill; check actual loading with Host Doctor after upgrading |
-| `0.2.4` (in preparation) | `0.2.0-rc.2` or `0.2.1-alpha.4` | 17 tools / 3 skills; actual SDK, loader, and client slot isolation checks; full browser and hot reload checks remain separate |
+| `0.2.4` | `0.2.0-rc.2` or `0.2.1-alpha.4` | 17 tools / 3 skills; actual SDK, loader, and client slot isolation checks; full browser and hot reload checks remain separate |
 
 See the [compatibility matrix](docs/DSH_COMPATIBILITY.md) for the current scope and [rc.2 adaptation notes](docs/DSH_RC2_ADAPTATION.md) for historical changes. npm 0.1.4 does not contain these later adaptations.
 

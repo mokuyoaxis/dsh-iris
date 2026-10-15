@@ -19,7 +19,7 @@ npm 上无 scope 的 `dsh-iris` 是另一款插件；安装或更新 Iris Media 
 
 只下载旧稳定包可运行 `npm pack @mokuyoaxis/dsh-iris@0.1.4`，安装为普通npm依赖可运行 `npm install @mokuyoaxis/dsh-iris@0.1.4`；后者不会自动加入DSH profile。0.1.4不包含新的Core媒体CLI。
 
-在DSH rc.2或alpha.4上，0.2.4发布后固定安装：
+在DSH rc.2或alpha.4上，固定安装0.2.4：
 
 ```bash
 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.4

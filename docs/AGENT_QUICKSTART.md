@@ -9,7 +9,7 @@
 ```text
 请根据本仓库 README，帮我安装并使用 Iris（@mokuyoaxis/dsh-iris）。
 先确认运行环境、目标 DSH profile，并用 dsh --version 核对宿主；Iris 0.2.x 要求 Node.js >=22.0.0（旧 npm 0.1.4 的历史要求为 >=20.10.0）：
-- DSH 0.2.0-rc.2或0.2.1-alpha.4：0.2.4发布后固定安装 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.4。
+- DSH 0.2.0-rc.2或0.2.1-alpha.4：固定安装 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.4。
 - DSH >=0.1.2-rc.1 <0.1.3-0 或 0.1.5-rc.1：固定安装 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.1.4；只下载用 npm pack @mokuyoaxis/dsh-iris@0.1.4。
 - 其他 DSH 版本：先报告没有支持声明，不自行升级宿主或跳过版本检查。
 没有DSH、希望用CLI时，按docs/HEADLESS_CLI.md使用npm0.2.4；npm0.1.4不含新的Core媒体CLI。
@@ -26,7 +26,7 @@
 ```text
 Help me install and use Iris (@mokuyoaxis/dsh-iris) according to this repository's README.
 Check the environment, target DSH profile, and dsh --version first; Iris 0.2.x requires Node.js >=22.0.0 (the published npm 0.1.4 historically requires >=20.10.0):
-- DSH 0.2.0-rc.2 or 0.2.1-alpha.4: after publication, pin dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.4.
+- DSH 0.2.0-rc.2 or 0.2.1-alpha.4: pin dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.4.
 - DSH >=0.1.2-rc.1 <0.1.3-0 or 0.1.5-rc.1: pin dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.1.4; download only with npm pack @mokuyoaxis/dsh-iris@0.1.4.
 - Other DSH versions: report the missing support claim; do not upgrade the host or bypass its version checks automatically.
 For CLI use without DSH, follow docs/HEADLESS_CLI.md using npm 0.2.4; npm 0.1.4 does not include the new Core media CLI. Check the README publication status first.

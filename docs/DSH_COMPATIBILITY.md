@@ -12,7 +12,7 @@ Iris与DSH的版本号独立。安装前运行 `dsh --version`，并核对要安
 
 ## 安装与升级
 
-在上表支持的宿主中固定安装所需Iris版本，以下为0.2.4命令；发布前请使用已发布的版本：
+在上表支持的宿主中固定安装所需Iris版本，以下为0.2.4命令：
 
 ```bash
 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.4
