@@ -41,7 +41,7 @@ const services = {
   tools: { register(definition) { registered.tools.push(definition); return () => {}; } },
   agentDefaultModel: { currentSelection: () => ({ provider: 'p', model: 'm' }) },
   llm: {
-    async resolveModelInfo(provider, model) { return { provider, model }; },
+    async resolveModelInfo(provider, model) { return { provider, model, id: model, inputModalities: ['text', 'image'] }; },
     async *stream() { yield { delta: '宿主' }; yield { type: 'text-delta', text: '视觉' }; }
   }
 };

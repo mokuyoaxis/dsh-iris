@@ -1129,7 +1129,7 @@ stage('documents');
   ];
   for (const name of expectedClientPeers) {
     if (pkg.peerDependencies?.[name] !== DSH_SUPPORT_RANGE) {
-      failures.push(`package.json ${name} 必须覆盖已验证的两版宿主`);
+      failures.push(`package.json ${name} 必须覆盖已验证的客户端 SDK 版本`);
     }
     if (lock.packages?.['']?.peerDependencies?.[name] !== pkg.peerDependencies?.[name]) {
       failures.push(`package-lock.json ${name} peer 范围必须与 package.json 一致`);

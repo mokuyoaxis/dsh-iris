@@ -1,4 +1,4 @@
-/** DSH rc.2 Host 边界回归；不依赖安装包，不调用真实模型。 */
+/** DSH Host 精确路由边界回归；不依赖安装包，不调用真实模型。 */
 import assert from 'node:assert/strict';
 import { createDshHostAdapter } from '../lib/dsh-host-adapter.js';
 import { hostDoctor } from '../lib/doctor.js';
@@ -86,4 +86,16 @@ for (const kind of ['error', 'aborted']) {
 const missing = createDshHostAdapter({ get: name => name === 'llm' ? services.llm : undefined }, { version: '0.2.0-rc.2' });
 assert(!missing.ports.visionModel && missing.unavailable.visionModel.kind === 'unavailable');
 
-console.log('ALL OK —— rc.2 附件完整引用、精确视觉路由、图片能力确认、取消与宿主错误边界通过');
+for (const version of ['0.1.2-rc.1', '0.1.5-rc.1', '0.1.7-rc.2', '0.2.1-alpha.4', 'unknown']) {
+  const older = createDshHostAdapter({ get: name => services[name] }, { version });
+  finishKind = 'stop';
+  assert.equal(await older.ports.visionModel.analyze({ question: 'q', ref: found }), 'fixture answer');
+  assert.equal(request.provider, 'fixture'); assert.equal(request.model, 'vision');
+  finishKind = 'error';
+  await assert.rejects(older.ports.visionModel.analyze({ question: 'q', ref: found }), /DSH 视觉调用失败/,
+    version + ' 不能因版本号进入未绑定路由或忽略错误终态的旧分支');
+  const unavailable = createDshHostAdapter({ llm: services.llm }, { version });
+  assert(!unavailable.ports.visionModel, version + ' 缺少默认模型接口时应明确不可用');
+}
+
+console.log('ALL OK —— 跨版本附件完整引用、精确视觉路由、图片能力确认、取消与宿主错误边界通过');

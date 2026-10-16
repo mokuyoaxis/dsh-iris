@@ -92,6 +92,7 @@ Iris 继续作为普通 DSH/Cordis 插件装载：`cordis.patch.yml` 只把 npm 
 - 已发布 Iris `0.1.4` 在 DSH `0.1.2-rc.1` 与 `0.1.5-rc.1` 上有历史宿主验证记录，不继承为当前版本的支持声明。
 - Iris `0.2.1` 只声明 DSH `0.2.0-rc.2`，已通过真实安装服务隔离验收，保留附件完整引用、绑定明确图片模型路由并适配客户端主视图选择；边界与尚未完成的浏览器实机检查见 [rc.2 适配说明](DSH_RC2_ADAPTATION.md)。
 - Iris0.2.4扩大为rc.2与alpha.4两项准确版本，顶层engines.dsh、嵌套字段、五项可选peer及Doctor同步；Core/Provider契约保持。当前范围和服务/浏览器验证区别见 [DSH版本兼容](DSH_COMPATIBILITY.md)。
+- Iris0.2.5在单一Adapter中按默认选择与模型元数据接口启用精确视觉路由，恢复旧宿主的当前功能；12个准确版本经官方SDK隔离验收后进入声明。Core/Provider和数据格式保持，具体范围仍以兼容矩阵为准。
 
 Local Host 不模拟 Browser、会话或附件。测试需要这些能力时必须显式注入，缺失行为也属于契约。
 

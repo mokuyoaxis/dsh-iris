@@ -2,7 +2,8 @@
  * 手动验证已安装 DSH 的真实服务；不安装依赖，不接触用户 profile/数据，不调用真实模型。
  * node scripts/verify-dsh-host.mjs --dsh-root /absolute/path/to/@deepseek-ai/dsh
  * 目标版本见 lib/dsh-compatibility.js。临时数据和 report.json 留在仓库外供复核。
- * Node客户端夹具另需目标版本的官方 dsh-client-ui-slots SDK（真实Web前端内嵌此模块）。
+ * Node客户端夹具另需与 renderer 同版本的官方 dsh-client-ui-slots SDK。
+ * 已安装宿主未单独提供它时，可显式传 --client-sdk-root /absolute/path/to/sdk-fixture。
  */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -16,7 +17,9 @@ import { pathToFileURL } from 'node:url';
 import { isSupportedDshVersion } from '../lib/dsh-compatibility.js';
 
 const args = process.argv.slice(2);
-assert(args.length === 2 && args[0] === '--dsh-root' && path.isAbsolute(args[1]), '需要显式 --dsh-root 绝对路径');
+assert((args.length === 2 || args.length === 4) && args[0] === '--dsh-root' && path.isAbsolute(args[1])
+  && (args.length === 2 || args[2] === '--client-sdk-root' && path.isAbsolute(args[3])),
+'需要显式 --dsh-root 绝对路径，可另传 --client-sdk-root 绝对路径');
 const dshRoot = fs.realpathSync(args[1]);
 const manifest = JSON.parse(fs.readFileSync(path.join(dshRoot, 'package.json'), 'utf8'));
 assert.equal(manifest.name, '@deepseek-ai/dsh');
@@ -40,6 +43,8 @@ process.env.IRIS_IMPORT_WORKBENCH_CONFIG = '';
 process.argv[1] = path.join(dshRoot, 'lib/bin.js');
 report.simulatedDshEntry = true;
 const requireDsh = createRequire(path.join(dshRoot, 'package.json'));
+const requireClientSdk = args[3] ? createRequire(path.join(args[3], 'package.json')) : requireDsh;
+if (args[3]) report.clientSdkRoot = fs.realpathSync(args[3]);
 const load = name => import(pathToFileURL(requireDsh.resolve(name)).href);
 const fetchLocal = globalThis.fetch;
 let allowedOrigin;
@@ -56,7 +61,7 @@ console.log('验收目录：' + work);
 const fibers = [];
 try {
   const [{ Context }, { LocalAttachmentStore }, { SystemPrompt }, { ToolRuntime }, { SkillRegistry },
-    { LlmRuntime, LlmAdapter }, { AgentDefaultModelConfig }, { WebServer }, { evaluatePluginCompatibility }] = await Promise.all([
+    { LlmRuntime, LlmAdapter }, { AgentDefaultModelConfig }, { WebServer }, boot] = await Promise.all([
     load('@deepseek-ai/cordis'), load('@deepseek-ai/dsh-attachment-local'), load('@deepseek-ai/dsh-system-prompt'),
     load('@deepseek-ai/dsh-tools'), load('@deepseek-ai/dsh-skill'), load('@deepseek-ai/dsh-llm'),
     load('@deepseek-ai/dsh-agent-default-model'), load('@deepseek-ai/dsh-host-webserver'), load('@deepseek-ai/dsh-app-boot')
@@ -93,8 +98,38 @@ try {
   });
   const host = () => createDshHostAdapter(ctx, { version: manifest.version });
   const currentPackage = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  await check('actual host loader accepts the final manifest without exemptions', () => {
-    assert.equal(evaluatePluginCompatibility(currentPackage, {}, manifest.version), undefined);
+  await check('actual host loader accepts the final manifest without exemptions', async () => {
+    if (typeof boot.evaluatePluginCompatibility === 'function') {
+      assert.equal(boot.evaluatePluginCompatibility(currentPackage, {}, manifest.version), undefined);
+      report.loader = { method: 'evaluatePluginCompatibility', exemptions: false };
+    } else {
+      // 历史宿主没有现代兼容检查 helper，直接用其原生 Profile/Boot 装载。
+      const profile = path.join(process.env.DSH_HOME, 'profiles', 'iris-host-check');
+      const project = fs.realpathSync(new URL('../', import.meta.url));
+      fs.mkdirSync(path.join(profile, 'node_modules/@mokuyoaxis'), { recursive: true });
+      fs.symlinkSync(project, path.join(profile, 'node_modules/@mokuyoaxis/dsh-iris'), 'dir');
+      fs.writeFileSync(path.join(profile, 'package.json'), JSON.stringify({ name: 'iris-host-check', private: true,
+        dependencies: { '@mokuyoaxis/dsh-iris': 'file:' + project }, dsh: { profile: { bundles: ['@mokuyoaxis/dsh-iris'] } } }));
+      fs.writeFileSync(path.join(profile, 'cordis.patch.yml'), '[]\n');
+      const anchor = path.join(dshRoot, 'package.json');
+      const loaded = typeof boot.loadProfileDirectory === 'function'
+        ? boot.loadProfileDirectory('iris-host-check', profile, anchor)
+        : boot.loadProfile('iris-host-check', 'iris-host-check', anchor, process.env.DSH_HOME);
+      assert.equal(loaded.layers.length, 1);
+      assert.equal(fs.realpathSync(loaded.layers[0].packageDir), project);
+      const empty = path.join(work, 'empty.yml'); fs.writeFileSync(empty, '[]\n');
+      let profileCtx;
+      try {
+        profileCtx = await boot.boot('iris-host-check', empty, loaded.layers.flatMap(layer => layer.patches), async scope => {
+          for (const plugin of [SystemPrompt, ToolRuntime, SkillRegistry]) await scope.plugin(plugin, {});
+        }, pathToFileURL(path.join(profile, 'package.json')).href);
+        assert.deepEqual(profileCtx.get('tools').schemas().map(value => value.name).sort(), [...EXPECTED_IRIS_TOOLS].sort());
+        assert.deepEqual((await profileCtx.get('skills').list()).map(value => value.name).sort(), [...EXPECTED_IRIS_SKILLS].sort());
+        assert(!fs.existsSync(path.join(profile, 'compatibility.json')));
+        report.loader = { method: 'profile + boot', tools: EXPECTED_IRIS_TOOLS.length, skills: EXPECTED_IRIS_SKILLS.length,
+          localPackageLink: true, exemptions: false };
+      } finally { if (profileCtx) await profileCtx.fiber.dispose(); }
+    }
     assert.equal(detectDshVersion({ entry: path.join(dshRoot, 'lib/bin.js') }), manifest.version);
   });
   await check('session attachment DTO survives real readImage integrity checks', async () => {
@@ -555,6 +590,97 @@ try {
     assert.equal(metadata.height, 6);
   });
 
+  await check('Music tool delivers an inline audio fixture as a persistent Core Artifact', async () => {
+    const config = await import('../lib/config.js');
+    const { readCoreArtifactMediaForDsh } = await import('../lib/dsh-core-adapter.js');
+    // 空 WAV 仅验收协议与字节交付，不代表试听或真实生曲质量。
+    const wav = Buffer.from('UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=', 'base64');
+    const provider = config.upsert({ name: 'music fixture', baseUrl: allowedOrigin + '/music-fixture/v1',
+      apiKey: 'fixture-only-key', mediaProtocol: 'openai-images', models: [
+        { id: 'fixture-music', capabilities: ['music-gen'], musicProtocol: 'gemini-web-music' }
+      ] });
+    const model = provider.id + '::fixture-music'; config.setAssignmentOrder('music-gen', [model]);
+    const originalFetch = globalThis.fetch, before = modelCalls;
+    let calls = 0;
+    globalThis.fetch = (input, options) => {
+      const url = new URL(String(input));
+      if (url.origin === allowedOrigin && url.pathname === '/music-fixture/v1/chat/completions') {
+        assert.equal(JSON.parse(options.body).model, 'fixture-music'); calls++;
+        return Promise.resolve(Response.json({ choices: [{ message: {
+          content: '[audio](data:audio/wav;base64,' + wav.toString('base64') + ')'
+        } }] }));
+      }
+      return originalFetch(input, options);
+    };
+    try {
+      const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_generate_music',
+        arguments: { prompt: 'offline compatibility fixture', model, retry_502: 0 },
+        agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
+      assert.equal(result.isError, false, JSON.stringify(result));
+      const text = result.content.filter(block => block.type === 'text').map(block => block.text).join('\n');
+      const id = /artifact_[a-f0-9]{24}/.exec(text)?.[0]; assert(id, text);
+      const media = await readCoreArtifactMediaForDsh(id);
+      assert.equal(media.artifact.mediaType, 'audio/wav'); assert.deepEqual(media.bytes, wav);
+      const response = await fetch(allowedOrigin + '/iris/api/core/artifact/' + id + '/media');
+      assert.equal(response.status, 200); assert.deepEqual(Buffer.from(await response.arrayBuffer()), wav);
+      assert.equal(calls, 1); assert.equal(modelCalls, before);
+      report.music = { artifactId: id, fixtureProviderCalls: calls, audioBytes: wav.length };
+    } finally { globalThis.fetch = originalFetch; }
+  });
+  await check('native Qwen edit preserves its Core source and publishes a real DSH image attachment', async () => {
+    const config = await import('../lib/config.js');
+    const { createCoreRuntime } = await import('../lib/core-runtime.js');
+    const { createCoreArtifact, readCoreArtifactBytes } = await import('../lib/core-artifacts.js');
+    const { dshCoreDataRoot, readCoreArtifactMediaForDsh } = await import('../lib/dsh-core-adapter.js');
+    const original = await sharp({ create: { width: 120, height: 80, channels: 3, background: '#ff0000' } }).png().toBuffer();
+    const output = await sharp({ create: { width: 96, height: 64, channels: 3, background: '#00ff00' } }).png().toBuffer();
+    const runtime = createCoreRuntime({ dataRoot: dshCoreDataRoot(), mode: 'writer' }); runtime.start();
+    let sourceArtifact;
+    try { sourceArtifact = await runtime.run('execute', ({ dataRoot }) => createCoreArtifact(dataRoot,
+      { bytes: original, mediaType: 'image/png', kind: 'imported-image', metadata: {} })); }
+    finally { await runtime.dispose(); }
+    const provider = config.upsert({ name: 'Qwen fixture', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      apiKey: 'fixture-only-key', mediaProtocol: 'dashscope', models: [
+        { id: 'qwen-image-2.0-pro', capabilities: ['image-gen'], imageProtocol: 'dashscope', visionInput: { maxDimension: 64 } }
+      ] });
+    const model = provider.id + '::qwen-image-2.0-pro'; config.setAssignmentOrder('image-gen', [model]);
+    const originalFetch = globalThis.fetch, before = modelCalls;
+    let calls = 0, downloads = 0;
+    globalThis.fetch = async (input, options) => {
+      const url = new URL(String(input));
+      // 标准协议端点仅作为标识；这里在网络边界截获，绝不连接上游。
+      if (url.origin === 'https://dashscope.aliyuncs.com' && url.pathname === '/api/v1/services/aigc/multimodal-generation/generation') {
+        const body = JSON.parse(options.body), content = body.input.messages[0].content;
+        assert.equal(body.model, 'qwen-image-2.0-pro'); assert.equal(content[1].text, 'change red to green');
+        assert.equal((await sharp(Buffer.from(content[0].image.split(',')[1], 'base64')).metadata()).width, 64);
+        calls++;
+        return Response.json({ output: { choices: [{ message: { content: [{ image: allowedOrigin + '/edit-fixture.png' }] } }] } });
+      }
+      if (url.origin === allowedOrigin && url.pathname === '/edit-fixture.png') {
+        downloads++; return new Response(output, { headers: { 'Content-Type': 'image/png' } });
+      }
+      return originalFetch(input, options);
+    };
+    try {
+      const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_edit_image',
+        arguments: { source_artifact_id: sourceArtifact.id, prompt: 'change red to green', model },
+        agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
+      assert.equal(result.isError, false, JSON.stringify(result));
+      const image = result.content.find(block => block.type === 'image'); assert(image, JSON.stringify(result));
+      assert.deepEqual(Buffer.from((await ctx.get('attachments').readImage(image.attachment)).data), output);
+      const text = result.content.filter(block => block.type === 'text').map(block => block.text).join('\n');
+      const ids = [...new Set(text.match(/artifact_[a-f0-9]{24}/g) || [])];
+      const edited = (await Promise.all(ids.map(id => readCoreArtifactMediaForDsh(id))))
+        .find(item => item.artifact.relations?.some(edge => edge.type === 'derived-from' && edge.artifactId === sourceArtifact.id));
+      assert(edited, text); assert.deepEqual(edited.bytes, output);
+      assert.deepEqual(readCoreArtifactBytes(dshCoreDataRoot(), sourceArtifact.id).bytes, original);
+      assert.equal(calls, 1); assert.equal(downloads, 1); assert.equal(modelCalls, before + 1);
+      const described = modelRequests.at(-1).messages[0].content.find(block => block.type === 'image').attachment;
+      assert.deepEqual(Buffer.from((await ctx.get('attachments').readImage(described)).data), output);
+      report.qwenEdit = { sourceArtifactId: sourceArtifact.id, artifactId: edited.artifact.id, fixtureProviderCalls: calls, downloads };
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
   const clientSource = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
   const bundleCache = new Map();
   const window = { addEventListener() {}, removeEventListener() {} };
@@ -570,8 +696,14 @@ try {
     if (request === 'react') return react;
     if (request === 'react-dom' || request === 'react-dom/client') return {};
     if (request === 'react/jsx-runtime') return { jsx: react.createElement, jsxs: react.createElement };
+    if (request === '@deepseek-ai/dsh-client-ui-slots') return clientSlots;
     return requireDsh(request);
   }
+  const rendererManifest = requireDsh('@deepseek-ai/dsh-client-ui-renderer/package.json');
+  const slotsManifest = requireClientSdk('@deepseek-ai/dsh-client-ui-slots/package.json');
+  assert.equal(slotsManifest.version, rendererManifest.version, '客户端夹具必须使用与目标 renderer 同版本的官方 SlotCore');
+  const clientSlots = await import(pathToFileURL(requireClientSdk.resolve('@deepseek-ai/dsh-client-ui-slots')).href);
+  report.clientSdk = { renderer: rendererManifest.version, slots: slotsManifest.version };
   function bundledClient(name) {
     if (bundleCache.has(name)) return bundleCache.get(name);
     let entry;

@@ -59,9 +59,17 @@ try {
   assert.equal(config.upsert({ baseUrl: official, mediaProtocol: 'constructor' }).mediaProtocol, 'constructor');
   await assert.rejects(askWithBackends(buildVisionBackendsFromHost({}, { providers: [{ type: 'future-vision' }] }), {}),
     { code: 'IRIS_VISION_PROTOCOL_UNSUPPORTED' });
-  const host = createDshHostAdapter({ get: (name) => name === 'llm' ? {
-    stream: async function* () { yield { delta: 'host fixture' }; }
-  } : undefined });
+  const services = {
+    agentDefaultModel: { currentSelection: () => ({ provider: 'fixture', model: 'fixture-vision' }) },
+    llm: {
+      async resolveModelInfo(provider, id) { return { provider, id, inputModalities: ['text', 'image'] }; },
+      async *stream(request) {
+        assert.equal(request.provider, 'fixture'); assert.equal(request.model, 'fixture-vision');
+        yield { delta: 'host fixture' };
+      }
+    }
+  };
+  const host = createDshHostAdapter({ get: name => services[name] }, { version: '0.1.2-rc.1' });
   const fallback = await askWithBackends(buildVisionBackendsFromHost(host, {
     providers: [{ type: 'future-vision' }]
   }), { question: 'fixture' });

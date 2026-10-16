@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-10-16
+
+### Changed
+
+- 恢复当前功能在旧DSH上的支持：准确覆盖0.1.2-rc.1、0.1.5-rc.1/rc.2/rc.3、0.1.7-rc.1/rc.2、0.2.0-rc.1/rc.2及0.2.1-alpha.1/alpha.2/alpha.3/alpha.4；同步engines、可选客户端peers与Doctor。旧宿主共用当前Core、Music、图片导入和原生Qwen改图，Node最低仍为22。见 [兼容矩阵与验证范围](docs/DSH_COMPATIBILITY.md)。
+
+### Fixed
+
+- 默认视觉按宿主接口能力启用精确路由，修复旧SDK已有相同API却被版本号判断送入历史路径、可能返回空结果或忽略失败终态的问题。
+
 ## [0.2.4] - 2026-10-15
 
 ### Added
@@ -325,7 +335,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.1...v0.2.2

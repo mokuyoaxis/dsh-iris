@@ -31,7 +31,7 @@ Host Doctor 是 Iris 在运行中的 DSH 实例内提供的兼容性诊断。它
 
 如果刚安装、热更新或强制刷新，先等 Web 页面完成装载，再刷新诊断。未收到客户端握手时，Host Doctor 只报告警告，不会把“服务端已装载”冒充成“UI 已装载”。
 
-Iris0.2.4支持DSH `0.2.0-rc.2` 或 `0.2.1-alpha.4`，Doctor与package顶层/嵌套DSH engines及客户端peer保持同一范围。0.2.0–0.2.3仅支持rc.2。旧DSH0.1.2线或0.1.5-rc.1返回版本错误，并提示固定Iris0.1.4；无DSH的CLI/离线诊断不受宿主版本限制。见 [兼容矩阵](DSH_COMPATIBILITY.md)。
+Iris0.2.5的Doctor与package顶层/嵌套DSH engines及客户端peer统一覆盖12个已验证准确版本，包含0.1.2-rc.1和0.1.5系列；旧宿主不再被统一引导至Iris0.1.4。Iris0.2.4的历史范围仍为 `0.2.0-rc.2` 或 `0.2.1-alpha.4`。具体范围及SDK验收限制见 [兼容矩阵](DSH_COMPATIBILITY.md)。无DSH的CLI/离线诊断不受宿主版本限制。
 
 ## 运行时证据
 

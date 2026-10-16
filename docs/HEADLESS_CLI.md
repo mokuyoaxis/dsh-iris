@@ -2,9 +2,9 @@
 
 `run music` 支持音乐生成与模型级协议配置，见 [音乐生成](MUSIC.md)。0.2.4的六类功能均采用明确分配名单，升级差异见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。
 
-本文面向Iris0.2.4，涵盖无DSH的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core内部接口与Artifact v0尚未冻结为公共SDK。
+本文面向Iris0.2.5，涵盖无DSH的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core内部接口与Artifact v0尚未冻结为公共SDK。
 
-需要Node.js ≥ 22.0.0。按 [README](../README.md) 核对发布状态，安装 `npm install @mokuyoaxis/dsh-iris@0.2.4` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；本地tarball也可用于安装。
+需要Node.js ≥ 22.0.0。按 [README](../README.md) 核对发布状态，安装 `npm install @mokuyoaxis/dsh-iris@0.2.5` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；本地tarball也可用于安装。
 
 0.2.1 提供 `vision look / locate / ocr / summarize`。文件输入的纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；图片/帧 Artifact ID 输入需显式数据根，以 reader 读取既有 Core 产物，只有主动音轨转写才创建 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)；S2V、HTML、配置、等待及批量管理见 [CLI 管理](CLI_MANAGEMENT.md)。
 

@@ -5,7 +5,7 @@
  *   ① 后端组装顺序：自持栈按 provider 顺序在前，全局模型兜底在后；
  *   ② 429 → 分类 rate_limit/quota，自动降级到下一个后端；
  *   ③ 401 → 分类 auth；
- *   ④ 取消：AbortSignal 传播到视觉请求；
+ *   ④ 取消：AbortSignal 传播到视觉请求，不能继续调用宿主模型；
  *   ⑤ 双失败 → 抛人话错误且 errors 现场完整；
  *   ⑥ 单后端成功但返回空串 → 视为未成功继续降级。
  * 全部用本地假 HTTP 服务器，零网络、零费用。
@@ -56,12 +56,19 @@ const cap = await import('../lib/capability.js');
 const pA = (base) => ({ id: 'pA', type: 'openai', baseUrl: base, apiKey: 'kA', visionModel: 'm-a' });
 const pB = (base) => ({ id: 'pB', type: 'openai', baseUrl: base, apiKey: 'kB', visionModel: 'm-b' });
 
+let globalCalls = 0;
 const globalLlm = {
-  stream: async function* () {
+  async resolveModelInfo(provider, id) { return { provider, id, inputModalities: ['text', 'image'] }; },
+  stream: async function* (request) {
+    assert(request.provider === 'fixture' && request.model === 'fixture-vision', '宿主调用需要明确路由');
+    globalCalls++;
     yield { delta: '全局兜底回答' };
   }
 };
-const host = (services = {}) => createDshHostAdapter({ get: (name) => services[name] });
+const defaults = { currentSelection: () => ({ provider: 'fixture', model: 'fixture-vision' }) };
+const host = (services = {}) => createDshHostAdapter({
+  get: name => name === 'agentDefaultModel' && services.llm ? defaults : services[name]
+}, { version: '0.1.2-rc.1' });
 
 /* ---------- ① 组装顺序 ---------- */
 const backends = buildVisionBackendsFromHost(host({ llm: globalLlm }), {
@@ -89,10 +96,14 @@ assert(r2.errors[0].category === 'auth', '401 分类 auth', JSON.stringify(r2.er
 /* ---------- ④ 取消：AbortSignal 已中止 → 请求被中断 ---------- */
 const ac = new AbortController();
 ac.abort();
-const r4 = await askWithBackends(buildVisionBackendsFromHost(host({ llm: globalLlm }), {
-  providers: [pA(`http://127.0.0.1:${okSrv.port}/v1`)]
-}), { question: 'q', imageDataUrl: 'data:image/png;base64,AAAA', signal: ac.signal });
-assert(r4.answer === '全局兜底回答', '中止信号让自持栈失效后仍全局兜底', JSON.stringify(r4));
+let canceled;
+const beforeCanceled = globalCalls;
+try {
+  await askWithBackends(buildVisionBackendsFromHost(host({ llm: globalLlm }), {
+    providers: [pA(`http://127.0.0.1:${okSrv.port}/v1`)]
+  }), { question: 'q', imageDataUrl: 'data:image/png;base64,AAAA', signal: ac.signal });
+} catch (error) { canceled = error; }
+assert(canceled && globalCalls === beforeCanceled, '取消后不能继续进入宿主视觉生成');
 
 /* ---------- ⑤ 双失败 → 抛错 + errors 现场 ---------- */
 let thrown = null;

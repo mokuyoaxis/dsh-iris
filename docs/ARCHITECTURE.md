@@ -1,6 +1,6 @@
 # Iris 架构与边界
 
-状态：本文面向 **Iris 0.2.4**。0.2.0建立实例化Core Runtime、Headless CLI及共享Task/Artifact事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.4补图片导入、原生Qwen改图、统一功能分配及DSH双版本声明。插件支持rc.2或alpha.4，Node.js最低22.0.0；旧宿主固定Iris0.1.4，详见 [兼容矩阵](DSH_COMPATIBILITY.md)。Core内部API尚未冻结为公共SDK。
+状态：本文描述 **Iris0.2.5** 的架构。0.2.0建立实例化Core Runtime、Headless CLI及共享Task/Artifact事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.4补图片导入、原生Qwen改图和统一功能分配；0.2.5按接口能力恢复旧宿主支持。准确版本及历史发行范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。Node.js最低22.0.0；Core内部API尚未冻结为公共SDK。
 
 ## 当前形态
 
