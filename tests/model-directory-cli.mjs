@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { useTempDshHome } from './test-env.js';
 import { FAKE_WAV, createFakeLifecycleProvider } from './fixtures/fake-lifecycle-provider.mjs';
@@ -29,7 +30,7 @@ globalThis.fetch=async(input,options={})=>{
  return Response.json({output:{audio:{data:${JSON.stringify(FAKE_WAV.toString('base64'))}}}});
 };`, { mode: 0o600 });
 const cli = (args, recover = false, expectedStatus = 0) => {
-  const result = spawnSync(process.execPath, ['--import', preload, 'bin/dsh-iris.js', ...args, '--provider-config', file], {
+  const result = spawnSync(process.execPath, ['--import', pathToFileURL(preload).href, 'bin/dsh-iris.js', ...args, '--provider-config', file], {
     encoding: 'utf8', timeout: 30000, env: { ...process.env, DSH_HOME: path.join(root, 'unused-host'),
       IRIS_DIRECTORY_TEST_LOG: log, IRIS_DIRECTORY_TEST_RECOVER: String(recover) }
   });
