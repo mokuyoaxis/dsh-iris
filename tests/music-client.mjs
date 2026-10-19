@@ -7,7 +7,8 @@ const source = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'ut
 const anchor = 'var clientSlots = clientSlotsPort(ctx);';
 let entry, cursor = 0, values = [], effects = [];
 const requests = [], events = [], notes = [];
-const window = { __ModuleLoader__: { load(value) { entry = value; } }, dispatchEvent(event) { events.push(event.type); } };
+const window = { __ModuleLoader__: { load(value) { entry = value; } }, dispatchEvent(event) { events.push(event.type); },
+  addEventListener() {}, removeEventListener() {} };
 const React = {
   createElement(type, props, ...children) { return { type, props: { ...props, children } }; },
   useState(initial) {

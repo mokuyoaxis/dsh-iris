@@ -846,8 +846,10 @@ if (tasksLib) {
   const orderedBody = modelsSrc.match(/export function orderedModels\(pool, capability, assignments(?:,[^\n]*)?\)[\s\S]*?return ordered;/)?.[0] || '';
   if (!/resolvePoolModel\(pool, raw, capability\)/.test(orderedBody)
       || !/seen\.has\(model\.ref\)/.test(orderedBody)
-      || /for \(const model of pool\)/.test(orderedBody)) {
-    failures.push('lib/models.js orderedModels 必须按分配序解析去重，禁止模型池补齐');
+      || !/policy\.mode === 'auto'/.test(orderedBody)
+      || !/model\.source !== 'discovered'/.test(orderedBody)
+      || !/policy\.mode === 'manual'/.test(orderedBody)) {
+    failures.push('lib/models.js orderedModels 必须区分自动池与手工名单、排除待确认发现项并保持去重');
   }
   const actionsSrc = read('lib/actions.js');
   if (!/Array\.isArray\(args\.model_refs\)/.test(actionsSrc) || !/store\.setAssignmentOrder/.test(actionsSrc)) {
@@ -927,8 +929,8 @@ if (tasksLib) {
     failures.push('lib/models.js MODEL_CAP_RULES 未覆盖真实命名族（qwen-image/cosyvoice/z-image…）');
   }
   const clientSrc = read('lib/client.js');
-  if (!/providers_discover/.test(clientSrc) || !/发现模型/.test(clientSrc)) {
-    failures.push('lib/client.js ProviderManager 缺少「发现模型」按钮');
+  if (!/providers_sync_directory/.test(clientSrc) || !/同步目录/.test(clientSrc) || !/data-provider-directory/.test(clientSrc)) {
+    failures.push('lib/client.js ProviderManager 缺少可折叠的模型目录同步入口');
   }
 }
 
@@ -949,7 +951,7 @@ if (tasksLib) {
     failures.push('lib/actions.js 缺少 probeModel（按能力逐模型实测探针）');
   }
   const clientSrc = read('lib/client.js');
-  if (!/function\s+ModelPool/.test(clientSrc) || !/providers_test_model/.test(clientSrc) || !/providers_add_model/.test(clientSrc)) {
+  if (!/function\s+ModelPool/.test(clientSrc) || !/providers_test_model/.test(clientSrc) || !/providers_confirm_model/.test(clientSrc)) {
     failures.push('lib/client.js 模型池 UI 缺 ModelPool/逐模型测试/手动添加');
   }
 }

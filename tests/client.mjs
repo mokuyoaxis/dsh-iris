@@ -51,7 +51,7 @@ const sandbox = {
   console: { log() {}, error() {} },
   localStorage: localStorageStub,
   document: {
-    getElementById() { return null; },
+    getElementById(id) { return appendedStyles.find(node => node.id === id) || null; },
     createElement() { return { dataset: {} }; },
     head: { appendChild(node) { appendedStyles.push(node); } }
   },
@@ -86,6 +86,20 @@ clientModule.apply({ slots: {
 assert(appendedStyles.length === 1, 'client apply 应注入一份 Iris 样式');
 assert(slotRegistrations.length === 4, 'client apply 必须注册四个座位');
 assert(slotRegistrations.every((item) => typeof item.component === 'function'), '四个座位必须注册 React 组件');
+const stylesheet = appendedStyles[0];
+const latestCss = stylesheet.textContent;
+stylesheet.textContent = '/* previous Iris stylesheet */';
+let styleUpdates = 0;
+Object.defineProperty(stylesheet, 'textContent', { configurable: true,
+  get() { return this.css; }, set(value) { this.css = value; styleUpdates++; } });
+stylesheet.css = '/* previous Iris stylesheet */';
+const styleRefreshContext = { slots: { inject() {}, register() {} } };
+clientModule.apply(styleRefreshContext);
+assert(appendedStyles.length === 1, '已有旧样式时复用原节点，不追加重复样式');
+assert(stylesheet.textContent === latestCss, '更新插件时必须替换已有旧样式');
+assert(styleUpdates === 1, '旧样式应更新一次');
+clientModule.apply(styleRefreshContext);
+assert(styleUpdates === 1, '相同样式重复加载不反复重写节点');
 
 /* 真正执行关键组件树，避免仅靠源码字符串漏掉分支作用域等运行时错误。 */
 function renderTree(node, depth = 0) {
@@ -171,7 +185,7 @@ for (const act of ["action: 'image'", "action: 'video'", "action: 'tts'", "actio
 /* ⑤ 阶段 6 条目 4：能力分配 UI（有序 failover 列表编辑） */
 assert(new RegExp('function\\s+CapabilityAssigner\\s*\\(').test(src), '缺少 CapabilityAssigner 组件');
 assert(src.includes("React.createElement(CapabilityAssigner"), '缺少 CapabilityAssigner 挂载到工作台');
-assert(src.includes("'功能分配（调用顺序）'"), '缺少功能分配区标题');
+assert(src.includes("'功能池与调用方式'"), '缺少功能池调用方式标题');
 assert(src.includes("capability: cap, model_refs: refs"), '缺少复合引用有序列表保存调用（model_refs 数组）');
 for (const capRow of ["cap: 'image-gen'", "cap: 'video-gen'", "cap: 'tts'", "cap: 'transcribe'", "cap: 'vision'"]) {
   assert(src.includes(capRow), '缺少能力行 ' + capRow);
@@ -230,7 +244,7 @@ assert(src.includes('grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)
   '作品库缺少移动端自适应网格');
 assert(src.includes('function capabilityHealth(state, capability)'), '缺少功能健康状态判定');
 assert(src.includes('state.health.capabilities') && src.includes('CapabilityHealthOverview'),
-  '工作台未消费服务端健康快照或缺少五项能力概览');
+  '工作台未消费服务端健康快照或缺少能力概览');
 for (const status of ['unconfigured', 'configured', 'verified', 'failed']) {
   assert(src.includes(status + ": { label:") || src.includes(status + ": { label:"), '健康状态文案缺失 ' + status);
 }
@@ -269,7 +283,7 @@ assert(src.includes("['来源任务', detail.retryOf") && src.includes("['后续
 /* ⑦ P1：分配唯一入口——ActionCard 不再写 assignments（消除互相覆盖） */
 assert(!/capability:\s*capability,\s*model_id:/.test(src), 'ActionCard 仍在写单值 model_id 分配（应移除，唯一入口是 CapabilityAssigner）');
 assert(!/function\s+assignModel/.test(src), '残留 assignModel（旧下拉写入口）');
-assert(src.includes('改分配 → 上方「功能分配'), '卡片缺少只读模型提示（引导去唯一入口）');
+assert(src.includes('调整方式 → 上方「功能池与调用方式'), '卡片缺少功能池状态和调用方式入口');
 // 唯一写入口：CapabilityAssigner 用 provider+model 复合引用数组
 assert((src.match(/model_refs:/g) || []).length >= 1, 'CapabilityAssigner 应通过 model_refs 复合引用数组写分配');
 
@@ -278,11 +292,13 @@ assert(new RegExp('function\\s+ModelPool\\s*\\(').test(src), '缺少 ModelPool �
 assert(src.includes('iris-pm-mrow'), '模型池缺少行渲染');
 assert(src.includes('providers_test_model'), '缺少逐模型实测调用');
 assert(src.includes('providers_remove_model'), '缺少逐模型移除调用');
-assert(src.includes('providers_add_model'), '缺少手动添加模型调用');
-assert(src.includes('providers_discover'), '缺少发现模型调用');
+assert(src.includes('providers_confirm_model'), '缺少确认模型用途并启用自动池的调用');
+assert(src.includes('providers_sync_directory'), '缺少模型目录同步调用');
 assert(/verBadge|verified/.test(src), '模型池缺少 verified 状态标记');
 assert(src.includes('confirm_paid') && src.includes('可能产生费用'), '真实模型实测缺少费用确认');
-assert(src.includes("capability === 'video-gen' || capability === 'transcribe'"), '视频/转写应走不提交空样本的跳过路径');
+for (const capability of ['video-gen', 'transcribe', 'music-gen']) {
+  assert(new RegExp("cap: '" + capability + "'[^\\n]+taskOnly: true").test(src), '需真实任务的功能不得提交空样本：' + capability);
+}
 assert(src.includes("mediaProtocol: 'auto'") && src.includes('自动（按媒体 Base URL 安全判断）'), '供应商表单缺少媒体端点协议安全自动判断');
 
 /* ⑨ 阶段 10：文件选择器 FileField（看见并选文件，不手填路径） */

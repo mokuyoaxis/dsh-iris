@@ -1,6 +1,6 @@
 {
   "name": "@mokuyoaxis/dsh-iris",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Multi-provider image, video, music, and speech generation, transcription, visual understanding, and prompt optimization with an integrated Iris workbench for DeepSeek Harness.",
   "type": "module",
   "main": "lib/index.js",
@@ -98,7 +98,7 @@
     }
   },
   "dependencies": {
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.5"
   },
   "publishConfig": {
     "access": "public"

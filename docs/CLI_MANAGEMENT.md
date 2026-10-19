@@ -1,10 +1,12 @@
 # CLI 配置与任务管理
 
-本文面向 Iris 0.2.2，沿用 `dsh-iris` 入口，无需启动 DSH，未新增生产依赖。安装 `npm install @mokuyoaxis/dsh-iris@0.2.2` 后运行 `npx dsh-iris ...`；也可从源码或本地 tarball 使用同一入口。视觉命令见 [视觉 CLI](VISION_CLI.md)，基础媒体链路见 [Headless CLI](HEADLESS_CLI.md)。
+本文面向 Iris 0.2.6，沿用 `dsh-iris` 入口，无需启动 DSH。安装 `npm install @mokuyoaxis/dsh-iris@0.2.6` 后运行 `npx dsh-iris ...`；也可从源码或本地 tarball 使用同一入口。发布状态见 [README](../README.md)；视觉命令见 [视觉 CLI](VISION_CLI.md)，基础媒体链路见 [Headless CLI](HEADLESS_CLI.md)。
 
 所有需要 JSON 的命令均支持 `--input '<json>'`、`--input-file /path/input.json` 或 `--input -`（stdin），只能选择一种，输入最多 2 MiB。私有配置必须是普通文件、绝对路径，POSIX 权限为 `0600`。真实请求只由显式执行生成、发现、实测或观察命令触发。
 
 能力配置规则已同步Iris 0.2.2：能力来自明确配置或供应商元数据，裸账号和模型名称不自动赋能。现有功能入口、按功能分配的有序候选池和安全切换规则保持。
+
+0.2.6 的自动池会在新请求前按需读取目录（成功缓存 10 分钟），并跳过当前连接已明确返回模型不存在的候选。`models list`、`capabilities list`、配置检查和旧任务观察保持只读；`models discover --apply true` 显式更新目录并保留原模型，新发现用途仍需确认。手选、停用、显式单模型请求不暗中同步或扩池。`task retry` 先通过计费确认再刷新自动候选，旧任务不变；详见 [功能模型池](FUNCTION_MODEL_POOLS.md)。
 
 ## S2V 数字人视频
 
@@ -35,6 +37,8 @@ dsh-iris media html --data-root /path/core --input-file /path/html-input.json \
 已有本地图片可先用0.2.4的 `artifact import` 保存为作品ID，再执行看图或改图；导入无需账号或模型，见 [图片导入](IMAGE_IMPORT.md)。
 
 0.2.4的六类功能均需明确分配；`assignments clear`停止新调用，已有Task仍按原绑定观察和补交付。临时指定须在名单内。旧自动池升级及DSH宿主资源见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。
+
+0.2.6 支持 [三种功能池策略](FUNCTION_MODEL_POOLS.md)：现有 `assignments set` 的 JSON 可传 `mode`，`models add/caps` 可传 `enableAutomatic:true`。旧参数和已有分配行为保留；省略新字段不会自动改策略。
 
 | 命令 | 行为 |
 | --- | --- |

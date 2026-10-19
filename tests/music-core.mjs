@@ -49,7 +49,7 @@ try {
   assert.equal(routes.length, 1);
   assert.equal(adapter.protocol, 'gemini-web-music');
   assert.equal(catalog.providers[0].mediaProtocol, 'openai-responses-images');
-  assert.throws(() => musicCandidatesFromCatalog({ ...catalog, assignments: {} }), /分配/);
+  assert.throws(() => musicCandidatesFromCatalog({ ...catalog, assignments: {} }), { code: 'IRIS_PROVIDER_MODEL_UNAVAILABLE' });
   assert.throws(() => musicCandidatesFromCatalog(catalog, 'gateway::unassigned-music'));
   assert.throws(() => normalizeGenerationInput('music', { prompt: 'fixture', retry_502: 6 }));
   assert.throws(() => normalizeGenerationInput('music', { prompt: 'fixture', retry_502: true }));

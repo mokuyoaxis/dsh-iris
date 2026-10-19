@@ -1,10 +1,10 @@
 # Headless CLI
 
-`run music` 支持音乐生成与模型级协议配置，见 [音乐生成](MUSIC.md)。0.2.4的六类功能均采用明确分配名单，升级差异见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。
+`run music` 支持音乐生成与模型级协议配置，见 [音乐生成](MUSIC.md)。0.2.6 可选择自动池、仅用所选模型或停用，旧名单和空配置不自动改变，见 [功能模型池](FUNCTION_MODEL_POOLS.md)。
 
-本文面向Iris0.2.5，涵盖无DSH的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core内部接口与Artifact v0尚未冻结为公共SDK。
+本文面向 Iris 0.2.6，涵盖无 DSH 的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为 Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core 内部接口与 Artifact v0 尚未冻结为公共 SDK。
 
-需要Node.js ≥ 22.0.0。按 [README](../README.md) 核对发布状态，安装 `npm install @mokuyoaxis/dsh-iris@0.2.5` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；本地tarball也可用于安装。
+需要Node.js ≥ 22.0.0。按 [README](../README.md) 核对发布状态，安装 `npm install @mokuyoaxis/dsh-iris@0.2.6` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；本地tarball也可用于安装。
 
 0.2.1 提供 `vision look / locate / ocr / summarize`。文件输入的纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；图片/帧 Artifact ID 输入需显式数据根，以 reader 读取既有 Core 产物，只有主动音轨转写才创建 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)；S2V、HTML、配置、等待及批量管理见 [CLI 管理](CLI_MANAGEMENT.md)。
 
@@ -18,7 +18,7 @@ dsh-iris capabilities list --provider-config /absolute/path/to/providers.json
 dsh-iris doctor --data-root /absolute/path/to/iris-data --json
 ```
 
-前两项只读取显式提供的私有配置文件，不创建Core Runtime或数据根，也不请求Provider。`providers list`输出供应商身份、启用/配置状态、认证方式、媒体协议及其推断标记、配置能力与模型数；不输出API Key或端点。0.2.4的 `capabilities list` 按六种配置能力列出明确分配且当前CLI可用的 `providerId::modelId` 候选链；空链标为 `gap: no_configured_model`。这些只是配置事实，不证明远端模型或协议可调用。
+前两项只读取显式提供的私有配置文件，不创建 Core Runtime 或数据根，也不请求 Provider。`providers list` 输出供应商身份、启用/配置状态、认证方式、媒体协议及其推断标记、配置能力、模型数和已有目录摘要；不输出 API Key 或端点。`capabilities list` 按六类功能的当前策略列出 CLI 可用的 `providerId::modelId` 候选链；空链标为 `gap: no_configured_model`。这些只是配置和历史证据，不证明远端模型或协议可调用。
 
 显式 `doctor --data-root` 是只读 Core 盘点：检查 Task/Artifact 结构、Index 一致性、孤立/未解析条目和写者租约；不创建缺失的根、不执行写入探针、不重建索引，也不释放租约。活跃写者可能使盘点在读取期间变化。省略 `--data-root` 时仍检查 DSH profile，保留原有写入探针，并纳入该 profile 的 `core-v0`。两种模式都返回 legacy/Core 计数对照，显式模式只统计指定根同层的 legacy 文件。退出码为 `0` 正常、`1` 警告、`2` 硬错误；诊断不会调用 Provider。
 
@@ -75,11 +75,11 @@ dsh-iris run image \
   --input '{"prompt":"一朵雨后的鸢尾花","model_ref":"provider-id::model-id","size":"1024*1024","n":1}'
 ```
 
-`model_ref` 可省略；省略时只使用assignment名单，按配置顺序选择。指定时须属于名单且本次只调用该项。每个请求从首项开始，只有明确 `not_accepted` 才进入下一项。配置文件须为普通文件，POSIX权限不得开放给group/other；API Key、端点、Prompt和下载URL都不会写入Task输出。
+`model_ref` 可省略；省略时按当前功能策略选择候选，自动池按登记顺序，手选模式按名单顺序，停用不调用。指定时须属于当前允许范围且本次只调用该项。每个请求从首项开始，只有明确 `not_accepted` 才进入下一项。配置文件须为普通文件，POSIX 权限不得开放给 group/other；API Key、端点、Prompt 和下载 URL 都不会写入 Task 输出。
 
 模型必须存在于配置的 `models` 或旧模型字段中，且具备所请求的能力；缺失时返回配置错误，不注入厂商默认模型。显式 `models:[]` 表示没有可用模型。`model_ref` 也接受裸模型名，同名跨供应商时从当前功能名单中取首个匹配项；需要精确绑定账号时使用 `providerId::modelId`。显式指定只选择该模型，不扩展 failover 候选。
 
-裸 DashScope 账号不再自动写入厂商目录或授予功能能力。已有明确保存的模型和旧能力字段绑定继续保留；独立 CLI 配置同样需要声明模型并分配给功能。
+裸 DashScope 账号不自动写入厂商目录或授予功能能力。已有明确保存的模型和旧能力字段绑定继续保留；独立 CLI 配置同样需要声明模型用途，并明确启用自动池或配置手选名单。
 
 生图按每个模型的有效图片协议调用，保存真实 PNG/JPEG/WebP 字节。聊天改图使用 `source_artifact_id`，创建关联原图的新 Artifact；具体参数和协议限制见 [模型级图片协议](CLI_MANAGEMENT.md#模型级图片协议) 与 [Artifact 聊天改图](CLI_MANAGEMENT.md#artifact-聊天改图)。
 
@@ -138,7 +138,7 @@ dsh-iris task inspect task_0123456789abcdef01234567 \
 
 新建 Attempt 可选保存 `stageTimestamps`：排队、开始提交、提交响应、远端终态、开始下载、下载校验完成和本地 Artifact 处理完成七个边界。字段按发生顺序单调不减；旧记录缺失该字段仍可读取。重新交付会从新的下载开始边界重新计时，不伪造尚未跨过的阶段。
 
-新建Attempt还可选保存 `selectionReason`：`explicit` 表示调用方明确指定名单内模型，`assignment` 表示按提交当时的功能名单选择。`pool` 保留为旧记录的历史来源，0.2.4不再产生池补齐候选。该事实随Attempt在Provider submit前落盘；`task inspect` 只展示持久记录，不按当前assignment事后猜测。旧记录缺少字段时保持缺失；第几次failover仍看 `ordinal`。
+新建 Attempt 还可选保存 `selectionReason`：`explicit` 表示调用方明确指定允许范围内的模型，`assignment` 表示按提交时的手选名单选择，`pool` 表示自动池选择。0.2.4/0.2.5 不产生新的池补齐候选，0.2.6 在主动启用自动池后使用 `pool`。该事实随 Attempt 在 Provider submit 前落盘；`task inspect` 只展示持久记录，不按当前策略事后猜测。旧记录缺少字段时保持缺失；第几次 failover 仍看 `ordinal`。
 
 已受理的异步图片 Task 可以显式推进一次：
 

@@ -7,7 +7,7 @@ import { recoverCoreWriterLease } from '../lib/core-lease-recovery.js';
 import { doctor, formatDoctorReport } from '../lib/doctor.js';
 import { loadProviderCatalog, providerCatalogSnapshot, catalogCapabilitySnapshot, imageCandidatesFromCatalog, musicCandidatesFromCatalog, providerForTaskFromCatalog, providerTaskBinding, transcribeCandidatesFromCatalog, ttsCandidatesFromCatalog, videoCandidatesFromCatalog } from '../lib/provider-catalog.js';
 import { createConfiguredProviderAdapter } from '../lib/provider-adapters.js';
-import { providerForImageModel } from '../lib/provider-protocol.js';
+import { providerForImageModel, selectMediaProtocol, dashscopeTtsInputIssue } from '../lib/provider-protocol.js';
 import { prepareProviderInput } from '../lib/provider-adapter.js';
 import { createProviderTaskRunner } from '../lib/provider-task-runner.js';
 import { generateMusicTask } from '../lib/music-generation.js';
@@ -15,7 +15,7 @@ import { GenerationInputError, normalizeGenerationInput } from '../lib/generatio
 import { executeVisionCommand, normalizeVisionInput } from '../lib/headless-vision.js';
 import { videoTaskCandidates } from '../lib/video-input.js';
 import { createChromiumBrowser } from '../lib/chromium-browser.js';
-import { executeConfigCommand, recordCatalogRateLimit } from '../lib/provider-config-service.js';
+import { executeConfigCommand, recordCatalogRateLimit, recordCatalogAvailability, refreshCatalogDirectories } from '../lib/provider-config-service.js';
 import { probeVisionModel } from '../lib/vision-model-routing.js';
 import { RED_TEST_IMAGE } from '../lib/vision.js';
 import { parseModelRef, modelRef as qualifiedModelRef } from '../lib/models.js';
@@ -24,8 +24,16 @@ import { coreTaskWaitFinished } from '../lib/task-wait.js';
 function trackedProviderAdapter(provider, options, task) {
   return createConfiguredProviderAdapter(provider, {
     modelId: parseModelRef(task?.modelRef)?.modelId,
+    onModelAvailability: event => recordCatalogAvailability(options['provider-config'], event),
     onRateLimit: event => recordCatalogRateLimit(options['provider-config'], event)
   });
+}
+
+async function generationCatalog(options, capability, modelRef) {
+  const file = required(options['provider-config'], 'provider-config');
+  const catalog = loadProviderCatalog(file);
+  if (!modelRef) await refreshCatalogDirectories(file, catalog, capability, { signal: cliAbortController.signal });
+  return catalog;
 }
 
 class CliUsageError extends Error {
@@ -258,6 +266,10 @@ async function main(args) {
         if (['video-gen', 'transcribe'].includes(capability) && !options.input) return {
           skipped: true, ok: false, reason: '请用 models test --input 提供与 run video/transcribe 相同的真实素材；未发起请求'
         };
+        if (capability === 'tts' && selectMediaProtocol(provider).mediaProtocol === 'dashscope') {
+          const issue = dashscopeTtsInputIssue(modelId, probeInput.voice || provider.ttsVoice);
+          if (issue) return { skipped: true, ok: false, reason: issue };
+        }
         return withRawRuntime('writer', options['data-root'], async runtime => {
           const mediaCapability = capability === 'image-gen' ? 'image' : capability === 'video-gen' ? 'video' : capability;
           if (mediaCapability === 'image') provider = providerForImageModel(provider, modelId);
@@ -266,7 +278,7 @@ async function main(args) {
             ? { prompt: 'red circle', n: 1, ...(['openai-chat-images', 'openai-responses-images'].includes(adapter.protocol) ? {} : {
               size: adapter.protocol === 'openai-images' ? '256x256' : '512*512'
             }) }
-            : { text: '你好', voice: provider.ttsVoice || 'Cherry' };
+            : { text: '你好', voice: probeInput.voice || provider.ttsVoice || 'Cherry' };
           let candidates = [{ adapter, model: qualifiedModelRef(provider.id, modelId), selectionReason: 'explicit', providerBinding: providerTaskBinding(provider) }];
           if (['video', 'transcribe'].includes(mediaCapability)) {
             const normalized = generationInput(mediaCapability, { ...probeInput, model_ref: qualifiedModelRef(provider.id, modelId) },
@@ -284,7 +296,7 @@ async function main(args) {
             task_id: submitted.task.id, timeout_ms: 60000, poll_interval_ms: 1000 });
           const task = waited.task;
           return { ok: task.outcome === 'succeeded' && task.deliveryState === 'ready', taskId: task.id,
-            category: task.lastError?.category, httpStatus: task.lastError?.httpStatus };
+            category: task.lastError?.category, httpStatus: task.lastError?.httpStatus, providerCode: task.lastError?.providerCode };
         });
       }
     });
@@ -307,9 +319,11 @@ async function main(args) {
         fs.accessSync(path.dirname(file), fs.constants.W_OK);
       } catch (_) { throw new CliUsageError('输出文件已存在或父目录不可写'); }
     }
-    const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
+    const catalog = await generationCatalog(options, 'vision', options['model-ref'] || input.model_ref);
+    if (input.transcribe && !input.transcribe_model_ref) await refreshCatalogDirectories(options['provider-config'], catalog, 'transcribe', { signal: cliAbortController.signal });
     const execute = runtime => executeVisionCommand({ command, input, catalog, runtime,
       onRateLimit: event => recordCatalogRateLimit(options['provider-config'], event),
+      onModelAvailability: event => recordCatalogAvailability(options['provider-config'], event),
       modelRef: options['model-ref'] || '', signal: cliAbortController.signal,
       ...(options['timeout-ms'] !== undefined ? { timeoutMs: Number(options['timeout-ms']) } : {}) });
     const completed = input.transcribe
@@ -362,7 +376,7 @@ async function main(args) {
   if (args[0] === 'run' && args[1] === 'image') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
     const { providerInput, modelRef, sourceArtifactId } = generationInput('image', jsonInput(options.input));
-    const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
+    const catalog = await generationCatalog(options, 'image-gen', modelRef);
     const routes = imageCandidatesFromCatalog(catalog, modelRef);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
@@ -384,7 +398,7 @@ async function main(args) {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
     const normalized = generationInput('video', jsonInput(options.input), { allowVideoPaths: true });
     const { providerInput, modelRef } = normalized;
-    const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
+    const catalog = await generationCatalog(options, 'video-gen', modelRef);
     const routes = videoCandidatesFromCatalog(catalog, modelRef);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = videoTaskCandidates(routes.map((route) => ({
@@ -405,7 +419,7 @@ async function main(args) {
   if (args[0] === 'run' && args[1] === 'music') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
     const normalized = generationInput('music', jsonInput(options.input));
-    const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
+    const catalog = await generationCatalog(options, 'music-gen', normalized.modelRef);
     const routes = musicCandidatesFromCatalog(catalog, normalized.modelRef);
     let result;
     await withRawRuntime('writer', options['data-root'], async runtime => {
@@ -421,7 +435,7 @@ async function main(args) {
   if (args[0] === 'run' && args[1] === 'tts') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
     const { providerInput, modelRef } = generationInput('tts', jsonInput(options.input));
-    const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
+    const catalog = await generationCatalog(options, 'tts', modelRef);
     const routes = ttsCandidatesFromCatalog(catalog, modelRef);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
@@ -443,7 +457,7 @@ async function main(args) {
   if (args[0] === 'run' && args[1] === 'transcribe') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
     const normalized = generationInput('transcribe', jsonInput(options.input), { allowAudioPath: true });
-    const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
+    const catalog = await generationCatalog(options, 'transcribe', normalized.modelRef);
     const routes = transcribeCandidatesFromCatalog(catalog, normalized.modelRef);
     let providerInput = normalized.providerInput;
     if (normalized.audioPath) {
@@ -528,7 +542,9 @@ async function main(args) {
       model_ref: options['model-ref'],
       confirm_billing: confirmBilling
     }), {
-      resolveTaskCandidates: ({ capability, modelRef }) => (capability === 'video'
+      resolveTaskCandidates: async ({ capability, modelRef }) => {
+        const catalog = await generationCatalog(options, { image: 'image-gen', video: 'video-gen', music: 'music-gen' }[capability] || capability, modelRef);
+        return (capability === 'video'
         ? videoCandidatesFromCatalog(catalog, modelRef || undefined)
         : capability === 'tts'
           ? ttsCandidatesFromCatalog(catalog, modelRef || undefined)
@@ -542,7 +558,8 @@ async function main(args) {
         model: route.modelRef,
         selectionReason: route.selectionReason,
         providerBinding: providerTaskBinding(route.provider)
-      }))
+      }));
+      }
     });
     console.log(JSON.stringify(result, null, 2));
     return 0;

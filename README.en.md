@@ -20,7 +20,11 @@
 
 dsh-iris gives agents, the Iris workbench and a standalone CLI image, video, music, speech and visual understanding capabilities. Each image model can use DashScope, OpenAI Images, chat image generation or Responses. Shared Core Artifacts connect generation, vision, OCR and chat editing. The DSH workbench provides configuration and task management, while the 🫧 bubble offers draft optimization in the composer.
 
-Music uses a Chat Completions interface with inline audio, explicit model assignment, configurable 502 retries, and playback/export. See [Music setup and usage](docs/MUSIC.md) (Chinese).
+Music uses a Chat Completions interface with inline audio, confirmed model uses and function policies, configurable 502 retries, and playback/export. See [Music setup and usage](docs/MUSIC.md) (Chinese).
+
+Iris 0.2.6 can [reference an existing DSH provider connection](docs/DSH_PROVIDER_CONNECTIONS.md) (Chinese), resolving its endpoint and API key per operation without storing a second key. It adds [automatic, selected-only, and disabled function pools](docs/FUNCTION_MODEL_POOLS.md) (Chinese): confirming a model's uses can enable automatic selection without a second assignment step. Discovery alone never expands the pool; existing lists and empty configurations retain their behavior. Selection uses stable priority with safe failover, without a round-robin cursor.
+
+Provider directories refresh on demand with a 10-minute successful cache. Confirmed model-not-found failures exclude that connection's model and capability from subsequent requests while preserving configured models and historical success. Directory details start collapsed; failed refreshes retain the last complete snapshot, and new models still require approval of their uses.
 
 ## A real generation example
 
@@ -46,22 +50,25 @@ These captures come from an Android browser connected to DSH under Termux/PRoot 
 
 The project is at an early stage; interfaces and configuration formats may still change between releases.
 
-Iris 0.2.5 provides a DSH plugin and a headless CLI sharing tasks, artifacts and model routing. This release restores current Iris features on older DSH hosts; image import, native Qwen editing, music, three agent skills and synchronous delivery recovery remain available. Core internals have not been frozen as a public SDK.
+This documentation covers **Iris 0.2.6**. Pin the version when installing or upgrading, and check the host compatibility range below first.
 
-> Version support: Iris 0.2.5 covers 12 exact DSH versions across the 0.1.2, 0.1.5, 0.1.7 and 0.2 lines; see the [compatibility matrix](docs/DSH_COMPATIBILITY.md). Node.js must be at least 22.0.0, including on older DSH hosts, and meet any higher host requirement.
+Iris 0.2.6 provides a DSH plugin and a headless CLI sharing tasks, artifacts and model routing. It adds connection reuse, optional automatic function pools, directory synchronization and capability checks. Image import, native Qwen editing, music, three agent skills and synchronous delivery recovery remain available. Core internals have not been frozen as a public SDK.
 
-## What's new in 0.2.5 and existing features
+> Version support: Iris 0.2.6 retains the 12 exact DSH versions declared in 0.2.5; see the [compatibility matrix](docs/DSH_COMPATIBILITY.md). Node.js must be at least 22.0.0 and meet any higher host requirement. Connection reuse also requires the relevant public host services.
 
-**Keep current Iris features on older hosts.** Default vision uses host API capabilities to bind an exact model route; the verified host range grows from two to twelve exact versions.
+## What's new in 0.2.6 and existing features
+
+**Choose a connection, confirm model uses, then call a function.** Automatic pools use stable priority and safe failover, without cross-request round-robin.
 
 - **Persistent image import:** save an existing image through the workbench, agent, or CLI for later vision, editing, and export. The source file stays intact and no model is called.
 - **Native Qwen editing:** use supported DashScope Qwen image editing models as well as chat image models; edited images retain a link to their source.
-- **Explicit assignments:** image, video, TTS, music, transcription, and vision use only their assigned ordered lists. Explicit overrides must also be assigned.
+- **Connection reuse and function pools:** reference a DSH API-key connection, and choose automatic, selected-only or disabled mode for each function. Confirming uses can also enable its automatic pool.
+- **Directories and checks:** refresh directories before automatic requests and exclude confirmed missing models from later requests. Capability checks and advanced sections start collapsed; paid probes require separate confirmation.
 - **Older and transitional hosts:** the twelve exact versions in the matrix share current features and use the same manifest, client peer and Doctor compatibility boundary.
 
-**Check assignments before upgrading:** empty lists stop new calls instead of adding models from the pool. Existing tasks retain their original bindings. Add the DSH default model explicitly to vision when needed. See the [upgrade guide](docs/FUNCTION_MODEL_ASSIGNMENTS.md).
+**Upgrades preserve your allowed scope:** existing lists and missing or empty assignments do not become automatic. New directory entries still require confirmation of their uses; absence alone does not prove a model unavailable. Explicitly add host vision or enable it in the automatic vision pool. Existing tasks retain their bindings. See [function pools](docs/FUNCTION_MODEL_POOLS.md).
 
-See the [0.2.5 release notes](docs/releases/0.2.5.md) for host compatibility and validation limits, and the [CHANGELOG](CHANGELOG.md). Image import and assignments were added in [0.2.4](docs/releases/0.2.4.md); music and Skills are documented in [0.2.3](docs/releases/0.2.3.md).
+See the [0.2.6 release notes](docs/releases/0.2.6.md) for upgrade steps and validation limits, and the [CHANGELOG](CHANGELOG.md). Older-host support was restored in [0.2.5](docs/releases/0.2.5.md); image import arrived in [0.2.4](docs/releases/0.2.4.md), and music and Skills in [0.2.3](docs/releases/0.2.3.md).
 
 Future work includes additional protocol adapters and creative workflows; see the [roadmap](docs/ROADMAP.md#后续功能方向).
 
@@ -81,40 +88,40 @@ Both paths read and write the same Core Task/Artifact facts: point the CLI at th
 
 ## Optional legacy configuration import
 
-For a new installation, add providers in the Iris workbench. Iris uses its own configuration and does not scan other projects by default.
+For a new installation, add a provider or reference a DSH connection in the Iris workbench. Iris uses its own configuration and does not scan other projects by default.
 
 If you already have an ai-paint configuration, set `IRIS_IMPORT_WORKBENCH_CONFIG` to its absolute file path for a one-time provider import. Iris leaves the source untouched and does not keep configurations synchronized. The variable holds a file path, not an API key. See the [user guide](user_guide.md) for details.
 
 ## Quickest start
 
-Check the host with `dsh --version` and ensure `pnpm` is on your PATH. Iris and DSH have independent version numbers; Iris0.2.5 supports all twelve exact hosts listed in the [compatibility matrix](docs/DSH_COMPATIBILITY.md).
+Check the host with `dsh --version` and ensure `pnpm` is on your PATH. Iris and DSH have independent version numbers; Iris 0.2.6 retains the twelve exact hosts listed in the [compatibility matrix](docs/DSH_COMPATIBILITY.md).
 
 | Your DSH | Iris choice | Source |
 |---|---|---|
-| Exact 0.1.2 / 0.1.5 / 0.1.7 / 0.2 versions in the matrix | `0.2.5` | Pinned npm release |
+| Exact 0.1.2 / 0.1.5 / 0.1.7 / 0.2 versions in the matrix | `0.2.6` | Pinned npm version |
 | Versions outside the matrix | Not yet validated | Check the actual host interfaces |
 
-### DSH plugin: install 0.2.5
+### DSH plugin: install 0.2.6
 
 Install the pinned release into your Web profile:
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.5
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.6
 dsh web
 ```
 
 The plugin loads on the next DSH start. The web UI defaults to `http://127.0.0.1:3080`; open the complete URL if startup output includes authentication parameters. Reload the backend and refresh the web client after updating.
 
-### Standalone CLI: install 0.2.5
+### Standalone CLI: install 0.2.6
 
 Install in your own project without DSH:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.2.5
+npm install @mokuyoaxis/dsh-iris@0.2.6
 npx dsh-iris --help
 ```
 
-Download the package separately with `npm pack @mokuyoaxis/dsh-iris@0.2.5`. Users who need historical Iris0.1.4 can still pin it; see the matrix for its DSH/Node requirements. It lacks the current Core media CLI and later features.
+Download the package separately with `npm pack @mokuyoaxis/dsh-iris@0.2.6`. Users who need historical Iris0.1.4 can still pin it; see the matrix for its DSH/Node requirements. It lacks the current Core media CLI and later features.
 
 ### Choosing a version in dsh-market
 
@@ -122,7 +129,7 @@ The marketplace entry should resolve to the full package name `@mokuyoaxis/dsh-i
 
 > The unscoped `dsh-iris` on npm belongs to a different plugin. Always keep the fully scoped name `@mokuyoaxis/dsh-iris` when installing or updating Iris Media.
 
-After the first start, open "Settings → Iris workbench → + Add provider", enter your provider base URL and API key, discover models, label their capabilities, and assign them to each function. Version 0.2.4 uses explicit ordered lists for all functions; see [assignment rules and upgrade impact](docs/FUNCTION_MODEL_ASSIGNMENTS.md) (Chinese). Full steps and protocol selection are in the [user guide](user_guide.md) (Chinese).
+After the first start, open "Settings → Iris workbench → + Add provider", reference a DSH connection or enter your endpoint and key, and choose the media protocol. Synchronize the directory and confirm model uses; first-time setup can enable automatic selection in the same step. Selected-only mode still requires a list. See [function pools](docs/FUNCTION_MODEL_POOLS.md) and the [user guide](user_guide.md) (Chinese).
 
 Once configured, minimal instructions can be as simple as:
 
@@ -161,7 +168,7 @@ After installing the plugin, add a provider in the Iris workbench and assign mod
 
 ## DeepSeek Harness adaptation
 
-dsh-iris remains a native DSH plugin. Iris 0.2.5 registers 17 agent tools, including import, editing, and music, and uses host routing, attachments, models, and lifecycle services. The web client contributes settings, composer, and global-overlay UI. Iris does not start another service or listen on an extra port.
+dsh-iris remains a native DSH plugin. Iris 0.2.6 registers 17 agent tools, including import, editing, and music, and uses host routing, attachments, models, and lifecycle services. The web client contributes settings, composer, and global-overlay UI. Iris does not start another service or listen on an extra port.
 
 Save an uploaded or local image as a persistent Artifact for viewing, editing and export; see [image import](docs/IMAGE_IMPORT.md) (Chinese).
 
@@ -174,6 +181,7 @@ Save an uploaded or local image as a persistent Artifact for viewing, editing an
 | `0.2.3` | Only `0.2.0-rc.2` | Adds music and a third skill; check actual loading with Host Doctor after upgrading |
 | `0.2.4` | `0.2.0-rc.2` or `0.2.1-alpha.4` | 17 tools / 3 skills; actual SDK, loader, and client slot isolation checks; full browser and hot reload checks remain separate |
 | `0.2.5` | 12 exact versions across the 0.1.2 / 0.1.5 / 0.1.7 / 0.2 lines; see the matrix | Official SDK isolation checks including Music and Qwen dispatch; old profiles also load the actual installed package |
+| `0.2.6` | Retains the 12 exact versions declared in 0.2.5 | Adds connection reuse, function pools and directories; connection reuse requires public host services; see this version's release notes |
 
 See the [compatibility matrix](docs/DSH_COMPATIBILITY.md) for the current scope and [rc.2 adaptation notes](docs/DSH_RC2_ADAPTATION.md) for historical changes. npm 0.1.4 does not contain these later adaptations.
 
@@ -270,7 +278,7 @@ npx @mokuyoaxis/dsh-iris doctor --json
 
 The installed binary is `dsh-iris`. Exit code `0` is healthy, `1` means warnings, and `2` means hard errors. Offline Doctor checks Node.js, sharp, ffmpeg/ffprobe, a real but cleaned-up storage write probe, configuration, models/assignments, task semantics, temporary files, and orphaned or missing artifacts.
 
-A running DSH instance also provides a “Host diagnostics” card and authenticated `/iris/api/doctor` JSON. It checks the host version, plugin, 17 tools and three skills, four route groups, host capabilities, client version, and four UI slots. It reads safe registration evidence without calling Browser, models, or providers. See [Host Doctor](docs/HOST_DOCTOR.md).
+A running DSH instance also provides a “Host diagnostics” card and `/iris/api/doctor` JSON protected by Iris's Host and browser-origin guards. These guards do not authenticate users. Doctor checks the host version, plugin, 17 tools and three skills, four route groups, host capabilities, client version, and four UI slots. It reads safe registration evidence without calling Browser, models, or providers. See [Host Doctor](docs/HOST_DOCTOR.md).
 
 ## Composed workflow example
 

@@ -20,7 +20,7 @@ const assert = (condition, message, extra) => {
 };
 
 assert(HOST_CONTRACT_VERSION === 0, '首版 Host 契约必须显式为 v0');
-assert(HOST_PORTS.join(',') === 'attachments,browser,clientSlots,routes,sessions,skills,textModel,tools,visionModel',
+assert(HOST_PORTS.join(',') === 'attachments,browser,clientSlots,providerConnections,routes,sessions,skills,textModel,tools,visionModel',
   'Host Port 名单发生变化必须显式评审', HOST_PORTS);
 
 const browser = { renderHtml: async () => ({ bytes: new Uint8Array() }) };

@@ -5,7 +5,7 @@ Host Doctor 是 Iris 在运行中的 DSH 实例内提供的兼容性诊断。它
 | 模式 | 入口 | 观察范围 |
 |---|---|---|
 | `offline` | `dsh-iris doctor [--json]` | Node、依赖、私有存储、配置、Task 与产物；不要求 DSH |
-| `host` | 已认证 DSH 中的 `GET /iris/api/doctor` | DSH与Host Port、插件、当前工具/Skill、4组路由、Browser/附件/模型、客户端版本和4个UI Slot；Iris 0.2.4检查17工具/3项Skill |
+| `host` | 运行中 DSH 的 `GET /iris/api/doctor` | DSH与Host Port、插件、当前工具/Skill、4组路由、Browser/附件/模型、客户端版本和4个UI Slot；Iris 0.2.6保留17工具/3项Skill |
 
 0.2.4新增 `iris_import_image`，图片导入自身不调用模型。0.2.3检查16工具/3项Skill，发布状态见 [README](../README.md)。
 
@@ -23,7 +23,7 @@ Host Doctor 是 Iris 在运行中的 DSH 实例内提供的兼容性诊断。它
 /iris/api/doctor
 ```
 
-这是工作台路由下的 JSON 端点，继承 Iris 路由的 Host/认证边界。HTTP 200 表示诊断成功生成，不代表所有检查健康；应读取响应中的 `exitCode`：
+这是工作台路由下的 JSON 端点，使用 Iris 的回环/显式 trusted Host 和浏览器来源守卫；这些检查不提供身份认证，也不能假定该路径继承 DSH `/api` 的认证。对外暴露时须由部署者提供认证和访问控制，见 [安全边界](SECURITY.md)。HTTP 200 表示诊断成功生成，不代表所有检查健康；应读取响应中的 `exitCode`：
 
 - `0`：当前可观察项全部健康；
 - `1`：存在可降级警告，例如页面尚未打开、可选 Browser 缺失；

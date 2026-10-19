@@ -1,29 +1,33 @@
 # dsh-iris 用户指南
 
-本指南对应Iris0.2.5，包含旧DSH的当前功能支持。发布状态见 [README](README.md)，升级范围见 [CHANGELOG](CHANGELOG.md) 和 [发布说明](docs/releases/0.2.5.md)。
+本指南对应 Iris 0.2.6。安装要求见 [README](README.md)，升级范围见 [CHANGELOG](CHANGELOG.md) 和 [发布说明](docs/releases/0.2.6.md)。
 
-功能来自明确标签、旧能力字段绑定或供应商能力元数据，账号和名称不会自动赋能。0.2.4还要求把模型明确加入对应功能名单；空名单停止新调用。已有配置保留，详见 [升级说明](docs/FUNCTION_MODEL_ASSIGNMENTS.md)。
+功能来自明确标签、旧能力字段绑定或供应商能力元数据，账号和名称不会自动赋能。0.2.4/0.2.5 要求明确功能名单；0.2.6 保留旧名单和空配置行为，也可主动启用自动池。详见 [升级说明](docs/FUNCTION_MODEL_ASSIGNMENTS.md)。
+
+可 [引用 DSH 连接](docs/DSH_PROVIDER_CONNECTIONS.md)，并在确认模型用途时启用 [功能自动池](docs/FUNCTION_MODEL_POOLS.md)，无需二次分配；已有名单与空配置不会自动改变。
+
+供应商详情提供默认折叠的“模型目录”，可同步目录并查看新增、未列出及失败保留状态；自动请求按需刷新并缓存 10 分钟。当前连接明确返回模型不存在的条目会被隔离，新发现项仍须确认用途。目录同步不发起模型实测或生成。
 
 ## 安装
 
-先运行`dsh --version`。Iris0.2.5覆盖12个准确DSH版本，包含0.1.2-rc.1、0.1.5、0.1.7及0.2线的已验证版本，详见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。还需要PATH中的pnpm及至少一个所需功能的供应商。当前Iris最低Node.js为22.0.0，即使保留旧DSH也需满足；宿主要求更高时以宿主为准。
+先运行`dsh --version`。Iris 0.2.6 沿用 0.2.5 的 12 个准确 DSH 版本，详见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。还需要 PATH 中的 pnpm 及至少一个所需功能的供应商。当前 Iris 最低 Node.js 为 22.0.0，即使保留旧 DSH 也需满足；宿主要求更高时以宿主为准。
 
 在矩阵所列宿主中，将固定版本加入Web profile：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.5
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.6
 dsh web
 ```
 
 npm 上无 scope 的 `dsh-iris` 是另一款插件；安装或更新 Iris Media 时必须使用完整 scoped 包名。
 
-只下载包可运行`npm pack @mokuyoaxis/dsh-iris@0.2.5`；普通`npm install`不会自动加入DSH profile。仍需保留历史Iris0.1.4时可以固定其版本，历史DSH/Node要求见兼容矩阵；0.1.4不包含当前Core媒体CLI与后续新功能。
+只下载包可运行`npm pack @mokuyoaxis/dsh-iris@0.2.6`；普通`npm install`不会自动加入DSH profile。仍需保留历史Iris0.1.4时可以固定其版本，历史DSH/Node要求见兼容矩阵；0.1.4不包含当前Core媒体CLI与后续新功能。
 
 浏览器默认打开 `http://127.0.0.1:3080`。插件安装后只会在下一次 DSH 启动时装载；如果 DSH 已经运行，请先停止再启动。启动输出包含一次性认证参数时，必须完整打开该 URL，不能只输入裸地址。
 
 ### 独立 CLI
 
-无需DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.5`，通过 `npx dsh-iris --help` 查看入口。发布状态见README，完整说明见 [Headless CLI](docs/HEADLESS_CLI.md) 和 [视觉CLI](docs/VISION_CLI.md)。
+无需DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.6`，通过 `npx dsh-iris --help` 查看入口。发布状态见README，完整说明见 [Headless CLI](docs/HEADLESS_CLI.md) 和 [视觉CLI](docs/VISION_CLI.md)。
 
 未列入对应Iris版本兼容矩阵的DSH版本须另行验收。让Agent协助安装时，可使用 [简要Prompt](docs/AGENT_QUICKSTART.md)。
 
@@ -51,10 +55,12 @@ dsh --profile web --dump-config
 2. 名称可填“阿里云百炼”。
 3. Base URL 填 `https://dashscope.aliyuncs.com/compatible-mode/v1`；如果账号使用百炼业务空间专属域名，再把“媒体 Base URL”填为同地域的 `https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`（地域按账号实际情况替换）。
 4. 填入与模型、Endpoint 同地域的 DashScope API Key，点击“保存”。
-5. 展开刚添加的供应商，点击“发现模型”。
-6. 若模型显示“未标注功能”，点击其“设置功能”，勾选已确认支持的功能并保存。
+5. 展开供应商的“模型目录”，点击“同步目录”；也可手动填写已核对的模型 ID。
+6. 点击“设置功能”，勾选已确认支持的用途。首次配置可同时勾选“同时启用所选功能的自动池”，点击“保存模型用途”。
 
-0.2.4中，单个供应商也需要在“功能分配（调用顺序）”为所需功能选择模型；未分配时不调用模型池。0.2.3仅Music采用严格名单，升级影响见 [功能模型分配](docs/FUNCTION_MODEL_ASSIGNMENTS.md)。
+DSH 已配好同一媒体服务时，可在第 1 步选择连接来源，明确协议后直接复用地址与密钥，无需重复填写。连接支持范围见 [连接复用](docs/DSH_PROVIDER_CONNECTIONS.md)。
+
+选择自动池后，确认过用途的合格模型按登记顺序参与调用；保留“仅用所选模型”时，还需在“功能池与调用方式”选择模型。旧空名单不会自动变成自动池，升级差异见 [功能模型池](docs/FUNCTION_MODEL_POOLS.md)。
 
 保存供应商和修改能力分配都会立即生效，不需要重启 DSH。
 
@@ -96,7 +102,7 @@ Iris 当前支持两类调用路径：
 
 未提供标签的模型仍可在后续发现中接收供应商能力元数据；显式保存空标签表示当前不加入任何功能池，发现不会覆盖该选择。
 
-Iris 先按画图、视频、语音、转写和视觉功能组织候选池，再按该功能的能力分配顺序选模型；每次从首项开始，生成只有明确未受理才切换。标注功能不会发起实测、生成或改变分配顺序。
+Iris 按六类功能的当前策略组织候选池：自动模式使用已确认用途的合格模型，手选模式按所选顺序，停用模式不发起新调用。每次从首项开始，媒体生成只有明确未受理才安全切换。确认用途不发起实测或生成；勾选同时启用自动池会明确改变所选功能策略。
 
 点击模型旁单项能力标记会进行验证。视觉、图片和 TTS 会先显示确认框，再发起真实供应商请求，不是本地校验：
 
@@ -128,16 +134,16 @@ Iris 先按画图、视频、语音、转写和视觉功能组织候选池，再
 
 每项能力都可以设置一个有序的“供应商 + 模型”列表。界面显示的是模型名和供应商，配置中保存为 `providerId::modelId` 复合引用，因此不同供应商的同名模型不会冲突。
 
-- 六类功能仅使用各自分配名单，每次按名单顺序选择，不补入其他模型。
-- 临时指定模型须已分配，本次只调用该项。
+- 六类功能可选自动池、仅用所选模型或停用；手选不补池，自动池只纳入已确认用途的合格模型，每个请求从首项开始。
+- 临时指定模型须在当前功能允许范围内，本次只调用该项；功能停用时不能绕过。
 - “清空分配”停止新调用，模型、任务与作品保留；已有任务按原绑定观察和补交付。
-- 视觉可明确加入“DSH 当前默认模型”并排序；未加入时不使用宿主视觉。
+- 视觉可将“DSH 当前默认模型”加入手选名单，或在自动池中明确启用宿主视觉；默认不加入。
 
 生成类故障转移只覆盖上传、提交和同步生成阶段。远端一旦受理异步任务，Iris 就会继续跟踪这个任务，不会因轮询或下载失败自动重提，以免重复生成和计费。
 
 ## 音乐生成
 
-为音乐服务添加实际模型，设置“音乐”标签，选择 **Chat Completions（内嵌音频）** 协议，再将模型加入音乐能力分配名单。音乐必须明确分配，不从其他模型池自动补齐；这个接口要求服务在聊天响应正文中返回MP3/WAV音频data URL。
+为音乐服务添加实际模型，确认“音乐”用途，选择 **Chat Completions（内嵌音频）** 协议，再启用音乐自动池或加入手选名单。这个接口要求服务在聊天响应正文中返回 MP3/WAV 音频 data URL；音乐与 TTS 的用途及协议分别确认。
 
 配置后可在DSH中说“用Iris生成一首复古摇滚配乐”，或使用工作台音乐卡片。生成结果可试听、下载与导出；音乐和TTS分别配置，配乐按需加入多步骤流程。
 
@@ -171,7 +177,7 @@ Core 图片卡可直接点击“看图”或“OCR”；结果可以复制、下
 
 ### 按 Artifact ID 改图
 
-Core 静态 PNG/JPEG/WebP 图片卡可点击“改图”，填写修改指令，再选择已分配的带图编辑模型。点击“生成修改版”才调用模型，修改版保存为关联原图的新作品，原图保留；可继续看图、OCR、下载或编辑。
+Core 静态 PNG/JPEG/WebP 图片卡可点击“改图”，填写修改指令，再选择当前图片池允许的带图编辑模型。点击“生成修改版”才调用模型，修改版保存为关联原图的新作品，原图保留；可继续看图、OCR、下载或编辑。
 
 Agent可调用 `iris_edit_image`，提供 `source_artifact_id`、`prompt` 与可选 `model`；CLI使用 `run image`，模型字段为 `model_ref`，见 [Artifact改图](docs/CLI_MANAGEMENT.md#artifact-聊天改图)。支持openai-chat-images带图生成，0.2.4另支持DashScope原生Qwen edit/max/plus、2.0/pro及日期快照。不提供mask、多参考图或连续编辑历史。
 
@@ -212,7 +218,7 @@ $DSH_HOME/iris/v1/providers.json
 }
 ```
 
-`mediaBaseUrl` 可以省略或留空，此时媒体调用沿用 `baseUrl`。`assignments` 可以省略；省略后使用模型池顺序。包含特殊字符的 provider 或模型引用会经过 URL 编码，复杂引用建议在工作台中生成，不要手写。
+`mediaBaseUrl` 可以省略或留空，此时媒体调用沿用 `baseUrl`。`assignments` 可以省略，但从 0.2.4 起缺失分配不发起对应功能的新调用；0.2.6 也不会将其静默改为自动池。包含特殊字符的 provider 或模型引用会经过 URL 编码，复杂引用建议在工作台中生成，不要手写。
 
 可为明确不需要认证的本地端点设置 `"auth": "none"` 并省略 `apiKey`；缺省或 `"auth": "bearer"` 仍要求 Key，保持旧配置行为。无认证模式不会发送 Authorization 头，已有的旧 Key 也不会被带入该模式的媒体请求。工作台尚无专门的无认证开关，需要按上述停机原则编辑私有配置；不要对需要认证的公网端点使用 `auth:none`。
 
@@ -380,11 +386,11 @@ npx @mokuyoaxis/dsh-iris doctor --json
 
 已安装包也可以直接运行 `dsh-iris doctor`。退出码为 `0`（正常）、`1`（警告）和 `2`（硬错误）。Doctor 会执行一个随后立即删除的本地写入探针，并检查配置、任务、能力分配、临时文件和产物引用；输出不含完整 API Key。离线模式无法检查 DSH 工具/客户端是否已经装载，也不会用付费请求验证 Provider。
 
-**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 Iris 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.2.5 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
+**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 Iris 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.2.6 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
 
 ## Host Doctor
 
-DSH运行后打开“设置 → Iris工作台 → 宿主诊断”。卡片检查宿主/服务端/客户端版本、当前工具和随包Skill、四组路由与四个UI Slot。0.2.4包含17个工具和三项Skill；升级后检查服务端实际装载、刷新页面，并为所需功能分配模型。点击“刷新”查看结果，原始JSON可在已认证的同一浏览器访问 `/iris/api/doctor`。
+DSH 运行后打开“设置 → Iris 工作台 → 宿主诊断”。卡片检查宿主/服务端/客户端版本、当前工具和随包 Skill、四组路由与四个 UI Slot。0.2.6 保留 17 个工具和三项 Skill；升级后检查服务端实际装载、刷新页面，并确认功能策略。点击“刷新”查看结果，原始 JSON 可在同一浏览器访问 `/iris/api/doctor`；该路由使用 Iris 的 Host/来源守卫，不提供独立身份认证。
 
 0.2.4新增图片导入后检查17个工具，三项Skill保持；0.2.3为16个工具。
 
@@ -426,7 +432,7 @@ dsh plugin --profile web remove @mokuyoaxis/dsh-iris
 - **没有可用模型**：先确认供应商已启用且 Key 有效，再运行“发现模型”；未标注模型需通过“设置功能”选择用途，不支持 `/models` 时手动添加并标注。
 - **OpenAI 兼容图片请求走错协议**：核对模型的有效图片协议；`/images/generations` 使用 `openai-images`，网关聊天图片扩展使用 `openai-chat-images`，同步 `/responses` 生图使用 `openai-responses-images`。可在生图模型行或 CLI `models protocol` 设置模型级覆盖，不需要改变同账号其他模型的接口。
 - **反向代理访问返回 `untrusted host`**：把浏览器实际使用的域名或 `host:port` 加入 `IRIS_TRUSTED_HOSTS`，保留 Host，并确认代理层已经启用认证。
-- **模型池为空时使用宿主看图**：0.2.4需在视觉分配中明确加入“DSH 当前默认模型”；宿主默认模型须声明图片输入。也可配置并分配自持 `vision` 模型。
+- **模型池为空时使用宿主看图**：在视觉手选名单中加入“DSH 当前默认模型”，或在自动池中明确启用宿主视觉；宿主模型须声明图片输入。也可确认自持 `vision` 模型用途，再启用自动池或加入手选名单。
 - **视频摘要提示 ffmpeg 不可用**：安装系统级 `ffmpeg` 和 `ffprobe`，并确保 DSH 进程的 PATH 能找到它们。
 - **本地文件不存在**：这里的“本地”指 DSH 宿主，不一定是浏览器所在设备；优先用“上传文件”。
 - **视频任务长时间运行**：不要重复提交。用 `iris_task_status` 或工作台任务详情查询原任务。

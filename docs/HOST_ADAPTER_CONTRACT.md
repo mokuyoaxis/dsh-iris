@@ -2,6 +2,8 @@
 
 状态：**v0.1.4 内部契约与渐进迁移已完成，并通过真实 DSH 隔离 canary。** 本文固定真实消费者所需的最小边界；0.2.2 已提供独立 Core/CLI，但未冻结公开 Host SDK，也未实现完整 Local Host。
 
+Iris 0.2.6 增加 [三种功能池策略](FUNCTION_MODEL_POOLS.md)；下文“功能名单”在 0.2.6 中指当前功能允许范围，自动池也遵守相同的 Host 边界。0.2.4/0.2.5 采用严格名单。
+
 ## 目标
 
 Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、会话、浏览器和模型能力映射为 Iris 端口。Command 接收 Iris 输入、`AbortSignal` 和所声明的 Host Port，**不得接收原始 `ctx`**。Task、Provider、文件持久化和成本语义不属于宿主。
@@ -20,9 +22,12 @@ Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、�
 | `sessions` | `ctx.get('sessionQuery')` / Client sessions | 列出当前会话的受支持附件和最小模型选择信息 | 只使用 Iris 自有产物或显式上传 |
 | `browser` | `ctx.get('browser')` | 将受限 HTML 渲染为图片；不向 Command 暴露 DSH page/session 对象 | HTML 截图不可用 |
 | `textModel` | DSH LLM/default-model 服务 | 文本生成及精确模型元数据；当前宿主视觉也由此绑定默认选择 | 宿主文本/视觉不可用，自持 Provider 按各功能名单执行 |
+| `providerConnections`（0.2.6） | DSH LLM 目录、settings 与 credentials 服务 | 列出无密钥的连接元数据；仅在服务端操作期间解析所引用连接 | 连接引用不可用，手动供应商不受影响 |
 | `visionModel` | DSH 旧视觉桥接 | 保留 `analyze()` 兼容入口；当前视觉共享端口经 `textModel` 与附件桥接执行 | 旧桥接不可用，不自动授予视觉功能调用资格 |
 
 `ports` 只包含真实可调用的方法对象。缺失或版本不兼容的能力进入 `unavailable`，并提供 `kind` 与人类可读 `reason`；Doctor 与运行错误必须消费同一份事实。
+
+0.2.6 在 DSH 适配边界使用 `providerConnections.list()` 和 `resolve(reference, { signal })`。前者不读取密钥值，后者只返回操作期间的服务端连接信息；Core 接收已经解析的普通 Provider 参数，不接收该端口、DSH 对象或凭据引用。使用 DSH 连接的生成、发现、视觉及任务恢复条件依赖此端口，普通手动配置不依赖。详见 [连接复用](DSH_PROVIDER_CONNECTIONS.md)。
 
 ## Command × Host Port 矩阵
 
@@ -43,7 +48,7 @@ Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、�
 | Workbench/API/媒体路由 | `routes` | `clientSlots` | HTTP/UI 只是投影，不是真相来源 |
 | 随包 Skill | `skills` | 无 | Skill 不得绕过 Command、Task 或费用边界 |
 
-开发树中的宿主视觉必须以 `host:current-vision` 加入视觉名单并排序；读取的是DSH当前默认选择，不是当前对话选择。不自动追加宿主候选，临时指定失败也不回退。升级规则见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。
+宿主视觉必须以 `host:current-vision` 加入视觉名单，或在自动池中明确启用宿主视觉；读取的是 DSH 当前默认选择，不是当前对话选择。不自动追加宿主候选，临时指定失败也不回退。升级规则见 [功能模型池](FUNCTION_MODEL_POOLS.md)。
 
 ## 不可违反规则
 
@@ -86,7 +91,7 @@ Iris 继续作为普通 DSH/Cordis 插件装载：`cordis.patch.yml` 只把 npm 
 ## 当前覆盖
 
 - `lib/index.js` 负责 DSH 插件入口、生命周期和工具注册；
-- `lib/dsh-host-adapter.js` 映射九类命名端口；
+- `lib/dsh-host-adapter.js` 映射上述命名端口；
 - Local Host fixture 覆盖 crop/diff、Task 查询与提醒操作，并验证缺失能力的错误；
 - Host Doctor 对服务端注册账本、客户端版本和 Slot 握手分别给出结果；
 - 已发布 Iris `0.1.4` 在 DSH `0.1.2-rc.1` 与 `0.1.5-rc.1` 上有历史宿主验证记录，不继承为当前版本的支持声明。

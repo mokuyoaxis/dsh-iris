@@ -1,6 +1,6 @@
 # 独立视觉 CLI
 
-状态：**Iris 0.2.2**。安装 `npm install @mokuyoaxis/dsh-iris@0.2.2` 后运行 `npx dsh-iris ...`，或从源码运行 `node bin/dsh-iris.js ...`。需要 Node.js ≥ 22、已有依赖 Sharp；从视频文件抽帧还需要 PATH 中的 ffmpeg、ffprobe，复用既有 Core 帧不需要。
+版本要求：**Iris 0.2.6**。发布状态见 [README](../README.md)；安装 `npm install @mokuyoaxis/dsh-iris@0.2.6` 后运行 `npx dsh-iris ...`，或从源码运行 `node bin/dsh-iris.js ...`。需要 Node.js ≥ 22、依赖 Sharp；从视频文件抽帧还需要 PATH 中的 ffmpeg、ffprobe，复用既有 Core 帧不需要。
 
 ## 四个命令
 
@@ -95,7 +95,7 @@ dsh-iris vision summarize \
 }
 ```
 
-0.2.4省略 `--model-ref` 时仅按 `assignments.vision` 名单排序，不补入模型池。只有本地不可用、明确拒绝或正常空正文才允许下一候选；截断、未知终态、收到正文后的失败、取消和超时停止调用。显式 `--model-ref providerId::modelId` 须已分配且只绑定该账号与模型，失败不会替换；新视觉命令不接受裸模型名。模型需启用并声明vision能力，未配置时直接失败。自持视觉支持OpenAI-compatible Chat Completions SSE；CLI不能执行DSH宿主视觉资源。见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。
+省略 `--model-ref` 时按视觉功能策略排序：自动池使用已确认用途的合格模型，手选模式只用 `assignments.vision` 名单，停用不调用。只有本地不可用、明确拒绝或正常空正文才允许下一候选；截断、未知终态、收到正文后的失败、取消和超时停止调用。显式 `--model-ref providerId::modelId` 须在允许范围内且只绑定该账号与模型，失败不会替换；视觉命令不接受裸模型名。模型需启用并声明 vision 能力，未配置时直接失败。自持视觉支持 OpenAI-compatible Chat Completions SSE；CLI 不能执行 DSH 宿主视觉资源。见 [功能模型池](FUNCTION_MODEL_POOLS.md)。
 
 成功JSON携带实际`modelRef`、`selectionReason`（`explicit` / `assignment`）、模型身份、正常终态及可用usage；旧记录的`pool`来源仍可读取。OCR实际选择保留在每个成功块上。配置凭据、端点和原始错误响应不会出现在诊断中；模型回答和OCR正文是用户内容。
 

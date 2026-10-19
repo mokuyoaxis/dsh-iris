@@ -71,7 +71,7 @@ try {
   assert.equal(skipped.skipped, true); assert.equal(calls, beforeProbe);
   assert.equal(config.providerById(provider.id).mediaProtocol, 'openai-responses-images');
   config.setAssignmentOrder('music-gen', []);
-  await assert.rejects(runAction({}, 'music', { prompt: 'unassigned' }), /分配/);
+  await assert.rejects(runAction({}, 'music', { prompt: 'unassigned' }), { code: 'IRIS_PROVIDER_MODEL_UNAVAILABLE' });
   assert.equal(calls, beforeProbe);
   console.log('PASS DSH Music：工具、GUI动作API、502重试、同源播放、Core快照、零小样本探测和图片协议隔离');
 } finally {
