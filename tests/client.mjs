@@ -152,7 +152,7 @@ assert(/function\s+HostDoctorPanel\s*\(/.test(src)
   && src.includes("fetch('/iris/api/doctor')")
   && src.includes('React.createElement(HostDoctorPanel'),
   '工作台缺少 Host Doctor 只读诊断卡');
-assert(src.includes('不调用 Browser、模型或供应商'), 'Host Doctor UI 缺少零调用边界说明');
+assert(src.includes('刷新只读装载证据，不启动浏览器'), 'Host Doctor UI 缺少只读刷新边界说明');
 
 /* ③ 泡泡关键行为：位置持久化、健康四色、窄屏边界、触摸取消与数字角标 */
 assert(src.includes('localStorage.getItem(\'iris-bubble-pos\''), '缺少拖动位置持久化');

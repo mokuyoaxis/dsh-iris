@@ -1,6 +1,6 @@
 # Iris 架构与边界
 
-状态：本文描述 **Iris0.2.5** 的架构。0.2.0建立实例化Core Runtime、Headless CLI及共享Task/Artifact事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.4补图片导入、原生Qwen改图和统一功能分配；0.2.5按接口能力恢复旧宿主支持。准确版本及历史发行范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。Node.js最低22.0.0；Core内部API尚未冻结为公共SDK。
+状态：本文描述 **Iris 0.2.6** 的架构，未发布改动单独标记。0.2.0 建立实例化 Core Runtime、Headless CLI 及共享 Task/Artifact 事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.5 恢复旧宿主支持，0.2.6 增加连接引用、可选功能自动池和目录同步。准确版本及历史发行范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。Node.js 最低 22.0.0；Core 内部 API 尚未冻结为公共 SDK。
 
 ## 当前形态
 
@@ -35,6 +35,8 @@ DSH Host / Cordis                         Headless CLI
 
 `lib/index.js` 是 DSH 插件装配入口，`lib/dsh-host-adapter.js` 是原始 DSH/Cordis 对象进入 Iris 的服务端边界；`lib/dsh-core-adapter.js` 只负责选择 DSH profile 的 Core 数据根、恢复 Provider 配置和投影 Host DTO。`bin/dsh-iris.js` 不启动 DSH，也不推断 profile。`lib/api.js` 与 `lib/client.js` 是 Host 投影，不是真相来源。
 
+未发布开发版增加 `lib/application-runtime.js`，首批 CLI 图片生成、导入、比较、作品查询/导出和单项 Task 查询通过它装配 Core。写队列、操作取消和关闭归属于应用实例；每次写操作独立取得、释放 Core 租约。DSH 原队列与观察器仍沿用原装配，持久步骤绑定和独立 API/Web 尚未实现。详见 [应用运行时契约](CORE_RUNTIME_CONTRACT.md#应用运行时装配未发布)。上图表示已发布入口的共同核心。
+
 0.2.1的 S2V 使用 Core Task/Attempt，HTML 使用 `media.html` 与显式 Browser Port；视觉和提示词预览通过共享 Model Ports 执行。纯视觉不创建 Task/Artifact，摘要主动转写仍使用 Core 任务。聊天改图属于媒体生成链，按来源 Artifact ID 创建新 Task 和关联产物。
 
 ## 共享核心
@@ -42,6 +44,7 @@ DSH Host / Cordis                         Headless CLI
 | 模块 | 职责 | DSH 运行时依赖 |
 |---|---|---:|
 | `core-contract.js` / `core-runtime.js` / `core-writer-lease.js`（0.2.2） | 显式数据根、reader/writer 权限、单写者租约、取消与释放 | 无 |
+| `application-runtime.js`（未发布） | 实例写队列、操作输入快照与 Core 装配；首批由 CLI 消费 | 无 |
 | `command-service.js` | 本地媒体命令、Task 控制面和 Artifact 查询/导出 | 无 |
 | `generation-input.js` | CLI、DSH 与重试共用的生成参数校验和 Provider 字段转换 | 无 |
 | `model-port-contract.js` / `model-invoker.js` | Text/Vision 内部契约、有限调用预算与取消 | 无 |
@@ -74,7 +77,9 @@ DSH Host / Cordis                         Headless CLI
 
 ## Provider 边界
 
-0.2.4将六类功能统一为严格有序分配名单：不补入全局池，临时指定只绑定名单内单项。DSH默认视觉为显式宿主资源，不作为隐式兜底；手动实测与旧任务恢复保持独立。配置格式、Core受理纪律与生产依赖保持。升级范围见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。下方0.2.2描述保留当时能力声明变更的背景。
+0.2.6 的六类功能可选择自动池、仅用所选模型或停用。自动池只从已确认用途的模型中按稳定顺序选择，不授权目录新条目，也没有跨请求轮转；旧名单和缺失/空分配不自动启用。DSH 默认视觉仍需明确加入允许范围，手动实测与旧任务恢复保持独立。连接引用由 DSH Adapter 在操作期间解析，Core 不接收宿主凭据引用。详见 [功能模型池](FUNCTION_MODEL_POOLS.md)与 [连接复用](DSH_PROVIDER_CONNECTIONS.md)。
+
+0.2.4/0.2.5 的严格有序名单规则见 [功能模型分配](FUNCTION_MODEL_ASSIGNMENTS.md)。下方 0.2.2 描述保留当时能力声明变更的背景。
 
 0.2.2按功能组织有序模型候选池，能力来自明确模型标签、旧能力字段绑定或供应商能力元数据。裸账号不物化默认模型，模型名称不授权进入候选链；明确空池与空标签保持权威。模型与供应商复合身份用于底层执行器，功能入口、分配排序及安全 failover 没有改为模型中心产品或默认轮转。旧 0.2.1 的能力推断行为不再用于裸账号或模型名称赋能。
 

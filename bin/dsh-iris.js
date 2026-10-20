@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createCommandService } from '../lib/command-service.js';
 import { createCoreRuntime } from '../lib/core-runtime.js';
+import { createApplicationRuntime } from '../lib/application-runtime.js';
 import { recoverCoreWriterLease } from '../lib/core-lease-recovery.js';
 import { doctor, formatDoctorReport } from '../lib/doctor.js';
 import { loadProviderCatalog, providerCatalogSnapshot, catalogCapabilitySnapshot, imageCandidatesFromCatalog, musicCandidatesFromCatalog, providerForTaskFromCatalog, providerTaskBinding, transcribeCandidatesFromCatalog, ttsCandidatesFromCatalog, videoCandidatesFromCatalog } from '../lib/provider-catalog.js';
@@ -29,10 +30,10 @@ function trackedProviderAdapter(provider, options, task) {
   });
 }
 
-async function generationCatalog(options, capability, modelRef) {
+async function generationCatalog(options, capability, modelRef, signal = cliAbortController.signal) {
   const file = required(options['provider-config'], 'provider-config');
   const catalog = loadProviderCatalog(file);
-  if (!modelRef) await refreshCatalogDirectories(file, catalog, capability, { signal: cliAbortController.signal });
+  if (!modelRef) await refreshCatalogDirectories(file, catalog, capability, { signal });
   return catalog;
 }
 
@@ -191,6 +192,13 @@ async function withRawRuntime(mode, dataRoot, callback) {
 
 async function withRuntime(mode, dataRoot, callback, ports = {}) {
   return withRawRuntime(mode, dataRoot, (runtime) => callback(createCommandService(runtime, ports)));
+}
+
+async function withApplication(dataRoot, callback, resolveImageCandidates) {
+  const application = createApplicationRuntime({ dataRoot: required(dataRoot, 'data-root'), resolveImageCandidates });
+  const unregister = registerRuntime(application);
+  try { return await callback(application); }
+  finally { try { await application.dispose(); } finally { unregister(); } }
 }
 
 async function main(args) {
@@ -358,8 +366,9 @@ async function main(args) {
     const options = flags(args.slice(2), ['data-root', 'input']);
     const input = jsonInput(options.input);
     const command = args[1] === 'diff' ? 'media.diff' : 'media.frames';
-    const result = await withRuntime('writer', options['data-root'], (commands) =>
-      commands.execute(command, input));
+    const result = args[1] === 'diff'
+      ? await withApplication(options['data-root'], application => application.execute(command, input, { signal: cliAbortController.signal }))
+      : await withRuntime('writer', options['data-root'], commands => commands.execute(command, input));
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }
@@ -375,21 +384,24 @@ async function main(args) {
 
   if (args[0] === 'run' && args[1] === 'image') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
-    const { providerInput, modelRef, sourceArtifactId } = generationInput('image', jsonInput(options.input));
-    const catalog = await generationCatalog(options, 'image-gen', modelRef);
-    const routes = imageCandidatesFromCatalog(catalog, modelRef);
-    await withRawRuntime('writer', options['data-root'], async (runtime) => {
-      const candidates = routes.map((route) => ({
+    const input = jsonInput(options.input);
+    const resolveImageCandidates = async ({ modelRef, signal }) => {
+      const catalog = await generationCatalog(options, 'image-gen', modelRef, signal);
+      return imageCandidatesFromCatalog(catalog, modelRef).map(route => ({
         adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
         selectionReason: route.selectionReason,
         providerBinding: providerTaskBinding(route.provider)
       }));
-      const result = await createProviderTaskRunner(runtime).submit({
-        capability: 'image', candidates,
-        providerInput, sourceArtifactId
-      });
-      console.log(JSON.stringify(result, null, 2));
-    });
+    };
+    let result;
+    try {
+      result = await withApplication(options['data-root'], application =>
+        application.generateImage(input, { signal: cliAbortController.signal }), resolveImageCandidates);
+    } catch (error) {
+      if (error instanceof GenerationInputError) throw new CliUsageError(error.message);
+      throw error;
+    }
+    console.log(JSON.stringify(result, null, 2));
     return 0;
   }
 
@@ -567,8 +579,8 @@ async function main(args) {
 
   if (args[0] === 'task' && args[1] === 'inspect' && args[2]) {
     const options = flags(args.slice(3), ['data-root']);
-    const result = await withRuntime('reader', options['data-root'], (commands) =>
-      commands.execute('task.inspect', { task_id: args[2] }));
+    const result = await withApplication(options['data-root'], application =>
+      application.execute('task.inspect', { task_id: args[2] }, { signal: cliAbortController.signal }));
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }
@@ -584,15 +596,16 @@ async function main(args) {
 
   if (args[0] === 'artifact' && args[1] === 'import') {
     const options = flags(args.slice(2), ['data-root', 'input']);
-    const result = await withRuntime('writer', options['data-root'], commands => commands.execute('artifact.import', jsonInput(options.input)));
+    const result = await withApplication(options['data-root'], application =>
+      application.execute('artifact.import', jsonInput(options.input), { signal: cliAbortController.signal }));
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }
 
   if (args[0] === 'artifact' && args[1] === 'inspect' && args[2]) {
     const options = flags(args.slice(3), ['data-root']);
-    const result = await withRuntime('reader', options['data-root'], (commands) =>
-      commands.execute('artifact.inspect', { artifact_id: args[2] }));
+    const result = await withApplication(options['data-root'], application =>
+      application.execute('artifact.inspect', { artifact_id: args[2] }, { signal: cliAbortController.signal }));
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }
@@ -600,8 +613,8 @@ async function main(args) {
   if (args[0] === 'artifact' && args[1] === 'list') {
     const options = flags(args.slice(2), ['data-root', 'offset', 'limit', 'kind', 'media-type', 'task-id']);
     const input = Object.fromEntries(Object.entries(options).filter(([key]) => key !== 'data-root').map(([key, value]) => [key.replaceAll('-', '_'), ['offset', 'limit'].includes(key) ? Number(value) : value]));
-    const result = await withRuntime('reader', options['data-root'], (commands) =>
-      commands.execute('artifact.list', input));
+    const result = await withApplication(options['data-root'], application =>
+      application.execute('artifact.list', input, { signal: cliAbortController.signal }));
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }
@@ -626,11 +639,11 @@ async function main(args) {
 
   if (args[0] === 'artifact' && args[1] === 'export' && args[2]) {
     const options = flags(args.slice(3), ['data-root', 'output']);
-    const result = await withRuntime('writer', options['data-root'], (commands) =>
-      commands.execute('artifact.export', {
+    const result = await withApplication(options['data-root'], application =>
+      application.execute('artifact.export', {
         artifact_id: args[2],
         output_path: required(options.output, 'output')
-      }));
+      }, { signal: cliAbortController.signal }));
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }

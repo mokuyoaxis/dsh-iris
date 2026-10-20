@@ -44,9 +44,11 @@ dsh-iris 为 Agent、Iris 工作台和独立 CLI 提供图像、视频、音乐�
 
 项目目前处于早期版本，接口和配置格式仍可能随版本迭代调整。
 
-当前文档对应 **Iris 0.2.6**。安装与升级请固定版本，并先核对下方的宿主兼容范围。
+当前已发布版本为 **Iris 0.2.6**；未发布改动单独标记。安装与升级请固定版本，并先核对下方的宿主兼容范围。
 
 Iris 0.2.6 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和模型路由。新增连接复用、可选功能自动池、目录同步和能力检测；图片导入、原生 Qwen 改图、音乐、三项 Agent Skills 和同步交付恢复继续可用。Core 内部接口尚未冻结为公共 SDK。
+
+未发布开发版包含宿主截图适配、实际截图地址、主动截图自检，以及首批 CLI 命令共用的内部应用运行时，见 [Unreleased](CHANGELOG.md#unreleased)。Recipe/Flow、独立 API 和 Web 工作台仍在 [0.3 路线图](docs/ROADMAP.md#03-及以后)中。
 
 > 版本支持：Iris 0.2.6 沿用 0.2.5 的 12 个准确 DSH 版本，见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。保留旧 DSH 时仍需 Node.js ≥22.0.0，宿主若要求更高，以宿主为准。连接复用另需宿主提供对应公开接口。
 
@@ -74,11 +76,11 @@ Iris 0.2.6 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和�
 | 入口 | 按下文「最快开始」选择固定版本 | `dsh-iris run ...`，见 [Headless CLI](docs/HEADLESS_CLI.md) |
 | 数据位置 | `$DSH_HOME/iris/v1/`（Core 数据根 `core-v0`） | 显式 `--data-root` 指定的任意绝对路径 |
 | 自动观察 | 有（DSH Host 有界节拍 + 重启接管） | 显式 `task observe`；0.2.2 另提供有界 `task wait` |
-| 依赖 | 兼容矩阵中的DSH、Node.js ≥22（满足宿主要求） | 仅 Node.js ≥22与`sharp`（视频抽帧另需`ffmpeg`） |
+| 依赖 | 兼容矩阵中的DSH、Node.js ≥22（满足宿主要求） | Node.js ≥22与`sharp`（视频抽帧另需`ffmpeg`、`ffprobe`） |
 
-两条路径读写同一份 Core Task/Artifact 事实：CLI 指向 DSH profile 的 `core-v0` 数据根即可 inspect/export DSH 生成的作品，反之亦然。同一数据根只允许一个写者。
+两条路径读写同一份 Core Task/Artifact 事实：CLI 可指向 DSH profile 的 `core-v0` 数据根检查或导出作品，反之亦然。只读检查可与写者共存；导出也属于写操作，同一数据根已有写者时会返回 busy。
 
-> 安装体积提示：图像处理依赖 `sharp` 及其预编译二进制（约 27MB）。冷门平台（如部分 ARM proot 环境）安装失败时 `dsh-iris doctor` 可检出，图像类动作不可用，其余能力不受影响。
+> 图像处理依赖 `sharp` 及对应平台的二进制。`sharp` 无法加载时也可能阻止 CLI 或插件启动；请先修复依赖安装，再运行 `dsh-iris doctor` 检查环境。
 
 ## 可选的旧配置导入
 

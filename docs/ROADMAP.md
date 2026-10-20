@@ -18,6 +18,12 @@ DSH与CLI共用Task和Artifact，同一数据根只允许一个写者。纯视�
 
 宿主兼容继续集中在Adapter与客户端桥接。后续DSH更新优先检查实际API、工具/附件交付和输入区契约，复用同一验收入口扩充版本矩阵，避免让旧用户长期停留在缺少新功能的Iris分支。
 
+## 未发布开发进度
+
+宿主 HTML 截图已适配浏览器返回的 PNG 数据，并增加实际监听地址解析和用户主动触发的截图自检，见 [Unreleased](../CHANGELOG.md#unreleased)与 [宿主诊断](HOST_DOCTOR.md#开发版截图地址与主动自检尚未发布)。
+
+0.3 基础设施已完成首批 [内部应用运行时装配](CORE_RUNTIME_CONTRACT.md#应用运行时装配未发布)：实例写队列、操作取消/释放及 CLI 图片流程消费。步骤与 Task 的持久绑定、Flow 恢复、本地 API 和独立 Web 仍待实现。下一步先补步骤绑定和恢复；最小执行契约明确后可开始 Web 原型，真实联调依赖显式 API 的安全边界可验，没有已承诺的日期。
+
 ## 近期优先：真实使用验收
 
 优先完善图片创作与配乐、短片素材准备等完整流程：复用已有作品、按需生成、试听或查看结果，再导出可继续处理的素材。分别交付音视频素材不等于自动混音成片。
@@ -40,7 +46,7 @@ DSH 工作台与 Headless CLI 共用 Core 的可恢复隔离和恢复入口，�
 - Core 隔离内容的永久 purge（0.2.1 已开放可恢复隔离/恢复，legacy 永久删除保持原行为）；
 - 鸢尾花与泡泡视觉身份；
 - 有可用接口与实际需求后，补 Images 编辑、mask、多参考图或连续编辑；
-- 将提示词优化收口为 Core Prompt Engine 与共享 `prompt.optimize` Command，由 CLI 和 DSH 入口共同消费；DSH 只负责草稿读取、预览和写回；
+- 在已有纯核心提示词实现上补共享 `prompt.optimize` Command 与 CLI 消费；DSH 负责草稿读取、预览和写回；
 - 冻结中立 TextModel Port，把 Ollama、兼容文本端点及其他文本模型后端与媒体 Provider Catalog 分离，避免通用文本模型淹没 Iris 媒体模型界面；
 - 接入 ComfyUI、本地 TTS 等本地媒体 Provider，并补齐 `auth: none`、`billing: none`、同步完成语义和本地/远程 UI 区分；
 - 有可信价格来源后的成本与策略展示。

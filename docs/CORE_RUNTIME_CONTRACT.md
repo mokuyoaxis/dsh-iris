@@ -1,6 +1,6 @@
 # Core Runtime v0 内部契约
 
-本文定义 Iris 0.2.2 沿用的 Core Runtime 内部接口，初版在 0.2.0 实现。内部接口在后续版本仍可能调整，npm 包不把它作为公开 API 导出；现有 `config.js`、`tasks.js` 和 `artifacts.js` 也尚未迁移。
+本文定义 Iris 0.2.x 沿用的 Core Runtime 内部接口，初版在 0.2.0 实现。内部接口在后续版本仍可能调整，npm 包不把它作为公开 API 导出；现有 `config.js`、`tasks.js` 和 `artifacts.js` 也尚未迁移。
 
 ## 目标与范围
 
@@ -72,6 +72,19 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 错误、Doctor 证据和 Command 输出不得包含 API Key、授权头、私有签名 URL 或不必要的本机绝对路径。Core 的 Artifact 结果使用稳定 ID 和中性元数据；HTTP/media URL、DSH attachment 与会话展示均由 Host Adapter 投影。
 
+## 应用运行时装配（未发布）
+
+[application-runtime.js](../lib/application-runtime.js)是 0.3 的内部基础，复用上述 Core，不新增公开 export。实例显式接收数据根，以及可选的图片候选和既有任务 Adapter 解析函数；构造、状态查询和空闲期间不创建目录、持有租约或调用 Provider。首批 CLI 图片生成、图片导入、差异分析、作品查询/导出和单项 Task 查询已接入；其他 CLI 命令和 DSH 装配仍沿用原入口。
+
+- 同一应用实例的写操作按 FIFO 执行；每次写操作独立创建、释放 Core writer，普通失败原样返回，后续项继续。实例之间不共享队列或取消状态，跨进程写冲突仍返回 busy。
+- reader 独立于写队列，只读取已提交事实；它不调用配置解析函数或 Provider，不创建缺失数据根。并发写入时，多次读取不构成整个工作区的一致快照。
+- 排队输入保存为本次操作的快照。开始前取消跳过该项，不解析候选、不创建 Task；执行中取消传播到本次 Core。已经保存的结果按真实事实返回，未知受理不重新生成，本地中止不等于远端已取消。
+- `dispose()` 拒绝新操作和未开始项、中止活动操作，并等待业务回调和 Core 释放；重复调用返回同一个过程。租约释放失败时保留错误和现场，停止后续执行，不能报告关闭成功。
+
+首批执行面包括图片生成/改图、`artifact.import/inspect/list/export`、`media.diff`、`task.inspect/list`，以及显式 `task.observe/reobserve/redeliver/cancel`。观察每次至多一次 poll，没有后台轮询定时器；补交付复用原 Task/交付缓存，远端取消只有确认后才算成功。需要 Provider 时由入口注入解析函数，并按原 Task 的供应商、模型和 binding 核对；完整本地交付缓存不解析 Provider。
+
+应用运行时尚不保存 Recipe/Flow 或步骤与 Task 的绑定，也不承诺跨请求重复调用的生成幂等。下一步在持久步骤意图、稳定 Task 身份和恢复判据明确后接入 Flow；当前输入/配置和 Task/Artifact 格式保持。DSH 的模块级队列与观察器尚未迁移到该装配。
+
 ## 当前接口与后续范围
 
 0.2.3 增加同步完成结果的私有交付缓存：`task.redeliver` 可从原结果恢复，无需虚构远端 ID；完整字节离线交付，缺失字节只取回原 URL，不 submit。完整缓存可补回提交完成事实的中断，预留 Artifact ID 支持逐件重入；缓存与任务隔离/恢复一起管理。详见 [同步交付恢复](SYNC_DELIVERY_RECOVERY.md)。
@@ -88,7 +101,7 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 ## 非目标
 
-- 当前接口尚未作为 package export 或第三方 SDK 发布。0.2.0 的 F 阶段已正式决定：**不新增 `./core` 公开 export**——Root 插件与 `bin/dsh-iris` CLI 承载全部对外能力，内部模块（core-runtime、core-tasks、command-service、provider-task-runner、core-artifact*、core-user-projection）保持私有，可在 minor 版本间调整；冻结为公开 export 的决策顺延到 M2（0.3.0）的 Recipe/Serve 边界定稿后再审。届时一旦公开即写兼容策略与 semver 边界；
+- 当前接口尚未作为 package export 或第三方 SDK 发布。0.2.0 的 F 阶段已决定**不新增 `./core` 公开 export**：Root 插件与 `bin/dsh-iris` CLI 承载对外能力，内部模块保持私有，可在后续版本调整。按 [现行路线图](ROADMAP.md#03-及以后)，公开 Provider/Host SDK 在 0.4 有真实消费者后再评估；0.3 的 Recipe/API 实现不自动构成公开 SDK 或兼容承诺。
 - 不提供 standalone 服务、账号、多租户或额外监听端口；
 - 不预建缺少实际需求的 Provider 协议；收藏、标签、搜索与 Flow/Recipe 留待后续；
 - 不把 0.1.4 的模块级存储包装成实例存储，也不允许 CLI 与 DSH 无租约并发写同一数据根。

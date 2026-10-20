@@ -10,6 +10,8 @@
 
 0.2.4新增 `artifact import --data-root /absolute/path/core --input '{"image_path":"/absolute/path/source.png"}'`，将本地图片保存为持久作品，不调用模型；详见 [图片导入](IMAGE_IMPORT.md)。npm0.2.3不包含此命令。
 
+未发布开发版开始让图片生成、导入、比较、作品查询/导出和单项任务查询共用 [内部应用运行时](CORE_RUNTIME_CONTRACT.md#应用运行时装配未发布)，提供实例写队列、输入快照和操作级取消/释放。每个 CLI 调用仍是独立进程，队列不在进程之间共享；同时写同一数据根仍可能返回 busy。已有命令参数和 Task/Artifact 格式保持。
+
 ## 配置查询与离线诊断
 
 ```bash

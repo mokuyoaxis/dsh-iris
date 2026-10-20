@@ -8,6 +8,7 @@ import sharp from 'sharp';
 import { useTempDshHome } from './test-env.js';
 import { ffmpegAvailable } from '../lib/media-probe.js';
 import { listCoreArtifacts, readCoreArtifactBytes } from '../lib/core-artifacts.js';
+import { createDshHostAdapter } from '../lib/dsh-host-adapter.js';
 
 const { root } = useTempDshHome('iris-dsh-media-commands');
 const repo = fileURLToPath(new URL('../', import.meta.url));
@@ -29,8 +30,31 @@ const bPath = path.join(root, 'b.png');
 fs.writeFileSync(aPath, a);
 fs.writeFileSync(bPath, b);
 const sourceAttachments = new Map([['input-a', a], ['input-b', b]]);
+let screenshotResult = { dataUrl: 'data:image/png;base64,' + a.toString('base64'), width: 9999, height: 9999 };
+const browserCalls = [];
 const services = {
   tools: { register(definition) { registered.set(definition.name, definition); return () => {}; } },
+  browser: {
+    async open(...args) { assert.deepEqual(args, []); browserCalls.push('open'); return 'html-session'; },
+    async openUrl(session, request, signal) {
+      assert.equal(session, 'html-session');
+      assert(!('signal' in request));
+      assert(signal instanceof AbortSignal);
+      const htmlPath = path.join(config.irisHome(), 'render', new URL(request.url).pathname.split('/')[3], 'index.html');
+      assert.match(fs.readFileSync(htmlPath, 'utf8'), /Core HTML/);
+      browserCalls.push('openUrl');
+    },
+    async screenshot(session, request, signal) {
+      assert.equal(session, 'html-session');
+      assert(!('savePath' in request), '严格 downloadDir 不接受 Iris 数据根的路径');
+      assert(!('signal' in request));
+      assert.equal(request.format, 'png');
+      assert(signal instanceof AbortSignal);
+      browserCalls.push('screenshot');
+      return screenshotResult;
+    },
+    async close(session) { assert.equal(session, 'html-session'); browserCalls.push('close'); }
+  },
   attachments: {
     async saveImage(input) {
       const ref = { attachmentId: 'saved-' + (saved.size + 1), mediaType: input.mediaType, name: input.name };
@@ -51,6 +75,7 @@ const ctx = {
   inject(names, callback) { if (names.every((name) => services[name])) callback(this); },
   effect(callback) { const dispose = callback(); if (typeof dispose === 'function') disposers.push(dispose); }
 };
+const htmlHost = createDshHostAdapter(ctx, { version: '0.2.0-rc.2' });
 function exportMatches(artifactId, expected, label) {
   const output = path.join(root, label + '.png');
   const exported = spawnSync(process.execPath, ['bin/dsh-iris.js', 'artifact', 'export', artifactId,
@@ -98,6 +123,30 @@ try {
   assert.deepEqual(Buffer.from(guiDiff.imageDataUrl.split(',')[1], 'base64'),
     readCoreArtifactBytes(dshCoreDataRoot(), guiDiff.artifactIds[0]).bytes);
 
+  const html = await registered.get('iris_html_screenshot').execute({ html: '<p>Core HTML 中文</p>', fullPage: false }, {});
+  const htmlArtifactId = html.blocks[0].text.match(/artifact: (\S+)/)?.[1];
+  assert(htmlArtifactId, 'HTML 工具文本返回 Core 作品 ID');
+  const htmlMedia = readCoreArtifactBytes(dshCoreDataRoot(), htmlArtifactId);
+  assert.equal(htmlMedia.artifact.kind, 'html-screenshot');
+  assert.deepEqual(htmlMedia.artifact.metadata, { width: 16, height: 12 }, '采用 PNG 实际尺寸而非浏览器声明值');
+  assert.deepEqual(saved.get(html.blocks[1].attachment.attachmentId), a);
+  exportMatches(htmlArtifactId, a, 'tool-html');
+  const guiHtml = await runAction(htmlHost, 'html', { html: '<p>Core HTML GUI</p>', fullPage: true });
+  assert.deepEqual(Buffer.from(guiHtml.imageDataUrl.split(',')[1], 'base64'), a);
+  assert.deepEqual(readCoreArtifactBytes(dshCoreDataRoot(), guiHtml.artifactIds[0]).bytes, a);
+  assert.deepEqual(browserCalls, ['open', 'openUrl', 'screenshot', 'close', 'open', 'openUrl', 'screenshot', 'close']);
+  const beforeBadHtml = listCoreArtifacts(dshCoreDataRoot()).total;
+  screenshotResult = { path: path.join(root, 'untrusted.png') };
+  await assert.rejects(runAction(htmlHost, 'html', { html: '<p>Core HTML bad</p>' }), /PNG/);
+  assert.equal(listCoreArtifacts(dshCoreDataRoot()).total, beforeBadHtml, '坏返回不得创建作品');
+  assert.equal(browserCalls.at(-1), 'close');
+  assert.deepEqual(fs.readdirSync(path.join(config.irisHome(), 'render')), []);
+  const canceledHtml = new AbortController(); canceledHtml.abort();
+  const beforeCanceledHtml = browserCalls.length;
+  await assert.rejects(runAction(htmlHost, 'html', { html: '<p>Core HTML cancel</p>' }, { signal: canceledHtml.signal }), { name: 'AbortError' });
+  assert.equal(browserCalls.length, beforeCanceledHtml);
+  assert.equal(listCoreArtifacts(dshCoreDataRoot()).total, beforeBadHtml);
+
   if (ffmpegAvailable()) {
     const videoPath = path.join(root, 'clip.mp4');
     const generated = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i',
@@ -133,13 +182,13 @@ try {
   assert.equal(listCoreArtifacts(dshCoreDataRoot()).total, count, '预先取消的动作不得提交 Artifact');
   assert.equal(fetchCalls, 0);
   assert.equal(tasks.all().length, 0, '本地媒体处理不得创建 legacy Task');
-  assert(!fs.existsSync(path.join(config.irisHome(), 'outputs')), 'diff/抽帧不得双写 legacy outputs');
+  assert(!fs.existsSync(path.join(config.irisHome(), 'outputs')), '本地媒体不得双写 legacy outputs');
   assert(!fs.existsSync(path.join(dshCoreDataRoot(), '.iris-runtime-writer-v0')), 'DSH 处理和 CLI 导出后必须释放租约');
   for (const artifact of listCoreArtifacts(dshCoreDataRoot()).artifacts) {
     const manifest = fs.readFileSync(path.join(dshCoreDataRoot(), 'artifact-store', 'v0', 'manifests', artifact.id + '.json'), 'utf8');
     assert(!manifest.includes(root), 'Manifest 不得泄露宿主路径');
   }
-  console.log('ALL OK —— DSH diff/抽帧工具与 GUI 经 Core，附件/CLI 导出字节一致、零网络零 legacy 双写');
+  console.log('ALL OK —— DSH diff/抽帧/HTML 工具与 GUI 经 Core，附件/CLI 导出字节一致、零网络零 legacy 双写');
 } finally {
   stopProviderTaskWatchesForDsh();
   tasks.stopWatchAll();

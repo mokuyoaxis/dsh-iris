@@ -50,9 +50,11 @@ These captures come from an Android browser connected to DSH under Termux/PRoot 
 
 The project is at an early stage; interfaces and configuration formats may still change between releases.
 
-This documentation covers **Iris 0.2.6**. Pin the version when installing or upgrading, and check the host compatibility range below first.
+The current published version is **Iris 0.2.6**; unreleased changes are marked separately. Pin the version when installing or upgrading, and check the host compatibility range below first.
 
 Iris 0.2.6 provides a DSH plugin and a headless CLI sharing tasks, artifacts and model routing. It adds connection reuse, optional automatic function pools, directory synchronization and capability checks. Image import, native Qwen editing, music, three agent skills and synchronous delivery recovery remain available. Core internals have not been frozen as a public SDK.
+
+The unreleased development version includes host screenshot adaptation, actual screenshot address resolution, an explicit screenshot check, and an internal application runtime used by the first CLI commands; see [Unreleased](CHANGELOG.md#unreleased). Recipe/Flow, a standalone API and a standalone web workbench remain on the [0.3 roadmap](docs/ROADMAP.md#03-及以后).
 
 > Version support: Iris 0.2.6 retains the 12 exact DSH versions declared in 0.2.5; see the [compatibility matrix](docs/DSH_COMPATIBILITY.md). Node.js must be at least 22.0.0 and meet any higher host requirement. Connection reuse also requires the relevant public host services.
 
@@ -80,11 +82,11 @@ Future work includes additional protocol adapters and creative workflows; see th
 | Entry point | Choose a pinned release under "Quickest start" below | `dsh-iris run ...` — see [Headless CLI](docs/HEADLESS_CLI.md) |
 | Data location | `$DSH_HOME/iris/v1/` (Core data root `core-v0`) | Any absolute path passed via `--data-root` |
 | Automatic observation | Yes (bounded DSH host ticks + restart takeover) | Explicit `task observe`; 0.2.2 also offers bounded `task wait` |
-| Dependencies | A DSH version in the compatibility matrix, and Node.js ≥ 22 meeting host requirements | Node.js ≥ 22 and `sharp` only (`ffmpeg` for video frames) |
+| Dependencies | A DSH version in the compatibility matrix, and Node.js ≥ 22 meeting host requirements | Node.js ≥ 22 and `sharp` (`ffmpeg` and `ffprobe` for video frames) |
 
-Both paths read and write the same Core Task/Artifact facts: point the CLI at the `core-v0` data root of a DSH profile to inspect/export DSH-generated artifacts, and vice versa. Only one writer is allowed per data root.
+Both paths read and write the same Core Task/Artifact facts: point the CLI at the `core-v0` data root of a DSH profile to inspect or export artifacts, and vice versa. Read-only inspection can coexist with a writer; export is a write operation and returns busy if that data root already has a writer.
 
-> Install size note: image processing depends on `sharp` and its prebuilt binaries (~27 MB). On uncommon platforms (e.g. some ARM proot environments) a failed sharp install is detected by `dsh-iris doctor`; image actions become unavailable while everything else keeps working.
+> Image processing depends on `sharp` and its platform binaries. Failure to load `sharp` can also prevent the CLI or plugin from starting. Repair the dependency installation first, then run `dsh-iris doctor` to check the environment.
 
 ## Optional legacy configuration import
 
