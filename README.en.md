@@ -54,7 +54,7 @@ The current published version is **Iris 0.2.6**; unreleased changes are marked s
 
 Iris 0.2.6 provides a DSH plugin and a headless CLI sharing tasks, artifacts and model routing. It adds connection reuse, optional automatic function pools, directory synchronization and capability checks. Image import, native Qwen editing, music, three agent skills and synchronous delivery recovery remain available. Core internals have not been frozen as a public SDK.
 
-The unreleased development version includes host screenshot adaptation, actual screenshot address resolution, an explicit screenshot check, and an internal application runtime used by the first CLI commands; see [Unreleased](CHANGELOG.md#unreleased). Recipe/Flow, a standalone API and a standalone web workbench remain on the [0.3 roadmap](docs/ROADMAP.md#03-及以后).
+The unreleased development version includes host screenshot adaptation, address resolution, an explicit screenshot check, an internal application runtime, and a [first persistent image-edit workflow](docs/IMAGE_FLOW.md) (Chinese); see [Unreleased](CHANGELOG.md#unreleased). General Recipe/Flow support, a standalone API and a standalone web workbench remain on the [0.3 roadmap](docs/ROADMAP.md#03-及以后).
 
 > Version support: Iris 0.2.6 retains the 12 exact DSH versions declared in 0.2.5; see the [compatibility matrix](docs/DSH_COMPATIBILITY.md). Node.js must be at least 22.0.0 and meet any higher host requirement. Connection reuse also requires the relevant public host services.
 

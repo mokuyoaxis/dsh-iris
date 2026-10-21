@@ -2,6 +2,8 @@
 
 Iris 0.2.3 支持从缓存恢复完整同步媒体结果。本地交付失败后，可沿原任务重新交付；Task/Artifact 格式和公开 HTTP 路径保持，不需要迁移旧数据。
 
+未发布的 [固定图片流程](IMAGE_FLOW.md)也将其绑定任务的成功 poll 结果先写入原交付缓存，再按预留 Artifact ID 交付；相应中断只接回原结果，不重新 submit。未绑定 Flow 的异步 Task 沿用原路径，本节其余内容描述 0.2.3 起的同步恢复边界。
+
 ## 使用行为
 
 同步 Images、聊天生图、Responses、TTS 或音乐 返回完整结果后，本地写入失败仍记录 `accepted / succeeded / deliveryState=failed`。工作台“重新取回作品”和 CLI `task redeliver` 共用原 Task/Attempt 的恢复路径，不调用 submit、不创建新 Attempt。

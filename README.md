@@ -48,7 +48,7 @@ dsh-iris 为 Agent、Iris 工作台和独立 CLI 提供图像、视频、音乐�
 
 Iris 0.2.6 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和模型路由。新增连接复用、可选功能自动池、目录同步和能力检测；图片导入、原生 Qwen 改图、音乐、三项 Agent Skills 和同步交付恢复继续可用。Core 内部接口尚未冻结为公共 SDK。
 
-未发布开发版包含宿主截图适配、实际截图地址、主动截图自检，以及首批 CLI 命令共用的内部应用运行时，见 [Unreleased](CHANGELOG.md#unreleased)。Recipe/Flow、独立 API 和 Web 工作台仍在 [0.3 路线图](docs/ROADMAP.md#03-及以后)中。
+未发布开发版包含宿主截图适配、实际截图地址、主动截图自检、内部应用运行时和 [首版持久改图流程](docs/IMAGE_FLOW.md)，见 [Unreleased](CHANGELOG.md#unreleased)。通用 Recipe/Flow、独立 API 和 Web 工作台继续按 [0.3 路线图](docs/ROADMAP.md#03-及以后)推进。
 
 > 版本支持：Iris 0.2.6 沿用 0.2.5 的 12 个准确 DSH 版本，见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。保留旧 DSH 时仍需 Node.js ≥22.0.0，宿主若要求更高，以宿主为准。连接复用另需宿主提供对应公开接口。
 

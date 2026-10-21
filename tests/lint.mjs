@@ -78,6 +78,7 @@ const read = (rel) => {
 
 /* Core 候选不得反向导入 DSH/Cordis 运行时。 */
 for (const rel of [
+  'lib/application-runtime.js', 'lib/flow-store.js', 'lib/image-flow.js',
   'lib/model-port-contract.js', 'lib/model-invoker.js', 'lib/prompt-optimizer-core.js', 'lib/vision-core.js',
   'lib/model-call-runtime.js', 'lib/http-vision-model-adapter.js', 'lib/dsh-vision-model-adapter.js', 'lib/vision-model-routing.js',
   'lib/ocr.js', 'lib/ocr-model-routing.js',

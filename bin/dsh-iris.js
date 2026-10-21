@@ -88,12 +88,19 @@ function usage() {
     '  dsh-iris artifact export-many --data-root <absolute-path> --input <json> --output <absolute-directory>',
     '  dsh-iris artifact export <id> --data-root <absolute-path> --output <absolute-path>',
     '  dsh-iris artifact rebuild --data-root <absolute-path>',
+    '  dsh-iris flow init --data-root <new-absolute-path>',
+    '  dsh-iris flow create --data-root <absolute-path> --provider-config <absolute-path> --input <image-edit-json>',
+    '    Import the source image after flow init; use explicit model_ref and n=1. create saves private inputs but never submits.',
+    '  dsh-iris flow <list|inspect> [run-id] --data-root <absolute-path>',
+    '  dsh-iris flow continue <run-id> --data-root <absolute-path> [--provider-config <absolute-path>]',
+    '  dsh-iris flow select <run-id> --data-root <absolute-path> --input <json with artifact_id>',
+    '  dsh-iris flow export <run-id> --data-root <absolute-path> --output <absolute-path>',
     '  dsh-iris core <delete|cleanup> --data-root <absolute-path> [--input <json>] [--confirm-delete]',
     '    Default is a read-only preview. delete selects task_ids/artifact_ids; cleanup executes only explicitly selected preview paths.',
     '  dsh-iris core transactions --data-root <absolute-path>',
     '  dsh-iris core restore <transaction-id> --data-root <absolute-path>',
     '',
-    'Commands never start DSH. run image and the task observe/redeliver/cancel/retry verbs contact a provider only when explicitly requested; credentials come from a private file. observe polls once, redeliver only re-downloads, and cancel is recorded as canceled only when the provider explicitly confirms; none of them ever submits an existing task again. task retry creates a NEW task that may incur duplicate generation billing and requires --confirm-billing; the prompt must be supplied again because Core never persists prompts.'
+    'Commands never start DSH. run image and the task observe/redeliver/cancel/retry verbs contact a provider only when explicitly requested; credentials come from a private file. observe polls once, redeliver only re-downloads, and cancel is recorded as canceled only when the provider explicitly confirms; none of them ever submits an existing task again. task retry creates a NEW task that may incur duplicate generation billing and requires --confirm-billing; the prompt must be supplied again because Task records never persist prompts. Flow inputs do retain the prompt privately. flow continue may perform the first submission or observe/redeliver the original task, but never resubmits a task with an Attempt.'
   ].join('\n');
 }
 
@@ -194,8 +201,8 @@ async function withRuntime(mode, dataRoot, callback, ports = {}) {
   return withRawRuntime(mode, dataRoot, (runtime) => callback(createCommandService(runtime, ports)));
 }
 
-async function withApplication(dataRoot, callback, resolveImageCandidates) {
-  const application = createApplicationRuntime({ dataRoot: required(dataRoot, 'data-root'), resolveImageCandidates });
+async function withApplication(dataRoot, callback, resolveImageCandidates, resolveTaskAdapter) {
+  const application = createApplicationRuntime({ dataRoot: required(dataRoot, 'data-root'), resolveImageCandidates, resolveTaskAdapter });
   const unregister = registerRuntime(application);
   try { return await callback(application); }
   finally { try { await application.dispose(); } finally { unregister(); } }
@@ -205,6 +212,39 @@ async function main(args) {
   if (!args.length || args.includes('--help') || args.includes('-h')) {
     console.log(usage());
     return args.length ? 0 : 2;
+  }
+
+  if (args[0] === 'flow') {
+    const verb = args[1];
+    if (!['init', 'create', 'list', 'inspect', 'continue', 'select', 'export'].includes(verb)) throw new CliUsageError('不支持的 flow 子命令');
+    const needsId = ['inspect', 'continue', 'select', 'export'].includes(verb);
+    if (needsId && (!args[2] || args[2].startsWith('--'))) throw new CliUsageError('缺少 Run ID');
+    const allowed = ['data-root', ...(['create', 'continue'].includes(verb) ? ['provider-config'] : []),
+      ...(['create', 'select'].includes(verb) ? ['input'] : []), ...(verb === 'export' ? ['output'] : [])];
+    const options = flags(args.slice(needsId ? 3 : 2), allowed);
+    const input = ['create', 'select'].includes(verb) ? jsonInput(options.input) : {};
+    if (verb === 'select' && Object.keys(input).some(key => key !== 'artifact_id')) throw new CliUsageError('flow select 只接受 artifact_id');
+    if (needsId) input.run_id = args[2];
+    if (verb === 'export') input.output_path = required(options.output, 'output');
+    const resolveImageCandidates = options['provider-config'] ? async ({ modelRef, signal }) => {
+      const catalog = await generationCatalog(options, 'image-gen', modelRef, signal);
+      return imageCandidatesFromCatalog(catalog, modelRef).map(route => ({ adapter: trackedProviderAdapter(route.provider, options),
+        model: route.modelRef, selectionReason: route.selectionReason, providerBinding: providerTaskBinding(route.provider) }));
+    } : undefined;
+    const resolveTaskAdapter = options['provider-config'] ? task => {
+      const catalog = loadProviderCatalog(options['provider-config']);
+      return trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task);
+    } : undefined;
+    let result;
+    try {
+      result = await withApplication(options['data-root'], application =>
+        application.execute('flow.' + verb, input, { signal: cliAbortController.signal }), resolveImageCandidates, resolveTaskAdapter);
+    } catch (error) {
+      if (error instanceof GenerationInputError) throw new CliUsageError(error.message);
+      throw error;
+    }
+    console.log(JSON.stringify(result, null, 2));
+    return 0;
   }
 
   if (args[0] === 'doctor') {

@@ -12,6 +12,8 @@
 
 未发布开发版开始让图片生成、导入、比较、作品查询/导出和单项任务查询共用 [内部应用运行时](CORE_RUNTIME_CONTRACT.md#应用运行时装配未发布)，提供实例写队列、输入快照和操作级取消/释放。每个 CLI 调用仍是独立进程，队列不在进程之间共享；同时写同一数据根仍可能返回 busy。已有命令参数和 Task/Artifact 格式保持。
 
+开发版另提供 [固定图片流程](IMAGE_FLOW.md)：先在新的专用根 `flow init`，再导入素材并执行 `flow create/continue/select/export`；`flow inspect/list` 只读。Run 私有保存创作输入，Task 新增可选流程绑定；原 Task/Artifact 记录和配置不自动迁移，旧版 writer 不得写该流程根。此功能未随 npm 0.2.6 发布。
+
 ## 配置查询与离线诊断
 
 ```bash
@@ -189,7 +191,7 @@ dsh-iris task retry task_0123456789abcdef01234567 \
   [--model-ref providerId::modelId]
 ```
 
-缺 `--confirm-billing` 时在网络与创建之前拒绝。候选链按当前 assignments/池实况重新解析（不绑定旧 Provider/binding——旧配置可能正是失败原因），`--model-ref` 可显式指定。新 Task 有全新 id、attempts 与提交时实况 binding，并记录单向 `retriedFrom` 指向旧 Task；旧 Task 零变化。**Core 记录不持久化 Prompt**，所以生成指令必须由 `--input` 重新提供，绝不从旧任务恢复。DSH 侧同构开放：`POST /iris/api/core/task/:id/retry`（请求体必须 `confirmBilling:true`）与工作台「重试为新任务」按钮（重新输入指令 + 重复计费确认弹窗）。
+缺 `--confirm-billing` 时在网络与创建之前拒绝。候选链按当前 assignments/池实况重新解析（不绑定旧 Provider/binding——旧配置可能正是失败原因），`--model-ref` 可显式指定。新 Task 有全新 id、attempts 与提交时实况 binding，并记录单向 `retriedFrom` 指向旧 Task；旧 Task 零变化。**Task 记录不持久化 Prompt**，所以生成指令必须由 `--input` 重新提供，绝不从旧任务恢复。DSH 侧同构开放：`POST /iris/api/core/task/:id/retry`（请求体必须 `confirmBilling:true`）与工作台「重试为新任务」按钮（重新输入指令 + 重复计费确认弹窗）。
 
 重试输入按旧 Task 的能力校验：图片为 `{prompt, size?, n?}`，视频为 `{prompt, size?, duration?, img_data_url?}`，TTS 为 `{text, voice?}`，转写为 `{audio_url}`。视频首帧和转写地址会转换为 Provider 所需字段；原任务中的媒体输入不会自动恢复。转写 retry 要求重新提供 HTTPS/OSS 地址，本地 `audio_path` 上传仍通过正常提交入口处理；模型覆盖使用外层 `--model-ref`，不放在 retry 的 `--input` 中。
 

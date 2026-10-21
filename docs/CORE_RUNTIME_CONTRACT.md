@@ -83,7 +83,7 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 首批执行面包括图片生成/改图、`artifact.import/inspect/list/export`、`media.diff`、`task.inspect/list`，以及显式 `task.observe/reobserve/redeliver/cancel`。观察每次至多一次 poll，没有后台轮询定时器；补交付复用原 Task/交付缓存，远端取消只有确认后才算成功。需要 Provider 时由入口注入解析函数，并按原 Task 的供应商、模型和 binding 核对；完整本地交付缓存不解析 Provider。
 
-应用运行时尚不保存 Recipe/Flow 或步骤与 Task 的绑定，也不承诺跨请求重复调用的生成幂等。下一步在持久步骤意图、稳定 Task 身份和恢复判据明确后接入 Flow；当前输入/配置和 Task/Artifact 格式保持。DSH 的模块级队列与观察器尚未迁移到该装配。
+应用运行时另装配 `flow.init/create/inspect/list/continue/select/export`，首版只提供 [固定改图流程](IMAGE_FLOW.md)。显式新根保存私有 Run 输入、预留 Task/比较 Artifact 身份和引用；Task 增加可选 `flowBinding`，旧记录不批量改写。已有 Attempt 后继续操作只核对原事实、观察或补交付，不重新 submit；完整异步 Flow 结果也先缓存，再按原 Artifact ID 交付。原图和流程作品/Task 同步纳入删除保护。通用 Recipe、独立 API 和 DSH 的模块级队列/观察器迁移仍待完成。
 
 ## 当前接口与后续范围
 
@@ -93,7 +93,7 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 - `normalizeCoreOptions()`：规范化显式数据根和 reader/writer 模式；
 - `createCoreRuntime()`：管理写者租约、状态、`AbortSignal`、在途操作和 cleanup；
-- `createCommandService()`：提供 `crop`、只读 `task.list/task.inspect`、显式单步 `task.observe`/`task.reobserve`（同一份实现，`reobserve` 是人工触发观察的对外命令名）、人工重新交付 `task.redeliver`（只开放 outcome=succeeded / deliveryState=failed，异步使用一次带 redelivery 标志的 re-poll + 下载，同步结果使用原缓存，绝不 submit、绝不重新生成）、人工取消 `task.cancel`（只开放已受理未终态任务，只有 Provider 明确确认才写 canceled，不支持/无法确认保持真实状态）、人工重试为新任务 `task.retry`（只开放终态未成功交付任务；必须显式 confirm_billing 确认重复计费；新 Task 记录单向 retriedFrom 关系，候选链按宿主实况重新解析；Core 不持久化 Prompt，prompt 必须由调用方重新提供），以及 Artifact inspect/list/export/rebuild；Task reader 返回既有安全事实，不读取 Provider 配置，也不创建、修复或迁移记录；需联网的 `observe/reobserve/redeliver/cancel` 只接受宿主注入的 Adapter resolver；完整本地缓存的 redeliver 不解析 Provider，`retry` 只接受宿主注入的候选链 resolver，Core 不读取配置路径；Task capability覆盖image、video、tts、transcribe与music——交付按 `provider-task-runner.js` 的 DELIVERY_PROFILES 冻结（video：`video/mp4` + `generated-video`；tts/music：`audio/mpeg`/`audio/wav` + `generated-audio`，同步 completed 同次调用内交付；transcribe：`text/plain` + `transcript`，正文物化为 UTF-8 Artifact），不共用不准确的图片交付语义；
+- `createCommandService()`：提供 `crop`、只读 `task.list/task.inspect`、显式单步 `task.observe`/`task.reobserve`（同一份实现，`reobserve` 是人工触发观察的对外命令名）、人工重新交付 `task.redeliver`（只开放 outcome=succeeded / deliveryState=failed，已有缓存使用原结果，未缓存的异步任务使用一次带 redelivery 标志的 re-poll + 下载，绝不 submit、绝不重新生成）、人工取消 `task.cancel`（只开放已受理未终态任务，只有 Provider 明确确认才写 canceled，不支持/无法确认保持真实状态）、人工重试为新任务 `task.retry`（只开放终态未成功交付任务；必须显式 confirm_billing 确认重复计费；新 Task 记录单向 retriedFrom 关系，候选链按宿主实况重新解析；Task 不持久化 Prompt，prompt 必须由调用方重新提供），以及 Artifact inspect/list/export/rebuild；Task reader 返回既有安全事实，不读取 Provider 配置，也不创建、修复或迁移记录；需联网的 `observe/reobserve/redeliver/cancel` 只接受宿主注入的 Adapter resolver；完整本地缓存的 redeliver 不解析 Provider，`retry` 只接受宿主注入的候选链 resolver，Core 不读取配置路径；Task capability覆盖image、video、tts、transcribe与music——交付按 `provider-task-runner.js` 的 DELIVERY_PROFILES 冻结（video：`video/mp4` + `generated-video`；tts/music：`audio/mpeg`/`audio/wav` + `generated-audio`，同步 completed 同次调用内交付；transcribe：`text/plain` + `transcript`，正文物化为 UTF-8 Artifact），不共用不准确的图片交付语义；
 - 0.2.1 补齐 `media.diff/frames/html`、S2V 按候选上传、查询/批量管理与 Core 隔离/恢复；视觉和维护入口见 [CLI 管理](CLI_MANAGEMENT.md) 与 [视觉 CLI](VISION_CLI.md)。
 - Artifact Manifest v0：保存受控对象、SHA-256、关系边和可重建 Index，可跨 CLI 进程检查、导出和显式重建；Doctor 只报告孤立/未解析条目，不自动删除或修复。
 
@@ -103,5 +103,5 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 - 当前接口尚未作为 package export 或第三方 SDK 发布。0.2.0 的 F 阶段已决定**不新增 `./core` 公开 export**：Root 插件与 `bin/dsh-iris` CLI 承载对外能力，内部模块保持私有，可在后续版本调整。按 [现行路线图](ROADMAP.md#03-及以后)，公开 Provider/Host SDK 在 0.4 有真实消费者后再评估；0.3 的 Recipe/API 实现不自动构成公开 SDK 或兼容承诺。
 - 不提供 standalone 服务、账号、多租户或额外监听端口；
-- 不预建缺少实际需求的 Provider 协议；收藏、标签、搜索与 Flow/Recipe 留待后续；
+- 不预建缺少实际需求的 Provider 协议；收藏、标签、搜索与通用 Flow/Recipe 留待后续；
 - 不把 0.1.4 的模块级存储包装成实例存储，也不允许 CLI 与 DSH 无租约并发写同一数据根。

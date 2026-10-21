@@ -223,12 +223,14 @@ try {
   // Fixture 自身只导入 node:fs；副本置于包外，CLI 不引用仓库源码或 node_modules。
   const fixture = path.join(work, 'provider-fixture.mjs');
   fs.copyFileSync(path.join(repo, 'tests', 'fixtures', 'headless-async-fetch.mjs'), fixture);
+  fs.copyFileSync(path.join(repo, 'tests', 'fixtures', 'headless-flow-fetch.mjs'), path.join(work, 'flow-fixture.mjs'));
   const stateFile = path.join(work, 'provider-state.json');
   const videoPath = path.join(inputs, 'clip.mp4');
   const bootstrap = path.join(work, 'bootstrap.mjs');
   fs.writeFileSync(bootstrap, [
     "import fs from 'node:fs';",
     "import './provider-fixture.mjs';",
+    "import './flow-fixture.mjs';",
     'const fixtureFetch = globalThis.fetch;',
     'globalThis.fetch = async (input, init) => {',
     '  const result = await fixtureFetch(input, init);',
@@ -538,6 +540,46 @@ try {
   report.cliCompletion = { s2vTaskId: s2v.taskId, s2vSubmits: 1, s2vUploads: 2, waitNoResubmit: true, bulkExportHash: s2vMediaHash,
     configurationPrivateBackups: true, filtering: true, quarantineRestored: true, cleanupReadOnly: true, ttsProbeTaskId: testedTts.taskId,
     htmlRealBrowser: Boolean(htmlArtifact), ...(htmlArtifact ? { htmlArtifactId: htmlArtifact } : {}) };
+
+  const flowRoot = path.join(work, 'flow-core'), flowArgs = ['--data-root', flowRoot];
+  const flowConfig = path.join(work, 'flow-providers.json'), flowImage = path.join(inputs, 'flow-source.png');
+  fs.writeFileSync(flowConfig, JSON.stringify({ providers: [{ id: 'flow', apiKey: 'fixture-key-package',
+    baseUrl: 'https://flow.fixture.invalid/v1', mediaProtocol: 'openai-images',
+    models: [{ id: 'edit', capabilities: ['image-gen'], imageProtocol: 'openai-chat-images' }] }],
+  assignments: { 'image-gen': ['flow::edit'] } }), { mode: 0o600 });
+  const flowConfigHash = digest(fs.readFileSync(flowConfig));
+  await sharp({ create: { width: 16, height: 16, channels: 3, background: '#ff0000' } }).png().toFile(flowImage);
+  cli(['flow', 'init', ...flowArgs]);
+  const flowSource = cli(['artifact', 'import', ...flowArgs, '--input', JSON.stringify({ image_path: flowImage })]).artifact;
+  const flowCreated = cli(['flow', 'create', ...flowArgs, '--provider-config', flowConfig, '--input', JSON.stringify({
+    source_artifact_id: flowSource.id, model_ref: 'flow::edit', prompt: 'Packaged green edit' })]);
+  const flowId = flowCreated.run.id;
+  cli(['flow', 'list', ...flowArgs]); cli(['flow', 'inspect', flowId, ...flowArgs]);
+  assert.equal(state().flowSubmits || 0, 0);
+  const flowDone = cli(['flow', 'continue', flowId, ...flowArgs, '--provider-config', flowConfig]);
+  assert.equal(flowDone.status, 'awaiting_selection'); assert.equal(flowDone.task.id, flowCreated.run.edit.taskId);
+  assert.equal(cli(['flow', 'continue', flowId, ...flowArgs]).task.id, flowDone.task.id);
+  assert.equal(state().flowSubmits, 1);
+  cli(['flow', 'select', flowId, ...flowArgs, '--input', JSON.stringify({ artifact_id: flowDone.run.output.artifactId })]);
+  const flowExport = path.join(exportsDir, 'flow-selected.png');
+  cli(['flow', 'export', flowId, ...flowArgs, '--output', flowExport]);
+  assert.equal(digest(fs.readFileSync(flowExport)), flowDone.run.output.sha256);
+  const flowBlock = cli(['core', 'delete', ...flowArgs, '--input', JSON.stringify({ task_ids: [flowDone.task.id],
+    artifact_ids: [flowSource.id, flowDone.run.output.artifactId, flowDone.run.comparison.artifactId] })], { status: 1 });
+  assert.equal(flowBlock.allowed, false); assert(flowBlock.blockers.some(item => item.reason === 'flow_task_reference'));
+  for (const ref of [flowDone.run.source, flowDone.run.output, flowDone.run.comparison]) {
+    const artifact = cli(['artifact', 'inspect', ref.artifactId, ...flowArgs]).artifact;
+    const bytes = fs.readFileSync(path.join(flowRoot, 'artifact-store/v0/objects', artifact.id + '.png'));
+    assert.equal(digest(bytes), ref.sha256); await sharp(bytes).metadata();
+    report.artifacts.push({ id: artifact.id, kind: artifact.kind, mediaType: artifact.mediaType, sha256: ref.sha256, flowId });
+  }
+  assert.equal(digest(fs.readFileSync(flowConfig)), flowConfigHash);
+  const privateRun = fs.readFileSync(path.join(flowRoot, 'flow-store/v0/runs', flowId + '.json'), 'utf8');
+  for (const forbidden of ['fixture-key-package', 'flow.fixture.invalid', flowRoot]) assert(!privateRun.includes(forbidden));
+  assert(!fs.existsSync(path.join(flowRoot, '.iris-runtime-writer-v0')));
+  report.imageFlow = { runId: flowId, taskId: flowDone.task.id, submitCount: 1, inspectCreatesNoTask: true,
+    repeatContinueNoSubmit: true, sourceAndOutputAndComparisonHashesVerified: true, exportHashVerified: true,
+    referencesProtected: true, privateConfigUnchanged: true, writerReleased: true };
   assert(!fs.existsSync(unusedDsh));
   report.checks = {
     installedFileBytesMatchSource: true, npmBinWorks: true, localSharpAndFfmpeg: true,

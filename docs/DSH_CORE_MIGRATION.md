@@ -11,7 +11,7 @@ Iris 0.2.3 的音乐生成由 CLI、Agent 工具与工作台共同调用，使�
 - `iris_crop` 和工作台 crop 共用 Command Service 与 Artifact Manifest。attachment 输入先成为 `host-input` Artifact，裁剪结果用 `derived-from` 保存关系；工具名、参数和附件输出不变。
 - 新图片任务的同步、异步与混合候选均使用同一 Core Task/Attempt/Artifact。每个候选先落盘 Attempt，只有明确 `not_accepted` 才允许切换；收到远端 ID 或受理未知后停止候选提交。
 - 新 Attempt 可选记录七个单调 `stageTimestamps` 边界，区分排队、提交、远端执行、下载和本地 Artifact 处理；旧记录缺失该字段仍合法，未发生的阶段不补写。
-- Provider 只收到原始模型 ID；Core 保存 `providerId::modelId` 和非敏感端点 binding，不保存 Prompt、凭据、下载 URL 或 DSH 会话。
+- Provider 只收到原始模型 ID；Task 保存 `providerId::modelId` 和非敏感端点 binding，不保存 Prompt、凭据、下载 URL 或 DSH 会话。未发布的 [固定流程](IMAGE_FLOW.md)将提示词保存为专用根的私有 Run 输入，不改变 Task 的隐私边界。
 - DSH 边界选择 `$DSH_HOME/iris/v1/core-v0`，与旧 `tasks.json`、`artifacts.json`、`outputs/` 隔离。旧任务仍由旧观察器读取和接管；新图片不双写旧存储。
 
 `iris_draw_image` 等待同一 Core Task，ready 后通过命名 Attachment Port 返回图片。等待超时只返回稳定 Task ID，后台观察继续；停止工具等待不等于远端取消。宿主投影失败不会撤销 Core 中已经成功交付的产物。
@@ -37,7 +37,7 @@ DSH 工作台现也开放同一份显式单步观察（D1 reobserve）：`POST /
 
 人工控制面第三项 cancel（D3）同样开放：`POST /iris/api/core/task/:id/cancel` 与 CLI `task cancel` 经 Command Service 命令 `task.cancel`，只对已受理、有远端 ID、未终态且未请求过取消的 Task 开放。结果只有三种，且**绝不伪造已取消**：① 供应商明确确认 → outcome=canceled、cancelState=remote_confirmed；② 供应商不支持远端取消（当前 DashScope 与 OpenAI Images 媒体协议均不提供经过验证的取消实现）→ 取消未发生，回落到可继续观察的真实状态（outcome 不变）；③ 超时或网络失败 → cancelState=unknown、保持非终态，可显式 reobserve 收敛。竞态下远端先沉淀的成功事实不得被取消覆盖；已请求过取消但未确认的任务拒绝再次取消。工作台按钮「取消任务」需要二次确认，五类用户状态保持不变，三种结果态在高级诊断的「取消状态」字段如实区分（已确认 / 已请求未确认 / 无请求）。
 
-人工控制面最后一项 retry as new task（D4）也已开放，控制面四个动作全部收口：`POST /iris/api/core/task/:id/retry` 与 CLI `task retry` 经 Command Service 命令 `task.retry`。这是唯一产生新的真实计费的动作，三层都强制显式确认——CLI `--confirm-billing`、API 请求体 `confirmBilling:true`、UI 含重复计费警示的确认弹窗，缺一不进且在网络与创建之前拒绝。只对终态且未成功交付的 Task 开放（succeeded+ready 拒绝）。新 Task 有全新 id/attempts/binding，候选链按当前 assignments/池实况重新解析（旧 binding 可能正是失败原因），`model_ref`/`modelRef` 可显式指定；记录单向 `retriedFrom` 关系指向旧 Task，旧 Task 事实零变化，高级诊断以「重试来源」展示该关系。**Core 记录不持久化 Prompt**，生成指令必须由调用方重新提供（CLI `--input` / API `prompt` / 工作台弹窗重新输入），绝不从旧任务"恢复"——这是隐私设计，不是缺陷。同一请求网络重放的幂等键未实现：每次显式确认即一个新任务，属预期语义。
+人工控制面最后一项 retry as new task（D4）也已开放，控制面四个动作全部收口：`POST /iris/api/core/task/:id/retry` 与 CLI `task retry` 经 Command Service 命令 `task.retry`。这是唯一产生新的真实计费的动作，三层都强制显式确认——CLI `--confirm-billing`、API 请求体 `confirmBilling:true`、UI 含重复计费警示的确认弹窗，缺一不进且在网络与创建之前拒绝。只对终态且未成功交付的 Task 开放（succeeded+ready 拒绝）。新 Task 有全新 id/attempts/binding，候选链按当前 assignments/池实况重新解析（旧 binding 可能正是失败原因），`model_ref`/`modelRef` 可显式指定；记录单向 `retriedFrom` 关系指向旧 Task，旧 Task 事实零变化，高级诊断以「重试来源」展示该关系。**Task 记录不持久化 Prompt**，生成指令必须由调用方重新提供（CLI `--input` / API `prompt` / 工作台弹窗重新输入），绝不从旧任务"恢复"——这是隐私设计，不是缺陷。同一请求网络重放的幂等键未实现：每次显式确认即一个新任务，属预期语义。
 
 ## 作品与只读诊断
 
