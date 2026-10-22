@@ -32,7 +32,7 @@ async function post(session, route, bytes, { token = session.accessToken, reques
   assert(!text.includes(session.accessToken)); assert(!text.includes(privateMarker)); assert(!text.includes(dataRoot));
   return { response, body: text ? JSON.parse(text) : null };
 }
-async function streamed(session, { contentLength, size, chunks = 1 }) {
+async function streamed(session, { contentLength, size, chunks = 1, holdOpen = false }) {
   return new Promise((resolve, reject) => {
     let receivedResponse, sent = 0;
     const request = http.request(session.origin + '/api/v0/images', { method: 'POST', headers: {
@@ -43,7 +43,11 @@ async function streamed(session, { contentLength, size, chunks = 1 }) {
       request.off('drain', write);
       if (!request.writableEnded) request.end();
       let body = ''; response.on('data', data => { body += data; });
-      response.on('end', () => resolve({ status: response.statusCode, body }));
+      response.on('end', () => {
+        assert(response.complete);
+        assert.equal(response.headers.connection, 'close');
+        resolve({ status: response.statusCode, body });
+      });
       response.on('error', reject);
     });
     request.on('error', error => {
@@ -58,7 +62,7 @@ async function streamed(session, { contentLength, size, chunks = 1 }) {
         sent++;
         if (!request.write(Buffer.alloc(size))) { request.once('drain', write); return; }
       }
-      request.end();
+      if (!holdOpen) request.end();
     }
     write();
   });
@@ -89,7 +93,8 @@ try {
   assert.equal((await post(session, '/api/v0/runs', '{broken')).response.status, 400);
   assert.equal((await post(session, '/api/v0/runs', Buffer.from([0xff]))).response.status, 400);
   assert.equal((await post(session, '/api/v0/runs', ' '.repeat(65537))).response.status, 413);
-  for (const input of [{ contentLength: String(20 * 1024 * 1024 + 1), size: 0 }, { chunks: 21, size: 1024 * 1024 }]) {
+  for (const input of [{ contentLength: String(20 * 1024 * 1024 + 1), size: 0 },
+    { chunks: 21, size: 1024 * 1024 }, { chunks: 21, size: 1024 * 1024, holdOpen: true }]) {
     const rejected = await streamed(session, input);
     assert.equal(rejected.status, 413);
     assert.equal(JSON.parse(rejected.body).error.code, 'IRIS_API_INPUT_TOO_LARGE');
@@ -139,6 +144,35 @@ try {
   socket.destroy(); await new Promise(resolve => setTimeout(resolve, 30));
   assert.equal(listCreationRequests(dataRoot).length, occupiedCount);
   assert.equal(inspectCoreWriterLease(dataRoot).status, 'absent');
+
+  // A rejected client can keep its body open. Read the whole error before ending that body;
+  // disposal must close both the remaining connection and the response job without waiting for it.
+  const rejectedService = api({ dataRoot, allowLocalWrites: true }), rejectedSession = await rejectedService.start();
+  const rejectedSocket = net.connect(Number(new URL(rejectedSession.origin).port), '127.0.0.1');
+  try {
+    const responseBytes = await new Promise((resolve, reject) => {
+      let received = Buffer.alloc(0);
+      rejectedSocket.on('error', reject);
+      rejectedSocket.on('data', chunk => {
+        received = Buffer.concat([received, chunk]);
+        const separator = received.indexOf('\r\n\r\n');
+        if (separator === -1) return;
+        const headers = received.subarray(0, separator).toString();
+        const length = /\r\nContent-Length: (\d+)/i.exec(headers);
+        if (length && received.length >= separator + 4 + Number(length[1])) {
+          resolve({ headers, body: received.subarray(separator + 4).toString() });
+        }
+      });
+      rejectedSocket.once('connect', () => rejectedSocket.write(
+        `POST /api/v0/images HTTP/1.1\r\nHost: ${new URL(rejectedSession.origin).host}\r\nAuthorization: Bearer ${rejectedSession.accessToken}\r\nIdempotency-Key: ${key()}\r\nContent-Type: image/png\r\nContent-Length: ${20 * 1024 * 1024 + 1}\r\n\r\n`));
+    });
+    assert.match(responseBytes.headers, /^HTTP\/1\.1 413 /);
+    assert.equal(JSON.parse(responseBytes.body).error.code, 'IRIS_API_INPUT_TOO_LARGE');
+    const disconnected = new Promise(resolve => rejectedSocket.once('close', resolve));
+    await rejectedService.dispose(); await disconnected;
+    assert.equal(rejectedService.snapshot().state, 'closed');
+    assert.equal(listCreationRequests(dataRoot).length, occupiedCount);
+  } finally { rejectedSocket.destroy(); }
   assert.equal(providerRequests, 0);
   for (const file of fs.readdirSync(path.join(dataRoot, 'creation-requests/v0/requests'))) {
     const text = fs.readFileSync(path.join(dataRoot, 'creation-requests/v0/requests', file), 'utf8');

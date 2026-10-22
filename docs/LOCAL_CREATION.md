@@ -29,6 +29,8 @@ dsh-iris api serve --data-root /absolute/path/new-flow-core --token-file /absolu
 
 上传不接受路径、URL、文件名、SVG、动画或压缩正文；真实格式必须匹配 Content-Type。累计读取限额不只依赖 Content-Length，同时最多一个上传、最多九个本地创建请求；繁忙返回 429，同物理根有其他 writer 时返回 409，显式重试保留原 Key。
 
+超限返回 `413 IRIS_API_INPUT_TOO_LARGE`，不创建作品或消费 Key。对尚未结束的上传，先发送完整错误响应，再丢弃剩余正文并关闭连接；不继续缓存正文，连接仍受现有请求/空闲超时和服务停止约束。客户端收到拒绝后应停止上传。
+
 当前没有 `POST /runs/:id/continue`、selection、Operation 查询或取消接口。GET、HEAD、页面刷新和启动不自动执行或补完创建；现有 Demo 仍使用演示传输，尚未连接这个 API。
 
 ## 重试、删除与中断
