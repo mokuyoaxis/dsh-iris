@@ -34,16 +34,33 @@ async function post(session, route, bytes, { token = session.accessToken, reques
 }
 async function streamed(session, { contentLength, size, chunks = 1 }) {
   return new Promise((resolve, reject) => {
+    let receivedResponse, sent = 0;
     const request = http.request(session.origin + '/api/v0/images', { method: 'POST', headers: {
       Authorization: 'Bearer ' + session.accessToken, 'Idempotency-Key': key(), 'Content-Type': 'image/png',
       ...(contentLength ? { 'Content-Length': contentLength } : {})
     } }, response => {
+      receivedResponse = response;
+      request.off('drain', write);
+      if (!request.writableEnded) request.end();
       let body = ''; response.on('data', data => { body += data; });
       response.on('end', () => resolve({ status: response.statusCode, body }));
+      response.on('error', reject);
     });
-    request.on('error', reject);
-    for (let i = 0; i < chunks; i++) request.write(Buffer.alloc(size));
-    request.end();
+    request.on('error', error => {
+      // A rejected upload can fail its remaining writes while the 413 response is still readable.
+      if (receivedResponse?.statusCode === 413) return;
+      console.error(JSON.stringify({ event: 'streamed_fixture_upload_error', code: error.code,
+        contentLength, size, chunks, sent, responseStatus: receivedResponse?.statusCode ?? null }));
+      reject(error);
+    });
+    function write() {
+      while (sent < chunks) {
+        sent++;
+        if (!request.write(Buffer.alloc(size))) { request.once('drain', write); return; }
+      }
+      request.end();
+    }
+    write();
   });
 }
 
@@ -72,8 +89,11 @@ try {
   assert.equal((await post(session, '/api/v0/runs', '{broken')).response.status, 400);
   assert.equal((await post(session, '/api/v0/runs', Buffer.from([0xff]))).response.status, 400);
   assert.equal((await post(session, '/api/v0/runs', ' '.repeat(65537))).response.status, 413);
-  assert.equal((await streamed(session, { contentLength: String(20 * 1024 * 1024 + 1), size: 0 })).status, 413);
-  assert.equal((await streamed(session, { chunks: 21, size: 1024 * 1024 })).status, 413);
+  for (const input of [{ contentLength: String(20 * 1024 * 1024 + 1), size: 0 }, { chunks: 21, size: 1024 * 1024 }]) {
+    const rejected = await streamed(session, input);
+    assert.equal(rejected.status, 413);
+    assert.equal(JSON.parse(rejected.body).error.code, 'IRIS_API_INPUT_TOO_LARGE');
+  }
   assert.equal(listCreationRequests(dataRoot).length, before, 'invalid or untrusted HTTP never consumes a Key');
 
   const uploadKey = key(), uploaded = await post(session, '/api/v0/images', FLOW_SOURCE, { type: 'image/png', requestKey: uploadKey });
