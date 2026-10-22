@@ -56,7 +56,7 @@ function writeProviders(patch) {
 writeProviders({});
 
 /* ---------- 载入被测模块（index.js 顶层无副作用，import 即得全部导出） ---------- */
-const iris = await import('../lib/index.js');
+const iris = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { createDshHostAdapter } = await import('../lib/dsh-host-adapter.js');
 const host = (services = {}) => createDshHostAdapter(stubCtx(services));
 const tasks = await import('../lib/tasks.js');

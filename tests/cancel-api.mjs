@@ -23,11 +23,11 @@ const { upsert } = await import('../lib/config.js');
 const {
   dshCoreDataRoot,
   submitProviderTaskForDsh
-} = await import('../lib/dsh-core-adapter.js');
+} = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { createConfiguredProviderAdapter } = await import('../lib/provider-adapters.js');
 const { hasProviderOperation } = await import('../lib/provider-adapter.js');
 const { providerTaskBinding } = await import('../lib/provider-catalog.js');
-const { serveApi } = await import('../lib/api.js');
+const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const fixture = new URL('./fixtures/headless-async-fetch.mjs', import.meta.url).href;
 
 const assert = (condition, message, extra) => {

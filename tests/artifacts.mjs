@@ -21,7 +21,7 @@ const assert = (condition, message, extra) => {
 const artifacts = await import('../lib/artifacts.js');
 const tasks = await import('../lib/tasks.js');
 const media = await import('../lib/media.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 // 首次运行直接接回升级前 outputs，不需要任务记录。
 let page = artifacts.page({ limit: 10 });

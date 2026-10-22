@@ -47,7 +47,7 @@ fs.writeFileSync(patchFile, JSON.stringify([{ insert: [{ id: 'llm-pi-ai', name: 
 } }] }]));
 const bootFile = path.join(work, 'boot.yml');
 fs.writeFileSync(bootFile, '[]\n');
-let ctx;
+let ctx, core;
 try {
   const [{ boot }, { ConfigEditor }, { SettingsForms }, { LocalCredentialProvider }, { LlmRuntime }] = await Promise.all([
     import(url('@deepseek-ai/dsh-app-boot')), import(url('@deepseek-ai/dsh-config-editor')),
@@ -63,10 +63,13 @@ try {
     await scope.plugin(SettingsForms, {});
   }, pathToFileURL(path.join(dshRoot, 'package.json')).href);
   const { createDshHostAdapter } = await import('../lib/dsh-host-adapter.js');
-  const { runAction } = await import('../lib/actions.js');
+  const { runAction: executeAction } = await import('../lib/actions.js');
+  const { createDshRuntime, dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
   const { withDshProviderConfig } = await import('../lib/dsh-provider-config.js');
   const store = await import('../lib/config.js');
   const host = () => createDshHostAdapter(ctx, { version: manifest.version });
+  core = createDshRuntime({ dataRoot: dshCoreDataRoot(), getHost: host });
+  const runAction = (host, name, args, options = {}) => executeAction(host, name, args, { ...options, core });
   const credentials = ctx.get('credentials');
   const settings = ctx.get('settings');
   const reference = { provider: 'fixture', settingsNs: 'llm-pi-ai' };
@@ -123,4 +126,4 @@ try {
   console.error(error);
   console.error('报告：' + path.join(work, 'report.json'));
   process.exitCode = 1;
-} finally { if (ctx) await ctx.fiber.dispose(); }
+} finally { if (core) await core.dispose(); if (ctx) await ctx.fiber.dispose(); }

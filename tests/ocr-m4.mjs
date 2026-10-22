@@ -13,8 +13,8 @@ const hostProviders = [{ id: HOST_VISION_REF }];
 
 const { root } = useTempDshHome('iris-ocr-m4');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
-const iris = await import('../lib/index.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const iris = await import('./fixtures/dsh-runtime-fixture.mjs');
 const bytes = await sharp({ create: { width: 128, height: 300, channels: 3, background: '#ff0000' } }).png().toBuffer();
 const image = { bytes: new Uint8Array(bytes), mediaType: 'image/png' };
 const budget = { ...OCR_BUDGET, timeoutMs: 2000 };

@@ -11,9 +11,9 @@ const { selectImageProtocol } = await import('../lib/provider-protocol.js');
 const { createConfiguredProviderAdapter } = await import('../lib/provider-adapters.js');
 const { imageCandidatesFromCatalog, videoCandidatesFromCatalog, visionCandidatesFromCatalog,
   providerForTaskFromCatalog, providerTaskBinding } = await import('../lib/provider-catalog.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { inspectProviderTaskForDsh, observeProviderTaskForDsh, readCoreArtifactMediaForDsh,
-  stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+  stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const account = config.upsert({ name: 'one-account', type: 'openai', apiKey: 'protocol-fixture-key',
   baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', mediaProtocol: 'openai-images',
   models: [
@@ -80,7 +80,7 @@ try {
   // 原账号默认是 Images，恢复原生异步任务必须使用模型级 DashScope binding。
   mode = 'accepted';
   const accepted = await runAction({}, 'image', { prompt: 'async fixture', model: nativeRef });
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   const pending = await inspectProviderTaskForDsh(accepted.taskId);
   assert.equal(pending.providerBinding, providerTaskBinding(imageCandidatesFromCatalog(catalog(), nativeRef)[0].provider));
   const postCount = () => requests.filter(request => request.model).length;

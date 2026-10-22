@@ -28,7 +28,10 @@ const report = { status: 'running', work, checks: [], fixtureMediaCalls: [], bro
 const save = () => fs.writeFileSync(path.join(work, 'report.json'), JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
 const { createDshHostAdapter } = await import('../lib/dsh-host-adapter.js');
 const { serveApi } = await import('../lib/api.js');
-const { runAction } = await import('../lib/actions.js');
+const { createDshRuntime, dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+const core = createDshRuntime({ dataRoot: dshCoreDataRoot(), getHost: () => host() });
+const { runAction: executeAction } = await import('../lib/actions.js');
+const runAction = (host, name, args, options = {}) => executeAction(host, name, args, { ...options, core });
 const sharp = (await import('sharp')).default;
 const image = await sharp({ create: { width: 64, height: 48, channels: 3, background: '#367aa8' } }).png().toBuffer();
 const client = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8').replace(
@@ -95,7 +98,7 @@ const server = http.createServer(async (req, res) => {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  if (url.pathname.startsWith('/iris/')) { serveApi(req, res, host()); return; }
+  if (url.pathname.startsWith('/iris/')) { serveApi(req, res, host(), core); return; }
   res.writeHead(404); res.end();
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -255,6 +258,7 @@ try {
   save(); console.error(error); console.error('报告：' + path.join(work, 'report.json')); process.exitCode = 1;
 }
 finally {
+  await core.dispose();
   socket?.close(); child.kill('SIGTERM'); await closed; browserLog.end();
   await new Promise(resolve => server.close(resolve)); globalThis.fetch = originalFetch;
 }

@@ -4,7 +4,19 @@
 
 ## [Unreleased]
 
-- 增加显式 CLI 固定改图流程：专用数据根、私有输入、稳定步骤/Task 绑定、继续执行、比较、选择和导出；同步保护 Flow 引用，缓存原任务的完成结果并复用预留作品 ID。未知受理不重新生成，旧根不自动迁移，尚未接入 Web。见 [图片流程](docs/IMAGE_FLOW.md)。
+## [0.2.7] - 2026-10-22
+
+0.2.7 修复宿主截图集成，并提供宿主无关的图片流程、本地 API 与显式 Core Skill 安装器。DSH 沿用 12 个准确版本；独立 Web 仍是面向 0.3.0 的源码演示，尚未连接真实执行入口。英文发布说明附中文摘要，见 [0.2.7](docs/releases/0.2.7.md)。
+
+- 增加显式 `skills install/status/uninstall`：从当前 npm 包复制 `iris-core` 到 Kimi 或自定义扫描目录，记录版本/摘要并保护本地修改；升级与卸载保留根外备份，状态只读，安装/卸载支持 `--dry-run`。不添加 npm 自动安装钩子，不改 DSH Skill 注册或模型/MCP 配置。见 [Skill 安装](docs/CORE_SKILLS.md#显式安装检查与卸载)。
+
+- 增加宿主无关的 `iris-core` Skill：英文正文附中文标题，指导图片导入、生成、续作、任务查询与作品导出，通过现有 CLI 执行，配套参考随候选包分发。DSH 原有三项 Skill 与注册保持；不代表正式 MCP 或独立 UI 已接入。见 [Core Skill](docs/CORE_SKILLS.md)。
+
+- DSH 的 Core 装配接入实例应用队列：工具、动作和工作台显式使用插件实例，连接解析引用、任务观察与启动接管归实例持有。卸载取消并等待在途操作和租约释放，失败保留现场；原根、数据格式、协议和计费规则保持，legacy 存储另行迁移。见 [DSH 实例运行时](docs/DSH_RUNTIME.md)。
+- 增加显式本地创建 API：新空 Flow 根执行 `api init` 后，`api serve --allow-local-writes` 可上传静态图片和创建 Run；同 Key 使用持久意图/预留身份接回原结果，不重复创建。请求/业务提交共用一次 writer，补齐未完成引用与 writer 版本检查，成功作品显式删除后不自动复活。默认只读，未开放生成/取消接口，不迁移原根。见 [本地创建](docs/LOCAL_CREATION.md)。
+- 增加显式 `api serve` 默认只读本地入口：固定回环监听、独立 Bearer 与 Host/Origin 边界，提供模型/流程白名单投影、受控图片及已选择作品下载。会话 Token 写入新建的根外私有文件，不进入 stdout 或 URL；GET/HEAD 不写 Core、不调用 Provider，执行/取消尚未开放。Demo 保留原样。见 [只读 API](docs/LOCAL_API.md)。
+- 源码树保留面向 0.3.0 的独立 Web Demo，展示选图、状态、并排/叠图比较、选择与下载，运行详情默认折叠；界面与交互细节留到 0.3.0 阶段统一润色。当前仅使用内存演示和内置样图，不连接模型、不计费、不写 Core，也未接入只读 API；写操作契约仍待实现。见 [Demo 说明](docs/WEB_PROTOTYPE.md)和 [API 契约](docs/LOCAL_API_CONTRACT.md)。
+- 增加显式 CLI 固定改图流程：专用数据根、私有输入、稳定步骤/Task 绑定、继续执行、比较、选择和导出；同步保护 Flow 引用，缓存原任务的完成结果并复用预留作品 ID。未知受理不重新生成，旧根不自动迁移，尚未接入真实 Web 执行入口。见 [图片流程](docs/IMAGE_FLOW.md)。
 - 0.3 前置：增加实例级写队列与操作级取消/释放，CLI 图片生成、导入、比较、作品查询/导出和单项任务查询开始共用内部应用运行时；命令参数与既有 Task/Artifact 格式保持。
 - 宿主 HTML 截图优先使用显式 `DSH_WEB_BASE`，否则从公开的监听 host/port/protocol 取得实际地址；兼容动态端口和通配监听地址。旧宿主没有可靠地址时仍回落到 3080 并在诊断中提示，公开媒体链接保持原基址约定。
 - 宿主诊断区分浏览器接口存在与截图实测，新增主动“截图自检”、取消、错误说明及折叠预览；自检复用 HTML action 生成一张本地作品，不调用模型，默认诊断和刷新仍不打开浏览器。
@@ -368,7 +380,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.3...v0.2.4

@@ -17,9 +17,9 @@ import { ffmpegAvailable } from '../lib/media-probe.js';
 const { root } = useTempDshHome('iris-summary-artifacts');
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const config = await import('../lib/config.js');
-const iris = await import('../lib/index.js');
-const { runAction } = await import('../lib/actions.js');
-const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const iris = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const dataRoot = dshCoreDataRoot(), providers = path.join(root, 'providers.json'), stateFile = path.join(root, 'state.json');
 const noTools = path.join(root, 'empty-path'); fs.mkdirSync(noTools);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -171,7 +171,7 @@ try {
   } else console.log('SKIP —— 无 ffmpeg/ffprobe，仅跳过真实视频抽帧构造；已有 Artifact 摘要已完整验证');
   console.log(`ALL OK —— Core 帧摘要：${cliChecks} 次真实 CLI、DSH 工具/动作、乱序与子集、无 ffmpeg、writer 共存、同拼图字节、错误/超时零写入`);
 } finally {
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   for (const dispose of disposers.reverse()) await dispose();
   await writer.dispose();
 }

@@ -1,6 +1,6 @@
 # Iris 架构与边界
 
-状态：本文描述 **Iris 0.2.6** 的架构，未发布改动单独标记。0.2.0 建立实例化 Core Runtime、Headless CLI 及共享 Task/Artifact 事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.5 恢复旧宿主支持，0.2.6 增加连接引用、可选功能自动池和目录同步。准确版本及历史发行范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。Node.js 最低 22.0.0；Core 内部 API 尚未冻结为公共 SDK。
+状态：本文描述 **Iris 0.2.7** 的架构。0.2.0 建立实例化 Core Runtime、Headless CLI 及共享 Task/Artifact 事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.5 恢复旧宿主支持，0.2.6 增加连接引用、可选功能自动池和目录同步。准确版本及历史发行范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。Node.js 最低 22.0.0；Core 内部 API 尚未冻结为公共 SDK。
 
 ## 当前形态
 
@@ -33,9 +33,9 @@ DSH Host / Cordis                         Headless CLI
                     CLI: explicit absolute data root
 ```
 
-`lib/index.js` 是 DSH 插件装配入口，`lib/dsh-host-adapter.js` 是原始 DSH/Cordis 对象进入 Iris 的服务端边界；`lib/dsh-core-adapter.js` 只负责选择 DSH profile 的 Core 数据根、恢复 Provider 配置和投影 Host DTO。`bin/dsh-iris.js` 不启动 DSH，也不推断 profile。`lib/api.js` 与 `lib/client.js` 是 Host 投影，不是真相来源。
+`lib/index.js` 是 DSH 插件装配入口，`lib/dsh-host-adapter.js` 是原始 DSH/Cordis 对象进入 Iris 的服务端边界；`lib/dsh-core-adapter.js` 负责 DSH 的 Core 实例装配、Provider 连接解析和 Host DTO 投影。`bin/dsh-iris.js` 不启动 DSH，也不推断 profile。`lib/api.js` 与 `lib/client.js` 是 Host 投影，不是真相来源。
 
-未发布开发版增加 `lib/application-runtime.js`，首批 CLI 图片命令和固定改图流程通过它装配 Core。写队列、操作取消和关闭归属于应用实例；每次写操作独立取得、释放 Core 租约。[固定流程](IMAGE_FLOW.md)使用专用根中的版本化 Run、稳定 Task/比较作品身份及引用保护，私有输入保存提示词，Task 仅保存可选流程绑定。DSH 原队列与观察器仍沿用原装配，通用 Recipe、独立 API/Web 尚未实现。详见 [应用运行时契约](CORE_RUNTIME_CONTRACT.md#应用运行时装配未发布)。上图表示已发布入口的共同核心。
+0.2.7 增加 `lib/application-runtime.js`，首批 CLI 图片命令和固定改图流程通过它装配 Core；[DSH 实例](DSH_RUNTIME.md)也已接入同一队列机制。写队列、操作取消和关闭归属于应用实例；每次写操作独立取得、释放 Core 租约，DSH 的 Core 观察器由插件实例持有并等待卸载。[固定流程](IMAGE_FLOW.md)使用专用根中的版本化 Run、稳定 Task/比较作品身份及引用保护，私有输入保存提示词，Task 仅保存可选流程绑定。[本地 API](LOCAL_API.md)已提供默认只读与主动启用的 [本地创建](LOCAL_CREATION.md)，执行/取消、通用 Recipe 和真实独立 Web 仍待完成。详见 [应用运行时契约](CORE_RUNTIME_CONTRACT.md#应用运行时装配)。上图表示已发布入口的共同核心。
 
 0.2.1的 S2V 使用 Core Task/Attempt，HTML 使用 `media.html` 与显式 Browser Port；视觉和提示词预览通过共享 Model Ports 执行。纯视觉不创建 Task/Artifact，摘要主动转写仍使用 Core 任务。聊天改图属于媒体生成链，按来源 Artifact ID 创建新 Task 和关联产物。
 
@@ -44,8 +44,8 @@ DSH Host / Cordis                         Headless CLI
 | 模块 | 职责 | DSH 运行时依赖 |
 |---|---|---:|
 | `core-contract.js` / `core-runtime.js` / `core-writer-lease.js`（0.2.2） | 显式数据根、reader/writer 权限、单写者租约、取消与释放 | 无 |
-| `application-runtime.js`（未发布） | 实例写队列、操作输入快照与 Core 装配；首批由 CLI 消费 | 无 |
-| `flow-store.js` / `image-flow.js`（未发布） | 专用根、私有 Run 输入、固定步骤绑定、原任务恢复与用户选择 | 无 |
+| `application-runtime.js` | 实例写队列、操作输入快照与 Core 装配；首批由 CLI 消费 | 无 |
+| `flow-store.js` / `image-flow.js` | 专用根、私有 Run 输入、固定步骤绑定、原任务恢复与用户选择 | 无 |
 | `command-service.js` | 本地媒体命令、Task 控制面和 Artifact 查询/导出 | 无 |
 | `generation-input.js` | CLI、DSH 与重试共用的生成参数校验和 Provider 字段转换 | 无 |
 | `model-port-contract.js` / `model-invoker.js` | Text/Vision 内部契约、有限调用预算与取消 | 无 |

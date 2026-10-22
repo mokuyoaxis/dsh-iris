@@ -5,7 +5,7 @@ Host Doctor 是 Iris 在运行中的 DSH 实例内提供的兼容性诊断。它
 | 模式 | 入口 | 观察范围 |
 |---|---|---|
 | `offline` | `dsh-iris doctor [--json]` | Node、依赖、私有存储、配置、Task 与产物；不要求 DSH |
-| `host` | 运行中 DSH 的 `GET /iris/api/doctor` | DSH与Host Port、插件、当前工具/Skill、4组路由、Browser/附件/模型、客户端版本和4个UI Slot；Iris 0.2.6保留17工具/3项Skill |
+| `host` | 运行中 DSH 的 `GET /iris/api/doctor` | DSH与Host Port、插件、当前工具/Skill、4组路由、Browser/附件/模型、客户端版本和4个UI Slot；Iris 0.2.7保留17工具/3项DSH Skill |
 
 0.2.4新增 `iris_import_image`，图片导入自身不调用模型。0.2.3检查16工具/3项Skill，发布状态见 [README](../README.md)。
 
@@ -50,7 +50,7 @@ Host Adapter 将每项端口标记为 `available`、`unavailable` 或 `incompati
 
 客户端握手是当前浏览器实例的最后报告。关闭页面后报告不会立刻证明页面仍存活，因此它是装载兼容性证据，不是在线心跳。Host Doctor 也不替代真实 Provider 探针；任何可能计费的测试仍必须由用户显式触发。
 
-## 开发版：截图地址与主动自检（尚未发布）
+## 截图地址与主动自检（0.2.7）
 
 浏览器检查明确报告“接口已提供”，实际能否启动进程、打开渲染页面并截图，需要另做自检。服务端的 `clientSlots=unavailable` 不直接表示前端设置面板损坏，应看 `checks.client` 的握手和四个 Slot 登记事实。
 

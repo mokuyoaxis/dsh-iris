@@ -1,4 +1,4 @@
-import { taskWaitFinished, taskTerminalProblem } from '../lib/index.js';
+import { taskWaitFinished, taskTerminalProblem } from './fixtures/dsh-runtime-fixture.mjs';
 
 const assert = (condition, message, extra) => {
   if (!condition) {

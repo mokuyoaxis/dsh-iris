@@ -12,7 +12,7 @@ import { FAKE_PNG } from './fixtures/fake-lifecycle-provider.mjs';
 
 useTempDshHome('iris-function-assignments');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const capabilities = Object.values(CAPABILITIES);
 const provider = config.upsert({ id: 'fixture', enabled: true, auth: 'none', type: 'openai',
   baseUrl: 'https://fixture.invalid/v1', mediaProtocol: 'openai-images',

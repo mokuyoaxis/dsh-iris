@@ -7,8 +7,8 @@ import { RED_TEST_IMAGE } from '../lib/vision.js';
 
 useTempDshHome('iris-model-directory-runtime');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
-const { inspectProviderTaskForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { inspectProviderTaskForDsh, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const old = 'qwen3-tts-flash-2025-11-27', current = 'qwen3-tts-flash';
 const provider = config.upsert({ id: 'runtime-directory', auth: 'none', enabled: true,
   baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', mediaProtocol: 'dashscope',

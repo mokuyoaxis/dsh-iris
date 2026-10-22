@@ -3,7 +3,7 @@ import { useTempDshHome } from './test-env.js';
 
 useTempDshHome('iris-discovery-merge');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const provider = config.upsert({
   name: 'fixture', type: 'openai', enabled: true, auth: 'none',
   baseUrl: 'https://fixture.example/v1', mediaProtocol: 'openai-images',

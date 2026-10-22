@@ -44,17 +44,21 @@ dsh-iris 为 Agent、Iris 工作台和独立 CLI 提供图像、视频、音乐�
 
 项目目前处于早期版本，接口和配置格式仍可能随版本迭代调整。
 
-当前已发布版本为 **Iris 0.2.6**；未发布改动单独标记。安装与升级请固定版本，并先核对下方的宿主兼容范围。
+本文对应 **Iris 0.2.7**。安装与升级请固定版本，并先核对下方的宿主兼容范围。
 
-Iris 0.2.6 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和模型路由。新增连接复用、可选功能自动池、目录同步和能力检测；图片导入、原生 Qwen 改图、音乐、三项 Agent Skills 和同步交付恢复继续可用。Core 内部接口尚未冻结为公共 SDK。
+Iris 0.2.7 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和模型路由。本版修复宿主截图集成，并增加持久图片流程、本地 API 和显式 Core Skill 安装；连接复用、功能池、目录同步与既有媒体能力继续可用。Core 内部接口尚未冻结为公共 SDK。
 
-未发布开发版包含宿主截图适配、实际截图地址、主动截图自检、内部应用运行时和 [首版持久改图流程](docs/IMAGE_FLOW.md)，见 [Unreleased](CHANGELOG.md#unreleased)。通用 Recipe/Flow、独立 API 和 Web 工作台继续按 [0.3 路线图](docs/ROADMAP.md#03-及以后)推进。
+0.2.7 包含宿主截图适配、实际截图地址、主动截图自检、内部应用运行时与 [DSH 实例装配](docs/DSH_RUNTIME.md)、[首版持久改图流程](docs/IMAGE_FLOW.md)、[默认只读本地 API](docs/LOCAL_API.md)及主动启用的 [本地上传与创建](docs/LOCAL_CREATION.md)，见 [0.2.7 发布说明](docs/releases/0.2.7.md)。源码树保留 [面向 0.3.0 的独立 Web Demo](docs/WEB_PROTOTYPE.md)，用于展示操作方向；界面与交互细节将在 0.3.0 阶段统一润色。Demo 使用内置样例，不连接模型、不计费；API 执行/取消与真实工作台联调继续按 [0.3 路线图](docs/ROADMAP.md#03-及以后)推进。
 
-> 版本支持：Iris 0.2.6 沿用 0.2.5 的 12 个准确 DSH 版本，见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。保留旧 DSH 时仍需 Node.js ≥22.0.0，宿主若要求更高，以宿主为准。连接复用另需宿主提供对应公开接口。
+> 版本支持：Iris 0.2.7 沿用 0.2.5 的 12 个准确 DSH 版本，见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。保留旧 DSH 时仍需 Node.js ≥22.0.0，宿主若要求更高，以宿主为准。连接复用另需宿主提供对应公开接口。
 
-## 0.2.6 更新重点与现有能力
+## 0.2.7 更新重点与现有能力
 
-**选一次连接、确认模型用途，再按功能调用。** 自动池采用稳定顺序和安全切换，没有跨请求轮转。
+**截图适配更完整，图片流程和 Skills 可脱离 DSH 使用。** 功能池继续采用稳定顺序和安全切换，没有跨请求轮转。
+
+- **宿主截图**：直接接收 PNG 并保存为 Core 作品，兼容浏览器下载目录限制；按实际监听地址导航，提供主动截图自检。
+- **图片流程与本地 API**：CLI 持久保存步骤、任务、比较和选择；API 默认只读，上传与创建需显式开启，HTTP 执行/取消尚未开放。
+- **Core Skill 安装**：随包 `iris-core` 通过 CLI 指导图片创作，可显式安装到 Kimi 或指定扫描目录，保护本地修改并保留备份。
 
 - **图片导入**：通过工作台、Agent或CLI把已有图片保存为持久作品，继续看图、改图和导出；保留源文件，不调用模型。
 - **原生 Qwen 改图**：除聊天生图外，支持DashScope Qwen带图编辑，修改版另存为关联原图的新作品。
@@ -64,7 +68,7 @@ Iris 0.2.6 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和�
 
 **升级保持已有调用范围**：旧名单和缺失/空分配不会自动启用；需主动选择自动池。新发现模型仍要确认用途，目录未列出不等于下线。DSH 默认视觉需明确加入名单或开启自动池的宿主视觉选项；已有任务按原绑定恢复。详见 [功能模型池](docs/FUNCTION_MODEL_POOLS.md)。
 
-升级与验证边界见 [0.2.6 发布说明](docs/releases/0.2.6.md) 和 [CHANGELOG](CHANGELOG.md)。旧宿主支持见 [0.2.5](docs/releases/0.2.5.md)，图片续作见 [0.2.4](docs/releases/0.2.4.md)，音乐与 Skills 见 [0.2.3](docs/releases/0.2.3.md)。
+升级与验证边界见 [0.2.7 发布说明](docs/releases/0.2.7.md) 和 [CHANGELOG](CHANGELOG.md)。旧宿主支持见 [0.2.5](docs/releases/0.2.5.md)，图片续作见 [0.2.4](docs/releases/0.2.4.md)，音乐与 Skills 见 [0.2.3](docs/releases/0.2.3.md)。
 
 音乐的接口格式、模型分配与使用示例见 [Music](docs/MUSIC.md)。其他协议与后续能力见 [路线图](docs/ROADMAP.md#后续功能方向)。
 
@@ -96,34 +100,34 @@ Iris 0.2.6 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和�
 
 ## 最快开始
 
-先用 `dsh --version` 核对宿主版本，并确认 `pnpm` 在 PATH 中。Iris 与 DSH 的版本号独立；0.2.6 沿用 [兼容矩阵](docs/DSH_COMPATIBILITY.md) 列出的 12 个准确版本。
+先用 `dsh --version` 核对宿主版本，并确认 `pnpm` 在 PATH 中。Iris 与 DSH 的版本号独立；0.2.7 沿用 [兼容矩阵](docs/DSH_COMPATIBILITY.md) 列出的 12 个准确版本。
 
 | 你的 DSH | Iris 选择 | 安装来源 |
 |---|---|---|
-| 矩阵中的0.1.2/0.1.5/0.1.7/0.2线准确版本 | `0.2.6` | 固定 npm 版本 |
+| 矩阵中的0.1.2/0.1.5/0.1.7/0.2线准确版本 | `0.2.7` | 固定 npm 版本 |
 | 未列入矩阵的版本 | 尚未验收 | 按实际宿主接口另行检查 |
 
-### DSH插件：安装0.2.6
+### DSH插件：安装0.2.7
 
 安装固定版本到 Web profile：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.6
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.7
 dsh web
 ```
 
 插件在下一次 DSH 启动时装载。Web UI 默认位于 `http://127.0.0.1:3080`；启动输出带认证参数时请打开完整 URL。更新后需重新加载后端并刷新客户端。
 
-### 独立CLI：安装0.2.6
+### 独立CLI：安装0.2.7
 
 在自己的项目中安装，无需 DSH：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.2.6
+npm install @mokuyoaxis/dsh-iris@0.2.7
 npx dsh-iris --help
 ```
 
-需要单独下载时运行`npm pack @mokuyoaxis/dsh-iris@0.2.6`。仍需保留历史Iris0.1.4时可以固定其版本；历史DSH/Node范围见兼容矩阵，0.1.4不包含当前Core媒体CLI及后续新功能。
+需要单独下载时运行`npm pack @mokuyoaxis/dsh-iris@0.2.7`。仍需保留历史Iris0.1.4时可以固定其版本；历史DSH/Node范围见兼容矩阵，0.1.4不包含当前Core媒体CLI及后续新功能。
 
 ### dsh-market 安装时的版本选择
 
@@ -171,7 +175,7 @@ DSH 的 profile 与插件命令由[官方安装说明](https://github.com/deepse
 
 ## DeepSeek Harness 适配
 
-dsh-iris仍按DSH原生插件装载。0.2.6服务端注册17个Agent工具，包含图片导入、改图与音乐；使用宿主提供的路由、附件、模型和生命周期能力。Web客户端接入设置页、会话输入区与全局悬浮层，不启动额外服务或监听端口。
+dsh-iris仍按DSH原生插件装载。0.2.7服务端注册17个Agent工具，包含图片导入、改图与音乐；使用宿主提供的路由、附件、模型和生命周期能力。Web客户端接入设置页、会话输入区与全局悬浮层，不启动额外服务或监听端口。
 
 上传图片或本地图片可保存为持久作品，继续看图、改图及导出，见 [图片导入](docs/IMAGE_IMPORT.md)。
 
@@ -184,7 +188,8 @@ dsh-iris仍按DSH原生插件装载。0.2.6服务端注册17个Agent工具，包
 | `0.2.3` | 仅 `0.2.0-rc.2` | 增加音乐工具和第三项 Skill；升级后用宿主诊断检查实际装载 |
 | `0.2.4` | `0.2.0-rc.2` 或 `0.2.1-alpha.4` | 17工具/3项Skill；两版实际SDK、加载器与界面插槽隔离验收，完整浏览器/热更新另验 |
 | `0.2.5` | 0.1.2/0.1.5/0.1.7/0.2线的12个准确版本，见兼容矩阵 | 每版官方SDK隔离检查，包含Music与Qwen工具链；旧profile另通过实际安装包装载 |
-| `0.2.6` | 沿用0.2.5的12个准确版本 | 新增连接复用、功能池与目录；连接引用按宿主公开服务检测，具体边界见本版发布说明 |
+| `0.2.7` | 沿用0.2.6的12个准确版本 | 截图修复、实例运行时、图片流程、本地 API 和 Core Skill；独立 Web 仍为源码 Demo |
+| `0.2.6` | 沿用0.2.5的12个准确版本 | 新增连接复用、功能池与目录；连接引用按宿主公开服务检测，具体边界见该版发布说明 |
 
 当前声明与验收范围见 [版本兼容](docs/DSH_COMPATIBILITY.md)，早期rc.2修正见 [历史适配记录](docs/DSH_RC2_ADAPTATION.md)；npm0.1.4不包含这些后续适配。
 
@@ -333,6 +338,8 @@ npx @mokuyoaxis/dsh-iris doctor --json
 - 供应商返回的模型清单只是候选集合，模型是否真正支持某项能力仍以实际调用为准。
 
 ## Agent Skills
+
+0.2.7 新增宿主无关的 [`iris-core`](skills/iris-core/SKILL.md)，通过现有独立 CLI 完成图片导入、生成、编辑与原任务/作品取回；英文正文附中文标题。其他 harness 可用 `dsh-iris skills install --target kimi` 或明确扫描目录安装，配套状态检查、冲突保护与可恢复卸载，见 [Core Skill 说明](docs/CORE_SKILLS.md)。这些资源和命令随 npm 0.2.7 分发，DSH 继续使用下方三项 Skills；正式 MCP 仍待实现。
 
 插件通过 DSH Skill registry 注册三项随包 Skill：
 

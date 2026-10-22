@@ -11,8 +11,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const tasks = await import('../lib/tasks.js');
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
-const { runAction, listActions } = await import('../lib/actions.js');
-const { inspectProviderTaskForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { runAction, listActions } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { inspectProviderTaskForDsh, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const provider = config.upsert({ name: 'Manual Provider', enabled: true,
   baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: 'test-secret',
@@ -63,7 +63,7 @@ try {
     task_id: unknown.id, confirm_duplicate_charge: true
   });
   tasks.stopWatchAll();
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   const retryTask = await inspectProviderTaskForDsh(retried.taskId);
   const linked = tasks.get(unknown.id);
   assert(fetchCalls.length === 1 && retryTask.attempts.length === 1
@@ -152,7 +152,7 @@ try {
   assert(/无法无损重建/.test(unsupportedError), '无法还原输入的能力拒绝伪重试', unsupportedError);
 } finally {
   tasks.stopWatchAll();
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   globalThis.fetch = originalFetch;
 }
 

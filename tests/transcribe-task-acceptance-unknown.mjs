@@ -20,8 +20,8 @@ const assert = (condition, message, extra) => {
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
-const { runAction } = await import('../lib/actions.js');
-const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { inspectCoreTask } = await import('../lib/core-tasks.js');
 const audio = path.join(config.irisHome(), 'sample.wav');
 fs.mkdirSync(config.irisHome(), { recursive: true });
@@ -120,7 +120,7 @@ try {
   } catch (error) {
     thrown = error;
   }
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   assert(thrown && thrown.taskId && /受理状态未知/.test(thrown.message), '转写 500 返回受理未知和 Task ID', thrown && thrown.message);
   assert(/^task_[a-f0-9]{24}$/.test(thrown.taskId), '受理未知暴露的是 Core Task ID', thrown.taskId);
   assert(uploadPolicyCalls === 2 && submitFirst === 1 && submitSecond === 0,
@@ -146,7 +146,7 @@ try {
       && !submissionContract.includes('视频和转写分别持久化'),
   '提交契约不得再虚构 Core 转写持久化 upload stage');
 } finally {
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   tasks.stopWatchAll();
   global.fetch = originalFetch;
 }

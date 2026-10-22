@@ -34,7 +34,8 @@ const fingerprints = directory => Object.fromEntries(fs.readdirSync(directory, {
 }));
 async function check(name, action) {
   try { await action(); report.checks.push({ name, status: 'pass' }); }
-  catch (error) { report.checks.push({ name, status: 'fail', message: error.message }); }
+  catch (error) { report.checks.push({ name, status: 'fail', message: error.message,
+    stack: error.stack, ...(error.cause ? { cause: { name: error.cause.name, code: error.cause.code, message: error.cause.message } } : {}) }); }
   save();
 }
 process.env.DSH_HOME = path.join(work, 'dsh-home');
@@ -55,7 +56,11 @@ globalThis.fetch = (input, options) => {
     blockedRequests++;
     throw new Error('验收禁止外部网络/模型请求');
   }
-  return fetchLocal(input, options);
+  return fetchLocal(input, options).catch(error => {
+    (report.failedLocalRequests ||= []).push({ url: url.href, message: error.message,
+      ...(error.cause ? { cause: { name: error.cause.name, code: error.cause.code, message: error.cause.message } } : {}) });
+    save(); throw error;
+  });
 };
 console.log('验收目录：' + work);
 const fibers = [];
@@ -592,7 +597,7 @@ try {
 
   await check('Music tool delivers an inline audio fixture as a persistent Core Artifact', async () => {
     const config = await import('../lib/config.js');
-    const { readCoreArtifactMediaForDsh } = await import('../lib/dsh-core-adapter.js');
+    const { readCoreArtifactMediaForDsh } = ctx.get('irisRuntime');
     // 空 WAV 仅验收协议与字节交付，不代表试听或真实生曲质量。
     const wav = Buffer.from('UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=', 'base64');
     const provider = config.upsert({ name: 'music fixture', baseUrl: allowedOrigin + '/music-fixture/v1',
@@ -631,7 +636,8 @@ try {
     const config = await import('../lib/config.js');
     const { createCoreRuntime } = await import('../lib/core-runtime.js');
     const { createCoreArtifact, readCoreArtifactBytes } = await import('../lib/core-artifacts.js');
-    const { dshCoreDataRoot, readCoreArtifactMediaForDsh } = await import('../lib/dsh-core-adapter.js');
+    const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+    const { readCoreArtifactMediaForDsh } = ctx.get('irisRuntime');
     const original = await sharp({ create: { width: 120, height: 80, channels: 3, background: '#ff0000' } }).png().toBuffer();
     const output = await sharp({ create: { width: 96, height: 64, channels: 3, background: '#00ff00' } }).png().toBuffer();
     const runtime = createCoreRuntime({ dataRoot: dshCoreDataRoot(), mode: 'writer' }); runtime.start();
@@ -771,11 +777,46 @@ try {
     assert.equal((await list()).status, 'verified');
     assert.equal(modelCalls, before, '这里只注入健康事实，不发起模型验证');
   });
+  let unloadedAssembly;
   await check('Iris unload removes tools, skills and routes from real services', async () => {
     assert.equal(hostRuntimeEvidence().server.loaded, true);
-    await irisFiber.dispose();
+    const assembly = ctx.get('irisRuntime');
+    unloadedAssembly = assembly;
+    assert.equal(assembly.snapshot().state, 'open');
+    let release, operationSignal;
+    const foreign = assembly.runHostOperation(signal => {
+      operationSignal = signal; return new Promise(resolve => { release = resolve; });
+    });
+    let settled = false;
+    const unloading = Promise.resolve(irisFiber.dispose());
+    void unloading.then(() => { settled = true; });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(operationSignal.aborted, true);
+    assert.equal(settled, false, 'the real Fiber must await the owned runtime drain');
+    await assert.rejects(assembly.runHostOperation(() => {}), { code: 'IRIS_DSH_RUNTIME_CLOSED' });
+    release(); await foreign; await unloading;
+    assert.equal(assembly.snapshot().state, 'closed');
+    report.runtimeAssembly = { ownedService: true, foreignSignalAborted: true, unloadWaitedForDrain: true,
+      closedRejectsNewOperations: true, writerReleased: true };
     assert.equal(ctx.get('tools').schemas().length, 0);
     assert.equal((await ctx.get('skills').list()).length, 0);
+    assert.equal((await fetch(allowedOrigin + '/iris/api/doctor')).status, 404);
+  });
+  await check('Iris reload owns a new runtime and old disposal cannot remove its registrations', async () => {
+    const reloadedFiber = await mount({ name: iris.name, inject: iris.inject, apply: iris.apply });
+    const replacement = ctx.get('irisRuntime');
+    assert.notEqual(replacement, unloadedAssembly);
+    assert.equal(replacement.snapshot().state, 'open');
+    await irisFiber.dispose(); await unloadedAssembly.dispose();
+    await assert.rejects(unloadedAssembly.coreSnapshotForDsh(), { code: 'IRIS_DSH_RUNTIME_CLOSED' });
+    assert.equal(replacement.snapshot().state, 'open');
+    assert.deepEqual(ctx.get('tools').schemas().map(item => item.name).sort(), [...EXPECTED_IRIS_TOOLS].sort());
+    assert.deepEqual((await ctx.get('skills').list()).map(item => item.name).sort(), [...EXPECTED_IRIS_SKILLS].sort());
+    assert.equal((await fetch(allowedOrigin + '/iris/api/doctor')).status, 200);
+    assert.equal((await fetch(allowedOrigin + '/iris/api/core/snapshot')).status, 200);
+    report.runtimeAssembly.reloadIsolated = true;
+    await reloadedFiber.dispose();
+    assert.equal(replacement.snapshot().state, 'closed');
     assert.equal((await fetch(allowedOrigin + '/iris/api/doctor')).status, 404);
   });
   await check('no external requests or real models', () => assert.equal(blockedRequests, 0));

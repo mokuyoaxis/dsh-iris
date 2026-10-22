@@ -15,7 +15,7 @@ const {
   dshCoreDataRoot,
   observeProviderTaskForDsh,
   submitProviderTaskForDsh
-} = await import('../lib/dsh-core-adapter.js');
+} = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const assert = (condition, message, extra) => {
   if (!condition) throw new Error(message + (extra === undefined ? '' : `: ${JSON.stringify(extra)}`));
@@ -110,7 +110,7 @@ try {
     artifacts: treeBytes(path.join(dshCoreDataRoot(), 'artifact-store'))
   };
   const fetchBefore = fetchCalls;
-  const { serveApi } = await import('../lib/api.js');
+  const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
   await coreSnapshotForDsh({ limit: 200 });
   await coreSnapshotForDsh({ limit: 12 });
   const response = apiResponder();

@@ -10,7 +10,7 @@ import { ttsCandidatesFromCatalog } from '../lib/provider-catalog.js';
 
 useTempDshHome('iris-tts-protocol-probe');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const unsupported = [
   'qwen3-tts-flash-realtime', 'qwen3-tts-flash-realtime-2025-11-27',
   'qwen3-tts-instruct-flash-realtime-2026-01-22', 'qwen3-tts-vc-realtime-2025-11-27',

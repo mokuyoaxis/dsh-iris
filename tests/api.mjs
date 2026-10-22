@@ -88,7 +88,7 @@ fixture.tasks.push(
 fs.writeFileSync(taskFile, JSON.stringify(fixture, null, 2));
 
 /* ---------- 载入被测模块 ---------- */
-const { buildState } = await import('../lib/api.js');
+const { buildState } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const state = buildState();
 const stateNext = buildState();
@@ -153,7 +153,7 @@ assert(r0 && typeof r0.id === 'string' && typeof r0.cap === 'string' && typeof r
   && Array.isArray(r0.media), 'running 任务最小标量字段（media 恒为数组）');
 
 /* ---------- ⑥ /iris/api/task/:id 详情端点（阶段 4 抽屉数据源） ---------- */
-const { serveApi, closeAllSse, sseClientCount, purgeStaleUploads, UPLOAD_TTL_MS } = await import('../lib/api.js');
+const { serveApi, closeAllSse, sseClientCount, purgeStaleUploads, UPLOAD_TTL_MS } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const tasks = await import('../lib/tasks.js');
 const config = await import('../lib/config.js');
 tasks.resetCache(); // 让任务注册表重新读盘（fixture 里写好的任务）

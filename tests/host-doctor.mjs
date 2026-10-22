@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { defineHostAdapter } from '../lib/host-contract.js';
 import { formatDoctorReport, hostDoctor } from '../lib/doctor.js';
-import { serveApi } from '../lib/api.js';
+import { serveApi } from './fixtures/dsh-runtime-fixture.mjs';
 import {
   EXPECTED_IRIS_CLIENT_SEATS,
   EXPECTED_IRIS_ROUTES,

@@ -14,8 +14,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
-const { runAction } = await import('../lib/actions.js');
-const { coreSnapshotForDsh, dshCoreDataRoot, inspectProviderTaskForDsh, readCoreArtifactMediaForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { coreSnapshotForDsh, dshCoreDataRoot, inspectProviderTaskForDsh, readCoreArtifactMediaForDsh, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 function coreTaskRecords() {
   const directory = path.join(dshCoreDataRoot(), 'task-store/v0/tasks');
   return fs.readdirSync(directory).map((name) => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8')));
@@ -87,7 +87,7 @@ try {
   assert(!registry.includes('first-secret') && !registry.includes('second-secret'), '任务注册表不持久化 API Key');
 } finally {
   tasks.stopWatchAll();
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   global.fetch = originalFetch;
 }
 

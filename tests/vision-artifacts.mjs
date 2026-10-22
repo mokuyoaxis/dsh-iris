@@ -15,9 +15,9 @@ import { VISION_BUDGET } from '../lib/vision-core.js';
 const { root } = useTempDshHome('iris-vision-artifacts');
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const config = await import('../lib/config.js');
-const iris = await import('../lib/index.js');
-const { runAction } = await import('../lib/actions.js');
-const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const iris = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const dataRoot = dshCoreDataRoot(), providerFile = path.join(root, 'providers.json'), stateFile = path.join(root, 'state.json');
 const hash = value => createHash('sha256').update(value).digest('hex');
 function snapshot(directory) {
@@ -194,7 +194,7 @@ try {
   console.log(`ALL OK —— 图片 Artifact：${checks} 次真实 CLI，三类 DSH 工具/动作，同源字节/MIME与原像素、OCR切片/部分完成、会话附件兼容、writer 共存、错误/取消零 Core 写入`);
 } finally {
   globalThis.fetch = originalFetch;
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   for (const dispose of disposers.reverse()) await dispose();
   await writer.dispose();
 }

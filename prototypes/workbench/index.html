@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Iris · 图片工作台原型</title>
+  <link rel="icon" href="./assets/iris-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">跳到创作区</a>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Iris 工作台首页">
+      <img src="./assets/iris-mark.svg" width="26" height="29" alt="">
+      <span>iris<span class="brand-dot">.</span></span>
+    </a>
+    <span class="nav-label">图片工作台</span>
+    <div class="top-actions">
+      <span class="demo-badge"><span class="status-dot"></span>本地演示</span>
+      <button id="theme-button" class="icon-button" type="button" aria-label="切换到深色主题" title="切换主题">◐</button>
+    </div>
+  </header>
+
+  <main id="workspace" class="workspace">
+    <div class="page-heading">
+      <div><p class="eyebrow">IRIS / IMAGE STUDIO</p><h1>让想法，再进一步。</h1><p class="subtitle">从一张图片开始，比较变化，留下你喜欢的版本。</p></div>
+      <button id="new-run" class="button secondary" type="button"><span aria-hidden="true">＋</span> 新建流程</button>
+    </div>
+    <aside class="demo-notice" aria-label="演示说明"><span class="notice-symbol" aria-hidden="true">i</span><span>交互原型 · 不连接模型、不计费。结果使用内置样图，本地选图仅在此标签页预览。</span></aside>
+
+    <div class="studio-grid">
+      <section class="panel input-panel" aria-labelledby="input-heading">
+        <div class="panel-title"><span class="step-number">01</span><h2 id="input-heading">创作输入</h2><span class="small-label">单张图片</span></div>
+        <form id="edit-form">
+          <fieldset id="input-fields">
+            <legend class="sr-only">来源图片和修改要求</legend>
+            <div class="field-heading"><span>来源图片</span><button id="use-sample" class="text-button" type="button">使用样图</button></div>
+            <label id="drop-zone" class="drop-zone" for="image-file">
+              <img id="input-preview" class="source-image" src="./assets/sample.webp" alt="内置鸢尾花样图">
+              <span id="upload-hint" class="upload-overlay">↥ 点击换图，或拖放图片</span>
+            </label>
+            <input id="image-file" class="sr-only file-input" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="file-help">
+            <div class="file-info"><span id="file-name">iris-flower.webp</span><span id="file-dimensions">1600 × 1600</span></div>
+            <p id="file-help" class="field-help">PNG、JPEG、WebP · 最大 20 MiB</p>
+
+            <label class="field-label" for="model">使用模型 <span class="pill">演示</span></label>
+            <select id="model" name="model" required></select>
+            <p class="field-help">本次固定使用所选模型，结果未知时不会换模型重试。</p>
+
+            <div class="field-heading prompt-heading"><label for="prompt">想做什么修改？</label><span id="prompt-count" class="muted">0 / 4000</span></div>
+            <textarea id="prompt" name="prompt" rows="4" maxlength="4000" required placeholder="描述要修改的内容，也可以说明希望保留什么…">保留鸢尾花的细节，让背景更柔和，整体光线更温暖。</textarea>
+            <p id="input-lock" class="field-help" hidden>本次输入已固定。要调整图片或要求，请新建流程。</p>
+          </fieldset>
+          <button id="start" class="button primary start-button" type="submit"><span aria-hidden="true">↗</span> 开始演示</button>
+          <p class="start-help">只在明确开始后执行 · 当前为无费用演示</p>
+        </form>
+      </section>
+
+      <section id="result-panel" class="panel result-panel" aria-labelledby="result-heading">
+        <div class="panel-title result-title"><span class="step-number">02</span><h2 id="result-heading">比较与选择</h2><div class="view-switch" role="group" aria-label="比较方式"><button id="view-pair" class="active" type="button" aria-pressed="true">并排</button><button id="view-overlay" type="button" aria-pressed="false" disabled>叠图</button></div></div>
+
+        <div id="run-status" class="run-status" data-tone="neutral" role="status" aria-live="polite" aria-atomic="true"><span id="run-status-icon" class="run-status-icon" aria-hidden="true">○</span><div><strong id="status-title">准备好，就开始吧</strong><p id="status-message">右侧会保留原图与结果，方便你慢慢比较。</p></div><span id="busy-indicator" class="busy-indicator" hidden></span></div>
+
+        <div id="pair-view" class="pair-view">
+          <figure class="image-card"><figcaption><span><span class="image-dot original"></span>原图</span><span class="image-caption">SOURCE</span></figcaption><div class="image-stage"><img class="source-image" src="./assets/sample.webp" alt="原图预览"></div><button id="select-source" class="choice-button" type="button" aria-pressed="false" disabled><span class="choice-ring" aria-hidden="true"></span><span>选择原图</span></button></figure>
+          <figure class="image-card"><figcaption><span><span class="image-dot result"></span>示例结果</span><span class="image-caption">RESULT</span></figcaption><div class="image-stage"><img class="output-image" src="./assets/sample.webp" alt="内置样图演示结果，并非模型修改" hidden><div id="result-placeholder" class="result-placeholder"><img src="./assets/iris-mark.svg" width="45" height="49" alt=""><strong id="placeholder-title">下一张，等你决定</strong><p id="placeholder-message">开始后，在这里查看结果</p></div></div><button id="select-output" class="choice-button" type="button" aria-pressed="false" disabled><span class="choice-ring" aria-hidden="true"></span><span>选择结果</span></button></figure>
+        </div>
+
+        <div id="overlay-view" class="overlay-view" hidden>
+          <div class="overlay-stage"><img class="source-image" src="./assets/sample.webp" alt="叠图中的原图"><img id="overlay-output" class="output-image" src="./assets/sample.webp" alt="叠图中的示例结果"><span class="overlay-tag left">原图</span><span class="overlay-tag right">示例结果</span></div>
+          <label class="range-label" for="compare-position"><span>原图与示例结果</span><span id="compare-value">50%</span></label><input id="compare-position" type="range" min="0" max="100" value="50" aria-label="比较分界位置">
+          <p class="field-help">叠图仅帮助查看。使用下方按钮明确选择要下载的图片。</p>
+          <div class="overlay-choices"><button id="overlay-select-source" class="button secondary" type="button" aria-pressed="false">选择原图</button><button id="overlay-select-output" class="button secondary" type="button" aria-pressed="false">选择结果</button></div>
+        </div>
+
+        <div class="result-footer"><p id="selection-message">先比较，再选择。选择后即可下载。</p><button id="download" class="button primary" type="button" disabled><span aria-hidden="true">↓</span> 下载所选图片</button></div>
+        <div class="run-controls"><button id="continue" class="button secondary" type="button" hidden>查看原任务</button><button id="cancel" class="text-button" type="button" hidden>停止本次等待</button><button id="refresh" class="text-button" type="button" disabled>重新读取状态</button><span id="run-short-id" class="mono muted">尚未开始</span></div>
+      </section>
+    </div>
+
+    <details id="diagnostics" class="diagnostics">
+      <summary><span class="diagnostic-heading"><span aria-hidden="true">⌘</span> 运行详情与演示场景</span><span class="disclosure-label" aria-hidden="true"><span class="when-closed">展开</span><span class="when-open">收起</span><span class="chevron">⌄</span></span></summary>
+      <div class="diagnostic-body"><div class="facts-column"><h3>本次状态</h3><dl><div><dt>流程</dt><dd id="detail-run">尚未创建</dd></div><div><dt>任务</dt><dd id="detail-task">尚未提交</dd></div><div><dt>受理 / 结果 / 交付</dt><dd id="detail-state">—</dd></div><div><dt>演示提交次数</dt><dd id="detail-submissions">0</dd></div></dl><p class="field-help">此处只展示状态。展开、刷新或重新读取不会开始生成。</p></div><div class="scenario-column"><label class="field-label" for="scenario">下一条流程的演示场景</label><select id="scenario"><option value="success">正常完成</option><option value="running">原任务进行中</option><option value="unknown">请求受理未知</option><option value="delivery_failed">生成成功，交付中断</option><option value="needs_comparison">结果已保存，等待比较</option></select><p class="field-help">只控制内存中的演示，不调用模型。新流程生效；整页刷新会清空本次演示状态。</p><label class="field-label" for="history">本标签页的流程</label><select id="history" disabled><option value="">尚无流程</option></select><p class="field-help">切换只读取已有状态，不继续执行。</p></div></div>
+    </details>
+    <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+    <footer class="page-footer"><span>iris. <span class="muted">给创作留一点余地。</span></span><span>独立工作台原型 <span class="footer-separator">/</span> 0.3</span></footer>
+  </main>
+  <noscript><p class="no-script">请启用 JavaScript 体验交互原型。页面不会连接模型。</p></noscript>
+</body>
+</html>

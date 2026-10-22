@@ -14,13 +14,13 @@ const { root, cleanup } = useTempDshHome('iris-dsh-transcribe-core');
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
-const { apply } = await import('../lib/index.js');
-const { runAction } = await import('../lib/actions.js');
+const { apply } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const {
   inspectProviderTaskForDsh,
   stopProviderTaskWatchesForDsh
-} = await import('../lib/dsh-core-adapter.js');
-const { serveApi } = await import('../lib/api.js');
+} = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const registered = [];
 const disposers = [];
@@ -125,7 +125,7 @@ try {
   /* 零 legacy 双写 + 签名 URL 不落 Core */
   assert.equal(tasks.all().length, legacyBefore, 'Core 转写不得创建 legacy Task');
   const recordBytes = fs.readFileSync(
-    path.join((await import('../lib/dsh-core-adapter.js')).dshCoreDataRoot(), 'task-store', 'v0', 'tasks', taskId + '.json'), 'utf8');
+    path.join((await import('./fixtures/dsh-runtime-fixture.mjs')).dshCoreDataRoot(), 'task-store', 'v0', 'tasks', taskId + '.json'), 'utf8');
   assert.ok(!recordBytes.includes('oss://') && !recordBytes.includes('asr-first-secret')
       && !recordBytes.includes('fixture-asr-secret'),
     'Core 转写记录不得持久化签名地址或 Key');
@@ -153,11 +153,11 @@ try {
   assert.equal(calls.uploadPolicy, 1, 'audio_url 直达路径不得再上传');
   assert.equal(calls.submit, 2);
   assert.equal(tasks.all().length, legacyBefore, 'GUI 转写仍零 legacy 双写');
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
 
   console.log('ALL OK —— DSH 转写 → Core：上传为输入准备、文本 Artifact、零 legacy 双写、快照投影');
 } finally {
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   tasks.stopWatchAll();
   for (const dispose of disposers.reverse()) {
     try { dispose(); } catch {}

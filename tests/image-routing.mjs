@@ -11,8 +11,8 @@ const protocol = await import('../lib/provider-protocol.js');
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
-const { inspectProviderTaskForDsh, readCoreArtifactMediaForDsh } = await import('../lib/dsh-core-adapter.js');
-const { runAction } = await import('../lib/actions.js');
+const { inspectProviderTaskForDsh, readCoreArtifactMediaForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const DS_BASE = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 
 assert(adapters.dashscopeImageMode('wan2.2-t2i-flash') === 'legacy-async', 'Wan 2.2 走旧异步');

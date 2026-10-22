@@ -12,7 +12,7 @@ const assert = (condition, message, extra) => {
   }
 };
 
-const { serveApi } = await import('../lib/api.js');
+const { serveApi, fixtureRuntime } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { createDshHostAdapter } = await import('../lib/dsh-host-adapter.js');
 const configStore = await import('../lib/prompt-optimizer-config.js');
 let modelCalls = 0;
@@ -192,6 +192,23 @@ try {
   res = await fetch(base + '/iris/api/prompt-optimizer/reset', { method: 'POST', body: JSON.stringify({ scope: 'all' }) });
   json = await res.json(); assert(res.status === 200 && json.feedback.warnings.length === 0, '显式全部恢复修复当前状态');
   assert(modelCalls === beforeConfig, '配置反馈与恢复不生成模型请求');
+
+  // A JSON body admitted before unload must not write configuration after its owner closes.
+  const beforeClose = fs.readFileSync(configStore.promptOptimizerConfigFile());
+  const admitted = new Promise(resolve => server.once('request', resolve));
+  let delayed;
+  const lateResponse = new Promise((resolve, reject) => {
+    delayed = http.request(base + '/iris/api/prompt-optimizer/enabled', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' } }, response => {
+      response.resume(); response.once('end', () => resolve(response.statusCode));
+    });
+    delayed.once('error', reject); delayed.flushHeaders();
+  });
+  await admitted; await fixtureRuntime().dispose();
+  delayed.end(JSON.stringify({ enabled: false }));
+  strict.equal(await lateResponse, 503);
+  strict.deepEqual(fs.readFileSync(configStore.promptOptimizerConfigFile()), beforeClose);
+  strict.equal(modelCalls, beforeConfig);
 } finally {
   await new Promise((resolve) => server.close(resolve));
 }

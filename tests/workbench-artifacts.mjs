@@ -9,9 +9,9 @@ import { useTempDshHome } from './test-env.js';
 import { FAKE_PNG } from './fixtures/fake-lifecycle-provider.mjs';
 
 const { root } = useTempDshHome('iris-workbench-artifacts');
-const { workbenchArtifacts } = await import('../lib/workbench-artifacts.js');
-const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
-const { serveApi } = await import('../lib/api.js');
+const { workbenchArtifacts } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { dshCoreDataRoot } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const dataRoot = dshCoreDataRoot();
 assert.equal((await workbenchArtifacts({ source: 'core' })).total, 0);

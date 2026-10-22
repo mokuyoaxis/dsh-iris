@@ -13,7 +13,7 @@ const {
   observeProviderTaskForDsh,
   projectCoreTaskForDsh,
   submitProviderTaskForDsh
-} = await import('../lib/dsh-core-adapter.js');
+} = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const assert = (condition, message, extra) => {
   if (!condition) throw new Error(message + (extra === undefined ? '' : `: ${JSON.stringify(extra)}`));
@@ -109,7 +109,7 @@ try {
       && fs.readFileSync(indexFile, 'utf8') === indexBeforeProjection,
     '读取工作台快照不得修改 Core 事实');
 
-  const { serveApi } = await import('../lib/api.js');
+  const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
   const response = {
     headersSent: false, destroyed: false, writableEnded: false, status: 0, body: '',
     writeHead(status) { this.status = status; this.headersSent = true; },

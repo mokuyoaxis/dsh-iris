@@ -7,14 +7,14 @@ import { useTempDshHome } from './test-env.js';
 
 const { root } = useTempDshHome('iris-qwen-edit');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { supportsImageEdit } = await import('../lib/provider-protocol.js');
 const { createConfiguredProviderAdapter } = await import('../lib/provider-adapters.js');
 const { invokeProviderOperation } = await import('../lib/provider-adapter.js');
 const { createCoreArtifact, readCoreArtifactBytes } = await import('../lib/core-artifacts.js');
 const { listCoreTasks } = await import('../lib/core-tasks.js');
-const { dshCoreDataRoot, inspectProviderTaskForDsh, readCoreArtifactMediaForDsh } = await import('../lib/dsh-core-adapter.js');
-const { apply } = await import('../lib/index.js');
+const { dshCoreDataRoot, inspectProviderTaskForDsh, readCoreArtifactMediaForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { apply } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const dataRoot = dshCoreDataRoot();
 const original = await sharp({ create: { width: 120, height: 80, channels: 3, background: '#f00' } }).png().toBuffer();
 const output = await sharp({ create: { width: 96, height: 64, channels: 3, background: '#0f0' } }).png().toBuffer();

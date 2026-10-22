@@ -5,7 +5,7 @@
  * Host-dependent and paid actions stay blocked until the Command/DSH Adapter migration.
  */
 import { defineHostAdapter, requireHostPort } from '../../lib/host-contract.js';
-import { runAction } from '../../lib/actions.js';
+import { runAction } from './dsh-runtime-fixture.mjs';
 
 const SAFE_ACTIONS = new Set([
   'crop',

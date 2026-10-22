@@ -2,17 +2,21 @@
 
 `run music` 支持音乐生成与模型级协议配置，见 [音乐生成](MUSIC.md)。0.2.6 可选择自动池、仅用所选模型或停用，旧名单和空配置不自动改变，见 [功能模型池](FUNCTION_MODEL_POOLS.md)。
 
-本文面向 Iris 0.2.6，涵盖无 DSH 的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为 Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core 内部接口与 Artifact v0 尚未冻结为公共 SDK。
+本文面向 Iris 0.2.7，涵盖无 DSH 的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为 Core Artifact，可在后续进程中检查、分析或导出；纯视觉不自动创建产物。Core 内部接口与 Artifact v0 尚未冻结为公共 SDK。
 
-需要Node.js ≥ 22.0.0。按 [README](../README.md) 核对发布状态，安装 `npm install @mokuyoaxis/dsh-iris@0.2.6` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；本地tarball也可用于安装。
+需要Node.js ≥ 22.0.0。按 [README](../README.md) 核对发布状态，安装 `npm install @mokuyoaxis/dsh-iris@0.2.7` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；本地tarball也可用于安装。
+
+0.2.7 另提供宿主无关的 [`iris-core` Skill](CORE_SKILLS.md)，指导 Agent 使用这些图片、任务和作品命令；英文正文附中文标题，独立分发，不改变 DSH 三项 Skill。`skills install/status/uninstall` 可显式复制、检查和可恢复卸载，支持 Kimi 或自定义扫描目录，安装/卸载可 `--dry-run`。这些入口随 npm 0.2.7 分发；正式 MCP 仍待实现。
 
 0.2.1 提供 `vision look / locate / ocr / summarize`。文件输入的纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；图片/帧 Artifact ID 输入需显式数据根，以 reader 读取既有 Core 产物，只有主动音轨转写才创建 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)；S2V、HTML、配置、等待及批量管理见 [CLI 管理](CLI_MANAGEMENT.md)。
 
 0.2.4新增 `artifact import --data-root /absolute/path/core --input '{"image_path":"/absolute/path/source.png"}'`，将本地图片保存为持久作品，不调用模型；详见 [图片导入](IMAGE_IMPORT.md)。npm0.2.3不包含此命令。
 
-未发布开发版开始让图片生成、导入、比较、作品查询/导出和单项任务查询共用 [内部应用运行时](CORE_RUNTIME_CONTRACT.md#应用运行时装配未发布)，提供实例写队列、输入快照和操作级取消/释放。每个 CLI 调用仍是独立进程，队列不在进程之间共享；同时写同一数据根仍可能返回 busy。已有命令参数和 Task/Artifact 格式保持。
+0.2.7 开始让图片生成、导入、比较、作品查询/导出和单项任务查询共用 [内部应用运行时](CORE_RUNTIME_CONTRACT.md#应用运行时装配)，提供实例写队列、输入快照和操作级取消/释放。每个 CLI 调用仍是独立进程，队列不在进程之间共享；同时写同一数据根仍可能返回 busy。已有命令参数和 Task/Artifact 格式保持。
 
-开发版另提供 [固定图片流程](IMAGE_FLOW.md)：先在新的专用根 `flow init`，再导入素材并执行 `flow create/continue/select/export`；`flow inspect/list` 只读。Run 私有保存创作输入，Task 新增可选流程绑定；原 Task/Artifact 记录和配置不自动迁移，旧版 writer 不得写该流程根。此功能未随 npm 0.2.6 发布。
+0.2.7 另提供 [固定图片流程](IMAGE_FLOW.md)：先在新的专用根 `flow init`，再导入素材并执行 `flow create/continue/select/export`；`flow inspect/list` 只读。Run 私有保存创作输入，Task 新增可选流程绑定；原 Task/Artifact 记录和配置不自动迁移，旧版 writer 不得写该流程根。此功能随 npm 0.2.7 分发。
+
+0.2.7 的 `api serve --data-root /absolute/path/flow-core --token-file /absolute/private/new-session.token` 默认启动 [只读本地 API](LOCAL_API.md)：固定回环监听、独立会话鉴权，提供模型/流程查询和受控图片。Token 写入新的根外私有文件，stdout 不含 Token；GET/HEAD 不写 Core 或调用 Provider。新空 Flow 根可另执行 `api init`，再用 `--allow-local-writes` 主动启用 [上传/创建](LOCAL_CREATION.md)，它们不执行生成。执行/取消接口尚未开放；这些命令随 npm 0.2.7 分发；Demo 只保留在源码树中。
 
 ## 配置查询与离线诊断
 

@@ -2,9 +2,9 @@
 
 Iris与DSH的版本号独立。安装前运行 `dsh --version`，并核对要安装的Iris版本；发布状态见 [README](../README.md)。
 
-## Iris 0.2.6
+## Iris 0.2.7
 
-0.2.6 沿用 0.2.5 的以下 12 个准确版本声明，不因连接复用扩大宿主支持范围。连接引用另需供应商目录、脱敏设置及凭据公开服务；缺少接口时使用手动供应商。首次配置与升级规则见 [功能模型池](FUNCTION_MODEL_POOLS.md)。
+0.2.7 沿用 0.2.5/0.2.6 的以下 12 个准确版本声明。截图修复与实例装配不扩大宿主支持范围。连接引用另需供应商目录、脱敏设置及凭据公开服务；缺少接口时使用手动供应商。首次配置与升级规则见 [功能模型池](FUNCTION_MODEL_POOLS.md)。
 
 ## 0.2.5 建立的兼容范围
 
@@ -34,10 +34,10 @@ Iris与DSH的版本号独立。安装前运行 `dsh --version`，并核对要安
 
 ## 安装与升级
 
-在上述 12 个准确版本的宿主中，固定安装 Iris 0.2.6：
+在上述 12 个准确版本的宿主中，固定安装 Iris 0.2.7：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.6
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.7
 ```
 
 使用其他profile时替换 `web`。更新后检查服务端装载、刷新Web客户端，并查看Iris工作台的 [宿主诊断](HOST_DOCTOR.md)。alpha.3及之后的DSH改善了插件更新与热加载，但仍以实际装载结果为准。

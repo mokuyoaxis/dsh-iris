@@ -7,7 +7,7 @@ import { imageCandidatesFromCatalog } from '../lib/provider-catalog.js';
 
 useTempDshHome('iris-model-resolution');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const provider = config.upsert({
   enabled: true, auth: 'none', baseUrl: 'https://fixture.example/v1',
   models: [{ id: 'custom-image', capabilities: ['image-gen'] }]

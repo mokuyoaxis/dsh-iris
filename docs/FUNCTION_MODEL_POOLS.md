@@ -1,6 +1,6 @@
 # 功能模型池与调用方式
 
-版本要求：Iris 0.2.6；发布状态见 [README](../README.md)。0.2.4/0.2.5 使用 [严格功能名单](FUNCTION_MODEL_ASSIGNMENTS.md)；升级不会自动启用自动池。
+本文对应 Iris 0.2.7，功能从 0.2.6 起提供；发布状态见 [README](../README.md)。0.2.4/0.2.5 使用 [严格功能名单](FUNCTION_MODEL_ASSIGNMENTS.md)；升级不会自动启用自动池。
 
 ## 配好一次即可使用
 

@@ -13,7 +13,7 @@ import { ttsCandidatesFromCatalog, providerForTaskFromCatalog, providerTaskBindi
 
 useTempDshHome('iris-model-directory-actions');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const p = config.upsert({ id: 'catalog', name: 'fixture', enabled: true, auth: 'none',
   baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', mediaProtocol: 'dashscope',
   models: [{ id: 'old', capabilities: ['tts'] }, { id: 'custom-unlisted', capabilities: ['tts'], source: 'manual' }] });

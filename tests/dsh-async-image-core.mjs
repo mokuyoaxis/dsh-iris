@@ -7,14 +7,14 @@ import { FAKE_PNG } from './fixtures/fake-lifecycle-provider.mjs';
 const { root, cleanup } = useTempDshHome('iris-dsh-async-core');
 const config = await import('../lib/config.js');
 const tasks = await import('../lib/tasks.js');
-const { apply } = await import('../lib/index.js');
-const { runAction } = await import('../lib/actions.js');
+const { apply } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const {
   dshCoreDataRoot,
   inspectProviderTaskForDsh,
   resumeProviderTaskWatchesForDsh,
   stopProviderTaskWatchesForDsh
-} = await import('../lib/dsh-core-adapter.js');
+} = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { createCoreRuntime } = await import('../lib/core-runtime.js');
 const { activateCoreWatch } = await import('../lib/core-tasks.js');
 
@@ -126,7 +126,7 @@ try {
   });
   assert.equal(submitted.storage, 'core');
   assert.equal(submitted.remoteTaskId, 'remote-2');
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   assert.equal(remotes.get('remote-2'), 0, 'Stopping Host watcher before first tick must not poll');
   const crashed = createCoreRuntime({ dataRoot: dshCoreDataRoot(), mode: 'writer' });
   crashed.start();
@@ -148,7 +148,7 @@ try {
   const drifted = await runAction({}, 'image', {
     prompt: 'fixture binding drift', model: provider.id + '::wan2.2-t2i-flash', n: '1'
   });
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   const driftFile = path.join(dshCoreDataRoot(), 'task-store/v0/tasks', drifted.taskId + '.json');
   const driftBefore = fs.readFileSync(driftFile, 'utf8');
   const pollsBeforeDrift = calls.poll;
@@ -161,7 +161,7 @@ try {
 
   console.log('DSH async image -> Core watcher -> crash takeover -> attachment/binding tests passed');
 } finally {
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   tasks.stopWatchAll();
   for (const dispose of disposers.reverse()) {
     try { dispose(); } catch {}

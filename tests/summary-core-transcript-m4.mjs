@@ -8,8 +8,8 @@ if (spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status !== 0) {
   console.log('SKIP 摘要 Core 转写接线：无 ffmpeg'); process.exit(0);
 }
 const config = await import('../lib/config.js');
-const iris = await import('../lib/index.js');
-const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const iris = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { listCoreTasks } = await import('../lib/core-tasks.js');
 const { readCoreArtifactBytes } = await import('../lib/core-artifacts.js');
 const provider = config.upsert({ type: 'openai', enabled: true, apiKey: 'fixture-only-secret', mediaProtocol: 'dashscope',
@@ -73,7 +73,7 @@ try {
   await assert.rejects(pending, error => error.code === 'IRIS_MODEL_ABORTED');
   assert(uploadSignal.aborted); assert.equal(visuals, 1); assert.equal(submits, 1);
 } finally {
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   for (const dispose of disposers.reverse()) await dispose();
   globalThis.fetch = originalFetch;
 }

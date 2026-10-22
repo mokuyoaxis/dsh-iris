@@ -20,8 +20,8 @@ const assert = (condition, message, extra) => {
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
-const { runAction } = await import('../lib/actions.js');
-const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { inspectCoreTask } = await import('../lib/core-tasks.js');
 
 const first = config.upsert({
@@ -77,7 +77,7 @@ try {
   } catch (error) {
     thrown = error;
   }
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   assert(thrown && thrown.taskId && /受理状态未知/.test(thrown.message), '视频 500 返回受理未知与 Task ID', thrown && thrown.message);
   assert(/^task_[a-f0-9]{24}$/.test(thrown.taskId), '受理未知暴露的是 Core Task ID', thrown.taskId);
   assert(writeAhead && firstCalls === 1 && secondCalls === 0,
@@ -93,7 +93,7 @@ try {
       'Core 视频任务不持久化 API Key');
   }
 } finally {
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   tasks.stopWatchAll();
   global.fetch = originalFetch;
 }

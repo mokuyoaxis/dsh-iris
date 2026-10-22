@@ -21,8 +21,8 @@ const assert = (condition, message, extra) => {
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
-const { runAction } = await import('../lib/actions.js');
-const { dshCoreDataRoot, inspectProviderTaskForDsh } = await import('../lib/dsh-core-adapter.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { dshCoreDataRoot, inspectProviderTaskForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { inspectCoreArtifact, readCoreArtifactBytes } = await import('../lib/core-artifacts.js');
 const { createCoreRuntime } = await import('../lib/core-runtime.js');
 

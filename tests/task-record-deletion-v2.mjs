@@ -3,7 +3,7 @@ import { useTempDshHome } from './test-env.js';
 
 useTempDshHome('iris-task-record-deletion-v2');
 const tasks = await import('../lib/tasks.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const assert = (condition, message, extra) => {
   if (!condition) throw new Error(message + (extra === undefined ? '' : `: ${JSON.stringify(extra)}`));

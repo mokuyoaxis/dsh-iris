@@ -4,6 +4,8 @@ Iris 0.2.3 的音乐生成由 CLI、Agent 工具与工作台共同调用，使�
 
 本文描述 **Iris 0.2.2** 的实现边界；0.2.0 建立的 Core 数据格式保持兼容。迁移逐条切换消费者，不原地改写 0.1.4 数据。
 
+0.2.7 已进一步完成 [DSH 实例装配](DSH_RUNTIME.md)：插件持有 Core 写队列、连接端口引用和观察器，卸载等待在途操作及释放。既有业务与数据格式保持；下文各版本验收记录仍按当时范围解读。
+
 0.2.1 已把 S2V、HTML、单图视觉、OCR、定位、摘要和提示词预览接入共享 Core Command 或 Model Ports，并补齐视觉 CLI、配置/查询/维护命令。图片按模型选择四种协议，Artifact ID 聊天编辑另存新作品并保留来源关系；输入预算仅处理发送副本。功能范围见 [发布说明](releases/0.2.1.md)。
 
 ## 已切换的执行链：本地媒体处理与新生成任务
@@ -11,7 +13,7 @@ Iris 0.2.3 的音乐生成由 CLI、Agent 工具与工作台共同调用，使�
 - `iris_crop` 和工作台 crop 共用 Command Service 与 Artifact Manifest。attachment 输入先成为 `host-input` Artifact，裁剪结果用 `derived-from` 保存关系；工具名、参数和附件输出不变。
 - 新图片任务的同步、异步与混合候选均使用同一 Core Task/Attempt/Artifact。每个候选先落盘 Attempt，只有明确 `not_accepted` 才允许切换；收到远端 ID 或受理未知后停止候选提交。
 - 新 Attempt 可选记录七个单调 `stageTimestamps` 边界，区分排队、提交、远端执行、下载和本地 Artifact 处理；旧记录缺失该字段仍合法，未发生的阶段不补写。
-- Provider 只收到原始模型 ID；Task 保存 `providerId::modelId` 和非敏感端点 binding，不保存 Prompt、凭据、下载 URL 或 DSH 会话。未发布的 [固定流程](IMAGE_FLOW.md)将提示词保存为专用根的私有 Run 输入，不改变 Task 的隐私边界。
+- Provider 只收到原始模型 ID；Task 保存 `providerId::modelId` 和非敏感端点 binding，不保存 Prompt、凭据、下载 URL 或 DSH 会话。0.2.7 的 [固定流程](IMAGE_FLOW.md)将提示词保存为专用根的私有 Run 输入，不改变 Task 的隐私边界。
 - DSH 边界选择 `$DSH_HOME/iris/v1/core-v0`，与旧 `tasks.json`、`artifacts.json`、`outputs/` 隔离。旧任务仍由旧观察器读取和接管；新图片不双写旧存储。
 
 `iris_draw_image` 等待同一 Core Task，ready 后通过命名 Attachment Port 返回图片。等待超时只返回稳定 Task ID，后台观察继续；停止工具等待不等于远端取消。宿主投影失败不会撤销 Core 中已经成功交付的产物。

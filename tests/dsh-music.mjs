@@ -5,10 +5,10 @@ import { FAKE_WAV } from './fixtures/fake-lifecycle-provider.mjs';
 
 const { cleanup } = useTempDshHome('iris-dsh-music');
 const config = await import('../lib/config.js');
-const { apply } = await import('../lib/index.js');
-const { runAction } = await import('../lib/actions.js');
-const { serveApi } = await import('../lib/api.js');
-const { coreSnapshotForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { apply } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { coreSnapshotForDsh, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const provider = config.upsert({ name: 'fixture music', apiKey: 'fixture-music-key',
   baseUrl: 'https://music.fixture.invalid/v1', mediaProtocol: 'openai-responses-images', models: [
     { id: 'gemini-image', capabilities: ['image-gen'] },
@@ -76,7 +76,7 @@ try {
   console.log('PASS DSH Music：工具、GUI动作API、502重试、同源播放、Core快照、零小样本探测和图片协议隔离');
 } finally {
   global.fetch = originalFetch;
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   for (const dispose of disposers) dispose();
   cleanup();
 }

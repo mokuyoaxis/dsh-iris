@@ -23,6 +23,8 @@ const work = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-health-browser-'));
 process.env.DSH_HOME = path.join(work, 'home'); process.env.IRIS_IMPORT_WORKBENCH_CONFIG = '';
 const store = await import('../lib/config.js');
 const { serveApi } = await import('../lib/api.js');
+const { createDshRuntime, dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+const core = createDshRuntime({ dataRoot: dshCoreDataRoot() });
 const sharp = (await import('sharp')).default;
 const png = await sharp({ create: { width: 64, height: 48, channels: 3, background: '#ae6c65' } }).png().toBuffer();
 const rawClient = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
@@ -71,11 +73,12 @@ const server = http.createServer(async (req, res) => {
     rejectNext = false; return;
   }
   if (legacy && url.pathname === '/iris/api/actions/assignments_get') {
-    const { runAction } = await import('../lib/actions.js');
+    const { runAction: executeAction } = await import('../lib/actions.js');
+    const runAction = (host, name, args, options = {}) => executeAction(host, name, args, { ...options, core });
     const data = await runAction({}, 'assignments_get'); delete data.policies; delete data.readiness;
     res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(data)); return;
   }
-  if (url.pathname.startsWith('/iris/')) { serveApi(req, res, {}); return; }
+  if (url.pathname.startsWith('/iris/')) { serveApi(req, res, {}, core); return; }
   res.writeHead(404); res.end();
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); origin = 'http://127.0.0.1:' + server.address().port;
@@ -298,6 +301,7 @@ try {
   if (socket?.readyState === WebSocket.OPEN) { try { await capture('failed'); fs.writeFileSync(path.join(work, 'failed-dom.html'), await evaluate('document.documentElement.outerHTML')); } catch (e) { report.diagnosticError = e.message; } }
   save(); console.error(error); console.error('报告：' + path.join(work, 'report.json')); process.exitCode = 1;
 } finally {
+  await core.dispose();
   socket?.close(); child.kill('SIGTERM'); await closed; log.end(); server.closeAllConnections();
   await new Promise(resolve => server.close(resolve)); globalThis.fetch = originalFetch;
 }

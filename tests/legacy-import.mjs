@@ -7,7 +7,7 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-legacy-'));
 process.env.DSH_HOME = path.join(dir, 'home');
 delete process.env.IRIS_IMPORT_WORKBENCH_CONFIG;
 const config = await import('../lib/config.js');
-const { apply } = await import('../lib/index.js');
+const { apply } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const ctx = { tools: { register: () => () => {} }, effect: (fn) => fn(), inject() {}, get() {} };
 const source = path.join(dir, '旧配置 with spaces.json');
 const target = path.join(process.env.DSH_HOME, 'iris', 'v1', 'providers.json');

@@ -22,7 +22,7 @@ dsh-iris gives agents, the Iris workbench and a standalone CLI image, video, mus
 
 Music uses a Chat Completions interface with inline audio, confirmed model uses and function policies, configurable 502 retries, and playback/export. See [Music setup and usage](docs/MUSIC.md) (Chinese).
 
-Iris 0.2.6 can [reference an existing DSH provider connection](docs/DSH_PROVIDER_CONNECTIONS.md) (Chinese), resolving its endpoint and API key per operation without storing a second key. It adds [automatic, selected-only, and disabled function pools](docs/FUNCTION_MODEL_POOLS.md) (Chinese): confirming a model's uses can enable automatic selection without a second assignment step. Discovery alone never expands the pool; existing lists and empty configurations retain their behavior. Selection uses stable priority with safe failover, without a round-robin cursor.
+Iris 0.2.7 can [reference an existing DSH provider connection](docs/DSH_PROVIDER_CONNECTIONS.md) (Chinese), resolving its endpoint and API key per operation without storing a second key. It adds [automatic, selected-only, and disabled function pools](docs/FUNCTION_MODEL_POOLS.md) (Chinese): confirming a model's uses can enable automatic selection without a second assignment step. Discovery alone never expands the pool; existing lists and empty configurations retain their behavior. Selection uses stable priority with safe failover, without a round-robin cursor.
 
 Provider directories refresh on demand with a 10-minute successful cache. Confirmed model-not-found failures exclude that connection's model and capability from subsequent requests while preserving configured models and historical success. Directory details start collapsed; failed refreshes retain the last complete snapshot, and new models still require approval of their uses.
 
@@ -50,17 +50,21 @@ These captures come from an Android browser connected to DSH under Termux/PRoot 
 
 The project is at an early stage; interfaces and configuration formats may still change between releases.
 
-The current published version is **Iris 0.2.6**; unreleased changes are marked separately. Pin the version when installing or upgrading, and check the host compatibility range below first.
+This document describes **Iris 0.2.7**. Pin the version when installing or upgrading, and check the host compatibility range below first.
 
-Iris 0.2.6 provides a DSH plugin and a headless CLI sharing tasks, artifacts and model routing. It adds connection reuse, optional automatic function pools, directory synchronization and capability checks. Image import, native Qwen editing, music, three agent skills and synchronous delivery recovery remain available. Core internals have not been frozen as a public SDK.
+Iris 0.2.7 provides a DSH plugin and a headless CLI sharing tasks, artifacts and model routing. This release fixes host screenshots and adds persistent image workflows, a local API, and explicit Core Skill installation. Connection reuse, function pools, directory synchronization, and existing media features remain available. Core internals have not been frozen as a public SDK.
 
-The unreleased development version includes host screenshot adaptation, address resolution, an explicit screenshot check, an internal application runtime, and a [first persistent image-edit workflow](docs/IMAGE_FLOW.md) (Chinese); see [Unreleased](CHANGELOG.md#unreleased). General Recipe/Flow support, a standalone API and a standalone web workbench remain on the [0.3 roadmap](docs/ROADMAP.md#03-及以后).
+Version 0.2.7 includes host screenshot adaptation, address resolution, an explicit screenshot check, an internal application runtime with [DSH instance ownership](docs/DSH_RUNTIME.md), a [first persistent image-edit workflow](docs/IMAGE_FLOW.md), a [local API that is read-only by default](docs/LOCAL_API.md), and [explicit local uploads and Run creation](docs/LOCAL_CREATION.md) (Chinese); see the [0.2.7 release notes](docs/releases/0.2.7.md). The source checkout retains a [standalone web demo for 0.3.0](docs/WEB_PROTOTYPE.md) (Chinese) to show the intended workflow. UI and interaction polish is deferred to the 0.3.0 development phase. The demo uses built-in samples without model calls or charges; execution/cancellation APIs and real workbench integration remain on the [0.3 roadmap](docs/ROADMAP.md#03-及以后).
 
-> Version support: Iris 0.2.6 retains the 12 exact DSH versions declared in 0.2.5; see the [compatibility matrix](docs/DSH_COMPATIBILITY.md). Node.js must be at least 22.0.0 and meet any higher host requirement. Connection reuse also requires the relevant public host services.
+> Version support: Iris 0.2.7 retains the 12 exact DSH versions declared in 0.2.5; see the [compatibility matrix](docs/DSH_COMPATIBILITY.md). Node.js must be at least 22.0.0 and meet any higher host requirement. Connection reuse also requires the relevant public host services.
 
-## What's new in 0.2.6 and existing features
+## What's new in 0.2.7 and existing features
 
-**Choose a connection, confirm model uses, then call a function.** Automatic pools use stable priority and safe failover, without cross-request round-robin.
+**Improve host screenshots and use image workflows and Skills outside DSH.** Function pools retain stable priority and safe failover, without cross-request round-robin.
+
+- **Host screenshots:** consume PNG data through Core, respect browser download-directory restrictions, use actual listening metadata, and offer an explicit screenshot check.
+- **Image workflows and local API:** persist CLI steps, tasks, comparisons, and selection. The API is read-only by default; uploads and creation require opt-in, while HTTP execution/cancellation remain future work.
+- **Core Skill installation:** distribute `iris-core` with CLI image guidance; explicitly install to Kimi or a supplied scan directory, preserve local changes, and archive managed updates/removals.
 
 - **Persistent image import:** save an existing image through the workbench, agent, or CLI for later vision, editing, and export. The source file stays intact and no model is called.
 - **Native Qwen editing:** use supported DashScope Qwen image editing models as well as chat image models; edited images retain a link to their source.
@@ -70,7 +74,7 @@ The unreleased development version includes host screenshot adaptation, address 
 
 **Upgrades preserve your allowed scope:** existing lists and missing or empty assignments do not become automatic. New directory entries still require confirmation of their uses; absence alone does not prove a model unavailable. Explicitly add host vision or enable it in the automatic vision pool. Existing tasks retain their bindings. See [function pools](docs/FUNCTION_MODEL_POOLS.md).
 
-See the [0.2.6 release notes](docs/releases/0.2.6.md) for upgrade steps and validation limits, and the [CHANGELOG](CHANGELOG.md). Older-host support was restored in [0.2.5](docs/releases/0.2.5.md); image import arrived in [0.2.4](docs/releases/0.2.4.md), and music and Skills in [0.2.3](docs/releases/0.2.3.md).
+See the [0.2.7 release notes](docs/releases/0.2.7.md) for upgrade steps and validation limits, and the [CHANGELOG](CHANGELOG.md). Older-host support was restored in [0.2.5](docs/releases/0.2.5.md); image import arrived in [0.2.4](docs/releases/0.2.4.md), and music and Skills in [0.2.3](docs/releases/0.2.3.md).
 
 Future work includes additional protocol adapters and creative workflows; see the [roadmap](docs/ROADMAP.md#后续功能方向).
 
@@ -96,34 +100,34 @@ If you already have an ai-paint configuration, set `IRIS_IMPORT_WORKBENCH_CONFIG
 
 ## Quickest start
 
-Check the host with `dsh --version` and ensure `pnpm` is on your PATH. Iris and DSH have independent version numbers; Iris 0.2.6 retains the twelve exact hosts listed in the [compatibility matrix](docs/DSH_COMPATIBILITY.md).
+Check the host with `dsh --version` and ensure `pnpm` is on your PATH. Iris and DSH have independent version numbers; Iris 0.2.7 retains the twelve exact hosts listed in the [compatibility matrix](docs/DSH_COMPATIBILITY.md).
 
 | Your DSH | Iris choice | Source |
 |---|---|---|
-| Exact 0.1.2 / 0.1.5 / 0.1.7 / 0.2 versions in the matrix | `0.2.6` | Pinned npm version |
+| Exact 0.1.2 / 0.1.5 / 0.1.7 / 0.2 versions in the matrix | `0.2.7` | Pinned npm version |
 | Versions outside the matrix | Not yet validated | Check the actual host interfaces |
 
-### DSH plugin: install 0.2.6
+### DSH plugin: install 0.2.7
 
 Install the pinned release into your Web profile:
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.6
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.7
 dsh web
 ```
 
 The plugin loads on the next DSH start. The web UI defaults to `http://127.0.0.1:3080`; open the complete URL if startup output includes authentication parameters. Reload the backend and refresh the web client after updating.
 
-### Standalone CLI: install 0.2.6
+### Standalone CLI: install 0.2.7
 
 Install in your own project without DSH:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.2.6
+npm install @mokuyoaxis/dsh-iris@0.2.7
 npx dsh-iris --help
 ```
 
-Download the package separately with `npm pack @mokuyoaxis/dsh-iris@0.2.6`. Users who need historical Iris0.1.4 can still pin it; see the matrix for its DSH/Node requirements. It lacks the current Core media CLI and later features.
+Download the package separately with `npm pack @mokuyoaxis/dsh-iris@0.2.7`. Users who need historical Iris0.1.4 can still pin it; see the matrix for its DSH/Node requirements. It lacks the current Core media CLI and later features.
 
 ### Choosing a version in dsh-market
 
@@ -170,7 +174,7 @@ After installing the plugin, add a provider in the Iris workbench and assign mod
 
 ## DeepSeek Harness adaptation
 
-dsh-iris remains a native DSH plugin. Iris 0.2.6 registers 17 agent tools, including import, editing, and music, and uses host routing, attachments, models, and lifecycle services. The web client contributes settings, composer, and global-overlay UI. Iris does not start another service or listen on an extra port.
+dsh-iris remains a native DSH plugin. Iris 0.2.7 registers 17 agent tools, including import, editing, and music, and uses host routing, attachments, models, and lifecycle services. The web client contributes settings, composer, and global-overlay UI. Iris does not start another service or listen on an extra port.
 
 Save an uploaded or local image as a persistent Artifact for viewing, editing and export; see [image import](docs/IMAGE_IMPORT.md) (Chinese).
 
@@ -183,7 +187,8 @@ Save an uploaded or local image as a persistent Artifact for viewing, editing an
 | `0.2.3` | Only `0.2.0-rc.2` | Adds music and a third skill; check actual loading with Host Doctor after upgrading |
 | `0.2.4` | `0.2.0-rc.2` or `0.2.1-alpha.4` | 17 tools / 3 skills; actual SDK, loader, and client slot isolation checks; full browser and hot reload checks remain separate |
 | `0.2.5` | 12 exact versions across the 0.1.2 / 0.1.5 / 0.1.7 / 0.2 lines; see the matrix | Official SDK isolation checks including Music and Qwen dispatch; old profiles also load the actual installed package |
-| `0.2.6` | Retains the 12 exact versions declared in 0.2.5 | Adds connection reuse, function pools and directories; connection reuse requires public host services; see this version's release notes |
+| `0.2.7` | Retains the 12 exact versions declared in 0.2.6 | Screenshot fixes, instance runtime, image workflows, local API, and Core Skill; standalone Web remains a source-only demo |
+| `0.2.6` | Retains the 12 exact versions declared in 0.2.5 | Adds connection reuse, function pools and directories; connection reuse requires public host services; see that release's notes |
 
 See the [compatibility matrix](docs/DSH_COMPATIBILITY.md) for the current scope and [rc.2 adaptation notes](docs/DSH_RC2_ADAPTATION.md) for historical changes. npm 0.1.4 does not contain these later adaptations.
 
@@ -332,6 +337,8 @@ Legacy media links carry random capability tokens. Core media uses random Artifa
 - Provider model lists are candidate sets only; whether a model truly supports a capability is settled by real calls.
 
 ## Agent Skills
+
+Version 0.2.7 adds a host-independent [`iris-core`](skills/iris-core/SKILL.md) for image import, generation, editing, and retrieval through the existing standalone CLI. Instructions are in English with Chinese titles. Explicit `skills install/status/uninstall` commands support Kimi or a supplied scan directory, preserve local changes, and archive managed updates/removals. See [loading and scope](docs/CORE_SKILLS.md). These resources and commands ship in npm 0.2.7. The three DSH skills below remain registered as before; a formal MCP integration is still future work.
 
 The DSH skill registry receives three bundled skills:
 

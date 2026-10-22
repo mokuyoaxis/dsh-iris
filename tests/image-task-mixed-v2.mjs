@@ -13,13 +13,13 @@ const assert = (condition, message, extra) => {
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
-const { coreSnapshotForDsh, dshCoreDataRoot, inspectProviderTaskForDsh, readCoreArtifactMediaForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { coreSnapshotForDsh, dshCoreDataRoot, inspectProviderTaskForDsh, readCoreArtifactMediaForDsh, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 function coreTaskRecords() {
   const directory = path.join(dshCoreDataRoot(), 'task-store/v0/tasks');
   return fs.readdirSync(directory).map((name) => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8')));
 }
 
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const asyncProvider = config.upsert({
   name: 'dashscope-async', apiKey: 'async-secret', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', enabled: true,
@@ -127,7 +127,7 @@ try {
   assert(!registry.includes('async-secret') && !registry.includes('sync-secret'), '混合路径不持久化 API Key');
 } finally {
   tasks.stopWatchAll();
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   global.fetch = originalFetch;
 }
 

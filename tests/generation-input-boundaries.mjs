@@ -16,8 +16,8 @@ const { root } = useTempDshHome('iris-generation-input-boundaries');
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const fixture = new URL('./fixtures/headless-async-fetch.mjs', import.meta.url).href;
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
-const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const scenarios = [
   { capability: 'image', model: 'wanx2.1-t2i-turbo', input: { prompt: '  flower  ', n: '2', size: ' 1024*1024 ' } },
   { capability: 'video', model: 'wan2.6-i2v', input: { prompt: '  move  ', duration: '5', size: ' 640*480 ', img_data_url: 'data:image/png;base64,YWJj' } },
@@ -62,7 +62,7 @@ try {
     assert.equal(result.status, 0, result.stderr);
     const { img_data_url: frameData, ...dshInput } = scenario.input;
     await runAction({}, scenario.capability, { ...dshInput, ...(frameData ? { first_frame_path: framePath } : {}) });
-    stopProviderTaskWatchesForDsh();
+    await stopProviderTaskWatchesForDsh();
     const expected = state().lastRequest;
     assert.deepEqual(requests.at(-1), expected, scenario.capability + ' CLI/DSH 必须发送相同规范化请求');
     const runtime = createCoreRuntime({ dataRoot: dshCoreDataRoot(), mode: 'writer' });
@@ -110,7 +110,7 @@ try {
     const result = cli(capability, input);
     assert.equal(result.status, 0, result.stderr);
     await runAction({}, capability, { ...input, [clearedField]: '' });
-    stopProviderTaskWatchesForDsh();
+    await stopProviderTaskWatchesForDsh();
     assert.deepEqual(requests.at(-1), state().lastRequest,
       '工作台清空可选字段后应沿用缺省值：' + clearedField);
   }
@@ -134,6 +134,6 @@ try {
   }
   console.log('ALL OK —— 四类生成在 CLI/DSH/retry 的请求一致，非法参数零提交、零新 Task');
 } finally {
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   globalThis.fetch = originalFetch;
 }

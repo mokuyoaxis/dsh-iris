@@ -21,6 +21,8 @@ import { probeVisionModel } from '../lib/vision-model-routing.js';
 import { RED_TEST_IMAGE } from '../lib/vision.js';
 import { parseModelRef, modelRef as qualifiedModelRef } from '../lib/models.js';
 import { coreTaskWaitFinished } from '../lib/task-wait.js';
+import { createLocalReadApi, writeLocalApiTokenFile } from '../lib/local-api.js';
+import { manageCoreSkill } from '../lib/skill-installation.js';
 
 function trackedProviderAdapter(provider, options, task) {
   return createConfiguredProviderAdapter(provider, {
@@ -49,7 +51,13 @@ function usage() {
   return [
     'Usage:',
     '  JSON input: --input <json>, --input-file <path>, or --input - (stdin).',
+    '  dsh-iris skills <install|status|uninstall> --target kimi [--directory <absolute-skills-directory>]',
+    '  dsh-iris skills <install|status|uninstall> --directory <absolute-skills-directory>',
+    '    install/uninstall accept --dry-run. Copy only iris-core; preserve local changes and archive managed updates/removals outside the scan directory. status is read-only and does not verify host discovery.',
     '  dsh-iris doctor [--data-root <absolute-path>] [--json]',
+    '  dsh-iris api init --data-root <empty-existing-flow-root>',
+    '  dsh-iris api serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>] [--allow-local-writes]',
+    '    Explicit loopback-only API, read-only by default. Local writes only upload images/create Runs, without generation. The session token is saved privately; stdout contains no token.',
     '  dsh-iris runtime recover --data-root <absolute-path> --confirm-stale-pid <pid>',
     '  dsh-iris providers list --provider-config <absolute-path>',
     '  dsh-iris capabilities list --provider-config <absolute-path>',
@@ -212,6 +220,59 @@ async function main(args) {
   if (!args.length || args.includes('--help') || args.includes('-h')) {
     console.log(usage());
     return args.length ? 0 : 2;
+  }
+
+  if (args[0] === 'skills') {
+    const rest = args.slice(2), dryRunFlags = rest.filter(value => value === '--dry-run');
+    if (dryRunFlags.length > 1) throw new CliUsageError('参数重复：--dry-run');
+    const options = flags(rest.filter(value => value !== '--dry-run'), ['target', 'directory']);
+    let result;
+    try {
+      result = manageCoreSkill({ action: args[1], target: options.target, directory: options.directory, dryRun: dryRunFlags.length === 1 });
+    } catch (error) {
+      if (error.code === 'IRIS_SKILL_OPTIONS_INVALID') throw new CliUsageError(error.message);
+      throw error;
+    }
+    console.log(JSON.stringify(result, null, 2));
+    return args[1] === 'status' && result.status !== 'current' ? 1 : 0;
+  }
+
+  if (args[0] === 'api') {
+    if (args[1] === 'init') {
+      const options = flags(args.slice(2), ['data-root']);
+      const suppliedRoot = required(options['data-root'], 'data-root');
+      if (!path.isAbsolute(suppliedRoot)) throw new CliUsageError('data-root 必须是已初始化的空 Flow 根绝对路径');
+      let dataRoot;
+      try { dataRoot = fs.realpathSync(suppliedRoot); }
+      catch (_) { throw new CliUsageError('请先在新的专用数据根执行 flow init'); }
+      const initialized = await withApplication(dataRoot, application => application.execute('creation.init', {}, { signal: cliAbortController.signal }));
+      console.log(JSON.stringify(initialized));
+      return 0;
+    }
+    if (args[1] !== 'serve') throw new CliUsageError('不支持的 api 子命令');
+    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes');
+    if (localWriteFlags.length > 1) throw new CliUsageError('参数重复：--allow-local-writes');
+    const allowLocalWrites = localWriteFlags.length === 1;
+    const options = flags(rest.filter(value => value !== '--allow-local-writes'), ['data-root', 'token-file', 'provider-config', 'port']);
+    const suppliedRoot = required(options['data-root'], 'data-root');
+    const tokenFile = required(options['token-file'], 'token-file');
+    if (!path.isAbsolute(suppliedRoot) || !path.isAbsolute(tokenFile)) throw new CliUsageError('data-root 与 token-file 必须是绝对路径');
+    if (options.port !== undefined && (!/^\d+$/.test(options.port) || Number(options.port) > 65535)) throw new CliUsageError('port 必须是 0–65535 的整数');
+    // Pin the physical root for both the server and the outside-root credential check.
+    let dataRoot;
+    try { dataRoot = fs.realpathSync(suppliedRoot); }
+    catch (_) { throw new CliUsageError('data-root 必须是已初始化且可读取的 Flow 根'); }
+    const api = createLocalReadApi({ dataRoot, providerConfigPath: options['provider-config'], allowLocalWrites });
+    const unregister = registerRuntime(api);
+    try {
+      const started = await api.start({ port: options.port === undefined ? 0 : Number(options.port) });
+      writeLocalApiTokenFile(tokenFile, started.accessToken, dataRoot);
+      console.log(JSON.stringify({ contractVersion: 0, readOnly: !allowLocalWrites, origin: started.origin, tokenFile,
+        message: allowLocalWrites ? '本地创建 API 已启动；只上传/创建，不执行生成。会话 Token 在指定私有文件中，退出后失效。'
+          : '只读本地 API 已启动；会话 Token 在指定私有文件中，退出后失效。' }));
+      await api.closed;
+      return 0;
+    } finally { try { await api.dispose(); } finally { unregister(); } }
   }
 
   if (args[0] === 'flow') {

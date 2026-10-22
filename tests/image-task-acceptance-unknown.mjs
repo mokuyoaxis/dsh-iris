@@ -12,8 +12,8 @@ const assert = (condition, message, extra) => {
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
-const { runAction } = await import('../lib/actions.js');
-const { dshCoreDataRoot, inspectProviderTaskForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { dshCoreDataRoot, inspectProviderTaskForDsh, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 function coreTaskRecords() {
   const directory = path.join(dshCoreDataRoot(), 'task-store/v0/tasks');
   return fs.readdirSync(directory).map((name) => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8')));
@@ -121,7 +121,7 @@ try {
   assert(!registry.includes('ambiguous-secret') && !registry.includes('unused-secret'), '未知错误记录不泄露 API Key');
 } finally {
   tasks.stopWatchAll();
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   global.fetch = originalFetch;
 }
 

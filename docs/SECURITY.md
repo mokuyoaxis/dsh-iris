@@ -1,6 +1,6 @@
 # Iris 安全边界
 
-版本：Iris 0.2.6，发布状态见 [README](../README.md)。安全目标是避免凭据泄露、路径越权、跨站写入和因错误重试造成重复计费；Iris 与 DSH 仍是本机同一信任域内的预览软件，不构成多租户安全边界。
+版本：Iris 0.2.7，发布状态见 [README](../README.md)。安全目标是避免凭据泄露、路径越权、跨站写入和因错误重试造成重复计费；Iris 与 DSH 仍是本机同一信任域内的预览软件，不构成多租户安全边界。
 
 ## 信任模型
 
@@ -51,6 +51,14 @@ API、SSE 和 Doctor 只返回凭据存在性或掩码提示。Provider 错误�
 - HTML 截图在离线沙箱中运行，不具备 Iris/宿主同源权限；远程资源和页面脚本不可用。
 - SSE 使用同源连接、节流和背压合并；慢消费者只保留最新快照，避免积压历史状态。
 - 如果把 DSH 通过 LAN、反向代理或隧道暴露，必须由部署者另加真正的认证、TLS、访问控制和来源限制。
+
+## 显式本地 API 与 Skill 安装
+
+0.2.7 的 [本地 API](LOCAL_API.md)由用户显式启动，只监听 `127.0.0.1`，与 DSH 路由的身份边界分别管理。每次启动产生独立会话 Token，写入新的根外私有文件；全部 API 与媒体都要求 Bearer、准确 Host 和受控 Origin，不将 Token 放入 URL 或 stdout。服务关闭后旧 Token 失效，原私有文件保留。
+
+默认 GET/HEAD 不写 Core 或调用 Provider。新空 Flow 根须显式 `api init`，并通过 `--allow-local-writes` 开启 [上传/创建](LOCAL_CREATION.md)；这两个 POST 不执行生成。请求意图与业务效果在同一 writer 内提交，同 Key 接回原身份，损坏请求保留并拒写，成功结果删除后不自动复活。固定流程的 Prompt 保存为专用根中的私有 Run 输入，不进入公共 Task/Artifact DTO；备份该根时应按私人创作数据保护。旧 writer 不得写入新流程根，回退应使用完整备份。
+
+[Core Skill 安装器](CORE_SKILLS.md)只有显式 `skills install/uninstall` 才修改目标，`status` 与 dry-run 只读。安装记录用于内容与归属检查，不能作为对恶意本机用户的认证。无归属目录、用户修改及软链不被接管；升级/卸载保留扫描根外备份，不自动清理。安装不改变模型、MCP 或宿主权限；文件完整不等于宿主已发现 Skill，也不等于 Agent 已完成业务验收。
 
 ## 图像处理依赖
 

@@ -17,10 +17,10 @@ void useTempDshHomeGuard;
 const { upsert } = config;
 const { createCoreRuntime } = await import('../lib/core-runtime.js');
 const { createCoreTask } = await import('../lib/core-tasks.js');
-const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+const { dshCoreDataRoot } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { createFakeLifecycleProvider, FAKE_PNG } = await import('./fixtures/fake-lifecycle-provider.mjs');
 const { createProviderTaskRunner } = await import('../lib/provider-task-runner.js');
-const { serveApi } = await import('../lib/api.js');
+const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const assert = (condition, message, extra) => {
   if (!condition) throw new Error(message + (extra === undefined ? '' : `: ${JSON.stringify(extra)}`));

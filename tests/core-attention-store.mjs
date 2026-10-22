@@ -19,7 +19,7 @@ const { irisHome, dshCoreDataRoot } = await importClientModules();
 
 async function importClientModules() {
   const config = await import('../lib/config.js');
-  const dsh = await import('../lib/dsh-core-adapter.js');
+  const dsh = await import('./fixtures/dsh-runtime-fixture.mjs');
   return { irisHome: config.irisHome, dshCoreDataRoot: dsh.dshCoreDataRoot };
 }
 

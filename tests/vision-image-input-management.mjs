@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { useTempDshHome } from './test-env.js';
 const { root } = useTempDshHome('iris-vision-input-management');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { modelRateLimit, recordModelRateLimit } = await import('../lib/provider-health.js');
 const provider = config.upsert({ id: 'account', type: 'openai', baseUrl: 'https://fixture.invalid/v1', apiKey: 'input-fixture-key',
   visionInput: { maxBytes: 100000, maxDimension: 400 }, models: [

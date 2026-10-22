@@ -13,9 +13,9 @@ import { createCoreTask, beginCoreAttempt, recordCoreAttemptResult, beginCoreDel
 import { FAKE_PNG } from './fixtures/fake-lifecycle-provider.mjs';
 
 const { root } = useTempDshHome('iris-workbench-management');
-const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
-const { downloadWorkbenchSelection, workbenchTransactions, MAX_WORKBENCH_DOWNLOAD_BYTES } = await import('../lib/workbench-management.js');
-const { serveApi } = await import('../lib/api.js');
+const { dshCoreDataRoot } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { downloadWorkbenchSelection, workbenchTransactions, MAX_WORKBENCH_DOWNLOAD_BYTES } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { guarded } = await import('../lib/guard.js');
 const legacy = await import('../lib/artifacts.js');
 const dataRoot = dshCoreDataRoot(), hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');

@@ -72,9 +72,9 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 错误、Doctor 证据和 Command 输出不得包含 API Key、授权头、私有签名 URL 或不必要的本机绝对路径。Core 的 Artifact 结果使用稳定 ID 和中性元数据；HTTP/media URL、DSH attachment 与会话展示均由 Host Adapter 投影。
 
-## 应用运行时装配（未发布）
+## 应用运行时装配
 
-[application-runtime.js](../lib/application-runtime.js)是 0.3 的内部基础，复用上述 Core，不新增公开 export。实例显式接收数据根，以及可选的图片候选和既有任务 Adapter 解析函数；构造、状态查询和空闲期间不创建目录、持有租约或调用 Provider。首批 CLI 图片生成、图片导入、差异分析、作品查询/导出和单项 Task 查询已接入；其他 CLI 命令和 DSH 装配仍沿用原入口。
+[application-runtime.js](../lib/application-runtime.js)是 0.3 的内部基础，复用上述 Core，不新增公开 export。实例显式接收数据根，以及可选的图片候选和既有任务 Adapter 解析函数；构造、状态查询和空闲期间不创建目录、持有租约或调用 Provider。首批 CLI 图片生成、图片导入、差异分析、作品查询/导出和单项 Task 查询已接入；DSH 的 Core 装配也已接入实例队列，其他 CLI 命令继续沿用原入口。
 
 - 同一应用实例的写操作按 FIFO 执行；每次写操作独立创建、释放 Core writer，普通失败原样返回，后续项继续。实例之间不共享队列或取消状态，跨进程写冲突仍返回 busy。
 - reader 独立于写队列，只读取已提交事实；它不调用配置解析函数或 Provider，不创建缺失数据根。并发写入时，多次读取不构成整个工作区的一致快照。
@@ -83,7 +83,25 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 首批执行面包括图片生成/改图、`artifact.import/inspect/list/export`、`media.diff`、`task.inspect/list`，以及显式 `task.observe/reobserve/redeliver/cancel`。观察每次至多一次 poll，没有后台轮询定时器；补交付复用原 Task/交付缓存，远端取消只有确认后才算成功。需要 Provider 时由入口注入解析函数，并按原 Task 的供应商、模型和 binding 核对；完整本地交付缓存不解析 Provider。
 
-应用运行时另装配 `flow.init/create/inspect/list/continue/select/export`，首版只提供 [固定改图流程](IMAGE_FLOW.md)。显式新根保存私有 Run 输入、预留 Task/比较 Artifact 身份和引用；Task 增加可选 `flowBinding`，旧记录不批量改写。已有 Attempt 后继续操作只核对原事实、观察或补交付，不重新 submit；完整异步 Flow 结果也先缓存，再按原 Artifact ID 交付。原图和流程作品/Task 同步纳入删除保护。通用 Recipe、独立 API 和 DSH 的模块级队列/观察器迁移仍待完成。
+应用运行时另装配 `flow.init/create/inspect/list/continue/select/export`，首版只提供 [固定改图流程](IMAGE_FLOW.md)。显式新根保存私有 Run 输入、预留 Task/比较 Artifact 身份和引用；Task 增加可选 `flowBinding`，旧记录不批量改写。已有 Attempt 后继续操作只核对原事实、观察或补交付，不重新 submit；完整异步 Flow 结果也先缓存，再按原 Artifact ID 交付。原图和流程作品/Task 同步纳入删除保护。通用 Recipe、API 执行/取消和 DSH Flow 界面仍待完成。
+
+## DSH Adapter 与实例装配的当前边界
+
+[dsh-host-adapter.js](../lib/dsh-host-adapter.js)从宿主公开服务构造附件、Browser、模型、连接和路由等端口；[dsh-core-adapter.js](../lib/dsh-core-adapter.js)选择 `irisHome()/core-v0`，将宿主输入转成共享 Command/Task Runner 调用，再投影为附件字节、媒体路由和任务展示。DSH 直接调用本地 Core，不经过独立 HTTP API。
+
+`apply(ctx)` 现在持有一个 `createDshRuntime({ dataRoot, getHost })`，工具、动作和工作台显式使用该实例；Core 写入共用上述 Application Runtime，连接端口引用、观察器和启动接管归实例所有。内部 `run(reader|writer, callback)` 允许 DSH 复合操作复用既有业务，不作为 HTTP 或公开 SDK。卸载拒绝新调用、取消并等待在途操作与租约释放；失败保留现场，旧观察回调不能影响新实例。详见 [DSH 实例运行时](DSH_RUNTIME.md)。
+
+legacy 配置/任务/作品、上传与 SSE 仍保留原机制，不宣称同进程多 profile 完整隔离。固定 Flow 未接入 DSH 工作台，新增本地请求区不会自动创建或迁移 DSH 日常根。
+
+## 显式本地 HTTP Host
+
+[local-api.js](../lib/local-api.js)由 CLI `api serve` 显式装配，只监听 loopback，默认使用已有 Flow 根与 reader 提供受控读取；构造不做 I/O，默认启动/关闭不持有 writer。默认路径只调用 `flow.list/inspect` 和作品只读入口，没有生成或远端观察 resolver。身份、Host/Origin、媒体限额与受控 DTO 属于该 Host 的边界，不借用 DSH 登录或通用 Command 转发；使用见 [只读本地 API](LOCAL_API.md)。
+
+I4B 在新空专用 Flow 根增加 `creation-requests/v0`，通过显式 `api init` 和 `--allow-local-writes` 开放 [本地上传/Run 创建](LOCAL_CREATION.md)。内部 [local-creation.js](../lib/local-creation.js)复用实例 FIFO，在一个 Core writer 中发布 prepared 意图、以预留身份提交作品/Run、标记 succeeded；已有 Run 允许进度推进，重放不覆盖。请求 store 无 HTTP/DSH/Runtime 依赖；新版 writer 检查未知/损坏格式，维护盘点保护未完成引用。成功结果删除后同 Key 不复活，现有 Task/Artifact/Run schema 保持。
+
+默认只读路径不取得 writer；显式本地写路径按操作取得 writer，只有配置解析 descriptor，没有生成/观察 Adapter。上传和创建都是本地提交，继续/选择/Operation/取消 API 仍待后续。旧 binary 没有请求区检查，新专用根只支持已验收的 request-aware writer；不宣称旧程序看到标记就会拒写，也不承诺断电跨文件事务。
+
+作品存储新增内部 `inspectCoreArtifactMetadata`，用于在读取大文件前验证清单与普通文件大小；该元数据入口不核验完整字节哈希，不能单独据此向外提供媒体。HTTP Host 在限额内继续使用 `readCoreArtifactBytes` 并复核已取字节的摘要，才返回图片。既有作品读取、持久化格式与内容哈希要求保持。
 
 ## 当前接口与后续范围
 
@@ -102,6 +120,6 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 ## 非目标
 
 - 当前接口尚未作为 package export 或第三方 SDK 发布。0.2.0 的 F 阶段已决定**不新增 `./core` 公开 export**：Root 插件与 `bin/dsh-iris` CLI 承载对外能力，内部模块保持私有，可在后续版本调整。按 [现行路线图](ROADMAP.md#03-及以后)，公开 Provider/Host SDK 在 0.4 有真实消费者后再评估；0.3 的 Recipe/API 实现不自动构成公开 SDK 或兼容承诺。
-- 不提供 standalone 服务、账号、多租户或额外监听端口；
+- Core 本身不启动监听；0.2.7 的 HTTP Host 由用户显式启动，默认只读、本地创建另行启用，不建设账号、多租户或公网 SaaS；
 - 不预建缺少实际需求的 Provider 协议；收藏、标签、搜索与通用 Flow/Recipe 留待后续；
 - 不把 0.1.4 的模块级存储包装成实例存储，也不允许 CLI 与 DSH 无租约并发写同一数据根。

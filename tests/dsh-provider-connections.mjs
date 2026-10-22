@@ -10,10 +10,10 @@ import { withProviderConfigScope } from '../lib/provider-config-scope.js';
 
 const { root } = useTempDshHome('iris-dsh-provider-connections');
 const store = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { providerForTaskFromCatalog } = await import('../lib/provider-catalog.js');
 const { inspectProviderTaskForDsh, configureProviderHostForDsh, dshCoreDataRoot,
-  resumeProviderTaskWatchesForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+  resumeProviderTaskWatchesForDsh, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 let key = 'fixture-key-one';
 let credentialReads = 0;
@@ -181,7 +181,7 @@ try {
     throw new Error('Unexpected async fixture request: ' + url);
   };
   const pending = await runAction(host(), 'image', { prompt: 'async fixture', model: id + '::wan2.2-t2i-flash' });
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   assert.equal(calls.poll, 0);
   key = 'fixture-async-two';
   assert.deepEqual(await resumeProviderTaskWatchesForDsh({ intervalMs: 10, maxWatchMs: 3000 }), [pending.taskId]);
@@ -198,7 +198,7 @@ try {
   assert.deepEqual(calls, { submit: 1, poll: 2, download: 1 });
 
   const drifted = await runAction(host(), 'image', { prompt: 'async drift fixture', model: id + '::wan2.2-t2i-flash' });
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   const taskFile = path.join(dshCoreDataRoot(), 'task-store/v0/tasks', drifted.taskId + '.json');
   const taskBefore = fs.readFileSync(taskFile, 'utf8');
   profiles.workbuddy.baseURL = 'https://dashscope-us-east-1.aliyuncs.com/compatible-mode/v1';
@@ -210,7 +210,7 @@ try {
   assert.deepEqual(await resumeProviderTaskWatchesForDsh({ intervalMs: 10 }), []);
   assert.deepEqual(calls, { submit: 2, poll: 2, download: 1 });
   assert.equal(fs.readFileSync(taskFile, 'utf8'), taskBefore, 'removed source must preserve accepted task facts');
-} finally { stopProviderTaskWatchesForDsh(); globalThis.fetch = originalFetch; releaseHost(); }
+} finally { await stopProviderTaskWatchesForDsh(); globalThis.fetch = originalFetch; releaseHost(); }
 
 // Independent operations must not borrow one another's credentials.
 const original = store.allProviders()[0];

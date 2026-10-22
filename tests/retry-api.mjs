@@ -25,12 +25,12 @@ const {
   dshCoreDataRoot,
   inspectProviderTaskForDsh,
   submitProviderTaskForDsh
-} = await import('../lib/dsh-core-adapter.js');
+} = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { createConfiguredProviderAdapter } = await import('../lib/provider-adapters.js');
 const { providerTaskBinding } = await import('../lib/provider-catalog.js');
 const { createCoreRuntime } = await import('../lib/core-runtime.js');
 const { recordCorePollResult } = await import('../lib/core-tasks.js');
-const { serveApi } = await import('../lib/api.js');
+const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const fixture = new URL('./fixtures/headless-async-fetch.mjs', import.meta.url).href;
 
 const assert = (condition, message, extra) => {

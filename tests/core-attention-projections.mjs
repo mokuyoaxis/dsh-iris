@@ -14,7 +14,7 @@ const config = await import('../lib/config.js');
 const { createCoreRuntime } = await import('../lib/core-runtime.js');
 const { createCoreTask } = await import('../lib/core-tasks.js');
 const { applyCoreAttentionAction } = await import('../lib/core-attention.js');
-const { coreSnapshotForDsh, dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+const { coreSnapshotForDsh, dshCoreDataRoot } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const assert = (condition, message, extra) => {
   if (!condition) throw new Error(message + (extra === undefined ? '' : `: ${JSON.stringify(extra)}`));

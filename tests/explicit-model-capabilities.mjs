@@ -9,7 +9,7 @@ import { executeConfigCommand } from '../lib/provider-config-service.js';
 
 const { root } = useTempDshHome('iris-explicit-capabilities');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const bare = config.upsert({ name: 'bare', apiKey: 'fixture', enabled: true,
   baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', mediaProtocol: 'dashscope' });
 assert.equal(bare.models, undefined, '保存裸账号不物化默认模型');

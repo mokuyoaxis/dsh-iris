@@ -78,7 +78,7 @@ function stubCtx({ registerThrows }) {
   return stub;
 }
 
-const { apply: applyIris } = await import('../lib/index.js');
+const { apply: applyIris } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const tasks = await import('../lib/tasks.js');
 const config = await import('../lib/config.js');
 
@@ -153,7 +153,7 @@ assert((tasks.get(tBad.id).status === 'failed') && /恢复异常/.test(tasks.get
   '坏任务被标死且循环继续: ' + JSON.stringify(tasks.get(tBad.id).error));
 
 /* ===== ⑤ pollDeps transcribe 分支（重启接管转写任务不得走丢文本的 pollTask） ===== */
-const { pollDeps } = await import('../lib/index.js');
+const { pollDeps } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const fixtureProvider = {
   apiKey: 'K', id: 'p1',
   baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1'

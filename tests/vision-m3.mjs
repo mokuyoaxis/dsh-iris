@@ -8,10 +8,10 @@ const { createDshHostAdapter } = await import('../lib/dsh-host-adapter.js');
 const { createDshVisionFixture } = await import('./fixtures/vision-models.mjs');
 const { VISION_BUDGET } = await import('../lib/vision-core.js');
 const { RED_TEST_IMAGE } = await import('../lib/vision.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const config = await import('../lib/config.js');
 const { HOST_VISION_REF } = await import('../lib/models.js');
-const iris = await import('../lib/index.js');
+const iris = await import('./fixtures/dsh-runtime-fixture.mjs');
 const fixture = createDshVisionFixture({ steps: [{ text: 'DSH answer' }] });
 let resolves = 0;
 const textModel = { ...fixture.textModel, currentSelection: () => ({ provider: 'fixture', model: 'vision-v0' }),

@@ -12,9 +12,9 @@ import { createDshHostAdapter } from '../lib/dsh-host-adapter.js';
 
 const { root } = useTempDshHome('iris-dsh-media-commands');
 const repo = fileURLToPath(new URL('../', import.meta.url));
-const { apply } = await import('../lib/index.js');
-const { runAction } = await import('../lib/actions.js');
-const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { apply } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { dshCoreDataRoot, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const config = await import('../lib/config.js');
 const tasks = await import('../lib/tasks.js');
 const registered = new Map();
@@ -190,7 +190,7 @@ try {
   }
   console.log('ALL OK —— DSH diff/抽帧/HTML 工具与 GUI 经 Core，附件/CLI 导出字节一致、零网络零 legacy 双写');
 } finally {
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   tasks.stopWatchAll();
   for (const dispose of disposers.reverse()) dispose();
   globalThis.fetch = originalFetch;

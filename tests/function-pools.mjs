@@ -9,8 +9,8 @@ import { FAKE_PNG } from './fixtures/fake-lifecycle-provider.mjs';
 
 useTempDshHome('iris-function-pools');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
-const { inspectProviderTaskForDsh } = await import('../lib/dsh-core-adapter.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { inspectProviderTaskForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const caps = Object.values(CAPABILITIES);
 const provider = config.upsert({ name: 'all fixture', auth: 'none', enabled: true,
   baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', mediaProtocol: 'dashscope',

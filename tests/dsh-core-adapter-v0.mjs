@@ -4,7 +4,7 @@ import sharp from 'sharp';
 import { useTempDshHome } from './test-env.js';
 
 const { root, cleanup } = useTempDshHome('iris-dsh-core-adapter-v0');
-const { cropForDsh, dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
+const { cropForDsh, dshCoreDataRoot } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { listCoreArtifacts, readCoreArtifactBytes } = await import('../lib/core-artifacts.js');
 
 const assert = (condition, message, extra) => {

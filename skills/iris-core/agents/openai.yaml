@@ -1,0 +1,4 @@
+interface:
+  display_name: "Iris Core · 图片创作"
+  short_description: "Create, edit and retrieve persistent Iris images"
+  default_prompt: "Use $iris-core to create or revise my image, reuse existing tasks and artifacts, and return the actual result."

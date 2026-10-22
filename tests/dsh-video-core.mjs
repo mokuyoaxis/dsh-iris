@@ -16,15 +16,15 @@ const { root, cleanup } = useTempDshHome('iris-dsh-video-core');
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
-const { apply } = await import('../lib/index.js');
-const { runAction } = await import('../lib/actions.js');
+const { apply } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const {
   dshCoreDataRoot,
   inspectProviderTaskForDsh,
   resumeProviderTaskWatchesForDsh,
   stopProviderTaskWatchesForDsh
-} = await import('../lib/dsh-core-adapter.js');
-const { serveApi } = await import('../lib/api.js');
+} = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const registered = [];
 const disposers = [];
@@ -165,7 +165,7 @@ try {
     prompt: 'fixture restart video', model: provider.id + '::wan2.2-t2v-flash'
   });
   assert.equal(submitted.storage, 'core');
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   assert.equal(remotes.get(submitted.remoteTaskId), 0, '停止节拍前不得 poll');
   const resumed = await resumeProviderTaskWatchesForDsh({ intervalMs: 10, maxWatchMs: 3000 });
   assert.deepEqual(resumed, [submitted.taskId], '启动接管必须认领视频任务');
@@ -178,7 +178,7 @@ try {
   const drifted = await runAction({}, 'video', {
     prompt: 'fixture binding drift', model: provider.id + '::wan2.2-t2v-flash'
   });
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   const driftFile = path.join(dshCoreDataRoot(), 'task-store/v0/tasks', drifted.taskId + '.json');
   const driftBefore = fs.readFileSync(driftFile, 'utf8');
   const pollsBeforeDrift = calls.poll;
@@ -220,7 +220,7 @@ try {
 
   console.log('ALL OK —— DSH 视频 → Core：长轮询接管、mp4 同源媒体、零 legacy 双写、漂移防护、s2v Core 上传失败事实');
 } finally {
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   tasks.stopWatchAll();
   for (const dispose of disposers.reverse()) {
     try { dispose(); } catch {}

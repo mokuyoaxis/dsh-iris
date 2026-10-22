@@ -52,7 +52,8 @@ function walk(dir) {
 }
 
 /* ---------- ① 语法检查 ---------- */
-const files = [...walk(path.join(root, 'lib')), ...walk(path.join(root, 'bin')), ...walk(path.join(root, 'tests')), ...walk(path.join(root, 'scripts'))];
+const files = [...walk(path.join(root, 'lib')), ...walk(path.join(root, 'bin')), ...walk(path.join(root, 'tests')), ...walk(path.join(root, 'scripts')),
+  ...walk(path.join(root, 'prototypes/workbench'))];
 stage('syntax', { files: files.length });
 for (const [index, file] of files.entries()) {
   const rel = path.relative(root, file);
@@ -78,7 +79,8 @@ const read = (rel) => {
 
 /* Core 候选不得反向导入 DSH/Cordis 运行时。 */
 for (const rel of [
-  'lib/application-runtime.js', 'lib/flow-store.js', 'lib/image-flow.js',
+  'lib/application-runtime.js', 'lib/flow-store.js', 'lib/image-flow.js', 'lib/local-api.js', 'lib/local-api-projection.js',
+  'lib/creation-request-store.js', 'lib/local-creation.js',
   'lib/model-port-contract.js', 'lib/model-invoker.js', 'lib/prompt-optimizer-core.js', 'lib/vision-core.js',
   'lib/model-call-runtime.js', 'lib/http-vision-model-adapter.js', 'lib/dsh-vision-model-adapter.js', 'lib/vision-model-routing.js',
   'lib/ocr.js', 'lib/ocr-model-routing.js',
@@ -91,6 +93,10 @@ for (const rel of [
   if (/@deepseek-ai\/|from ['"](?:cordis|dsh)/.test(source)) {
     failures.push(rel + ' 不得导入 DSH/Cordis 运行时');
   }
+}
+
+for (const rel of ['lib/local-api.js', 'lib/local-api-projection.js']) {
+  if (/\bfrom\s+['"][^'"]*prototypes\//.test(read(rel))) failures.push(rel + ' 不得依赖不入包的 Demo 源码');
 }
 
 // 已迁移消费者不能重新进入 legacy 视觉模型链。
@@ -294,6 +300,21 @@ if (!/createCommandService/.test(dshCoreAdapter) || !/dshCoreDataRoot/.test(dshC
     || /@deepseek-ai\/|from ['"](?:cordis|dsh)/.test(dshCoreAdapter)) {
   failures.push('lib/dsh-core-adapter.js 必须只负责 profile 数据根、Command 调用和宿主投影');
 }
+if (!/export function createDshRuntime\(/.test(dshCoreAdapter)
+    || !/createApplicationRuntime\(/.test(dshCoreAdapter) || !/application\.run\(/.test(dshCoreAdapter)
+    || /\bcreateCoreRuntime\b|\bwriterTail\b|\bproviderHost\b/.test(dshCoreAdapter)
+    || /\b(?:let|new Map)\b/.test(dshCoreAdapter.slice(0, dshCoreAdapter.indexOf('export function createDshRuntime(')))) {
+  failures.push('DSH Core 装配必须使用实例 Application Runtime，禁止恢复模块级写队列或宿主引用');
+}
+const dshEntry = read('lib/index.js');
+if (!/ctx\.provide\('irisRuntime', core\)/.test(dshEntry) || !/return core\.dispose\(\)/.test(dshEntry)) {
+  failures.push('DSH 插件必须持有并异步释放自己的运行时实例');
+}
+for (const rel of ['lib/actions.js', 'lib/api.js', 'lib/workbench-artifacts.js', 'lib/workbench-management.js']) {
+  if (/from ['"]\.\/dsh-core-adapter\.js['"]/.test(read(rel))) {
+    failures.push(rel + ' 必须显式接收所属 DSH 实例，禁止模块级适配函数');
+  }
+}
 for (const name of [
   'submitProviderTaskForDsh', 'observeProviderTaskForDsh',
   'inspectProviderTaskForDsh', 'projectCoreTaskForDsh'
@@ -334,7 +355,7 @@ if (!/userState/.test(clientSource) || !/useCoreUserTasks/.test(clientSource)) {
     failures.push('lib/command-service.js task.reobserve 必须是 task.observe 的同实现命令名');
   }
   if (!/reobserveProviderTaskForDsh/.test(dshCoreAdapter)
-      || !/resolveTaskAdapter: configuredAdapterForTask/.test(dshCoreAdapter)) {
+      || !/resolveTaskAdapter: task => configuredAdapterForTask\(task, runtime\.signal\)/.test(dshCoreAdapter)) {
     failures.push('lib/dsh-core-adapter.js reobserve 必须与 Host 观察节拍共用 adapter/binding 解析');
   }
   if (!api.includes("(reobserve|redeliver)") || !/handleCoreTaskManual/.test(api)

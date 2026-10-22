@@ -580,6 +580,22 @@ try {
   report.imageFlow = { runId: flowId, taskId: flowDone.task.id, submitCount: 1, inspectCreatesNoTask: true,
     repeatContinueNoSubmit: true, sourceAndOutputAndComparisonHashesVerified: true, exportHashVerified: true,
     referencesProtected: true, privateConfigUnchanged: true, writerReleased: true };
+  const apiProbe = path.join(work, 'local-api-probe.mjs'), apiStateBefore = state();
+  fs.copyFileSync(path.join(repo, 'tests/fixtures/local-api-package-probe.mjs'), apiProbe);
+  report.localReadApi = JSON.parse(run(process.execPath, [apiProbe, path.join(installed, 'bin/dsh-iris.js'), flowRoot, flowId,
+    flowConfig, path.join(work, 'local-api-token')], { env: { DSH_HOME: unusedDsh }, label: 'installed authenticated read API', timeout: 40000 }));
+  assert.deepEqual(state(), apiStateBefore, '只读 API 不得调用 Provider 或修改夹具状态');
+  assert.equal(report.localReadApi.mediaSha256, flowDone.run.output.sha256);
+  const creationRoot = path.join(work, 'creation-api-core'), creationProbe = path.join(work, 'creation-api-probe.mjs');
+  cli(['flow', 'init', '--data-root', creationRoot]);
+  cli(['api', 'init', '--data-root', creationRoot]);
+  fs.copyFileSync(path.join(repo, 'tests/fixtures/local-creation-package-probe.mjs'), creationProbe);
+  const creationStateBefore = state();
+  report.localCreationApi = JSON.parse(run(process.execPath, [creationProbe, path.join(installed, 'bin/dsh-iris.js'),
+    creationRoot, flowConfig, flowImage, path.join(work, 'creation-token-')], {
+    env: { DSH_HOME: unusedDsh }, label: 'installed local creation API with cross-process replay', timeout: 45000 }));
+  assert.deepEqual(state(), creationStateBefore, '本地上传/创建不得调用 Provider 或改变生成夹具状态');
+  assert.equal(report.localCreationApi.mediaSha256, digest(fs.readFileSync(flowImage)));
   assert(!fs.existsSync(unusedDsh));
   report.checks = {
     installedFileBytesMatchSource: true, npmBinWorks: true, localSharpAndFfmpeg: true,

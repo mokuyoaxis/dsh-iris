@@ -16,10 +16,10 @@ import { FAKE_WAV } from './fixtures/fake-lifecycle-provider.mjs';
 const { root, cleanup } = useTempDshHome('iris-dsh-tts-core');
 const config = await import('../lib/config.js');
 const tasks = await import('../lib/tasks.js');
-const { apply } = await import('../lib/index.js');
-const { runAction } = await import('../lib/actions.js');
-const { inspectProviderTaskForDsh, stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
-const { serveApi } = await import('../lib/api.js');
+const { apply } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { inspectProviderTaskForDsh, stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
 
 const registered = [];
 const disposers = [];
@@ -151,7 +151,7 @@ try {
 
   console.log('ALL OK —— DSH TTS → Core：同步交付、同源音频、零 legacy 双写、终态四门锁定');
 } finally {
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   tasks.stopWatchAll();
   for (const dispose of disposers.reverse()) {
     try { dispose(); } catch {}

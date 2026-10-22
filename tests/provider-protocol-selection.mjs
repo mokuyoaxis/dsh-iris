@@ -9,7 +9,7 @@ import { providerTaskBinding } from '../lib/provider-catalog.js';
 
 const { root } = useTempDshHome('iris-protocol-selection');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const official = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 const compatible = 'https://compatible.example/v1';
 const source = path.join(root, 'import.json');

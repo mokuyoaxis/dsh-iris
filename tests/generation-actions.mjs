@@ -19,7 +19,7 @@ const assert = (cond, msg, extra) => {
 const config = await import('../lib/config.js');
 const models = await import('../lib/models.js');
 const tasks = await import('../lib/tasks.js');
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const root = config.irisHome();
 fs.mkdirSync(path.join(root, 'outputs'), { recursive: true });
 
@@ -82,8 +82,8 @@ try {
   const legacyBefore = tasks.all().length;
   const first = await runAction({}, 'video', { prompt: 'failover test' });
   tasks.stopWatchAll();
-  const { stopProviderTaskWatchesForDsh, inspectProviderTaskForDsh } = await import('../lib/dsh-core-adapter.js');
-  stopProviderTaskWatchesForDsh();
+  const { stopProviderTaskWatchesForDsh, inspectProviderTaskForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
+  await stopProviderTaskWatchesForDsh();
   assert(first.storage === 'core' && first.providerId === providerIds.good,
     't2v 必须走 Core 链路且首 provider 429 后提交到第二 provider', first);
   assert(submitCalls.slice(0, 2).map((c) => c.auth).join(',') === 'Bearer bad-key,Bearer good-key',
@@ -101,7 +101,7 @@ try {
   fs.writeFileSync(frame, Buffer.from('fake-png'));
   const i2v = await runAction({}, 'video', { prompt: 'move', first_frame_path: frame, size: '640*480' });
   tasks.stopWatchAll();
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   const i2vBody = submitCalls.at(-1).body;
   assert(i2v.storage === 'core' && i2v.mode === 'i2v' && String(i2vBody.input.img_url).startsWith('data:image/png;base64,'),
     'i2v 走 Core 链路并通过共享动作发送首帧 data URL', i2vBody);
@@ -155,7 +155,7 @@ try {
   const legacyBeforeAsr = tasks.all().length;
   const asr = await runAction({}, 'transcribe', { audio_path: audio });
   tasks.stopWatchAll();
-  stopProviderTaskWatchesForDsh();
+  await stopProviderTaskWatchesForDsh();
   assert(asr.storage === 'core' && asr.providerId === asrProvider.id && asr.model === 'qwen-audio-3.0-asr-flash-filetrans', '转写只走独立 transcribe capability 的 Core 链路', asr);
   const asrTask = await inspectProviderTaskForDsh(asr.taskId);
   assert(asrTask.capability === 'transcribe' && asrTask.attempts.length === 1 && asrTask.acceptance === 'accepted',
@@ -163,12 +163,12 @@ try {
   assert(tasks.all().length === legacyBeforeAsr, '转写零 legacy 双写', tasks.all().length);
 
   const indexSrc = fs.readFileSync(new URL('../lib/index.js', import.meta.url), 'utf8');
-  assert(indexSrc.includes("runAction(dshHost(ctx), 'video', { ...args, session_id: exec.agent?.session?.id }, { signal: exec.signal })"),
-    'Agent 视频工具复用 GUI 的 video action');
+  assert(indexSrc.includes("runAction(dshHost(ctx), 'video', { ...args, session_id: exec.agent?.session?.id }, { signal: exec.signal, core })"),
+    'Agent 视频工具复用 GUI 的 video action，并显式传入所属实例');
 } finally {
   tasks.stopWatchAll();
-  const { stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
-  stopProviderTaskWatchesForDsh();
+  const { stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
+  await stopProviderTaskWatchesForDsh();
   global.fetch = originalFetch;
 }
 

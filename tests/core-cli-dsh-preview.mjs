@@ -7,8 +7,8 @@ import { useTempDshHome } from './test-env.js';
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const { root, cleanup } = useTempDshHome('iris-core-cli-dsh-preview');
-const { dshCoreDataRoot } = await import('../lib/dsh-core-adapter.js');
-const { serveApi } = await import('../lib/api.js');
+const { dshCoreDataRoot } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { serveApi } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const input = path.join(root, 'cli-input.png');
 
 const assert = (condition, message, extra) => {

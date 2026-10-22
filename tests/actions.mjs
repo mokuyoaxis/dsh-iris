@@ -19,7 +19,7 @@ const assert = (cond, msg, extra) => {
 // 但 POST 测试需要真实 HTTP 服务器。用 index.js 的 mountIrisRoutes 挂载一个测试服务器。
 // 简化：直接通过 import api.js 的 serveApi 并构造 fakeReq/fakeRes。
 
-import { serveApi } from '../lib/api.js';
+import { serveApi } from './fixtures/dsh-runtime-fixture.mjs';
 
 function fakeReq(method, url, body) {
   const buf = body === null || body === undefined ? null : Buffer.from(String(body), 'utf8');
@@ -96,7 +96,7 @@ fs.writeFileSync(path.join(irisV1, 'providers.json'), JSON.stringify({
 }, null, 2));
 
 const config = await import('../lib/config.js');
-const { runAction, listActions } = await import('../lib/actions.js');
+const { runAction, listActions } = await import('./fixtures/dsh-runtime-fixture.mjs');
 config.resetCache();
 
 // ① 列出：预置 provider 的模型池含 qwen-vl-plus（vision）

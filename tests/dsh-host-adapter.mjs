@@ -77,7 +77,7 @@ assert(registered.tools.length === 1 && registered.skills.length === 1 && regist
   '注册端口应映射到对应 DSH registry', registered);
 assert(effects.length === 2, '工具与 Skill 注册必须进入 DSH effect 生命周期');
 
-const { runAction } = await import('../lib/actions.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const status = await runAction(host, 'status', {});
 assert(status.ok, 'DSH Adapter 应可直接运行无宿主依赖动作');
 let rawContextError;

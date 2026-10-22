@@ -6,8 +6,8 @@ import { useTempDshHome } from './test-env.js';
 
 const { root } = useTempDshHome('iris-model-rate-limit');
 const config = await import('../lib/config.js');
-const { runAction } = await import('../lib/actions.js');
-const { stopProviderTaskWatchesForDsh } = await import('../lib/dsh-core-adapter.js');
+const { runAction } = await import('./fixtures/dsh-runtime-fixture.mjs');
+const { stopProviderTaskWatchesForDsh } = await import('./fixtures/dsh-runtime-fixture.mjs');
 const { imageCandidatesFromCatalog, providerForTaskFromCatalog, providerTaskBinding } = await import('../lib/provider-catalog.js');
 const { modelRef } = await import('../lib/models.js');
 const model = 'qwen-image-3.0-pro';
