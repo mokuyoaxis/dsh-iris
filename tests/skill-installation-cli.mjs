@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-skill-cli-'));
+const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'iris-skill-cli-')));
 const home = path.join(root, 'kimi-home'), directory = path.join(home, 'skills');
 const unusedDsh = path.join(root, 'unused-dsh');
 let commands = 0;

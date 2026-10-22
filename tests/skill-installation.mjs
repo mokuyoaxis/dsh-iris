@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { manageCoreSkill } from '../lib/skill-installation.js';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-skill-install-'));
+const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'iris-skill-install-')));
 const packageRoot = path.join(root, 'package-v1'), second = path.join(root, 'package-v2');
 const skillSource = path.join(repo, 'skills/iris-core');
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');

@@ -150,9 +150,10 @@ try {
   await guarded.execute('flow.init', {}); await guarded.execute('creation.init', {});
   fs.writeFileSync(path.join(failedRoot, 'creation-requests/v0/root.json'), 'BROKEN_FIXTURE');
   const rename = fs.renameSync;
+  const leaseDirectory = path.join(fs.realpathSync.native(failedRoot), WRITER_LEASE_DIR);
   let failedReleases = 0;
   fs.renameSync = function (source, target) {
-    if (source === path.join(failedRoot, WRITER_LEASE_DIR)) {
+    if (source === leaseDirectory) {
       failedReleases++;
       throw Object.assign(new Error('fixture lease release denied'), { code: 'EACCES' });
     }

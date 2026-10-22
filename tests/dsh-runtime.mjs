@@ -131,8 +131,14 @@ try {
   const foreign = gate(); let foreignSignal;
   const foreignOperation = guarded.runHostOperation(async signal => { foreignSignal = signal; await foreign.promise; });
   const rename = fs.renameSync;
+  // Core resolves temporary-directory aliases before acquiring or releasing a lease.
+  const leaseDirectory = path.join(fs.realpathSync.native(guarded.dataRoot), '.iris-runtime-writer-v0');
+  let failedReleases = 0;
   fs.renameSync = function (from, to) {
-    if (from === path.join(guarded.dataRoot, '.iris-runtime-writer-v0')) throw Object.assign(new Error('fixture release denied'), { code: 'EACCES' });
+    if (from === leaseDirectory) {
+      failedReleases++;
+      throw Object.assign(new Error('fixture release denied'), { code: 'EACCES' });
+    }
     return rename.call(this, from, to);
   };
   try {
@@ -145,6 +151,7 @@ try {
     await setImmediate(); assert.equal(released, false, 'failed cleanup still drains foreign operations');
     foreign.resolve(); await foreignOperation;
     await assert.rejects(failedDisposal, { code: 'IRIS_CORE_LEASE_INVALID' });
+    assert.equal(failedReleases, 1, 'the physical lease release is denied once and retained without retry');
     assert.equal(guarded.snapshot().state, 'closing'); assert.equal(inspectCoreWriterLease(guarded.dataRoot).status, 'present');
   } finally { foreign.resolve(); fs.renameSync = rename; }
   console.log('DSH runtime: zero-I/O assembly, owned snapshots/ports, compound FIFO, root isolation/busy, queued/active cancellation, attachment drain and retained cleanup failure OK');
