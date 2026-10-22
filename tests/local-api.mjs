@@ -211,20 +211,39 @@ try {
     largeId = (await writer.run('execute', ({ dataRoot }) => createCoreArtifact(dataRoot, { kind: 'image', mediaType: 'image/png', bytes: large }))).id;
   } finally { await writer.dispose(); }
   const transferBefore = tree(main.dataRoot);
-  const blockedResponse = await new Promise((resolve, reject) => {
-    const request = http.get(session.origin + '/api/v0/artifacts/' + largeId + '/content', {
-      headers: { Authorization: 'Bearer ' + session.accessToken }
-    }, response => { response.pause(); response.on('error', () => {}); resolve(response); });
-    request.once('error', reject);
-  });
-  assert.equal(blockedResponse.statusCode, 200); assert.equal(service.snapshot().activeReads, 1, 'paused large transfer retains its bounded reader slot');
-  const transferClosed = new Promise(resolve => blockedResponse.once('close', resolve));
-  const idle = net.connect(Number(new URL(session.origin).port), '127.0.0.1');
-  await new Promise((resolve, reject) => { idle.once('connect', resolve); idle.once('error', reject); });
-  const idleClosed = new Promise(resolve => idle.once('close', resolve));
-  await service.dispose(); await service.closed;
-  blockedResponse.destroy(); await transferClosed;
-  await idleClosed;
+  const transferPath = '/api/v0/artifacts/' + largeId + '/content';
+  const end = http.ServerResponse.prototype.end;
+  let blockedResponse, idle, heldTransfers = 0;
+  // Pausing a client does not stop a large OS socket buffer from accepting the whole body.
+  // Hold this real response before completion; dispose must still close the actual sockets.
+  http.ServerResponse.prototype.end = function (...args) {
+    if (this.req.url === transferPath && this.statusCode === 200) {
+      heldTransfers++;
+      this.flushHeaders();
+      return this;
+    }
+    return end.apply(this, args);
+  };
+  try {
+    blockedResponse = await new Promise((resolve, reject) => {
+      const request = http.get(session.origin + transferPath, {
+        headers: { Authorization: 'Bearer ' + session.accessToken }
+      }, response => { response.pause(); response.on('error', () => {}); resolve(response); });
+      request.once('error', reject);
+    });
+    assert.equal(blockedResponse.statusCode, 200); assert.equal(heldTransfers, 1);
+    assert.equal(service.snapshot().activeReads, 1, 'an unfinished transfer retains its bounded reader slot');
+    const transferClosed = new Promise(resolve => blockedResponse.once('close', resolve));
+    idle = net.connect(Number(new URL(session.origin).port), '127.0.0.1');
+    await new Promise((resolve, reject) => { idle.once('connect', resolve); idle.once('error', reject); });
+    const idleClosed = new Promise(resolve => idle.once('close', resolve));
+    await service.dispose(); await service.closed;
+    blockedResponse.destroy(); await transferClosed;
+    await idleClosed;
+  } finally {
+    http.ServerResponse.prototype.end = end;
+    blockedResponse?.destroy(); idle?.destroy();
+  }
   assert.equal(service.snapshot().state, 'closed'); assert.equal(service.snapshot().activeReads, 0);
   assert.deepEqual(await service.dispose(), service.snapshot());
   assert.deepEqual(tree(main.dataRoot), transferBefore, 'aborting an active transfer never writes Core');

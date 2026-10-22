@@ -25,7 +25,7 @@ const snapshot = directory => {
   const result = Object.create(null);
   const visit = current => {
     for (const name of fs.readdirSync(current).sort()) {
-      const file = path.join(current, name), relative = path.relative(directory, file), stat = fs.lstatSync(file);
+      const file = path.join(current, name), relative = path.relative(directory, file).split(path.sep).join('/'), stat = fs.lstatSync(file);
       if (stat.isSymbolicLink()) result[relative] = 'link:' + fs.readlinkSync(file);
       else if (stat.isDirectory()) { result[relative] = 'directory'; visit(file); }
       else result[relative] = hash(fs.readFileSync(file));
