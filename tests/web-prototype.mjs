@@ -8,6 +8,8 @@ import { FLOW_MODEL, FLOW_SOURCE, imageFlowFixture, readFlowEvents } from './fix
 import { projectFlowFacts, presentFlow, canSelect } from '../prototypes/workbench/view-model.js';
 import { createDemoTransport, DEMO_MODELS } from '../prototypes/workbench/demo-transport.js';
 import { startWorkbenchPreview } from '../scripts/preview-workbench.mjs';
+import { DEMO_CONNECTION_TOOLS, previewDraftTools } from '../prototypes/workbench/workspace-panels.js';
+import { bridgeToolsForScopes, CORE_BRIDGE_TOOLS } from '../lib/core-bridge-tools.js';
 import { useTempDshHome } from './test-env.js';
 
 const { root } = useTempDshHome('iris-web-prototype');
@@ -106,7 +108,7 @@ try {
   assert.equal(index.status, 200); assert.match(await index.text(), /内置样图/);
   assert.equal(index.headers.get('cache-control'), 'no-store');
   assert.match(index.headers.get('content-security-policy'), /frame-ancestors 'none'/);
-  for (const url of ['/app.js', '/styles.css', '/view-model.js', '/demo-transport.js', '/assets/sample.webp', '/assets/iris-mark.svg']) {
+  for (const url of ['/app.js', '/styles.css', '/view-model.js', '/demo-transport.js', '/workspace-panels.js', '/assets/sample.webp', '/assets/iris-mark.svg']) {
     assert.equal((await fetch(preview.origin + url)).status, 200, url);
   }
   for (const url of ['/.internal/PLAN.md', '/package.json', '/lib/core-tasks.js', '/api/v0/runs', '/assets/../../.git/config', '/%2e%2e%2f.internal/PLAN.md']) {
@@ -121,6 +123,10 @@ try {
   });
   assert.equal(badHost, 421);
   const head = await fetch(preview.origin, { method: 'HEAD' }); assert.equal(head.status, 200); assert.equal(await head.text(), '');
+  assert.deepEqual(DEMO_CONNECTION_TOOLS.map(tool => tool.name), CORE_BRIDGE_TOOLS.map(tool => tool.name));
+  for (const image of [true, false]) for (const scopes of [['read'], ['read', 'create'], ['read', 'execute', 'stop'], ['read', 'create', 'execute', 'stop']]) {
+    assert.deepEqual(previewDraftTools(image, scopes).map(tool => tool.name), bridgeToolsForScopes(scopes, image ? ['image-edit'] : [], undefined).map(tool => tool.name));
+  }
   console.log('web prototype: real Core projections, demo gates, cancellation and bounded static preview OK');
 } finally {
   await preview?.close();

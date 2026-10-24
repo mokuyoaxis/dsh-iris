@@ -25,10 +25,21 @@ node bin/dsh-iris.js web serve --data-root /absolute/path/to/flow-root --token-f
 
 - 从历史查看真实持久 Run、原图与已保存结果；刷新读取最新本地记录。
 - 查看修改要求、状态和选择。详情及模型列表默认折叠，技术标识放在展开内容中。
-- 下载已选择作品，保留原始图片字节与格式。未选择时不可下载，选择仍通过 CLI 完成。
+- 下载已选择作品，保留原始图片字节与格式。未选择时不可下载；新选择通过 CLI 或显式启用的 [owner 选择 API](LOCAL_SELECTION.md)完成，页面按钮尚未接入。
 - 切换历史、断开或重连。地址中的 Run 片段帮助重新定位，刷新后仍需重新连接会话。
 
 默认模式全部业务请求为 GET，没有上传、生成、选择或停止按钮。刷新不会查询外部任务、生成或修复数据。进行中任务显示的是最后保存到本地的进展，通过 CLI 明确查看原任务。
+
+## 显式媒体权限
+
+`web serve` 与 `api serve` 使用相同的独立开关，不要求先开启连接管理：`--allow-local-writes` 开放零生成上传/创建；`--allow-execution` 同时开放创建与有限执行，仍需 v1 根及显式 Provider。`--allow-selection` 只开放 owner 持久选择，可直接用于已有 Flow 根，无需 Provider、创建请求区或执行器。
+
+```bash
+node bin/dsh-iris.js web serve --data-root /absolute/path/to/flow-root \
+  --token-file /absolute/path/to/new-owner-token --allow-selection
+```
+
+开关不会自动补齐其他权限。会话的 `readOnly`、`workbenchMediaReadOnly` 和 `operations` 反映当前调用方的媒体 API 权限；显式启用选择后 owner 可见 `runs.select`，连接客户端不可见也不能调用。当前页面仍提供作品浏览与下载，不因后端开关而出现创作按钮。版本冲突、断线核对与输入限制见 [持久选择](LOCAL_SELECTION.md)。
 
 ## 显式开启连接中心
 
@@ -43,7 +54,7 @@ node bin/dsh-iris.js web serve --data-root /absolute/new-core \
 
 目录为 0700、档案为 0600；首次只接受空目录，之后按 rootId 识别。管理目录与 Core 数据根相互独立，不改静态 grants 或客户端日常配置。目录自身只允许一个管理写者，复用现有租约。异常退出遗留租约时，先检查 `doctor --data-root /absolute/new-connection-store/ownership --json`，再按实际 stale PID 使用 `runtime recover`，不自动清锁。
 
-连接页面支持自由命名、创建、编辑、撤销和 stdio/HTTP 配置导出。媒体分组目前只有图片编辑可选，其余五类标为未接入；工具细选默认折叠，操作权限与功能分开。默认只读服务只能分配 read；若要让 harness 导入、创建和执行，可在**同一个命令**显式增加 `--allow-execution --provider-config /absolute/providers.json`。执行服务会建立 runner 租约，页面仍只提供媒体浏览与连接管理，接收/计费动作由获授权客户端明确发起。单独 `web serve --allow-local-writes` 仍拒绝。
+连接页面支持自由命名、创建、编辑、撤销和 stdio/HTTP 配置导出。媒体分组目前只有图片编辑可选，其余五类标为未接入；工具细选默认折叠，操作权限与功能分开。默认只读服务只能分配 read；若要让 harness 导入、创建和执行，可在**同一个命令**显式增加 `--allow-execution --provider-config /absolute/providers.json`。执行服务会建立 runner 租约，页面仍只提供媒体浏览与连接管理，接收/计费动作由获授权客户端明确发起。连接管理不扩大媒体权限，owner 选择权限也不授予 harness。
 
 创建不代表客户端已经加载。安装配置后，实际 MCP 客户端自报名称/版本会标记为“客户端声明”，桥版本独立记录；实例记录不保证进程持续在线。没有声明时显示未知，不扫盘推测安装状态。一个产品可按工作区创建多个连接。
 
@@ -69,12 +80,13 @@ Token 仅保存在当前标签页内存中，不进入 URL、浏览器持久存�
 
 ```bash
 node tests/local-web.mjs
+node tests/local-selection-api.mjs
 node tests/core-connection-store.mjs
 node tests/connection-management.mjs
 node tests/connection-delivery.mjs
 node scripts/verify-local-web-browser.mjs --browser-executable /absolute/path/to/chromium --output /absolute/path/to/new-evidence-directory
 ```
 
-需要已有 Chromium，不下载或安装；加 `--connection-management` 验证真实管理交互。仅在受控测试确有需要时追加 `--no-sandbox`。桌面 Chromium 模拟手机宽度不等于 Android 真机触控验收。
+需要已有 Chromium，不下载或安装；加 `--connection-management` 验证真实管理交互，加 `--allow-selection` 验证选择 API 开启后页面仍可浏览且不自行写入。仅在受控测试确有需要时追加 `--no-sandbox`。桌面 Chromium 模拟手机宽度不等于 Android 真机触控验收。
 
-源码另有 [Operation 存储与版本门禁](LOCAL_OPERATIONS.md)和 [有限执行服务](CORE_SERVICE.md)，通过显式模式装配 runner、接收/停止与 harness 桥；本页面的媒体操作仍只读。连接中心可导入纯数据模板、交付 Skill，安装由 CLI 显式执行，不控制 Agent 会话。下一阶段接入持久选择与真实创作闭环；完整模型配置页、文生图、叠图比较与最终演示素材按 [路线图](ROADMAP.md)推进。
+源码另有 [Operation 存储与版本门禁](LOCAL_OPERATIONS.md)、[有限执行服务](CORE_SERVICE.md)和 [持久选择 API](LOCAL_SELECTION.md)，通过显式模式开放；本页面的媒体操作仍只读。连接中心可导入纯数据模板、交付 Skill，安装由 CLI 显式执行，不控制 Agent 会话。下一阶段接入创建身份查询、刷新恢复与页面创作按钮；完整模型配置页、文生图、叠图比较与最终演示素材按 [路线图](ROADMAP.md)推进。

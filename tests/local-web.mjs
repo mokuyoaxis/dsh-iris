@@ -23,7 +23,10 @@ const nativeFetch = globalThis.fetch;
 
 try {
   assert.throws(() => createLocalReadApi({ dataRoot, serveWorkbench: 'yes' }), TypeError);
-  assert.throws(() => createLocalReadApi({ dataRoot, serveWorkbench: true, allowLocalWrites: true }), /只读/);
+  const unstartedWriter = createLocalReadApi({ dataRoot, serveWorkbench: true, allowLocalWrites: true });
+  assert.equal(unstartedWriter.snapshot().state, 'new', 'explicit Web writes do not require connection management');
+  assert.equal(fs.existsSync(dataRoot), false, 'construction still performs no initialization');
+  await unstartedWriter.dispose();
   await app.execute('flow.init', {});
   const source = (await app.execute('artifact.import', { image_bytes: FLOW_SOURCE })).artifact;
   const facts = await app.execute('flow.create', { source_artifact_id: source.id, model_ref: FLOW_MODEL, prompt: '<img src=x onerror=alert(1)>; keep the subject' });

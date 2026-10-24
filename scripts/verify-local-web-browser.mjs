@@ -10,8 +10,8 @@ import { FLOW_MODEL, FLOW_SOURCE, FLOW_RESULT, imageFlowFixture, readFlowEvents 
 import { httpMcpClient } from '../tests/fixtures/mcp-http-client.mjs';
 
 const args = process.argv.slice(2);
-assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
-  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management]');
+assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
+  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection]');
 assert.equal(args[0], '--browser-executable'); assert.equal(args[2], '--output');
 assert(path.isAbsolute(args[1]) && path.isAbsolute(args[3]));
 const executable = fs.realpathSync(args[1]), out = args[3];
@@ -19,7 +19,7 @@ const management = args.includes('--connection-management');
 fs.mkdirSync(out, { mode: 0o700 });
 const report = { status: 'running', checks: [], browserErrors: [], requests: [], layout: {}, screenshots: [],
   actualPaidCalls: 0, realApiImplemented: true, dailyDshBooted: false, noSandbox: args.includes('--no-sandbox'),
-  connectionManagement: management, requestRootVersion: args.includes('--execution-root') || management ? 1 : null };
+  connectionManagement: management, selectionEnabled: args.includes('--allow-selection'), requestRootVersion: args.includes('--execution-root') || management ? 1 : null };
 const save = () => fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 function tree(root) {
@@ -100,7 +100,7 @@ try {
   const unstarted = await create('保留轮廓，使用柔和的颜色。');
   const before = tree(dataRoot), eventsBefore = readFlowEvents(dataRoot);
   const tokenFile = path.join(out, 'session-token');
-  const apiOptions = { dataRoot, serveWorkbench: true, ...(management ? {
+  const apiOptions = { dataRoot, serveWorkbench: true, allowSelection: report.selectionEnabled, ...(management ? {
     allowConnectionManagement: true, connectionStore: path.join(out, 'managed-connections'), allowMcp: true } : {}) };
   api = createLocalReadApi(apiOptions); session = await api.start();
   writeLocalApiTokenFile(tokenFile, session.accessToken, dataRoot);
@@ -142,6 +142,9 @@ try {
   await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
   await check('keyboard focus is visible', "document.activeElement!==document.body&&document.activeElement.matches(':focus-visible')");
   await chooseToken(tokenFile); await readyRun(chosen.run.id);
+  if (report.selectionEnabled) {
+    await check('selection-enabled owner session remains usable for browsing without implicit page writes', `document.querySelector('#mode-badge').textContent===${JSON.stringify(management ? 'Core 工作台' : '作品浏览')}&&!document.querySelector('#workspace').hidden`);
+  }
   await check('file connection reads real history, original images and stored selection', "document.querySelectorAll('.history-item').length===2&&document.querySelector('#status-title').textContent==='已选择结果'&&!document.querySelector('#download').disabled&&document.querySelector('#source-dimensions').textContent==='48 × 32'&&document.querySelector('#output-dimensions').textContent==='48 × 32'");
   await check('prompt is literal text, details collapsed, missing config is nonblocking', "document.querySelector('#prompt').textContent.includes('<img src=x')&&document.querySelectorAll('[onerror]').length===0&&!document.querySelector('#run-details').open&&!document.querySelector('#model-panel').open&&document.querySelector('#model-summary').textContent==='未指定配置'");
   await check('token is absent from URL, input and browser storage', "!location.search&&!document.querySelector('#token').value&&!document.querySelector('#token-file').value&&localStorage.length===0&&sessionStorage.length===0");

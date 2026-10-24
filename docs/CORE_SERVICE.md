@@ -1,6 +1,6 @@
 # Core 服务与 harness 接入（面向 0.3，未发布）
 
-源码已提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP 和 DSH 可选共享 Flow 连接。**公开 npm 0.2.7 尚不包含这些入口**；以下使用源码命令。首版只接固定 `image-edit/v0`，Web 可显式管理连接，媒体操作仍只读，选择/导出沿用 CLI。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
+源码已提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**公开 npm 0.2.7 尚不包含这些入口**；以下使用源码命令。首版只接固定 `image-edit/v0`，Web 可显式管理连接，页面媒体操作仍只读；选择可用 CLI 或显式 HTTP，服务器路径导出仍用 CLI。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
 
 ## 显式启动
 
@@ -23,6 +23,8 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
 第二个执行 Host 无法取得同根 runner 租约；同根可另开只读页面。接收后服务自行收尾，关页或断开 harness 不撤销已接收操作。writer 正忙时明确拒绝新接收，调用方保留原 Key 后显式重试，不能假定已排队。
 
 也可使用 [连接中心](LOCAL_WEB.md#显式开启连接中心)在同一服务中提供页面、持久授权和 MCP。必须同时指定 `--allow-connection-management --connection-store`；需要执行时再显式添加 `--allow-execution --provider-config`，不会自动开启生成。默认 `web serve` 继续只读。连接管理目录单独持有租约，业务写入仍由这一个 Core runner 管理。
+
+媒体 API 的创建、执行和选择开关不依赖连接管理；`--allow-selection` 只允许 owner 在同 writer 中核对 Run 版本后保存选择，不启动 runner 或调用 Provider。执行开关不隐式开放选择，也不扩张 MCP 工具集。
 
 ## 接收、查询与停止
 

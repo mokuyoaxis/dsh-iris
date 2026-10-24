@@ -1,6 +1,6 @@
 # 固定图片流程（0.2.7）
 
-未发布源码可通过 [Core 执行服务](CORE_SERVICE.md)、正式 MCP 和 DSH 可选共享 Flow 连接消费同一固定流程。本文保留已发布 0.2.7 的 CLI 使用方式；真实 Web 创作与选择 API 尚未接入。
+未发布源码可通过 [Core 执行服务](CORE_SERVICE.md)、正式 MCP 和 DSH 可选共享 Flow 连接消费同一固定流程，另有显式启用的 [owner 持久选择 API](LOCAL_SELECTION.md)。本文保留已发布 0.2.7 的 CLI 使用方式；真实 Web 页面的创作与选择按钮尚未接入。
 
 0.2.7 提供 `image-edit/v0`：导入原图 → 指定模型改图 → 本地像素比较 → 选择原图或新版 → 导出。真实执行入口是独立 CLI 和内部应用运行时，尚未接入 DSH 工作台或真实独立 Web；[Web Demo](WEB_PROTOTYPE.md)仅说明面向 0.3.0 的交互方向。本流程从 npm 0.2.7 起随包分发。
 

@@ -72,10 +72,10 @@ function usage() {
     '    Explicit standard Streamable HTTP endpoint at /mcp; default remains disabled. Uses the existing Core service and user-selected connection tools.',
     '  dsh-iris operation list --data-root <execution-root> [--run-id <run-id>] [--limit <1..30>] [--cursor <operation-id>]',
     '  dsh-iris operation inspect <operation-id> --data-root <execution-root>',
-    '  dsh-iris api serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>] [--allow-local-writes]',
+    '  dsh-iris api serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>] [--allow-local-writes] [--allow-selection]',
     '    Explicit loopback-only API, read-only by default. Local writes only upload images/create Runs, without generation. The session token is saved privately; stdout contains no token.',
-    '  dsh-iris web serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>]',
-    '    Read-only local workbench: connect with the token file to browse persistent image flows and download an existing selection. No generation or DSH startup.',
+    '  dsh-iris web serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>] [--allow-local-writes] [--allow-execution] [--allow-selection]',
+    '    Workbench media APIs are read-only by default; explicit write flags do not require connection management. --allow-selection permits owner-only, revision-checked local selection without a Provider. The current page still browses and downloads; media write controls are pending.',
     '  dsh-iris runtime recover --data-root <absolute-path> --confirm-stale-pid <pid>',
     '  dsh-iris providers list --provider-config <absolute-path>',
     '  dsh-iris capabilities list --provider-config <absolute-path>',
@@ -338,12 +338,12 @@ async function main(args) {
       return 0;
     }
     if (args[1] !== 'serve') throw new CliUsageError(`不支持的 ${args[0]} 子命令`);
-    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes'), executionFlags = rest.filter(value => value === '--allow-execution'), mcpFlags = rest.filter(value => value === '--allow-mcp'), managementFlags = rest.filter(value => value === '--allow-connection-management');
-    if (localWriteFlags.length > 1 || executionFlags.length > 1 || mcpFlags.length > 1 || managementFlags.length > 1) throw new CliUsageError('写入/执行/MCP/连接管理参数重复');
+    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes'), executionFlags = rest.filter(value => value === '--allow-execution'), selectionFlags = rest.filter(value => value === '--allow-selection'), mcpFlags = rest.filter(value => value === '--allow-mcp'), managementFlags = rest.filter(value => value === '--allow-connection-management');
+    if (localWriteFlags.length > 1 || executionFlags.length > 1 || selectionFlags.length > 1 || mcpFlags.length > 1 || managementFlags.length > 1) throw new CliUsageError('写入/执行/选择/MCP/连接管理参数重复');
     const allowExecution = executionFlags.length === 1, allowLocalWrites = localWriteFlags.length === 1 || allowExecution;
+    const allowSelection = selectionFlags.length === 1;
     const allowConnectionManagement = managementFlags.length === 1;
-    if (serveWorkbench && allowLocalWrites && !allowConnectionManagement) throw new CliUsageError('web serve 当前仅支持只读模式；执行须结合显式连接管理开启');
-    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-mcp', '--allow-connection-management'].includes(value)), ['data-root', 'token-file', 'provider-config', 'port', 'connections-file', 'connection-store']);
+    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management'].includes(value)), ['data-root', 'token-file', 'provider-config', 'port', 'connections-file', 'connection-store']);
     const suppliedRoot = required(options['data-root'], 'data-root');
     const tokenFile = required(options['token-file'], 'token-file');
     if (!path.isAbsolute(suppliedRoot) || !path.isAbsolute(tokenFile)) throw new CliUsageError('data-root 与 token-file 必须是绝对路径');
@@ -353,17 +353,20 @@ async function main(args) {
     try { dataRoot = fs.realpathSync(suppliedRoot); }
     catch (_) { throw new CliUsageError('data-root 必须是已初始化且可读取的 Flow 根'); }
     const api = createLocalReadApi({ dataRoot, providerConfigPath: options['provider-config'], allowLocalWrites, serveWorkbench,
-      allowExecution, allowMcp: mcpFlags.length === 1, connectionsFile: options['connections-file'], allowConnectionManagement, connectionStore: options['connection-store'] });
+      allowExecution, allowSelection, allowMcp: mcpFlags.length === 1, connectionsFile: options['connections-file'], allowConnectionManagement, connectionStore: options['connection-store'] });
     const unregister = registerRuntime(api);
     try {
       const started = await api.start({ port: options.port === undefined ? 0 : Number(options.port) });
       writeLocalApiTokenFile(tokenFile, started.accessToken, dataRoot);
-      console.log(JSON.stringify({ contractVersion: 0, readOnly: !allowLocalWrites, origin: started.origin, tokenFile,
+      console.log(JSON.stringify({ contractVersion: 0, readOnly: !allowLocalWrites && !allowSelection, origin: started.origin, tokenFile,
         ...(allowConnectionManagement ? { connectionManagement: true } : {}),
         ...(started.mcpEndpoint ? { mcpEndpoint: started.mcpEndpoint } : {}),
-        message: serveWorkbench ? (allowConnectionManagement ? 'Core 工作台与连接管理已启动；打开 origin 并选择 Token 文件。配置连接不执行媒体。' : '只读工作台已启动；打开 origin 并选择 Token 文件连接。退出后 Token 失效。')
+        message: serveWorkbench ? (allowConnectionManagement ? 'Core 工作台与连接管理已启动；打开 origin 并选择 Token 文件。配置连接不执行媒体。'
+          : allowLocalWrites || allowSelection ? 'Core 工作台已启动；打开 origin 并选择 Token 文件。媒体 API 按显式开关开放，当前页面提供作品浏览。'
+          : '只读工作台已启动；打开 origin 并选择 Token 文件连接。退出后 Token 失效。')
           : allowExecution ? '有限执行 API 已启动；显式继续才执行，停止只中止本地等待，重启不自动重提。'
           : allowLocalWrites ? '本地创建 API 已启动；只上传/创建，不执行生成。会话 Token 在指定私有文件中，退出后失效。'
+          : allowSelection ? '本地选择 API 已启动；只更新已完成流程的选择，不执行生成。会话 Token 在指定私有文件中，退出后失效。'
           : '只读本地 API 已启动；会话 Token 在指定私有文件中，退出后失效。' }));
       await api.closed;
       return 0;

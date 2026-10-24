@@ -11,6 +11,7 @@ const resources = new Map([
   ['/app.js', ['prototypes/workbench/app.js', 'text/javascript; charset=utf-8']],
   ['/view-model.js', ['prototypes/workbench/view-model.js', 'text/javascript; charset=utf-8']],
   ['/demo-transport.js', ['prototypes/workbench/demo-transport.js', 'text/javascript; charset=utf-8']],
+  ['/workspace-panels.js', ['prototypes/workbench/workspace-panels.js', 'text/javascript; charset=utf-8']],
   ['/assets/iris-mark.svg', ['docs/assets/logo/iris-mark.svg', 'image/svg+xml']],
   ['/assets/sample.webp', ['docs/assets/examples/iris-flower-generated.webp', 'image/webp']]
 ]);

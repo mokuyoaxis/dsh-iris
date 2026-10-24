@@ -4,89 +4,92 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>Iris · 图片工作台原型</title>
+  <title>Iris · 创作工作台 Demo</title>
   <link rel="icon" href="./assets/iris-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
+  <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="icon-studio" viewBox="0 0 24 24"><path d="m12 3 1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6L12 3Z"/><path d="m19 15 .9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z"/></symbol>
+    <symbol id="icon-library" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m4 16 5-5 4 4 3-3 5 5"/><circle cx="16" cy="8" r="1"/></symbol>
+    <symbol id="icon-link" viewBox="0 0 24 24"><path d="m10 13 4-4M8 16l-2 2a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0M16 8l2-2a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0" transform="translate(1 0) scale(.9)"/></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="icon-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/></symbol>
+  </svg>
   <a class="skip-link" href="#workspace">跳到创作区</a>
-  <header class="topbar">
-    <a class="brand" href="./" aria-label="Iris 工作台首页">
-      <img src="./assets/iris-mark.svg" width="26" height="29" alt="">
-      <span>iris<span class="brand-dot">.</span></span>
-    </a>
-    <span class="nav-label">图片工作台</span>
-    <div class="top-actions">
-      <span class="demo-badge"><span class="status-dot"></span>本地演示</span>
-      <button id="theme-button" class="icon-button" type="button" aria-label="切换到深色主题" title="切换主题">◐</button>
+  <div class="app-shell">
+    <aside class="app-sidebar" aria-label="工作区导航">
+      <a class="brand" href="./" aria-label="Iris 工作台首页"><img src="./assets/iris-mark.svg" width="29" height="32" alt=""><span>iris<span class="brand-dot">.</span></span><small>CORE</small></a>
+      <p class="sidebar-label">你的创作空间</p>
+      <nav class="main-nav" aria-label="主要页面">
+        <button id="nav-studio" type="button" class="nav-item" data-page="studio" aria-current="page"><svg class="icon"><use href="#icon-studio"></use></svg><span>创作</span><small>01</small></button>
+        <button id="nav-gallery" type="button" class="nav-item" data-page="gallery"><svg class="icon"><use href="#icon-library"></use></svg><span>作品</span><small id="gallery-count">0</small></button>
+        <button id="nav-connections" type="button" class="nav-item" data-page="connections"><svg class="icon"><use href="#icon-link"></use></svg><span>连接</span><small id="draft-count">0</small></button>
+      </nav>
+      <div class="recent-section"><div class="sidebar-section-heading"><span>最近流程</span><small id="recent-count">0</small></div><div id="recent-list"></div><p id="recent-empty" class="sidebar-empty">从一张图片开始，<br>让想法慢慢成形。</p></div>
+      <div class="sidebar-bottom"><div class="workspace-avatar" aria-hidden="true">i</div><div><strong>本地工作区</strong><small>演示数据 · 仅本标签页</small></div><span class="version-label">0.3</span></div>
+    </aside>
+    <div class="app-content">
+      <header class="topbar">
+        <div class="location-bar"><span class="workspace-name">Iris 工作区</span><span class="breadcrumb-separator">/</span><span id="page-location">创作</span></div>
+        <div class="top-actions"><span class="demo-badge"><span class="status-dot"></span><span id="global-status">本地演示</span></span><button id="about-demo" class="text-button" type="button">演示说明</button><button id="theme-button" class="icon-button" type="button" aria-label="切换到深色主题" title="切换主题">◐</button></div>
+      </header>
+      <main id="workspace" class="workspace">
+        <section id="studio-page" class="page-view" aria-labelledby="studio-heading">
+          <div class="page-heading"><div><p class="eyebrow">A LITTLE ROOM TO CREATE</p><h1 id="studio-heading">把灵感，留在画面里。</h1><p class="subtitle">从一张图片开始，慢慢找到你喜欢的版本。</p></div><button id="new-run" class="button secondary" type="button"><svg class="icon"><use href="#icon-plus"></use></svg>新建流程</button></div>
+          <aside class="demo-notice" aria-label="演示说明"><span class="pill">DEMO</span><span>交互预览，不连接模型、不计费。结果使用内置样图；本地选图不会上传。</span></aside>
+          <div class="studio-grid">
+            <section class="panel input-panel" aria-labelledby="input-heading">
+              <div class="panel-title"><div><p class="eyebrow">COMPOSE</p><h2 id="input-heading">创作设置</h2></div><span class="small-label">图片编辑</span></div>
+              <form id="edit-form">
+                <fieldset id="input-fields">
+                  <legend class="sr-only">来源图片和修改要求</legend>
+                  <div class="field-heading"><span>来源图片</span><button id="use-sample" class="text-button" type="button">使用样图</button></div>
+                  <label id="drop-zone" class="drop-zone" for="image-file"><input id="image-file" class="sr-only file-input" type="file" accept="image/png,image/jpeg,image/webp" aria-labelledby="upload-hint" aria-describedby="file-help"><img id="input-preview" class="source-image" src="./assets/sample.webp" alt="内置鸢尾花样图"><span class="upload-copy"><strong id="upload-hint">点击换图，或拖放图片</strong><span>PNG、JPEG、WebP</span></span><span class="upload-arrow" aria-hidden="true">↥</span></label>
+                  <div class="file-info"><span id="file-name">iris-flower.webp</span><span id="file-dimensions">2048 × 2048</span></div><p id="file-help" class="field-help">最大 20 MiB · 仅在本标签页预览</p>
+                  <label class="field-label" for="model">使用模型 <span class="pill">演示</span></label><select id="model" name="model" required></select>
+                  <div class="field-heading prompt-heading"><label for="prompt">想做什么修改？</label><span id="prompt-count" class="muted">0 / 4000</span></div>
+                  <textarea id="prompt" name="prompt" rows="5" maxlength="4000" required placeholder="描述想改变的部分，也说说想保留什么…">保留鸢尾花的细节，让背景更柔和，整体光线更温暖。</textarea>
+                  <div class="prompt-presets" aria-label="示例修改要求"><button type="button" data-prompt="保留主体细节，让背景更柔和，增加自然的景深。">柔和背景</button><button type="button" data-prompt="保留原有构图，让光线更温暖、自然，细节清晰。">温暖光线</button><button type="button" data-prompt="保持主体形状和纹理，降低饱和度，营造安静的氛围。">安静色调</button></div>
+                  <p id="input-lock" class="field-help" hidden>本次输入已固定。调整图片或要求时，请新建流程。</p>
+                </fieldset>
+                <button id="start" class="button primary start-button" type="submit">↗ 开始演示</button><p class="start-help">由你明确开始 · 本次演示无费用</p>
+              </form>
+              <p class="composer-note"><span aria-hidden="true">◇</span> 保留原图，比较之后再决定。</p>
+            </section>
+            <section id="result-panel" class="panel result-panel" aria-labelledby="result-heading">
+              <div class="panel-title result-title"><div><p class="eyebrow">WORKSPACE</p><h2 id="result-heading">画面预览</h2></div><div class="canvas-actions"><div class="view-switch" role="group" aria-label="比较方式"><button id="view-pair" class="active" type="button" aria-pressed="true">并排</button><button id="view-overlay" type="button" aria-pressed="false" disabled>叠图</button></div><button id="preview-open" class="icon-button" type="button" aria-label="放大查看原图"><svg class="icon"><use href="#icon-expand"></use></svg></button></div></div>
+              <div id="pair-view" class="pair-view">
+                <figure class="image-card"><figcaption><span><span class="image-dot original"></span>原图</span><span class="image-caption">SOURCE</span></figcaption><div class="image-stage"><img class="source-image" src="./assets/sample.webp" alt="原图预览"></div><button id="select-source" class="choice-button" type="button" aria-pressed="false" disabled><span class="choice-ring" aria-hidden="true"></span><span>选择原图</span></button></figure>
+                <figure class="image-card"><figcaption><span><span class="image-dot result"></span>示例结果</span><span class="image-caption">RESULT</span></figcaption><div class="image-stage"><img class="output-image" src="./assets/sample.webp" alt="内置样图演示结果，并非模型修改" hidden><div id="result-placeholder" class="result-placeholder"><img src="./assets/iris-mark.svg" width="36" height="39" alt=""><strong id="placeholder-title">下一张，等你决定</strong><p id="placeholder-message">开始后，在这里查看结果</p></div></div><button id="select-output" class="choice-button" type="button" aria-pressed="false" disabled><span class="choice-ring" aria-hidden="true"></span><span>选择结果</span></button></figure>
+              </div>
+              <div id="overlay-view" class="overlay-view" hidden><div class="overlay-stage"><img class="source-image" src="./assets/sample.webp" alt="叠图中的原图"><img id="overlay-output" class="output-image" src="./assets/sample.webp" alt="叠图中的示例结果"><span class="overlay-tag left">原图</span><span class="overlay-tag right">示例结果</span></div><label class="range-label" for="compare-position"><span>原图与示例结果</span><span id="compare-value">50%</span></label><input id="compare-position" type="range" min="0" max="100" value="50" aria-label="比较分界位置"><div class="overlay-choices"><button id="overlay-select-source" class="button secondary" type="button" aria-pressed="false">选择原图</button><button id="overlay-select-output" class="button secondary" type="button" aria-pressed="false">选择结果</button></div></div>
+              <div id="run-status" class="run-status" data-tone="neutral" role="status" aria-live="polite" aria-atomic="true"><span id="run-status-icon" class="run-status-icon" aria-hidden="true">○</span><div><strong id="status-title">准备好，就开始吧</strong><p id="status-message">原图与结果会留在这里，方便你慢慢比较。</p></div><span id="busy-indicator" class="busy-indicator" hidden></span></div>
+              <div class="result-footer"><p id="selection-message">先比较，再选择。选择后即可下载。</p><button id="download" class="button primary" type="button" disabled><svg class="icon"><use href="#icon-download"></use></svg>下载所选图片</button></div>
+              <div class="run-controls"><button id="continue" class="button secondary" type="button" hidden>查看原任务</button><button id="cancel" class="text-button" type="button" hidden>停止本次等待</button><button id="refresh" class="text-button" type="button" disabled>重新读取状态</button><span id="run-short-id" class="mono muted">尚未开始</span></div>
+            </section>
+          </div>
+          <details id="diagnostics" class="diagnostics"><summary><span class="diagnostic-heading">运行详情与演示场景</span><span class="disclosure-label"><span class="when-closed">展开</span><span class="when-open">收起</span><span class="chevron" aria-hidden="true">⌄</span></span></summary><div class="diagnostic-body"><div class="facts-column"><h3>本次状态</h3><dl><div><dt>流程</dt><dd id="detail-run">尚未创建</dd></div><div><dt>任务</dt><dd id="detail-task">尚未提交</dd></div><div><dt>受理 / 结果 / 交付</dt><dd id="detail-state">—</dd></div><div><dt>演示提交次数</dt><dd id="detail-submissions">0</dd></div></dl><p class="field-help">展开、刷新或重新读取不会开始生成。</p></div><div class="scenario-column"><label class="field-label" for="scenario">下一条流程的演示场景</label><select id="scenario"><option value="success">正常完成</option><option value="running">原任务进行中</option><option value="unknown">请求受理未知</option><option value="delivery_failed">生成成功，交付中断</option><option value="needs_comparison">结果已保存，等待比较</option></select><p class="field-help">只控制内存演示，新流程生效；整页刷新会清空状态。</p><label class="field-label" for="history">本标签页的流程</label><select id="history" disabled><option value="">尚无流程</option></select><p class="field-help">切换只读取已有状态，不继续执行。</p></div></div></details>
+        </section>
+        <section id="gallery-page" class="page-view" aria-labelledby="gallery-heading" hidden>
+          <div class="page-heading"><div><p class="eyebrow">KEEP WHAT MATTERS</p><h1 id="gallery-heading">每一次尝试，都有来处。</h1><p class="subtitle">回看本标签页的演示流程，接着比较和选择。</p></div><button id="gallery-create" class="button secondary" type="button"><svg class="icon"><use href="#icon-plus"></use></svg>新建流程</button></div>
+          <div class="gallery-toolbar"><div class="view-switch" role="group" aria-label="作品筛选"><button type="button" data-filter="all" class="active" aria-pressed="true">全部</button><button type="button" data-filter="selected" aria-pressed="false">已选择</button><button type="button" data-filter="pending" aria-pressed="false">待选择 / 处理</button></div><span id="gallery-summary" class="muted">0 个演示流程</span></div>
+          <div id="gallery-grid" class="gallery-grid"></div><div id="gallery-empty" class="empty-state"><svg class="empty-icon icon"><use href="#icon-library"></use></svg><h2 id="gallery-empty-title">让第一张作品，在这里发生。</h2><p id="gallery-empty-message">在创作页开始一次演示，流程就会出现在这里。刷新整页会清空演示记录。</p><button id="gallery-empty-create" class="button primary" type="button">开始创作演示</button></div>
+        </section>
+        <section id="connections-page" class="page-view" aria-labelledby="connections-heading" hidden>
+          <div class="page-heading"><div><p class="eyebrow">CREATE HERE. CONNECT ANYWHERE.</p><h1 id="connections-heading">把能力，交给你的工具。</h1><p class="subtitle">先选功能与权限，再为工作方式留一份接入草稿。</p></div><button id="draft-new" class="button secondary" type="button"><svg class="icon"><use href="#icon-plus"></use></svg>新建草稿</button></div>
+          <aside class="demo-notice"><span class="pill">DEMO</span><span>这里只预览连接草稿，未连接 Core，不创建真实授权、密钥或 MCP 配置。</span></aside>
+          <div class="connection-layout"><aside class="panel drafts-panel"><div class="panel-title"><h2>演示连接</h2><small id="draft-list-count">0</small></div><div id="draft-list"></div><p id="draft-empty" class="field-help">保存的演示草稿会出现在这里。</p></aside><section class="panel connection-form-panel"><div class="panel-title"><h2>连接设置</h2><span class="pill">未连接 Core</span></div><form id="draft-form"><label class="field-label" for="draft-name">连接名称</label><input id="draft-name" maxlength="80" required autocomplete="off" placeholder="例如：我的编程助手 · 工作项目"><h3>媒体功能</h3><div class="draft-media"><label class="draft-option"><input id="draft-image" type="checkbox" checked><span>图片<small>固定编辑流程</small></span></label><label class="draft-option unavailable"><input type="checkbox" disabled><span>视频<small>未接入</small></span></label><label class="draft-option unavailable"><input type="checkbox" disabled><span>语音<small>未接入</small></span></label><label class="draft-option unavailable"><input type="checkbox" disabled><span>音乐<small>未接入</small></span></label><label class="draft-option unavailable"><input type="checkbox" disabled><span>转写<small>未接入</small></span></label><label class="draft-option unavailable"><input type="checkbox" disabled><span>视觉<small>未接入</small></span></label></div><h3>操作权限</h3><div id="draft-scopes" class="draft-scope-options"><label class="draft-option"><input type="checkbox" value="read" checked disabled><span>读取</span></label><label class="draft-option"><input type="checkbox" value="create"><span>导入与创建</span></label><label class="draft-option"><input type="checkbox" value="execute"><span>执行</span></label><label class="draft-option"><input type="checkbox" value="stop"><span>停止等待</span></label></div><p class="field-help">真实执行可能产生费用；停止只结束本地等待。</p><details id="draft-tools" class="diagnostics"><summary><span>工具预览 <small id="draft-tool-count">8 个</small></span><span class="disclosure-label"><span class="when-closed">展开</span><span class="when-open">收起</span></span></summary><ul id="draft-tool-list" class="tool-list"></ul></details><div class="draft-save-row"><button id="draft-save" class="button primary" type="submit">保存演示草稿</button><p class="field-help">仅保存在本标签页，刷新后清空。</p></div></form><div class="connection-help"><h3>配置、工具、说明，各司其职。</h3><p>正式 Core 连接中心会按授权导出 MCP 配置和 Skill。此处只预览结构，保存草稿不会让客户端接通。</p></div></section></div>
+        </section>
+        <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+        <footer class="page-footer"><span>给创作留一点余地。</span><span>Iris Core <span class="footer-separator">/</span> 0.3 界面预览</span></footer>
+      </main>
     </div>
-  </header>
-
-  <main id="workspace" class="workspace">
-    <div class="page-heading">
-      <div><p class="eyebrow">IRIS / IMAGE STUDIO</p><h1>让想法，再进一步。</h1><p class="subtitle">从一张图片开始，比较变化，留下你喜欢的版本。</p></div>
-      <button id="new-run" class="button secondary" type="button"><span aria-hidden="true">＋</span> 新建流程</button>
-    </div>
-    <aside class="demo-notice" aria-label="演示说明"><span class="notice-symbol" aria-hidden="true">i</span><span>交互原型 · 不连接模型、不计费。结果使用内置样图，本地选图仅在此标签页预览。</span></aside>
-
-    <div class="studio-grid">
-      <section class="panel input-panel" aria-labelledby="input-heading">
-        <div class="panel-title"><span class="step-number">01</span><h2 id="input-heading">创作输入</h2><span class="small-label">单张图片</span></div>
-        <form id="edit-form">
-          <fieldset id="input-fields">
-            <legend class="sr-only">来源图片和修改要求</legend>
-            <div class="field-heading"><span>来源图片</span><button id="use-sample" class="text-button" type="button">使用样图</button></div>
-            <label id="drop-zone" class="drop-zone" for="image-file">
-              <img id="input-preview" class="source-image" src="./assets/sample.webp" alt="内置鸢尾花样图">
-              <span id="upload-hint" class="upload-overlay">↥ 点击换图，或拖放图片</span>
-            </label>
-            <input id="image-file" class="sr-only file-input" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="file-help">
-            <div class="file-info"><span id="file-name">iris-flower.webp</span><span id="file-dimensions">1600 × 1600</span></div>
-            <p id="file-help" class="field-help">PNG、JPEG、WebP · 最大 20 MiB</p>
-
-            <label class="field-label" for="model">使用模型 <span class="pill">演示</span></label>
-            <select id="model" name="model" required></select>
-            <p class="field-help">本次固定使用所选模型，结果未知时不会换模型重试。</p>
-
-            <div class="field-heading prompt-heading"><label for="prompt">想做什么修改？</label><span id="prompt-count" class="muted">0 / 4000</span></div>
-            <textarea id="prompt" name="prompt" rows="4" maxlength="4000" required placeholder="描述要修改的内容，也可以说明希望保留什么…">保留鸢尾花的细节，让背景更柔和，整体光线更温暖。</textarea>
-            <p id="input-lock" class="field-help" hidden>本次输入已固定。要调整图片或要求，请新建流程。</p>
-          </fieldset>
-          <button id="start" class="button primary start-button" type="submit"><span aria-hidden="true">↗</span> 开始演示</button>
-          <p class="start-help">只在明确开始后执行 · 当前为无费用演示</p>
-        </form>
-      </section>
-
-      <section id="result-panel" class="panel result-panel" aria-labelledby="result-heading">
-        <div class="panel-title result-title"><span class="step-number">02</span><h2 id="result-heading">比较与选择</h2><div class="view-switch" role="group" aria-label="比较方式"><button id="view-pair" class="active" type="button" aria-pressed="true">并排</button><button id="view-overlay" type="button" aria-pressed="false" disabled>叠图</button></div></div>
-
-        <div id="run-status" class="run-status" data-tone="neutral" role="status" aria-live="polite" aria-atomic="true"><span id="run-status-icon" class="run-status-icon" aria-hidden="true">○</span><div><strong id="status-title">准备好，就开始吧</strong><p id="status-message">右侧会保留原图与结果，方便你慢慢比较。</p></div><span id="busy-indicator" class="busy-indicator" hidden></span></div>
-
-        <div id="pair-view" class="pair-view">
-          <figure class="image-card"><figcaption><span><span class="image-dot original"></span>原图</span><span class="image-caption">SOURCE</span></figcaption><div class="image-stage"><img class="source-image" src="./assets/sample.webp" alt="原图预览"></div><button id="select-source" class="choice-button" type="button" aria-pressed="false" disabled><span class="choice-ring" aria-hidden="true"></span><span>选择原图</span></button></figure>
-          <figure class="image-card"><figcaption><span><span class="image-dot result"></span>示例结果</span><span class="image-caption">RESULT</span></figcaption><div class="image-stage"><img class="output-image" src="./assets/sample.webp" alt="内置样图演示结果，并非模型修改" hidden><div id="result-placeholder" class="result-placeholder"><img src="./assets/iris-mark.svg" width="45" height="49" alt=""><strong id="placeholder-title">下一张，等你决定</strong><p id="placeholder-message">开始后，在这里查看结果</p></div></div><button id="select-output" class="choice-button" type="button" aria-pressed="false" disabled><span class="choice-ring" aria-hidden="true"></span><span>选择结果</span></button></figure>
-        </div>
-
-        <div id="overlay-view" class="overlay-view" hidden>
-          <div class="overlay-stage"><img class="source-image" src="./assets/sample.webp" alt="叠图中的原图"><img id="overlay-output" class="output-image" src="./assets/sample.webp" alt="叠图中的示例结果"><span class="overlay-tag left">原图</span><span class="overlay-tag right">示例结果</span></div>
-          <label class="range-label" for="compare-position"><span>原图与示例结果</span><span id="compare-value">50%</span></label><input id="compare-position" type="range" min="0" max="100" value="50" aria-label="比较分界位置">
-          <p class="field-help">叠图仅帮助查看。使用下方按钮明确选择要下载的图片。</p>
-          <div class="overlay-choices"><button id="overlay-select-source" class="button secondary" type="button" aria-pressed="false">选择原图</button><button id="overlay-select-output" class="button secondary" type="button" aria-pressed="false">选择结果</button></div>
-        </div>
-
-        <div class="result-footer"><p id="selection-message">先比较，再选择。选择后即可下载。</p><button id="download" class="button primary" type="button" disabled><span aria-hidden="true">↓</span> 下载所选图片</button></div>
-        <div class="run-controls"><button id="continue" class="button secondary" type="button" hidden>查看原任务</button><button id="cancel" class="text-button" type="button" hidden>停止本次等待</button><button id="refresh" class="text-button" type="button" disabled>重新读取状态</button><span id="run-short-id" class="mono muted">尚未开始</span></div>
-      </section>
-    </div>
-
-    <details id="diagnostics" class="diagnostics">
-      <summary><span class="diagnostic-heading"><span aria-hidden="true">⌘</span> 运行详情与演示场景</span><span class="disclosure-label" aria-hidden="true"><span class="when-closed">展开</span><span class="when-open">收起</span><span class="chevron">⌄</span></span></summary>
-      <div class="diagnostic-body"><div class="facts-column"><h3>本次状态</h3><dl><div><dt>流程</dt><dd id="detail-run">尚未创建</dd></div><div><dt>任务</dt><dd id="detail-task">尚未提交</dd></div><div><dt>受理 / 结果 / 交付</dt><dd id="detail-state">—</dd></div><div><dt>演示提交次数</dt><dd id="detail-submissions">0</dd></div></dl><p class="field-help">此处只展示状态。展开、刷新或重新读取不会开始生成。</p></div><div class="scenario-column"><label class="field-label" for="scenario">下一条流程的演示场景</label><select id="scenario"><option value="success">正常完成</option><option value="running">原任务进行中</option><option value="unknown">请求受理未知</option><option value="delivery_failed">生成成功，交付中断</option><option value="needs_comparison">结果已保存，等待比较</option></select><p class="field-help">只控制内存中的演示，不调用模型。新流程生效；整页刷新会清空本次演示状态。</p><label class="field-label" for="history">本标签页的流程</label><select id="history" disabled><option value="">尚无流程</option></select><p class="field-help">切换只读取已有状态，不继续执行。</p></div></div>
-    </details>
-    <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
-    <footer class="page-footer"><span>iris. <span class="muted">给创作留一点余地。</span></span><span>独立工作台原型 <span class="footer-separator">/</span> 0.3</span></footer>
-  </main>
+  </div>
+  <dialog id="image-dialog" aria-labelledby="image-dialog-title"><div class="dialog-heading"><strong id="image-dialog-title">原图预览</strong><button class="icon-button" data-close-dialog="image-dialog" type="button" aria-label="关闭图片预览">×</button></div><img id="expanded-image" alt="放大的图片预览"><p class="field-help">仅放大当前图片，不改变原始像素或生成结果。</p></dialog>
+  <dialog id="demo-dialog" aria-labelledby="demo-dialog-title"><div class="dialog-heading"><h2 id="demo-dialog-title">这是 Iris 的交互 Demo</h2><button class="icon-button" data-close-dialog="demo-dialog" type="button" aria-label="关闭演示说明">×</button></div><p>你可以选图、填写要求、比较、选择和下载。结果始终使用内置样图，并不是对上传图片的真实修改。</p><p>演示不连接模型、不计费，不读取 Core 或 Provider 配置。流程和连接草稿只存在本标签页，刷新整页会清空。</p><p>正式工作台的媒体创作与持久选择仍需单独接入。</p></dialog>
   <noscript><p class="no-script">请启用 JavaScript 体验交互原型。页面不会连接模型。</p></noscript>
 </body>
 </html>

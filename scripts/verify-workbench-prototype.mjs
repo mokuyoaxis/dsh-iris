@@ -50,7 +50,8 @@ async function evaluate(expression) {
   return value.result.value;
 }
 async function click(selector) {
-  const box = await evaluate(`(() => {const n=document.querySelector(${JSON.stringify(selector)});if(!n||n.disabled)throw Error('Button unavailable');n.scrollIntoView({block:'center'});const r=n.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+  const box = await evaluate(`(async () => {const n=document.querySelector(${JSON.stringify(selector)});if(!n||n.disabled)throw Error('Control unavailable: '+${JSON.stringify(selector)});n.scrollIntoView({block:'center'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));const r=n.getBoundingClientRect();const p={x:r.x+r.width/2,y:r.y+r.height/2};if(!n.contains(document.elementFromPoint(p.x,p.y)))throw Error('Control obscured: '+${JSON.stringify(selector)});return p})()`);
+  await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', ...box });
   await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...box });
   await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...box });
 }
@@ -63,9 +64,11 @@ async function measure(name) {
     const visible=n=>n.getClientRects().length&&getComputedStyle(n).visibility!=='hidden';
     return {width:innerWidth,height:innerHeight,scrollWidth:document.documentElement.scrollWidth,
       overflows:[...document.querySelectorAll('button,select,textarea,summary')].filter(visible).filter(n=>{const b=n.getBoundingClientRect();return b.left<-.5||b.right>innerWidth+.5}).map(n=>n.id||n.tagName),
+      outsideElements:[...document.querySelectorAll('body *')].filter(visible).flatMap(n=>{const b=n.getBoundingClientRect();return b.left<-.5||b.right>innerWidth+.5?[{element:n.id||n.className?.baseVal||n.className||n.tagName,left:b.left,right:b.right,width:b.width}]:[]}).slice(0,20),
       diagnosticsOpen:document.querySelector('#diagnostics').open};})()`);
-  const size = report.layout[name]; assert(size.scrollWidth <= size.width, name + ' horizontal page overflow');
-  assert.deepEqual(size.overflows, [], name + ' clipped controls'); save();
+  const size = report.layout[name]; save();
+  assert(size.scrollWidth <= size.width, name + ' horizontal page overflow');
+  assert.deepEqual(size.overflows, [], name + ' clipped controls');
 }
 async function capture(name) {
   await evaluate('window.scrollTo(0,0)'); await sleep(80);
@@ -108,16 +111,30 @@ try {
   await cdp('Page.navigate', { url: preview.origin + '/' });
   await wait(() => evaluate("Boolean(document.querySelector('#model')?.options.length)"), 'prototype mount');
   await evaluate('document.fonts.ready');
-  await evaluate('Promise.all([...document.images].map(image=>image.decode()))');
+  await evaluate('Promise.all([...document.images].filter(image=>image.hasAttribute("src")).map(image=>image.decode()))');
   await check('initial read is idle, no generation, diagnostics collapsed', "document.querySelector('#detail-submissions').textContent==='0'&&!document.querySelector('#diagnostics').open&&document.querySelector('#download').disabled");
+  await check('workspace starts with three real navigable pages and no stored data', "document.querySelectorAll('.main-nav button').length===3&&document.querySelector('#nav-studio').getAttribute('aria-current')==='page'&&localStorage.length===0&&sessionStorage.length===0");
   await measure('desktop-initial'); await capture('desktop-initial');
   await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
   await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
   await check('keyboard focus is visible', "document.activeElement.matches(':focus-visible')&&document.activeElement!==document.body");
+  await click('#nav-gallery');
+  await check('empty gallery contains no invented completed flows', "!document.querySelector('#gallery-page').hidden&&!document.querySelector('#gallery-empty').hidden&&document.querySelectorAll('.gallery-card').length===0&&document.querySelector('#gallery-count').textContent==='0'");
+  await capture('desktop-gallery-empty'); await click('#nav-studio');
+  await click('[data-prompt]');
+  await check('prompt presets edit the draft without starting media', "document.querySelector('#prompt').value.includes('景深')&&document.querySelector('#detail-submissions').textContent==='0'");
+  await click('#preview-open');
+  await wait(() => evaluate("document.querySelector('#image-dialog').open&&document.querySelector('#expanded-image').complete"), 'image enlargement');
+  const sample = await sharp(path.join(root, 'docs/assets/examples/iris-flower-generated.webp')).metadata();
+  await check('enlargement and dimension label match the actual existing sample', `document.querySelector('#expanded-image').naturalWidth===${sample.width}&&document.querySelector('#expanded-image').naturalHeight===${sample.height}&&document.querySelector('#file-dimensions').textContent===${JSON.stringify(sample.width + ' × ' + sample.height)}&&document.querySelector('#image-dialog-title').textContent==='原图预览'`);
+  await click('[data-close-dialog="image-dialog"]');
+  await click('#about-demo');
+  await check('demo explanation states sample results and ephemeral storage', "document.querySelector('#demo-dialog').open&&document.querySelector('#demo-dialog').textContent.includes('刷新整页会清空')");
+  await click('[data-close-dialog="demo-dialog"]');
   await evaluate("document.querySelector('#prompt').value='   '");
   await click('#start');
   await check('blank prompt rejected before creating or submitting', "document.querySelector('#detail-run').textContent==='尚未创建'&&document.querySelector('#feedback').textContent.includes('填写')");
-  await evaluate("document.querySelector('#prompt').value='保留花朵，让背景柔和。<img src=x onerror=alert(1)>'");
+  await evaluate("document.querySelector('#prompt').value='保留花朵，让背景更柔和，呈现自然的景深。'");
   await click('#start');
   await evaluate("document.querySelector('#start').click();document.querySelector('#start').click()");
   await wait(() => evaluate("document.querySelector('#status-title').textContent==='等待你的选择'"), 'normal completed');
@@ -143,6 +160,38 @@ try {
   report.checks.push('downloaded example bytes match the existing sample exactly');
   await click('#view-pair'); await measure('desktop-completed'); await capture('desktop-completed');
   await click('#theme-button'); await capture('desktop-dark'); await click('#theme-button');
+
+  await click('#nav-gallery');
+  await check('gallery and recent list reflect the actual selected flow', "document.querySelectorAll('.gallery-card').length===1&&document.querySelectorAll('.recent-item').length===1&&document.querySelector('.gallery-card').textContent.includes('已选择结果')");
+  const galleryCount = await count(); await click('[data-filter="pending"]');
+  await check('gallery filter does not fabricate pending work', "document.querySelectorAll('.gallery-card').length===0&&!document.querySelector('#gallery-empty').hidden");
+  await click('[data-filter="selected"]'); await measure('desktop-gallery'); await capture('desktop-gallery');
+  await click('.gallery-card'); assert.equal(await count(), galleryCount);
+  await check('gallery opens the original flow and selection without execution', `document.querySelector('#detail-run').textContent===${JSON.stringify(firstId)}&&document.querySelector('#select-output').getAttribute('aria-pressed')==='true'&&!document.querySelector('#studio-page').hidden`);
+  await click('#nav-connections');
+  await check('connection preview starts with no actual Core connection or drafts', "!document.querySelector('#connections-page').hidden&&document.querySelector('#draft-count').textContent==='0'&&document.querySelector('#draft-tool-count').textContent==='8 个'&&!document.querySelector('#draft-tools').open&&document.querySelector('#connections-page').textContent.includes('不创建真实授权')");
+  for (const scope of ['create', 'execute', 'stop']) await click('#draft-scopes input[value="' + scope + '"]');
+  await check('connection scope preview reflects all twelve current tools', "document.querySelector('#draft-tool-count').textContent==='12 个'");
+  await evaluate("document.querySelector('#draft-name').value='我的创作助手 · 项目 A'"); await click('#draft-save');
+  await check('saving a demo draft stays explicit and does not claim connection', "document.querySelectorAll('.draft-item').length===1&&document.querySelector('#draft-count').textContent==='1'&&document.querySelector('#feedback').textContent.includes('没有创建真实 Core 授权')");
+  await measure('desktop-connections'); await capture('desktop-connections');
+  await evaluate("document.querySelector('#draft-name').value='<img src=x onerror=alert(1)>';document.querySelector('#draft-save').click();document.querySelector('#draft-save').click()");
+  await check('draft labels are literal text and repeated save updates the same draft', "document.querySelectorAll('.draft-item').length===1&&document.querySelector('.draft-item strong').textContent.includes('<img src=x')&&document.querySelectorAll('[onerror]').length===0");
+  await click('#draft-image');
+  await check('disabling image capability leaves only two control tools', "document.querySelector('#draft-tool-count').textContent==='2 个'");
+  await click('#draft-new');
+  await check('new draft resets permissions while preserving old draft', "document.querySelectorAll('.draft-item').length===1&&!document.querySelector('#draft-name').value&&document.querySelector('#draft-tool-count').textContent==='8 个'&&!document.querySelector('#draft-scopes input[value=execute]').checked");
+  await click('.draft-item');
+  await evaluate("document.querySelector('#draft-name').value='我的创作助手 · 项目 A'"); await click('#draft-save');
+  for (const width of [390, 320]) {
+    await dimensions(width, 844); await measure('connections-mobile-' + width); await capture('connections-mobile-' + width);
+    await click('#draft-tools>summary'); await measure('connections-tools-mobile-' + width); await click('#draft-tools>summary');
+    await click('#nav-gallery'); await measure('gallery-mobile-' + width); await capture('gallery-mobile-' + width);
+    await click('#nav-studio'); await measure('studio-mobile-' + width); await capture('studio-mobile-' + width);
+    if (width === 390) { await click('#theme-button'); await capture('studio-mobile-dark-390'); await click('#theme-button'); }
+    await click('#nav-connections');
+  }
+  await click('#nav-studio'); await dimensions(1366, 900); assert.equal(await count(), galleryCount);
 
   await scenario('unknown');
   const unknownCount = await count();
@@ -179,6 +228,12 @@ try {
   await click('#diagnostics>summary');
 
   await click('#new-run');
+  await evaluate("document.querySelector('#prompt').value='<img src=x onerror=alert(1)> 保留原图细节。';document.querySelector('#scenario').value='success'");
+  await click('#start'); await wait(() => evaluate("document.querySelector('#status-title').textContent==='等待你的选择'"), 'literal prompt');
+  await click('#nav-gallery'); await click('[data-filter="all"]');
+  await check('gallery renders untrusted prompt text without interpreting HTML', "document.querySelector('.gallery-card p').textContent.includes('<img src=x onerror=alert(1)>')&&document.querySelectorAll('[onerror]').length===0");
+  await click('#nav-studio');
+  await click('#new-run');
   const uploadPath = path.join(out, 'local-source.png');
   await sharp({ create: { width: 48, height: 32, channels: 3, background: '#b94f38' } }).png().toFile(uploadPath);
   const documentNode = await cdp('DOM.getDocument');
@@ -202,16 +257,21 @@ try {
   await cdp('Page.reload');
   await wait(() => evaluate("document.querySelector('#detail-submissions')?.textContent==='0'&&document.querySelector('#model').options.length>0"), 'reload');
   await check('full reload clears demo memory and never automatically starts', "document.querySelector('#detail-run').textContent==='尚未创建'&&!document.querySelector('#diagnostics').open&&document.querySelector('#download').disabled");
+  await check('reload also clears connection drafts and gallery', "document.querySelector('#draft-count').textContent==='0'&&document.querySelector('#gallery-count').textContent==='0'&&localStorage.length===0&&sessionStorage.length===0");
   assert(report.requests.every(request => ['GET'].includes(request.method)), 'no browser upload or write requests');
   assert(report.requests.every(request => new URL(request.url).origin === preview.origin), 'no external browser requests');
   assert(report.requests.every(request => !new URL(request.url).pathname.startsWith('/api/')), 'no live API requests');
   assert.deepEqual(report.browserErrors, [], 'browser exceptions, CSP violations or console errors');
   report.checks.push('only same-origin static GET/blob reads, no API or external requests, no browser errors');
-  report.sourceHashes = Object.fromEntries(['index.html', 'styles.css', 'app.js', 'view-model.js', 'demo-transport.js']
+  report.sourceHashes = Object.fromEntries(['index.html', 'styles.css', 'app.js', 'workspace-panels.js', 'view-model.js', 'demo-transport.js']
     .map(name => [name, createHash('sha256').update(fs.readFileSync(path.join(root, 'prototypes/workbench', name))).digest('hex')]));
   report.status = 'passed';
 } catch (error) {
   report.status = 'failed'; report.failure = error.stack; process.exitCode = 1;
+  if (socket?.readyState === WebSocket.OPEN) {
+    try { await capture('failure'); }
+    catch (captureError) { report.failureCaptureError = captureError.message; }
+  }
 } finally {
   if (socket) socket.close();
   for (const request of pending.values()) { clearTimeout(request.timer); request.reject(new Error('Browser verification ended')); }

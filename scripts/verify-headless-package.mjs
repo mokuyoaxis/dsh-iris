@@ -595,6 +595,16 @@ try {
     flowConfig, path.join(work, 'local-web-token'), 'web'], { env: { DSH_HOME: unusedDsh }, label: 'installed read-only workbench', timeout: 40000 }));
   assert.deepEqual(state(), apiStateBefore, '只读 API 不得调用 Provider 或修改夹具状态');
   assert.equal(report.localReadApi.mediaSha256, flowDone.run.output.sha256);
+  report.localSelectionApi = JSON.parse(run(process.execPath, [apiProbe, path.join(installed, 'bin/dsh-iris.js'), flowRoot, flowId,
+    flowConfig, path.join(work, 'selection-api-token'), 'api', '--allow-selection'],
+  { env: { DSH_HOME: unusedDsh }, label: 'installed owner selection API without Provider', timeout: 40000 }));
+  report.localSelectionWeb = JSON.parse(run(process.execPath, [apiProbe, path.join(installed, 'bin/dsh-iris.js'), flowRoot, flowId,
+    flowConfig, path.join(work, 'selection-web-token'), 'web', '--allow-selection'],
+  { env: { DSH_HOME: unusedDsh }, label: 'installed Web owner selection and persisted choice', timeout: 40000 }));
+  assert.equal(report.localSelectionApi.selection.artifactId, flowSource.id);
+  assert.equal(report.localSelectionWeb.selection.initialArtifactId, flowSource.id);
+  assert.equal(report.localSelectionWeb.selection.artifactId, flowDone.run.output.artifactId);
+  assert.deepEqual(state(), apiStateBefore, '持久选择不得调用 Provider 或修改生成夹具状态');
   const creationRoot = path.join(work, 'creation-api-core'), creationProbe = path.join(work, 'creation-api-probe.mjs');
   cli(['flow', 'init', '--data-root', creationRoot]);
   cli(['api', 'init', '--data-root', creationRoot]);

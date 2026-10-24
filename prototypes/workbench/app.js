@@ -1,5 +1,6 @@
 import { canSelect, presentFlow } from './view-model.js';
 import { createDemoTransport, DEMO_MODELS } from './demo-transport.js';
+import { createWorkspacePanels } from './workspace-panels.js';
 
 const $ = id => document.getElementById(id);
 const transport = createDemoTransport();
@@ -8,11 +9,17 @@ const MAX_IMAGE = 20 * 1024 * 1024;
 const sources = new Map();
 let sourceSerial = 1000, currentSource, view = null, controller = null, compareMode = 'pair';
 let uploading = false;
+const panels = createWorkspacePanels({ list: transport.list, inspect: transport.inspect, sourceFor: id => sources.get(id),
+  openRun, newRun: () => $('new-run').click(), feedback });
 
-function feedback(message, error = false) { $('feedback').textContent = message; $('feedback').dataset.error = String(error); }
+function feedback(message, error = false) {
+  const output = $('feedback'); output.textContent = message; output.dataset.error = String(error);
+  const control = document.querySelector('#studio-page:not([hidden]) .run-controls, #gallery-page:not([hidden]) .gallery-toolbar, #connections-page:not([hidden]) .draft-save-row');
+  control?.after(output);
+}
 function sourceFromSample() {
   const source = { id: 'artifact_' + (++sourceSerial).toString(16).padStart(24, '0'), url: SAMPLE,
-    name: 'iris-flower.webp', dimensions: '1600 × 1600', type: 'image/webp' };
+    name: 'iris-flower.webp', dimensions: '2048 × 2048', type: 'image/webp' };
   sources.set(source.id, source);
   return source;
 }
@@ -36,7 +43,7 @@ function updateHistory() {
 function render() {
   const busy = Boolean(controller);
   const state = view ? presentFlow(view) : { title: '准备好，就开始吧', tone: 'neutral', action: null,
-    message: '右侧会保留原图与结果，方便你慢慢比较。' };
+    message: '画布会保留原图与结果，方便你慢慢比较。' };
   $('input-fields').disabled = Boolean(view) || busy || uploading;
   $('upload-hint').textContent = view ? '本次来源已固定' : '↥ 点击换图，或拖放图片';
   $('input-lock').hidden = !view;
@@ -50,6 +57,7 @@ function render() {
   $('run-status-icon').textContent = busy ? '◌' : state.tone === 'success' ? '✓' : state.tone === 'warning' ? '!' : '○';
   $('result-panel').setAttribute('aria-busy', String(busy));
   const hasOutput = Boolean(view?.output), selectable = Boolean(view && canSelect(view));
+  $('result-panel').dataset.hasOutput = String(hasOutput);
   document.querySelectorAll('.output-image').forEach(image => { image.hidden = !hasOutput; });
   $('result-placeholder').hidden = hasOutput;
   $('placeholder-title').textContent = busy ? '结果正在路上' : view?.status === 'needs_attention' ? '先确认原任务' : '下一张，等你决定';
@@ -83,6 +91,7 @@ function render() {
   $('detail-submissions').textContent = String(transport.stats().submissions);
   $('prompt-count').textContent = `${$('prompt').value.length} / 4000`;
   updateHistory();
+  panels.update({ busy, uploading });
 }
 
 async function operate() {
@@ -137,8 +146,9 @@ $('refresh').addEventListener('click', () => {
 });
 $('new-run').addEventListener('click', () => {
   if (controller || uploading) return;
+  panels.show('studio');
   view = null; compareMode = 'pair'; $('input-fields').disabled = false;
-  feedback('已准备新流程，之前的记录仍可在运行详情中查看。'); render(); $('prompt').focus();
+  feedback('已准备新流程，之前的记录仍可在作品页或最近流程中查看。'); render(); $('prompt').focus();
 });
 $('prompt').addEventListener('input', () => { $('prompt-count').textContent = `${$('prompt').value.length} / 4000`; });
 $('use-sample').addEventListener('click', () => {
@@ -160,12 +170,25 @@ for (const name of ['source', 'output']) for (const prefix of ['select-', 'overl
   view = transport.select(view.id, view[name].artifactId); render();
   feedback(`已选择${name === 'source' ? '原图' : '示例结果'}。下载仍需单独点击。`);
 });
-$('history').addEventListener('change', event => {
-  if (!event.target.value || controller || uploading) return;
-  view = transport.inspect(event.target.value); setSource(sources.get(view.source.artifactId));
+function openRun(id) {
+  if (!id || controller || uploading) return;
+  view = transport.inspect(id); setSource(sources.get(view.source.artifactId));
   $('prompt').value = view.input.prompt; $('model').value = view.input.modelRef;
+  panels.show('studio');
   render(); feedback('已读取原流程，没有继续执行。');
+}
+$('history').addEventListener('change', event => openRun(event.target.value));
+for (const button of document.querySelectorAll('[data-prompt]')) button.addEventListener('click', () => {
+  if (view || controller || uploading) return;
+  $('prompt').value = button.dataset.prompt; $('prompt-count').textContent = `${$('prompt').value.length} / 4000`;
+  feedback('已填入示例要求，点击开始演示才会执行。');
 });
+$('preview-open').addEventListener('click', () => {
+  $('expanded-image').src = currentSource.url; $('expanded-image').alt = '放大的原图预览'; $('image-dialog').showModal();
+});
+$('about-demo').addEventListener('click', () => $('demo-dialog').showModal());
+for (const button of document.querySelectorAll('[data-close-dialog]')) button.addEventListener('click', () => $(button.dataset.closeDialog).close());
+for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
 $('download').addEventListener('click', async () => {
   if (!view?.selection || controller) return;
   const runId = view.id;

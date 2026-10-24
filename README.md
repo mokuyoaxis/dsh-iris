@@ -48,11 +48,13 @@ dsh-iris 为 Agent、Iris 工作台和独立 CLI 提供图像、视频、音乐�
 
 Iris 0.2.7 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和模型路由。本版修复宿主截图集成，并增加持久图片流程、本地 API 和显式 Core Skill 安装；连接复用、功能池、目录同步与既有媒体能力继续可用。Core 内部接口尚未冻结为公共 SDK。
 
-0.2.7 包含宿主截图适配、实际截图地址、主动截图自检、内部应用运行时与 [DSH 实例装配](docs/DSH_RUNTIME.md)、[首版持久改图流程](docs/IMAGE_FLOW.md)、[默认只读本地 API](docs/LOCAL_API.md)及主动启用的 [本地上传与创建](docs/LOCAL_CREATION.md)，见 [0.2.7 发布说明](docs/releases/0.2.7.md)。源码树保留 [面向 0.3.0 的独立 Web Demo](docs/WEB_PROTOTYPE.md)，用于展示操作方向；界面与交互细节将在 0.3.0 阶段统一润色。Demo 使用内置样例，不连接模型、不计费；API 执行/取消与真实工作台联调继续按 [0.3 路线图](docs/ROADMAP.md#03-及以后)推进。
+0.2.7 包含宿主截图适配、实际截图地址、主动截图自检、内部应用运行时与 [DSH 实例装配](docs/DSH_RUNTIME.md)、[首版持久改图流程](docs/IMAGE_FLOW.md)、[默认只读本地 API](docs/LOCAL_API.md)及主动启用的 [本地上传与创建](docs/LOCAL_CREATION.md)，见 [0.2.7 发布说明](docs/releases/0.2.7.md)。源码树另有 [面向 0.3.0 的独立 Web Demo](docs/WEB_PROTOTYPE.md)：大图创作、作品筛选与连接草稿三个页面，支持浅/深色与窄屏。Demo 使用内置样例，不连接模型、不计费；真实页面的创作与选择按钮继续按 [0.3 路线图](docs/ROADMAP.md#03-及以后)推进。
 
 > 版本支持：Iris 0.2.7 沿用 0.2.5 的 12 个准确 DSH 版本，见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。保留旧 DSH 时仍需 Node.js ≥22.0.0，宿主若要求更高，以宿主为准。连接复用另需宿主提供对应公开接口。
 
 **0.3 开发预览（未发布）**：源码新增 [Core 工作台](docs/LOCAL_WEB.md)，默认浏览持久图片流程与已选作品下载，也可显式开启连接中心：自由命名、选择功能/工具权限、导出 MCP 配置、编辑和撤销。媒体生成与选择按钮尚未接入；已发布 npm 0.2.7 没有 `web serve`。
+
+源码后端已提供 [持久选择 API](docs/LOCAL_SELECTION.md)：`api/web serve --allow-selection` 仅允许工作台所有者按当前 Run 版本保存原图或结果，不调用模型。创建、执行和选择的媒体开关可独立于连接管理使用，默认仍只读；这些后端接口也尚未发布。
 
 连接中心另支持纯数据接入模板和按有效工具生成的 [MCP Skill](docs/CORE_SKILLS.md#连接专属-mcp-skill未发布)。模板不增加权限；说明采用英文正文附中文标题，下载后显式指定客户端的 Skills 目录安装，本地修改受到保护。这些能力尚未发布。
 
