@@ -5,14 +5,15 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 
-const [cli, dataRoot, runId, providerConfig, tokenFile] = process.argv.slice(2);
+const [cli, dataRoot, runId, providerConfig, tokenFile, mode = 'api'] = process.argv.slice(2);
+assert(['api', 'web'].includes(mode));
 const digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 function tree(directory) {
   return Object.fromEntries(fs.readdirSync(directory, { recursive: true, withFileTypes: true }).filter(entry => entry.isFile())
     .map(entry => { const file = path.join(entry.parentPath, entry.name); return [path.relative(directory, file), digest(fs.readFileSync(file))]; }));
 }
 const before = tree(dataRoot), configHash = digest(fs.readFileSync(providerConfig));
-const child = spawn(process.execPath, [cli, 'api', 'serve', '--data-root', dataRoot, '--provider-config', providerConfig, '--token-file', tokenFile],
+const child = spawn(process.execPath, [cli, mode, 'serve', '--data-root', dataRoot, '--provider-config', providerConfig, '--token-file', tokenFile],
   { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NODE_PATH: '', NODE_OPTIONS: '', IRIS_IMPORT_WORKBENCH_CONFIG: '' } });
 let stdout = '', stderr = '', exited = false;
 child.stdout.on('data', bytes => { stdout += bytes; }); child.stderr.on('data', bytes => { stderr += bytes; });
@@ -30,6 +31,13 @@ try {
     return { response, bytes, json: response.headers.get('content-type')?.startsWith('application/json') ? JSON.parse(bytes) : null };
   }
   assert.equal((await get('/api/v0/session', false)).response.status, 401);
+  if (mode === 'web') {
+    for (const resource of ['/', '/app.js', '/transport.js', '/flow-view.js', '/connections.js', '/styles.css', '/iris-mark.svg']) {
+      const asset = await get(resource, false); assert.equal(asset.response.status, 200, resource); assert(asset.bytes.length);
+      assert(!asset.bytes.includes(token) && !asset.bytes.includes(dataRoot));
+    }
+    assert.equal((await get('/.internal/PLAN.md')).response.status, 404);
+  } else assert.equal((await get('/', false)).response.status, 401);
   const info = (await get('/api/v0/session')).json; assert(info.readOnly);
   const models = (await get('/api/v0/models')).json; assert(models.models.some(model => model.modelRef === 'flow::edit' && model.supportsImageEdit));
   const list = (await get('/api/v0/runs?limit=1')).json; assert.equal(list.total, 1); assert.equal(list.runs[0].id, runId);
@@ -48,7 +56,7 @@ try {
   if (process.platform === 'win32') assert.equal(stopped.signal, 'SIGTERM');
   else assert.equal(stopped.code, 143);
   await assert.rejects(fetch(session.origin + '/api/v0/session'));
-  console.log(JSON.stringify({ readOnly: true, authenticated: true, coreBytesUnchanged: true, configUnchanged: true,
+  console.log(JSON.stringify({ mode, readOnly: true, authenticated: true, coreBytesUnchanged: true, configUnchanged: true,
     mediaSha256: digest(media.bytes), downloadMatchesSelection: true, writesRefused: true, stopped: true,
     gracefulSignalStopVerified: process.platform !== 'win32', secretNotPrinted: true }));
 } finally { clearTimeout(timer); if (!exited) { child.kill('SIGTERM'); await closed; } }

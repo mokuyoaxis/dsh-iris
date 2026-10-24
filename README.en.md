@@ -58,6 +58,14 @@ Version 0.2.7 includes host screenshot adaptation, address resolution, an explic
 
 > Version support: Iris 0.2.7 retains the 12 exact DSH versions declared in 0.2.5; see the [compatibility matrix](docs/DSH_COMPATIBILITY.md). Node.js must be at least 22.0.0 and meet any higher host requirement. Connection reuse also requires the relevant public host services.
 
+**0.3 development preview (unreleased):** the source checkout adds a [Core workbench](docs/LOCAL_WEB.md) (Chinese). It browses persistent image flows and existing selections by default; an explicit connection center adds freely named profiles, capability/tool permissions, MCP configuration export, editing, and revocation. Media generation and selection buttons are still pending. The published npm 0.2.7 package does not include `web serve`.
+
+The connection center also imports data-only connection templates and generates [MCP Skills for the effective tool selection](docs/CORE_SKILLS.md#连接专属-mcp-skill未发布) (Chinese guide). Templates grant no permission. Skill instructions use English with Chinese headings; download the descriptor and explicitly install it into a client scan directory, with local changes protected. These features are unreleased.
+
+The standalone frontend has Artifacts and Connections views: source/result comparisons with collapsed details, and explicit connection, template, and Skill management. Light/dark themes and narrow layouts are implemented. Upload, execution, and persistent selection controls are pending; the interactive [Web Demo](docs/WEB_PROTOTYPE.md) (Chinese guide) uses bundled sample results.
+
+The source also adds [Operation storage and a root-version gate](docs/LOCAL_OPERATIONS.md) and a [Core execution service](docs/CORE_SERVICE.md) (Chinese): one runner per dedicated root, explicit continuation/local stopping, authorized connection handshakes, [generic MCP](docs/MCP.md) over stdio/Streamable HTTP with explicit capability/tool selection and configuration export, and an optional DSH connection for shared Flows. MCP currently exposes the fixed image-edit workflow; the guide lists remaining media coverage. Web media operations remain read-only; existing roots are not migrated, and these entries are unreleased.
+
 ## What's new in 0.2.7 and existing features
 
 **Improve host screenshots and use image workflows and Skills outside DSH.** Function pools retain stable priority and safe failover, without cross-request round-robin.
@@ -338,7 +346,7 @@ Legacy media links carry random capability tokens. Core media uses random Artifa
 
 ## Agent Skills
 
-Version 0.2.7 adds a host-independent [`iris-core`](skills/iris-core/SKILL.md) for image import, generation, editing, and retrieval through the existing standalone CLI. Instructions are in English with Chinese titles. Explicit `skills install/status/uninstall` commands support Kimi or a supplied scan directory, preserve local changes, and archive managed updates/removals. See [loading and scope](docs/CORE_SKILLS.md). These resources and commands ship in npm 0.2.7. The three DSH skills below remain registered as before; a formal MCP integration is still future work.
+Version 0.2.7 adds a host-independent [`iris-core`](skills/iris-core/SKILL.md) for image import, generation, editing, and retrieval through the existing standalone CLI. Instructions are in English with Chinese titles. Explicit `skills install/status/uninstall` commands support Kimi or a supplied scan directory, preserve local changes, and archive managed updates/removals. See [loading and scope](docs/CORE_SKILLS.md). These resources and commands ship in npm 0.2.7. The three DSH skills below remain registered as before; the unreleased [Core service](docs/CORE_SERVICE.md) provides the formal MCP entry with separately configured authorization.
 
 The DSH skill registry receives three bundled skills:
 

@@ -23,13 +23,12 @@ import { parseModelRef, modelRef as qualifiedModelRef } from '../lib/models.js';
 import { coreTaskWaitFinished } from '../lib/task-wait.js';
 import { createLocalReadApi, writeLocalApiTokenFile } from '../lib/local-api.js';
 import { manageCoreSkill } from '../lib/skill-installation.js';
+import { createTrackedProviderAdapter } from '../lib/configured-image-runtime.js';
+import { inspectExecutionLease, recoverExecutionLease } from '../lib/operation-runner.js';
+import { createConnectionPair } from '../lib/core-connections.js';
 
 function trackedProviderAdapter(provider, options, task) {
-  return createConfiguredProviderAdapter(provider, {
-    modelId: parseModelRef(task?.modelRef)?.modelId,
-    onModelAvailability: event => recordCatalogAvailability(options['provider-config'], event),
-    onRateLimit: event => recordCatalogRateLimit(options['provider-config'], event)
-  });
+  return createTrackedProviderAdapter(provider, options['provider-config'], task);
 }
 
 async function generationCatalog(options, capability, modelRef, signal = cliAbortController.signal) {
@@ -53,11 +52,30 @@ function usage() {
     '  JSON input: --input <json>, --input-file <path>, or --input - (stdin).',
     '  dsh-iris skills <install|status|uninstall> --target kimi [--directory <absolute-skills-directory>]',
     '  dsh-iris skills <install|status|uninstall> --directory <absolute-skills-directory>',
+    '  dsh-iris skills <install|status|uninstall> --bundle <absolute-connection-skill.json> --directory <absolute-skills-directory> [--dry-run]',
     '    install/uninstall accept --dry-run. Copy only iris-core; preserve local changes and archive managed updates/removals outside the scan directory. status is read-only and does not verify host discovery.',
     '  dsh-iris doctor [--data-root <absolute-path>] [--json]',
     '  dsh-iris api init --data-root <empty-existing-flow-root>',
+    '  dsh-iris execution init --data-root <empty-existing-flow-root>',
+    '    Initialize a NEW v1 request container for Operation storage only; no runner or generation. Existing v0 roots are never migrated.',
+    '  dsh-iris execution inspect --data-root <v1-flow-root>',
+    '  dsh-iris execution recover-lease --data-root <v1-flow-root> --confirm-stale-pid <pid>',
+    '  dsh-iris connection create --data-root <v1-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris api serve ... --allow-execution --provider-config <absolute-path> [--connections-file <private-grants-file>]',
+    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit|none>] [--tools <comma-separated-names|none>]',
+    '    Official SDK stdio bridge to an already running Core service. Read-only by default; stdout contains MCP messages only.',
+    '  dsh-iris mcp capabilities',
+    '  dsh-iris mcp config --connection-file <private-client-json> [--transport <stdio|http>] [--format <mcpServers|entry>] [--output <new-absolute-path>]',
+    '    stdio config also accepts scopes/capabilities/tools. HTTP config includes credentials and requires a new file inside the connection private directory.',
+    '  dsh-iris api serve ... --connections-file <private-grants-file> --allow-mcp',
+    '  dsh-iris web serve ... --connection-store <private-directory-outside-core> --allow-connection-management [--allow-mcp] [--allow-execution --provider-config <absolute-path>]',
+    '    Explicit standard Streamable HTTP endpoint at /mcp; default remains disabled. Uses the existing Core service and user-selected connection tools.',
+    '  dsh-iris operation list --data-root <execution-root> [--run-id <run-id>] [--limit <1..30>] [--cursor <operation-id>]',
+    '  dsh-iris operation inspect <operation-id> --data-root <execution-root>',
     '  dsh-iris api serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>] [--allow-local-writes]',
     '    Explicit loopback-only API, read-only by default. Local writes only upload images/create Runs, without generation. The session token is saved privately; stdout contains no token.',
+    '  dsh-iris web serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>]',
+    '    Read-only local workbench: connect with the token file to browse persistent image flows and download an existing selection. No generation or DSH startup.',
     '  dsh-iris runtime recover --data-root <absolute-path> --confirm-stale-pid <pid>',
     '  dsh-iris providers list --provider-config <absolute-path>',
     '  dsh-iris capabilities list --provider-config <absolute-path>',
@@ -225,10 +243,10 @@ async function main(args) {
   if (args[0] === 'skills') {
     const rest = args.slice(2), dryRunFlags = rest.filter(value => value === '--dry-run');
     if (dryRunFlags.length > 1) throw new CliUsageError('参数重复：--dry-run');
-    const options = flags(rest.filter(value => value !== '--dry-run'), ['target', 'directory']);
+    const options = flags(rest.filter(value => value !== '--dry-run'), ['target', 'directory', 'bundle']);
     let result;
     try {
-      result = manageCoreSkill({ action: args[1], target: options.target, directory: options.directory, dryRun: dryRunFlags.length === 1 });
+      result = manageCoreSkill({ action: args[1], target: options.target, directory: options.directory, bundle: options.bundle, dryRun: dryRunFlags.length === 1 });
     } catch (error) {
       if (error.code === 'IRIS_SKILL_OPTIONS_INVALID') throw new CliUsageError(error.message);
       throw error;
@@ -237,8 +255,78 @@ async function main(args) {
     return args[1] === 'status' && result.status !== 'current' ? 1 : 0;
   }
 
-  if (args[0] === 'api') {
-    if (args[1] === 'init') {
+  if (args[0] === 'mcp') {
+    if (args[1] === 'capabilities') {
+      flags(args.slice(2), []);
+      const { BRIDGE_CAPABILITIES, BRIDGE_CONTROL_TOOLS } = await import('../lib/core-bridge-selection.js');
+      console.log(JSON.stringify({ contractVersion: 0, capabilities: BRIDGE_CAPABILITIES, controlTools: BRIDGE_CONTROL_TOOLS,
+        implementedMedia: ['image-edit/v0'], selectionDoesNotGenerate: true }, null, 2)); return 0;
+    }
+    if (!['serve', 'config'].includes(args[1])) throw new CliUsageError('mcp 支持 serve/config/capabilities');
+    const options = flags(args.slice(2), ['connection-file', 'scopes', 'capabilities', 'tools', ...(args[1] === 'config' ? ['transport', 'format', 'output'] : [])]);
+    const list = value => value === 'none' ? [] : value.split(',');
+    const selected = { ...(options.capabilities !== undefined ? { capabilities: list(options.capabilities) } : {}),
+      ...(options.tools !== undefined ? { tools: list(options.tools) } : {}) };
+    if (args[1] === 'config') {
+      const { exportMcpConfiguration } = await import('../lib/mcp-config.js');
+      console.log(JSON.stringify(exportMcpConfiguration({ connectionFile: required(options['connection-file'], 'connection-file'), ...selected,
+        ...(options.scopes !== undefined ? { scopes: options.scopes.split(',') } : {}), transport: options.transport, format: options.format, output: options.output }), null, 2));
+      return 0;
+    }
+    const { createMcpBridge } = await import('../lib/mcp-bridge.js');
+    const manifest = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    const bridge = createMcpBridge({ connectionFile: required(options['connection-file'], 'connection-file'),
+      requestedScopes: (options.scopes === undefined ? 'read' : options.scopes).split(','), ...selected, version: manifest.version });
+    const unregister = registerRuntime(bridge);
+    try { await bridge.start(); await bridge.closed; return 0; }
+    finally { try { await bridge.dispose(); } finally { unregister(); } }
+  }
+  if (args[0] === 'connection') {
+    if (args[1] !== 'create') throw new CliUsageError('connection 只支持显式 create');
+    const options = flags(args.slice(2), ['data-root', 'directory', 'origin', 'harness', 'label', 'scopes', 'capabilities', 'tools']);
+    const result = createConnectionPair({ dataRoot: required(options['data-root'], 'data-root'), directory: required(options.directory, 'directory'), origin: required(options.origin, 'origin'),
+      harnessKind: options.harness === undefined ? 'generic' : options.harness, label: required(options.label, 'label'),
+      ...(options.scopes !== undefined ? { scopes: options.scopes.split(',') } : {}),
+      ...(options.capabilities !== undefined ? { capabilities: options.capabilities === 'none' ? [] : options.capabilities.split(',') } : {}),
+      ...(options.tools !== undefined ? { tools: options.tools === 'none' ? [] : options.tools.split(',') } : {}) });
+    console.log(JSON.stringify(result, null, 2)); return 0;
+  }
+  if (args[0] === 'execution' || args[0] === 'operation') {
+    if (args[0] === 'execution') {
+      if (['inspect', 'recover-lease'].includes(args[1])) {
+        const options = flags(args.slice(2), ['data-root', ...(args[1] === 'recover-lease' ? ['confirm-stale-pid'] : [])]);
+        const dataRoot = required(options['data-root'], 'data-root');
+        if (args[1] === 'recover-lease' && !/^[1-9][0-9]*$/.test(options['confirm-stale-pid'] || '')) throw new CliUsageError('需要明确回显 stale owner PID');
+        const result = args[1] === 'inspect' ? inspectExecutionLease(dataRoot)
+          : recoverExecutionLease(dataRoot, { confirmStalePid: Number(options['confirm-stale-pid']) });
+        console.log(JSON.stringify(result, null, 2)); return 0;
+      }
+      if (args[1] !== 'init') throw new CliUsageError('不支持的 execution 子命令');
+      const options = flags(args.slice(2), ['data-root']);
+      const suppliedRoot = required(options['data-root'], 'data-root');
+      if (!path.isAbsolute(suppliedRoot)) throw new CliUsageError('data-root 必须是已初始化的空 Flow 根绝对路径');
+      let dataRoot;
+      try { dataRoot = fs.realpathSync(suppliedRoot); }
+      catch (_) { throw new CliUsageError('请先在新的专用数据根执行 flow init'); }
+      const result = await withApplication(dataRoot, application =>
+        application.execute('execution.init', {}, { signal: cliAbortController.signal }));
+      console.log(JSON.stringify(result, null, 2)); return 0;
+    }
+    if (!['list', 'inspect'].includes(args[1])) throw new CliUsageError('operation 只支持只读 list/inspect');
+    const inspecting = args[1] === 'inspect';
+    if (inspecting && (!args[2] || args[2].startsWith('--'))) throw new CliUsageError('缺少 Operation ID');
+    const options = flags(args.slice(inspecting ? 3 : 2), ['data-root', ...(inspecting ? [] : ['run-id', 'limit', 'cursor'])]);
+    if (options.limit !== undefined && !/^(?:[1-9]|[12][0-9]|30)$/.test(options.limit)) throw new CliUsageError('limit 必须是 1–30 的整数');
+    const input = inspecting ? { id: args[2] } : { ...(options['run-id'] ? { runId: options['run-id'] } : {}),
+      ...(options.limit !== undefined ? { limit: Number(options.limit) } : {}), ...(options.cursor ? { cursor: options.cursor } : {}) };
+    const result = await withApplication(required(options['data-root'], 'data-root'), application =>
+      application.execute('operation.' + args[1], input, { signal: cliAbortController.signal }));
+    console.log(JSON.stringify(result, null, 2)); return 0;
+  }
+
+  if (args[0] === 'api' || args[0] === 'web') {
+    const serveWorkbench = args[0] === 'web';
+    if (!serveWorkbench && args[1] === 'init') {
       const options = flags(args.slice(2), ['data-root']);
       const suppliedRoot = required(options['data-root'], 'data-root');
       if (!path.isAbsolute(suppliedRoot)) throw new CliUsageError('data-root 必须是已初始化的空 Flow 根绝对路径');
@@ -249,11 +337,13 @@ async function main(args) {
       console.log(JSON.stringify(initialized));
       return 0;
     }
-    if (args[1] !== 'serve') throw new CliUsageError('不支持的 api 子命令');
-    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes');
-    if (localWriteFlags.length > 1) throw new CliUsageError('参数重复：--allow-local-writes');
-    const allowLocalWrites = localWriteFlags.length === 1;
-    const options = flags(rest.filter(value => value !== '--allow-local-writes'), ['data-root', 'token-file', 'provider-config', 'port']);
+    if (args[1] !== 'serve') throw new CliUsageError(`不支持的 ${args[0]} 子命令`);
+    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes'), executionFlags = rest.filter(value => value === '--allow-execution'), mcpFlags = rest.filter(value => value === '--allow-mcp'), managementFlags = rest.filter(value => value === '--allow-connection-management');
+    if (localWriteFlags.length > 1 || executionFlags.length > 1 || mcpFlags.length > 1 || managementFlags.length > 1) throw new CliUsageError('写入/执行/MCP/连接管理参数重复');
+    const allowExecution = executionFlags.length === 1, allowLocalWrites = localWriteFlags.length === 1 || allowExecution;
+    const allowConnectionManagement = managementFlags.length === 1;
+    if (serveWorkbench && allowLocalWrites && !allowConnectionManagement) throw new CliUsageError('web serve 当前仅支持只读模式；执行须结合显式连接管理开启');
+    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-mcp', '--allow-connection-management'].includes(value)), ['data-root', 'token-file', 'provider-config', 'port', 'connections-file', 'connection-store']);
     const suppliedRoot = required(options['data-root'], 'data-root');
     const tokenFile = required(options['token-file'], 'token-file');
     if (!path.isAbsolute(suppliedRoot) || !path.isAbsolute(tokenFile)) throw new CliUsageError('data-root 与 token-file 必须是绝对路径');
@@ -262,13 +352,18 @@ async function main(args) {
     let dataRoot;
     try { dataRoot = fs.realpathSync(suppliedRoot); }
     catch (_) { throw new CliUsageError('data-root 必须是已初始化且可读取的 Flow 根'); }
-    const api = createLocalReadApi({ dataRoot, providerConfigPath: options['provider-config'], allowLocalWrites });
+    const api = createLocalReadApi({ dataRoot, providerConfigPath: options['provider-config'], allowLocalWrites, serveWorkbench,
+      allowExecution, allowMcp: mcpFlags.length === 1, connectionsFile: options['connections-file'], allowConnectionManagement, connectionStore: options['connection-store'] });
     const unregister = registerRuntime(api);
     try {
       const started = await api.start({ port: options.port === undefined ? 0 : Number(options.port) });
       writeLocalApiTokenFile(tokenFile, started.accessToken, dataRoot);
       console.log(JSON.stringify({ contractVersion: 0, readOnly: !allowLocalWrites, origin: started.origin, tokenFile,
-        message: allowLocalWrites ? '本地创建 API 已启动；只上传/创建，不执行生成。会话 Token 在指定私有文件中，退出后失效。'
+        ...(allowConnectionManagement ? { connectionManagement: true } : {}),
+        ...(started.mcpEndpoint ? { mcpEndpoint: started.mcpEndpoint } : {}),
+        message: serveWorkbench ? (allowConnectionManagement ? 'Core 工作台与连接管理已启动；打开 origin 并选择 Token 文件。配置连接不执行媒体。' : '只读工作台已启动；打开 origin 并选择 Token 文件连接。退出后 Token 失效。')
+          : allowExecution ? '有限执行 API 已启动；显式继续才执行，停止只中止本地等待，重启不自动重提。'
+          : allowLocalWrites ? '本地创建 API 已启动；只上传/创建，不执行生成。会话 Token 在指定私有文件中，退出后失效。'
           : '只读本地 API 已启动；会话 Token 在指定私有文件中，退出后失效。' }));
       await api.closed;
       return 0;

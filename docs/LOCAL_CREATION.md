@@ -1,5 +1,7 @@
 # 本地上传与流程创建（0.2.7 / I4B）
 
+未发布源码另支持 [Operation 专用 v1 根](LOCAL_OPERATIONS.md)与 [Core 有限执行服务](CORE_SERVICE.md)，需在新空 Flow 根显式 `execution init`，执行另主动开启；上传/创建仍不生成。下文说明已发布 0.2.7 的 v0 初始化流程，两种根不自动转换。
+
 0.2.7 在 [只读本地 API](LOCAL_API.md)之上，增加显式启用的图片上传和固定 Run 创建。两者都只提交本地数据，不生成、不观察任务、不调用 Provider。实际生成仍使用 [Flow CLI](IMAGE_FLOW.md)；执行/取消 API 与真实 Web 接入留到后续。本功能从 npm 0.2.7 起随包分发。
 
 ## 初始化与启用
@@ -31,7 +33,7 @@ dsh-iris api serve --data-root /absolute/path/new-flow-core --token-file /absolu
 
 超限返回 `413 IRIS_API_INPUT_TOO_LARGE`，不创建作品或消费 Key。对尚未结束的上传，先发送完整错误响应，再丢弃剩余正文并关闭连接；不继续缓存正文，连接仍受现有请求/空闲超时和服务停止约束。客户端收到拒绝后应停止上传。
 
-当前没有 `POST /runs/:id/continue`、selection、Operation 查询或取消接口。GET、HEAD、页面刷新和启动不自动执行或补完创建；现有 Demo 仍使用演示传输，尚未连接这个 API。
+已发布 0.2.7 与仅开启 `--allow-local-writes` 时没有 continue、selection、Operation 查询或取消接口。GET、HEAD、页面刷新和启动不自动执行或补完创建；现有 Demo 仍使用演示传输，尚未连接这个 API。
 
 ## 重试、删除与中断
 

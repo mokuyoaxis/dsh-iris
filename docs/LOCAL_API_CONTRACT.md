@@ -1,8 +1,12 @@
 # 独立本地 API 契约（0.3 / I4）
 
-0.2.7 已实现 **I4A 默认只读**与 **I4B 显式本地创建**：显式本机监听、Bearer/Host/Origin、受控流程/媒体，以及主动启用的上传/创建与持久身份接回，见 [只读 API](LOCAL_API.md)和 [本地创建](LOCAL_CREATION.md)。**继续/选择、Operation 与执行取消仍是设计稿**；本契约尚未冻结为公开 SDK，上述 I4A/I4B 入口随 npm 0.2.7 分发。
+0.2.7 已实现 **I4A 默认只读**与 **I4B 显式本地创建**：显式本机监听、Bearer/Host/Origin、受控流程/媒体，以及主动启用的上传/创建与持久身份接回，见 [只读 API](LOCAL_API.md)和 [本地创建](LOCAL_CREATION.md)。未发布源码另实现 [有限执行服务](CORE_SERVICE.md)与 [连接握手](CORE_CONNECTIONS.md)；选择 API 仍是设计稿。本契约尚未冻结为公开 SDK，只有上述 I4A/I4B 入口随 npm 0.2.7 分发。
 
-当前固定流程的真实执行入口仍是 [CLI](IMAGE_FLOW.md)；[独立 Web Demo](WEB_PROTOTYPE.md)只消费内存演示，保留到 0.3.0 阶段统一润色。它尚未接入只读 API，也不作为完整服务或写操作已经实现的依据。
+已发布固定流程通过 [CLI](IMAGE_FLOW.md)执行，未发布源码另有上方 Core 服务；[独立 Web Demo](WEB_PROTOTYPE.md)只消费内存演示，保留到 0.3.0 阶段统一润色。Demo 尚未接入只读 API，也不作为完整服务或写操作已实现的依据。
+
+未发布源码另有 [Core 工作台](LOCAL_WEB.md)，通过显式 `web serve` 同源提供固定静态资源并读取上述 API；登录页不包含私有数据，API/图片仍要求 Bearer。默认只读，显式连接管理模式可组合已有执行服务，但页面媒体操作仍只读；npm 0.2.7 尚不含，不改变下方已发布 I4A/I4B 的能力边界。
+
+源码另实现 [Operation 存储与版本门禁](LOCAL_OPERATIONS.md)，只在新专用根主动初始化；显式 `api serve --allow-execution` 装配 runner、持久接收/查询与本地停止，默认服务与页面媒体操作仍只读。v1 根复用零生成创建，写者拒绝损坏记录；具体执行与握手以服务指南为准。
 
 ## 1. 实例与启动
 
@@ -24,7 +28,7 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 
 ## 3. 有限路由
 
-下列除 Operation 外的 GET 路由已实现，并支持同样鉴权的 HEAD；I4B 只实现 images/runs 两个 POST，其他 POST 与 Operation 查询仍是提案。JSON 响应含 `contractVersion: 0`；列表最多 30 项，摘要不含 Prompt；创建 JSON 上限 64 KiB，Prompt 使用现行生成输入约束。未知/重复查询参数和带正文的只读请求拒绝。
+下列 GET/HEAD 已有实现，Operation 路由需未发布的显式执行模式；I4B 只含 images/runs 两个 POST，执行模式另含 continue/cancel。selection 仍为提案。JSON 响应含 `contractVersion: 0`；列表最多 30 项，摘要不含 Prompt；创建 JSON 上限 64 KiB，执行/连接 JSON 上限 8 KiB。未知/重复查询参数和带正文的只读请求拒绝。
 
 | 方法与路径 | 输入 | 语义 |
 |---|---|---|
@@ -34,12 +38,12 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 | `GET /runs` | `cursor`、`limit`，limit 1–30 | 已有流程摘要，不含 Prompt；只读，不观察远端 |
 | `POST /runs`（I4B） | `{sourceArtifactId, modelRef, prompt, size?}`、Idempotency-Key | 固定 `image-edit/v0` / `n=1`，只保存输入与身份，零生成请求；本地提交后 201，同 Key 接回 200 |
 | `GET /runs/:id` | 无 | 返回下述 FlowView；只读，不创建 Task、补交付或继续步骤 |
-| `POST /runs/:id/continue` | 空 JSON、Idempotency-Key | 显式首次提交、单次观察原任务、补交付或本地比较；不重提已有 Attempt |
-| `POST /runs/:id/selection` | `{artifactId}`、Idempotency-Key | 只接受该 Run 的原图/新版；不触发生成或下载 |
+| `POST /runs/:id/continue`（未发布执行模式） | `{expectedRevision}`、Idempotency-Key | 持久接收后 202，同 Key 200；一次首次提交/观察/补交付/比较，不重提已有 Attempt |
+| `POST /runs/:id/selection`（提案） | `{artifactId}`、Idempotency-Key | 只接受该 Run 的原图/新版；不触发生成或下载 |
 | `GET /artifacts/:id/content` | 无 | 按已验证 Artifact ID 和清单读取该根内媒体字节，不接受 path/URL 参数；不写文件 |
 | `GET /runs/:id/download` | 无 | 返回已选择图片的原字节及受控附件名；未选择则冲突，不接受服务器输出路径 |
-| `GET /operations/:id`（待实现） | 无 | 查询本实例操作状态，不能借此继续操作 |
-| `POST /operations/:id/cancel` | 空 JSON | 停止本次排队/等待，幂等；不代表远端生成已撤销或已退款 |
+| `GET /operations/:id`（未发布执行模式） | 无 | 查询持久状态，不能借此继续操作；原 Key 查询和 Run 列表见服务指南 |
+| `POST /operations/:id/cancel`（未发布执行模式） | 空 JSON | 原 ID 幂等停止本地排队/等待，终态落盘后 200；不代表远端已取消或已退款 |
 
 上传累积读取限制使用现有 `MAX_IMPORT_IMAGE_BYTES = 20 MiB`，不能只相信 Content-Length；最终交给 `readImportImage({imageBytes}, signal)` 检查实际格式和静态图片要求。连接关闭、超量与解析失败不留下临时可服务文件，不把 filename 当服务器路径。并发上传上限 1，超过返回忙；用户显式重试复用原 Key。
 
@@ -79,7 +83,7 @@ ID 继续使用当前 `run_` / `task_` / `artifact_` 加 24 位小写十六进�
 
 I4B 的上传与创建同步完成本地提交，以 201/200 返回 Artifact/FlowView 和 `idempotentReplay`，不返回持久排队的 202，也不开放 Operation 查询或取消。相同 Key 保证原业务身份与效果；已有 Run 的返回状态可以随真实进度变化，不承诺重放完全相同的响应字节。
 
-后续异步执行拟在持久接收后返回 `202 {contractVersion:0, operationId, runId?}`，状态为 `queued | running | succeeded | failed | interrupted`。GET 轮询只能读取，不能驱动 Provider；原任务的远端观察必须显式点击。实例内拟最多一个活动 writer、8 个等待写操作；同一 Run 已有活动 continue 时，新 Key 返回冲突，同 Key 接回原 Operation。取消直接中止对应控制器，不能排在被取消 writer 后面；停止等待不伪造远端 Task canceled。这些执行/Operation 语义须另行实现和验收，不随 I4B 自动开放。
+未发布执行模式在原子接收后返回 `202 {contractVersion:0, operation, idempotentReplay:false}`；重放返回 200，状态为 `queued | running | succeeded | failed | canceled | interrupted`。GET 不驱动 Provider；每次显式继续至多一次观察。单根最多 8 条 queued/running，同 Run 最多一条；writer 忙时拒绝新接收，不声称已排队。停止直接中止控制器，随后在同 writer 下落盘并返回 200；不伪造远端 Task canceled。此模式不随 I4B 或只读 Web 自动开启。
 
 ## 5. 上传与持久创建幂等（I4B）
 
@@ -96,7 +100,7 @@ I2 保证相同 Run 使用原 Task；I4B 另保证同 Key 创建请求接回原 
 7. 新版 writer 和维护入口必须识别请求格式，未知/半初始化请求区拒绝写入。已发布旧程序没有这些新检查，不能靠一个标记保证其拒绝该根；此专用根只支持已验收的 request-aware writer，回退使用完整副本，不删除请求区伪装降级。已提交 Flow/图片仍可只读查看。
 8. 复用现有原子发布和重入能力，验证范围限进程异常退出/SIGKILL；不据此承诺断电、操作系统崩溃或共享存储下的跨文件事务。请求区本身不触发 Provider 目录刷新、探测、生成或任务观察。
 
-后续 continue/Operation 仍需独立的持久接收与中断协议；重启只展示未完成事实，**不能自动重放 continue**。I4B 的本地创建与中断证据不能代替可能计费的执行验收；开始按钮接入实际生成前，仍须补执行接收、未知受理、取消和停机测试。
+未发布 continue/Operation 使用独立 runner 与持久身份，显式启动只记录遗留中断，**不能自动重放 continue**。I4B 创建证据与执行验收分开；Web 的连接管理写入见 [连接契约](CORE_CONNECTIONS.md)，真实创作按钮与选择 API 仍须独立落实。
 
 ## 6. 错误与验收
 

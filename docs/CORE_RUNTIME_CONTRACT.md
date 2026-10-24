@@ -99,7 +99,9 @@ legacy 配置/任务/作品、上传与 SSE 仍保留原机制，不宣称同进
 
 I4B 在新空专用 Flow 根增加 `creation-requests/v0`，通过显式 `api init` 和 `--allow-local-writes` 开放 [本地上传/Run 创建](LOCAL_CREATION.md)。内部 [local-creation.js](../lib/local-creation.js)复用实例 FIFO，在一个 Core writer 中发布 prepared 意图、以预留身份提交作品/Run、标记 succeeded；已有 Run 允许进度推进，重放不覆盖。请求 store 无 HTTP/DSH/Runtime 依赖；新版 writer 检查未知/损坏格式，维护盘点保护未完成引用。成功结果删除后同 Key 不复活，现有 Task/Artifact/Run schema 保持。
 
-默认只读路径不取得 writer；显式本地写路径按操作取得 writer，只有配置解析 descriptor，没有生成/观察 Adapter。上传和创建都是本地提交，继续/选择/Operation/取消 API 仍待后续。旧 binary 没有请求区检查，新专用根只支持已验收的 request-aware writer；不宣称旧程序看到标记就会拒写，也不承诺断电跨文件事务。
+未发布 I4C 增加 [Operation 存储](LOCAL_OPERATIONS.md)及 [显式执行服务](CORE_SERVICE.md)：新空 Flow 根 v1、派生身份、有限状态与原绑定/引用保护；独立 runner 复用既有租约协议，业务调用仍走同一 writer。CLI 保持存储查询，并通过显式 HTTP 服务装配一次继续/本地停止；不转换已有 v0 根。
+
+默认只读路径不取得 writer；0.2.7 的显式本地创建仅解析 descriptor，上传与创建不生成。未发布执行模式复用 CLI 的真实 Adapter/原绑定解析，并增加连接与有限 Operation HTTP；选择 API 仍未实现。0.2.7 已有 v0 请求区检查，其真实 CLI 拒写 v1；更早且不含该检查的 binary 不在此保证内。新专用根只交给已验收的 request-aware writer，不承诺断电跨文件事务。
 
 作品存储新增内部 `inspectCoreArtifactMetadata`，用于在读取大文件前验证清单与普通文件大小；该元数据入口不核验完整字节哈希，不能单独据此向外提供媒体。HTTP Host 在限额内继续使用 `readCoreArtifactBytes` 并复核已取字节的摘要，才返回图片。既有作品读取、持久化格式与内容哈希要求保持。
 

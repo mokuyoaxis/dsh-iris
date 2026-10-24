@@ -40,6 +40,8 @@ async function check(name, action) {
 }
 process.env.DSH_HOME = path.join(work, 'dsh-home');
 process.env.IRIS_IMPORT_WORKBENCH_CONFIG = '';
+process.env.IRIS_CORE_CONNECTION_FILE = '';
+process.env.IRIS_CORE_SCOPES = '';
 // 插件按宿主进程入口定位版本；隔离 harness 模拟已核实的 DSH bin 入口。
 process.argv[1] = path.join(dshRoot, 'lib/bin.js');
 report.simulatedDshEntry = true;

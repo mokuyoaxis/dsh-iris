@@ -56,7 +56,27 @@ kimi --skills-dir /absolute/path/to/iris/skills
 - DSH 原有三项 Skill、工具、附件与工作台流程保持，不把新 Skill 自动注册为第四项 DSH Skill；DSH 使用方式见 [README](../README.md#agent-skills)。
 - 本版新增独立的 Core 指导，不迁移或改写旧 DSH Skill。后续若合并公共参考，应先证明 DSH 流程和资源解析保持。
 - Core Artifact ID 属于指定根，宿主附件、路径与 URL 不可互换；交付时由实际宿主呈现导出文件。
-- 正式 MCP 仍待实现。当前 Skill 的可执行说明只有 CLI，不能用它声称 MCP 已安装或第二生产 Host 已完成。
+- 未发布源码的正式 MCP 入口见 [Core 服务](CORE_SERVICE.md)，需独立配置授权连接。`iris-core` 的可执行说明仍是 CLI；下方连接专属 Skill 仅指导 MCP。Skill 安装不自动注册 MCP，不能据此声称日常 harness 已接入或真实 Agent 已验收。
 - 面向 Core 的独立工作台继续按既有路线推进；本 Skill 不描述尚不存在的 UI 操作。Skill 指导 Agent，业务受理、写者租约与重试约束继续由执行层负责。
 
 验收区分 Skill 文件/引用可读取、CLI 示例可执行、实际 Agent 是否按指导完成任务。离线供应商夹具只验证命令和状态处理，不证明真实模型的规划、生图质量或计费表现。
+
+## 连接专属 MCP Skill（未发布）
+
+面向 0.3 的源码[连接中心](LOCAL_WEB.md#显式开启连接中心)可按已保存连接生成说明。先保存功能/工具/操作权限，在“连接专属 Skill”中生成预览、下载 `iris-skill.json`，再用包含此功能的源码 CLI 安装：
+
+```bash
+node /absolute/iris/bin/dsh-iris.js skills install \
+  --bundle /absolute/downloads/iris-skill.json \
+  --directory /absolute/project/.agents/skills --dry-run
+node /absolute/iris/bin/dsh-iris.js skills install \
+  --bundle /absolute/downloads/iris-skill.json --directory /absolute/project/.agents/skills
+node /absolute/iris/bin/dsh-iris.js skills status \
+  --bundle /absolute/downloads/iris-skill.json --directory /absolute/project/.agents/skills
+```
+
+`--bundle` 同样支持 `uninstall` 和显式 `--target kimi`；该参数尚未进入 npm 0.2.7。下载的是最多 16 KiB 的普通 JSON 数据文件，由包内代码生成 `iris-mcp-<connectionId>/SKILL.md`，不安装外部传入 Markdown 或脚本。同名连接按 UUID 分开；原 `iris-core` 和 DSH 三项 Skill 保持。
+
+说明正文为英文、标题附中文，只包含当前有效工具；有限选择不暗示可以完成整套图片流程。文件含连接/根身份与修订，不含 Token、Provider 密钥或私有路径，不能代替 MCP 配置，也不授予权限。只读服务导出只读工具；未开放的媒体组不生成假指令，零工具或已撤销连接不能生成说明。
+
+授权改变后重新生成并显式安装；同包版本也比较内容，未经本地修改的旧副本会移到扫描根外备份后更新。本地改过的说明、未知目录或软链继续拒绝覆盖；卸载只归档。旧快照留在客户端时，Core 仍按实际授权拒绝已移除工具。安装器的 `discovery:not_checked` 仍要求在所用客户端另行确认发现与实际调用，浏览器只下载、不替用户选择安装路径。

@@ -40,7 +40,8 @@ function run(program, args, { cwd = consumer, env = {}, label, timeout = 60000, 
   });
   const name = label || args.slice(0, 2).join(' ');
   const command = {
-    label: name, program, args, status: result.status, signal: result.signal,
+    label: name, program, args, pid: result.pid, timeoutMs: timeout, status: result.status, signal: result.signal,
+    ...(result.error ? { errorCode: result.error.code } : {}),
     durationMs: Date.now() - started, stdout: result.stdout || '', stderr: result.stderr || ''
   };
   report.commands.push(command);
@@ -84,6 +85,12 @@ try {
   }));
   const files = pkg.files.map((file) => file.path);
   assert(files.includes('lib/generation-input.js'));
+  for (const resource of ['lib/local-web-assets.js', 'lib/web/index.html', 'lib/web/app.js', 'lib/web/transport.js',
+    'lib/web/flow-view.js', 'lib/web/connections.js', 'lib/web/styles.css', 'docs/assets/logo/iris-mark.svg']) assert(files.includes(resource), resource);
+  for (const resource of ['lib/local-request-root.js', 'lib/operation-store.js', 'lib/local-operations.js', 'docs/LOCAL_OPERATIONS.md']) assert(files.includes(resource), resource);
+  for (const resource of ['lib/operation-runner.js', 'lib/execution-ownership.js', 'lib/configured-image-runtime.js', 'lib/core-connections.js',
+    'lib/core-service-client.js', 'lib/core-bridge-tools.js', 'lib/mcp-bridge.js', 'lib/dsh-service-bridge.js', 'docs/CORE_SERVICE.md', 'docs/CORE_CONNECTIONS.md']) assert(files.includes(resource), resource);
+  for (const resource of ['lib/mcp-server.js', 'lib/mcp-http.js', 'lib/mcp-config.js', 'lib/core-bridge-selection.js', 'lib/core-connection-store.js', 'docs/MCP.md']) assert(files.includes(resource), resource);
   assert(!files.some((file) => /^(?:tests|scripts|\.internal|node_modules)\//.test(file)));
   assert(pkg.files.find((file) => file.path === 'bin/dsh-iris.js').mode & 0o111, 'CLI 必须有可执行位');
   const tarball = path.join(packed, pkg.filename);
@@ -584,6 +591,8 @@ try {
   fs.copyFileSync(path.join(repo, 'tests/fixtures/local-api-package-probe.mjs'), apiProbe);
   report.localReadApi = JSON.parse(run(process.execPath, [apiProbe, path.join(installed, 'bin/dsh-iris.js'), flowRoot, flowId,
     flowConfig, path.join(work, 'local-api-token')], { env: { DSH_HOME: unusedDsh }, label: 'installed authenticated read API', timeout: 40000 }));
+  report.localWeb = JSON.parse(run(process.execPath, [apiProbe, path.join(installed, 'bin/dsh-iris.js'), flowRoot, flowId,
+    flowConfig, path.join(work, 'local-web-token'), 'web'], { env: { DSH_HOME: unusedDsh }, label: 'installed read-only workbench', timeout: 40000 }));
   assert.deepEqual(state(), apiStateBefore, '只读 API 不得调用 Provider 或修改夹具状态');
   assert.equal(report.localReadApi.mediaSha256, flowDone.run.output.sha256);
   const creationRoot = path.join(work, 'creation-api-core'), creationProbe = path.join(work, 'creation-api-probe.mjs');
@@ -596,6 +605,24 @@ try {
     env: { DSH_HOME: unusedDsh }, label: 'installed local creation API with cross-process replay', timeout: 45000 }));
   assert.deepEqual(state(), creationStateBefore, '本地上传/创建不得调用 Provider 或改变生成夹具状态');
   assert.equal(report.localCreationApi.mediaSha256, digest(fs.readFileSync(flowImage)));
+  const operationProbe = path.join(work, 'local-operation-probe.mjs');
+  fs.copyFileSync(path.join(repo, 'tests/fixtures/local-operation-package-probe.mjs'), operationProbe);
+  report.localOperationStore = JSON.parse(run(process.execPath, [operationProbe, path.join(installed, 'bin/dsh-iris.js'),
+    path.join(work, 'operation-core'), flowImage], { env: { DSH_HOME: unusedDsh }, label: 'installed v1 Operation storage and version gate', timeout: 45000 }));
+  assert.deepEqual(state(), creationStateBefore, 'Operation 存储不得调用 Provider 或改变生成夹具状态');
+  assert(!fs.existsSync(unusedDsh));
+  const executionProbe = path.join(work, 'execution-package-probe.mjs');
+  fs.copyFileSync(path.join(repo, 'tests/fixtures/local-execution-package-probe.mjs'), executionProbe);
+  fs.copyFileSync(path.join(repo, 'tests/fixtures/mcp-client.mjs'), path.join(work, 'mcp-client.mjs'));
+  fs.copyFileSync(path.join(repo, 'tests/fixtures/mcp-http-client.mjs'), path.join(work, 'mcp-http-client.mjs'));
+  const managementProbe = path.join(work, 'connection-management-probe.mjs');
+  fs.copyFileSync(path.join(repo, 'tests/fixtures/connection-management-package-probe.mjs'), managementProbe);
+  report.connectionManagement = JSON.parse(run(process.execPath, [managementProbe, path.join(installed, 'bin/dsh-iris.js'), work],
+    { env: { DSH_HOME: unusedDsh }, label: 'installed connection center and persistent revocation', timeout: 60000 }));
+  report.executionService = JSON.parse(run(process.execPath, [executionProbe, path.join(installed, 'bin/dsh-iris.js'),
+    path.join(work, 'execution-core'), flowConfig, flowImage, work, path.join(work, 'flow-fixture.mjs')],
+  { env: { DSH_HOME: unusedDsh }, label: 'installed execution service, real Provider factory and official MCP', timeout: 60000 }));
+  assert.deepEqual(state(), creationStateBefore, '独立执行探针不能改变原媒体夹具状态');
   assert(!fs.existsSync(unusedDsh));
   report.checks = {
     installedFileBytesMatchSource: true, npmBinWorks: true, localSharpAndFfmpeg: true,

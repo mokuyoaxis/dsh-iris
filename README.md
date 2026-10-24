@@ -52,12 +52,20 @@ Iris 0.2.7 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和�
 
 > 版本支持：Iris 0.2.7 沿用 0.2.5 的 12 个准确 DSH 版本，见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。保留旧 DSH 时仍需 Node.js ≥22.0.0，宿主若要求更高，以宿主为准。连接复用另需宿主提供对应公开接口。
 
+**0.3 开发预览（未发布）**：源码新增 [Core 工作台](docs/LOCAL_WEB.md)，默认浏览持久图片流程与已选作品下载，也可显式开启连接中心：自由命名、选择功能/工具权限、导出 MCP 配置、编辑和撤销。媒体生成与选择按钮尚未接入；已发布 npm 0.2.7 没有 `web serve`。
+
+连接中心另支持纯数据接入模板和按有效工具生成的 [MCP Skill](docs/CORE_SKILLS.md#连接专属-mcp-skill未发布)。模板不增加权限；说明采用英文正文附中文标题，下载后显式指定客户端的 Skills 目录安装，本地修改受到保护。这些能力尚未发布。
+
+当前独立前端分为“作品”和“连接”：作品页并排查看原图与结果，模型摘要和流程详情默认折叠；连接页管理授权、模板与 Skill。浅/深色及窄屏布局已有实现。页面上传、执行和持久选择仍待接入；可交互的创作预览见 [Web Demo](docs/WEB_PROTOTYPE.md)，其中结果使用内置素材。
+
+源码另有 [Operation 存储与版本门禁](docs/LOCAL_OPERATIONS.md)及 [Core 执行服务](docs/CORE_SERVICE.md)：新专用根、单根 runner、显式继续/本地停止、连接授权与握手、[通用 MCP](docs/MCP.md) stdio/Streamable HTTP、明确功能/工具选择和配置导出，以及 DSH 可选共享 Flow 连接。MCP 当前业务范围是固定图片编辑流程，其他媒体按覆盖表后续接入。只读页面仍不开放创作按钮，不迁移现有请求根；这些入口尚未发布。
+
 ## 0.2.7 更新重点与现有能力
 
 **截图适配更完整，图片流程和 Skills 可脱离 DSH 使用。** 功能池继续采用稳定顺序和安全切换，没有跨请求轮转。
 
 - **宿主截图**：直接接收 PNG 并保存为 Core 作品，兼容浏览器下载目录限制；按实际监听地址导航，提供主动截图自检。
-- **图片流程与本地 API**：CLI 持久保存步骤、任务、比较和选择；API 默认只读，上传与创建需显式开启，HTTP 执行/取消尚未开放。
+- **图片流程与本地 API**：CLI 持久保存步骤、任务、比较和选择；已发布 API 默认只读，上传与创建需显式开启。未发布执行服务的范围见上方开发预览。
 - **Core Skill 安装**：随包 `iris-core` 通过 CLI 指导图片创作，可显式安装到 Kimi 或指定扫描目录，保护本地修改并保留备份。
 
 - **图片导入**：通过工作台、Agent或CLI把已有图片保存为持久作品，继续看图、改图和导出；保留源文件，不调用模型。
@@ -339,7 +347,7 @@ npx @mokuyoaxis/dsh-iris doctor --json
 
 ## Agent Skills
 
-0.2.7 新增宿主无关的 [`iris-core`](skills/iris-core/SKILL.md)，通过现有独立 CLI 完成图片导入、生成、编辑与原任务/作品取回；英文正文附中文标题。其他 harness 可用 `dsh-iris skills install --target kimi` 或明确扫描目录安装，配套状态检查、冲突保护与可恢复卸载，见 [Core Skill 说明](docs/CORE_SKILLS.md)。这些资源和命令随 npm 0.2.7 分发，DSH 继续使用下方三项 Skills；正式 MCP 仍待实现。
+0.2.7 新增宿主无关的 [`iris-core`](skills/iris-core/SKILL.md)，通过现有独立 CLI 完成图片导入、生成、编辑与原任务/作品取回；英文正文附中文标题。其他 harness 可用 `dsh-iris skills install --target kimi` 或明确扫描目录安装，配套状态检查、冲突保护与可恢复卸载，见 [Core Skill 说明](docs/CORE_SKILLS.md)。这些资源和命令随 npm 0.2.7 分发，DSH 继续使用下方三项 Skills；未发布的正式 MCP 入口见 [Core 服务](docs/CORE_SERVICE.md)，需独立配置连接。
 
 插件通过 DSH Skill registry 注册三项随包 Skill：
 

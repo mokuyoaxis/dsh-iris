@@ -81,6 +81,17 @@ try {
   assert.equal((await query(restarted, secondToken, '/api/v0/session')).response.status, 200);
   assert(!second.stdout.includes(secondToken)); assert(!second.stderr.includes(secondToken));
   await stop(second);
+  const webTokenFile = path.join(root, 'web-token');
+  const web = launch(['web', 'serve', '--data-root', dataRoot, '--token-file', webTokenFile]);
+  const webSession = await ready(web), webToken = fs.readFileSync(webTokenFile, 'utf8').trim();
+  assert.equal(webSession.readOnly, true); assert.match(webSession.message, /只读工作台/);
+  assert.equal((await fetch(webSession.origin + '/')).status, 200);
+  assert.equal((await fetch(webSession.origin + '/api/v0/session')).status, 401);
+  assert.equal((await query(webSession, webToken, '/api/v0/runs/' + created.run.id)).body.status, 'not_started');
+  assert(!web.stdout.includes(webToken)); assert(!web.stderr.includes(webToken));
+  await stop(web);
+  await failure(['web', 'serve', '--data-root', dataRoot, '--token-file', path.join(root, 'no-web-write'), '--allow-local-writes'], 2);
+  await failure(['web', 'init', '--data-root', dataRoot], 2);
   const existingBytes = fs.readFileSync(tokenFile);
   const exists = await failure(['api', 'serve', '--data-root', dataRoot, '--token-file', tokenFile], 1);
   assert.match(exists.stderr, /IRIS_API_TOKEN_FILE_UNAVAILABLE/); assert.deepEqual(fs.readFileSync(tokenFile), existingBytes);

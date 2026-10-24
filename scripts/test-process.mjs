@@ -19,7 +19,8 @@ export function runTestProcess(testFile, { cwd, timeoutMs }) {
       arch: process.arch, timeoutMs });
     const child = spawn(process.execPath, testProcessArgs(testFile), {
       cwd, stdio: 'inherit', shell: false,
-      env: { ...process.env, IRIS_IMPORT_WORKBENCH_CONFIG: '', ...(traceFile ? { IRIS_LINT_TRACE_FILE: traceFile } : {}) }
+      env: { ...process.env, IRIS_IMPORT_WORKBENCH_CONFIG: '', IRIS_CORE_CONNECTION_FILE: '', IRIS_CORE_SCOPES: '',
+        ...(traceFile ? { IRIS_LINT_TRACE_FILE: traceFile } : {}) }
     });
     console.log(`Test process: ${child.pid}`);
     if (traceFile) {
@@ -35,11 +36,15 @@ export function runTestProcess(testFile, { cwd, timeoutMs }) {
           recordLintTrace(traceFile, 'runner-timeout', { childPid: child.pid, timeoutMs,
             elapsedMs: Math.round(performance.now() - started), processSnapshot: snapshotLintProcesses(child.pid) });
           console.error(`[lint] 超时现场：${path.relative(cwd, traceFile)}`);
+        } else {
+          console.error('TEST_TIMEOUT_CONTEXT ' + JSON.stringify({ testFile: path.relative(cwd, testFile),
+            childPid: child.pid, timeoutMs, elapsedMs: Math.round(performance.now() - started),
+            processSnapshot: snapshotLintProcesses(child.pid) }));
         }
       } catch (cause) {
         // Diagnostic I/O must not prevent termination or hide the timeout.
         error.cause = cause;
-        console.error(`[lint] 超时现场记录失败：${cause.code || cause.name}`);
+        console.error(`超时现场记录失败：${cause.code || cause.name}`);
       } finally { child.kill('SIGKILL'); }
     }, timeoutMs);
     child.once('error', (cause) => { error ??= cause; });

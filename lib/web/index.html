@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Iris · Core 工作台</title>
+  <link rel="icon" type="image/svg+xml" href="/iris-mark.svg">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Iris 工作台首页"><img src="/iris-mark.svg" alt="" width="34" height="34"><span>Iris <small>作品工作台</small></span></a>
+    <div class="header-actions"><span id="mode-badge" class="badge">只读预览</span><button id="theme" class="quiet" type="button">深色</button><button id="disconnect" class="quiet" type="button" hidden>断开</button></div>
+  </header>
+  <main>
+    <section id="connection" class="connection card" aria-labelledby="connection-title">
+      <p class="eyebrow">YOUR LOCAL WORKSPACE</p>
+      <h1 id="connection-title">接回你的创作</h1>
+      <p class="intro">浏览已保存的图片流程，查看原图与结果，下载已选作品。</p>
+      <label class="file-button" for="token-file">选择 Token 文件<input id="token-file" type="file" aria-describedby="token-help"></label>
+      <p id="token-help" class="muted">使用启动命令生成的会话文件。Token 只在本标签页内存中使用，刷新后需重新连接。</p>
+      <details id="paste-panel"><summary><span>粘贴 Token</span><span class="disclosure">展开</span></summary>
+        <form id="connect-form">
+          <label for="token">会话 Token</label>
+          <div class="token-row"><input id="token" type="password" autocomplete="off" spellcheck="false" maxlength="128" placeholder="粘贴启动时生成的 Token"><button id="connect" type="submit">连接</button></div>
+        </form>
+      </details>
+      <p class="scope-note">当前入口只读取本地记录。创建、生成与选择作品仍通过 CLI 完成。</p>
+    </section>
+    <p id="feedback" role="status" aria-live="polite" hidden></p>
+    <nav id="workspace-nav" class="workspace-nav" aria-label="工作台" hidden>
+      <button id="media-tab" class="quiet" type="button" aria-current="page">作品</button>
+      <button id="connections-tab" class="quiet" type="button">连接 <span id="connections-count" class="count">0</span></button>
+    </nav>
+    <section id="connections-panel" hidden aria-label="连接中心">
+      <div class="connections-heading"><div><p class="eyebrow">CONNECT YOUR HARNESS</p><h1>把能力接到你的工具</h1><p class="muted">自由命名连接，选择权限，再将配置交给支持 MCP 的客户端。</p></div></div>
+      <p id="connections-feedback" role="status" aria-live="polite" hidden></p>
+      <div class="connections-workspace">
+        <aside class="card connection-sidebar">
+          <div class="section-heading"><h2>我的连接</h2><button id="connections-refresh" class="quiet" type="button">刷新</button></div>
+          <div id="connections-list"></div><p id="connections-empty" class="muted">尚无连接</p>
+          <button id="connection-new" class="secondary full" type="button">＋ 新建连接</button>
+        </aside>
+        <section class="card connection-editor" aria-labelledby="connection-editor-title">
+          <div class="section-heading"><h2 id="connection-editor-title">新建连接</h2><span id="connection-state" class="badge">尚未保存</span></div>
+          <dl id="connection-facts" hidden></dl>
+          <form id="connection-form">
+            <fieldset id="connection-fields">
+              <label for="connection-name">连接名称</label><input id="connection-name" maxlength="80" required placeholder="例如：我的编程助手 · 工作项目" autocomplete="off">
+              <h3>媒体功能</h3><div id="connection-media" class="media-options"></div><p class="field-note">图片目前提供固定编辑流程；其余功能将逐步接入。</p>
+              <h3>操作权限</h3><div id="connection-scopes" class="scope-options"></div><p class="field-note">执行可能产生供应商费用；停止只结束本地等待。</p>
+              <details id="connection-tool-details" class="tool-details"><summary><span>工具细选 <small id="connection-tool-count"></small></span><span class="disclosure">展开</span></summary><div id="connection-tools"></div></details>
+              <div class="connection-form-actions"><button id="connection-save" type="submit">创建连接</button><span id="connection-save-note" class="muted">创建只保存配置，不调用模型。</span></div>
+            </fieldset>
+          </form>
+          <section id="connection-export" class="connection-section" hidden aria-labelledby="export-title">
+            <h3 id="export-title">接入配置</h3><p class="field-note">按已保存的授权生成。把配置加入客户端，重新连接后在这里刷新。</p>
+            <label class="template-choice" for="connection-template">接入模板<select id="connection-template"><option value="">手动选择</option></select></label>
+            <details class="tool-details"><summary><span>导入模板</span><span class="disclosure">展开</span></summary><p class="field-note">模板只选择传输与 JSON 格式，不增加权限、不执行命令。其他客户端可手动映射单条 entry。</p><div class="export-actions"><button id="connection-template-example" class="quiet" type="button">下载示例</button><button id="connection-template-import" class="quiet" type="button">导入 JSON</button><input id="connection-template-file" type="file" accept="application/json,.json" hidden></div></details>
+            <p id="connection-template-note" class="field-note" hidden></p>
+            <div class="export-options"><label>传输<select id="connection-transport"><option value="stdio">stdio · 本机</option><option value="http">HTTP · 本机</option></select></label><label>格式<select id="connection-format"><option value="mcpServers">mcpServers</option><option value="entry">单条 entry</option></select></label><button id="connection-export-button" class="secondary" type="button">生成配置</button></div>
+            <div id="connection-export-result" hidden><p id="connection-export-note" class="field-note"></p><textarea id="connection-configuration" readonly spellcheck="false" rows="7" aria-label="MCP 接入配置"></textarea><div class="export-actions"><button id="connection-copy" class="quiet" type="button">复制</button><button id="connection-download" class="quiet" type="button">下载 JSON</button><button id="connection-clear-export" class="quiet" type="button">隐藏配置</button></div></div>
+            <details id="connection-skill-details" class="tool-details"><summary><span>连接专属 Skill</span><span class="disclosure">展开</span></summary><p class="field-note">英文说明附中文标题，仅包含当前有效工具。下载文件不含密钥；权限改变后请重新生成并安装。</p><button id="connection-skill-generate" class="secondary" type="button">生成说明</button><div id="connection-skill-result" hidden><textarea id="connection-skill-preview" readonly spellcheck="false" rows="8" aria-label="Skill 说明预览"></textarea><p class="field-note">下载后，在本机明确指定客户端的 Skills 目录安装：</p><code class="skill-install-command">dsh-iris skills install --bundle /absolute/path/iris-skill.json --directory /absolute/path/skills</code><div class="export-actions"><button id="connection-skill-download" class="quiet" type="button">下载 Skill 文件</button><button id="connection-skill-clear" class="quiet" type="button">隐藏说明</button></div></div></details>
+          </section>
+          <section id="connection-revoke-section" class="connection-section" hidden>
+            <button id="connection-revoke" class="quiet danger" type="button">撤销连接</button>
+            <div id="connection-revoke-confirm" hidden><p>撤销后，已导出的配置立即失效。已接收的操作继续保留；不会取消供应商任务或保证停止计费。</p><div class="export-actions"><button id="connection-revoke-yes" class="secondary danger" type="button">确认撤销</button><button id="connection-revoke-no" class="quiet" type="button">返回</button></div></div>
+          </section>
+        </section>
+      </div>
+    </section>
+    <div id="workspace" class="workspace" hidden>
+      <aside class="sidebar">
+        <section class="card history-card" aria-labelledby="history-title">
+          <div class="section-heading"><h2 id="history-title">创作历史 <span id="history-count" class="count">0</span></h2><button id="refresh" class="quiet" type="button">刷新</button></div>
+          <p id="history-empty" class="muted" hidden>这里还没有图片流程。使用 CLI 创建后，点击刷新即可查看。</p>
+          <nav id="history-list" aria-label="已保存的图片流程"></nav>
+          <button id="load-more" class="secondary full" type="button" hidden>加载更多</button>
+        </section>
+        <details id="model-panel" class="card compact-details"><summary><span>模型配置 <small id="model-summary">读取中</small></span><span class="disclosure">展开</span></summary>
+          <p id="model-note" class="muted"></p><ul id="model-list"></ul>
+        </details>
+        <p class="sidebar-note">历史与作品来自当前服务的数据根。刷新只读取本地记录。</p>
+      </aside>
+      <section id="viewer" class="card viewer" aria-label="流程与作品" aria-busy="false">
+        <div id="viewer-empty" class="viewer-empty"><span class="empty-mark" aria-hidden="true">✳</span><h2>从一段创作开始</h2><p class="muted">选择历史记录，查看保存的原图、结果和选择。</p></div>
+        <div id="run-view" hidden>
+          <div class="run-heading"><div><p class="eyebrow">IMAGE WORKSPACE</p><h1 id="status-title"></h1><p id="status-message" class="muted"></p></div><button id="download" type="button" disabled>下载已选作品</button></div>
+          <p id="run-meta" class="meta"></p>
+          <div class="image-pair">
+            <figure id="source-card" class="image-card"><figcaption><span>原图</span><small id="source-selected" class="selected-label" hidden>已选择</small></figcaption><div class="image-stage"><p id="source-placeholder" class="muted">读取中…</p><img id="source-image" alt="此流程保存的原图" hidden></div><p id="source-dimensions" class="image-dimensions"></p></figure>
+            <figure id="output-card" class="image-card"><figcaption><span>生成结果</span><small id="output-selected" class="selected-label" hidden>已选择</small></figcaption><div class="image-stage"><p id="output-placeholder" class="muted">尚无已保存的结果</p><img id="output-image" alt="此流程保存的生成结果" hidden></div><p id="output-dimensions" class="image-dimensions"></p></figure>
+          </div>
+          <section class="prompt-section" aria-labelledby="prompt-title"><h2 id="prompt-title">修改要求</h2><p id="prompt"></p></section>
+          <details id="run-details" class="run-details"><summary><span>流程详情</span><span class="disclosure">展开</span></summary><dl id="run-facts"></dl><p class="muted">像素差异只描述图片变化，不代表质量评分。</p></details>
+        </div>
+      </section>
+    </div>
+    <footer>Iris · 本地创作，随时接续<span>面向 0.3 的 Core 工作台</span></footer>
+  </main>
+</body>
+</html>

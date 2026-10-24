@@ -81,6 +81,11 @@ const read = (rel) => {
 for (const rel of [
   'lib/application-runtime.js', 'lib/flow-store.js', 'lib/image-flow.js', 'lib/local-api.js', 'lib/local-api-projection.js',
   'lib/creation-request-store.js', 'lib/local-creation.js',
+  'lib/local-request-root.js', 'lib/operation-store.js', 'lib/local-operations.js',
+  'lib/operation-runner.js', 'lib/execution-ownership.js', 'lib/configured-image-runtime.js',
+  'lib/core-connections.js', 'lib/core-connection-store.js', 'lib/core-service-client.js', 'lib/core-bridge-tools.js', 'lib/dsh-service-bridge.js',
+  'lib/connection-template.js', 'lib/connection-skill.js',
+  'lib/mcp-bridge.js', 'lib/mcp-server.js', 'lib/mcp-http.js', 'lib/mcp-config.js', 'lib/core-bridge-selection.js',
   'lib/model-port-contract.js', 'lib/model-invoker.js', 'lib/prompt-optimizer-core.js', 'lib/vision-core.js',
   'lib/model-call-runtime.js', 'lib/http-vision-model-adapter.js', 'lib/dsh-vision-model-adapter.js', 'lib/vision-model-routing.js',
   'lib/ocr.js', 'lib/ocr-model-routing.js',
