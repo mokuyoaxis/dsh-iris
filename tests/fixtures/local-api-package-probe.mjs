@@ -36,7 +36,7 @@ try {
   }
   assert.equal((await get('/api/v0/session', false)).response.status, 401);
   if (mode === 'web') {
-    for (const resource of ['/', '/app.js', '/transport.js', '/flow-view.js', '/connections.js', '/styles.css', '/iris-mark.svg']) {
+    for (const resource of ['/', '/app.js', '/transport.js', '/media-client.js', '/recovery.js', '/creation.js', '/gallery.js', '/flow-view.js', '/connections.js', '/styles.css', '/iris-mark.svg']) {
       const asset = await get(resource, false); assert.equal(asset.response.status, 200, resource); assert(asset.bytes.length);
       assert(!asset.bytes.includes(token) && !asset.bytes.includes(dataRoot));
     }

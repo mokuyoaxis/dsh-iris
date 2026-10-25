@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { assertCliProcess } from './cli-process.js';
 import { FAKE_WAV } from './fixtures/fake-lifecycle-provider.mjs';
 
 const base = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-music-cli-'));
@@ -19,10 +20,12 @@ fs.writeFileSync(stateFile, JSON.stringify({ calls: 0, statuses: [] }));
 const read = () => JSON.parse(fs.readFileSync(file));
 const state = () => JSON.parse(fs.readFileSync(stateFile));
 function cli(args, expected = 0) {
+  const started = performance.now();
   const child = spawnSync(process.execPath, ['--import', new URL('./fixtures/music-fetch.mjs', import.meta.url).href,
     'bin/dsh-iris.js', ...args], { encoding: 'utf8', timeout: 30000,
     env: { ...process.env, DSH_HOME: home, IRIS_MUSIC_FIXTURE_STATE: stateFile } });
-  assert.equal(child.status, expected, child.stderr + child.stdout);
+  assertCliProcess(child, { testFile: 'tests/music-cli.mjs', stage: args.slice(0, 2).join(' '),
+    timeoutMs: 30000, elapsedMs: performance.now() - started, expectedStatus: expected });
   assert(!child.stdout.includes('fixture-music-key'));
   return child.stdout.trim() ? JSON.parse(child.stdout) : child;
 }

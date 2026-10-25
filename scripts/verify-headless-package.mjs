@@ -86,6 +86,8 @@ try {
   const files = pkg.files.map((file) => file.path);
   assert(files.includes('lib/generation-input.js'));
   for (const resource of ['lib/local-web-assets.js', 'lib/web/index.html', 'lib/web/app.js', 'lib/web/transport.js',
+    'lib/web/media-client.js', 'lib/web/recovery.js', 'docs/WEB_RECOVERY.md',
+    'lib/web/creation.js', 'lib/web/gallery.js',
     'lib/web/flow-view.js', 'lib/web/connections.js', 'lib/web/styles.css', 'docs/assets/logo/iris-mark.svg']) assert(files.includes(resource), resource);
   for (const resource of ['lib/local-request-root.js', 'lib/operation-store.js', 'lib/local-operations.js', 'docs/LOCAL_OPERATIONS.md']) assert(files.includes(resource), resource);
   for (const resource of ['lib/operation-runner.js', 'lib/execution-ownership.js', 'lib/configured-image-runtime.js', 'lib/core-connections.js',

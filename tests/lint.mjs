@@ -13,11 +13,11 @@
  *      曾漏掉 ../ai-paint）、仓库内目标必须真实存在；且折叠进 CHANGELOG 的里程碑明细
  *      不得回流 README。
  */
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createLintTrace, recordLintTrace } from '../scripts/lint-trace.mjs';
+import { startSyntaxCheck } from '../scripts/lint-syntax.mjs';
 import { DSH_SUPPORT_RANGE } from '../lib/dsh-compatibility.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -59,13 +59,16 @@ for (const [index, file] of files.entries()) {
   const rel = path.relative(root, file);
   const before = performance.now();
   trace('syntax-start', { sequence: index + 1, file: rel });
-  const r = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
+  const check = startSyntaxCheck(file);
+  trace('syntax-spawned', { sequence: index + 1, file: rel, childPid: check.pid, timeoutMs: 30000 });
+  const r = await check.completion;
   const durationMs = Math.round(performance.now() - before);
   trace('syntax-end', { sequence: index + 1, file: rel, childPid: r.pid, durationMs,
-    status: r.status, signal: r.signal, ...(r.error ? { errorCode: r.error.code } : {}) });
+    status: r.status, signal: r.signal, ...(r.errorCode ? { errorCode: r.errorCode } : {}) });
   if (durationMs >= 1000) console.warn(`[lint] 慢检查：${rel} (${durationMs} ms)`);
   if (r.status !== 0) {
-    failures.push(`语法错误 ${rel}:\n${(r.stderr || r.stdout || '').trim()}`);
+    failures.push(`${r.timedOut ? '语法检查超过30秒' : '语法检查失败'} ${rel}:\n${(r.stderr || r.stdout || r.message || '').trim()}`);
+    if (r.timedOut) break;
   }
 }
 if (files.length === 0) failures.push('未找到任何 .js/.mjs 文件');

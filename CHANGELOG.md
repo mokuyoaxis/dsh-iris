@@ -4,17 +4,26 @@
 
 ## [Unreleased]
 
+- Core 默认 Panel 改用白色主体与六色 105 度鸢尾点缀，新增本地外观/背景、受限主题 JSON 和显式可信 Panel 资源清单，API/CLI/MCP 独立。见 [Panel 与外观](docs/PANEL_EXTENSIONS.md)。
+- 新增 C3 [供应商与模型设置](docs/PROVIDER_SETTINGS.md)：独立 owner 开关、非秘密投影、保留/替换/清除 Key、revision 冲突和单次原子保存；目录/手填模型、六类用途及全局自动/手动/停用。设置不生成媒体、不迁移格式、不接管 harness 登录；实测仍由明确 CLI 操作发起。
+
+- 新增[Provider 扩展首版](docs/PROVIDER_EXTENSIONS.md)：实例级协议描述/工厂、版本与重复注册检查、等待在途调用后异步释放；CLI/API 显式加载可信本地模块，五类内置协议与外部协议共用候选、目录、模型级覆盖、实测及 Task 恢复。实验性窄包入口不等于完整 SDK；保留原 binding/存储格式，不自动安装插件、扩张功能授权或迁移数据，DSH 默认内置行为保持。
+
+- W1c 将 Demo 布局迁入真实 [Core 工作台](docs/LOCAL_WEB.md)：创作画布、右侧固定输入、真实作品筛选和独立连接页，支持深浅、窄屏、并排/叠图与放大。显式启用权限后可选图、改图、观察原任务、本地停止、按版本保存选择及下载；默认仍只读，刷新和回包丢失恢复不自动生成。HTTP 列表增加选择筛选/计数及有限结果摘要，不改变 CLI/MCP 列表或 Core 数据格式。
+
+- 新增 W1b [工作台请求核对与刷新恢复](docs/WEB_RECOVERY.md)：owner 按原上传/创建 Key 只读定位，session 提供稳定根身份；有限媒体客户端合并重复活动动作，显式重试保留原 Key，刷新和换根不自动生成。有界 sessionStorage 只存动作身份，不存 Token、Prompt 或文件；核对面板默认折叠，W1c 已接入真实创作控件。不改 Core 数据格式或 MCP 授权范围。
+
 - 更新源码树的独立 Web Demo：创作画布、作品筛选和连接草稿三个页面，支持浅/深色与窄屏，运行详情和工具预览默认折叠。演示使用标签页内存与内置样图，不调用模型、不写 Core；Demo 与预览脚本不进入 npm 包。见 [交互预览](docs/WEB_PROTOTYPE.md)。
 
-- 新增显式 `api/web serve --allow-selection`：仅 owner 可提交原图/结果及当前 Run 版本，同 writer 核对并原子保存；旧版本冲突，同版本重复选择不重写，不调用 Provider。创建、执行与选择开关不再依赖连接管理，仍分别显式启用；默认只读、MCP 权限及页面媒体浏览保持。真实创作按钮尚未接入，见 [持久选择](docs/LOCAL_SELECTION.md)。
+- 新增显式 `api/web serve --allow-selection`：仅 owner 可提交原图/结果及当前 Run 版本，同 writer 核对并原子保存；旧版本冲突，同版本重复选择不重写，不调用 Provider。创建、执行与选择开关不依赖连接管理，仍分别显式启用；默认只读、MCP 权限保持。页面选择遵守同一门禁，见 [持久选择](docs/LOCAL_SELECTION.md)。
 
 - 连接中心新增纯数据模板导入与按有效工具生成的 MCP Skill：模板只选择传输/JSON 格式，不增加权限；英文说明附中文标题，下载后通过 `skills install/status/uninstall --bundle` 显式安装，复用摘要、更新归档与本地修改保护。配置和 Skill 按当前服务权限取交集，原 `iris-core` 及 DSH 三项 Skills 保持。见 [连接专属 Skill](docs/CORE_SKILLS.md#连接专属-mcp-skill未发布)。
 
-- 新增显式 Core 连接中心：根外私有档案、稳定创建身份、修订保护、自由命名、媒体/工具/操作权限选择、stdio/HTTP 配置导出及持久撤销；官方 SDK 的客户端名称/版本以自报事实记录，不扫盘判断安装状态。可与同一有限执行服务组合，页面媒体操作仍只读，DSH 原生配置与 Skills 保持。见 [连接中心](docs/LOCAL_WEB.md#显式开启连接中心)和 [连接契约](docs/CORE_CONNECTIONS.md)。
+- 新增显式 Core 连接中心：根外私有档案、稳定创建身份、修订保护、自由命名、媒体/工具/操作权限选择、stdio/HTTP 配置导出及持久撤销；官方 SDK 的客户端名称/版本以自报事实记录，不扫盘判断安装状态。可与同一有限执行服务组合，媒体权限独立启用，DSH 原生配置与 Skills 保持。见 [连接中心](docs/LOCAL_WEB.md#显式开启连接中心)和 [连接契约](docs/CORE_CONNECTIONS.md)。
 
 - MCP 默认采用 generic 连接，新增明确功能/工具选择、`mcp capabilities/config` 和 stdio 配置导出；`api serve --allow-mcp` 提供标准 Streamable HTTP，与 stdio 共用官方 SDK 工具工厂和现有 Core。服务端拒绝未选择的工具，旧连接按固定旧工具集读取，不自动扩权。CLI 的 HTTP 认证配置仅导出到新建私有文件，连接中心须由 owner 明确操作导出；当前媒体范围和待接入项见 [MCP 指南](docs/MCP.md)。
 - 增加面向 0.3 的 Operation 存储与版本门禁：新空 Flow 根显式 `execution init`，根内 Key 派生身份、原子接收、revision/活动冲突、有限持久状态和只读 `operation list/inspect`；维护保护引用，v0 不迁移，旧 0.2.7 写者拒绝 v1。见 [Operation 说明](docs/LOCAL_OPERATIONS.md)。
-- 新增显式 `api serve --allow-execution`：独立 runner 租约、真实 Provider 装配、单次继续、持久 202/原 Key 接回和本地停止，重启只标记中断，不自动生成或观察。连接身份/根 UUID/scopes 握手、官方 SDK `mcp serve` 与 DSH 可选共享 Flow 工具共用同一 Core 服务；原 DSH 媒体/Skills/UI 保持，页面媒体操作仍只读。新增依赖官方 MCP Server/Core 2.3.1 与 Zod 4.6.7，见 [Core 服务](docs/CORE_SERVICE.md)和 [连接契约](docs/CORE_CONNECTIONS.md)。
+- 新增显式 `api serve --allow-execution`：独立 runner 租约、真实 Provider 装配、单次继续、持久 202/原 Key 接回和本地停止，重启只标记中断，不自动生成或观察。连接身份/根 UUID/scopes 握手、官方 SDK `mcp serve` 与 DSH 可选共享 Flow 工具共用同一 Core 服务；原 DSH 媒体/Skills/UI 保持，页面按独立权限启用。新增依赖官方 MCP Server/Core 2.3.1 与 Zod 4.6.7，见 [Core 服务](docs/CORE_SERVICE.md)和 [连接契约](docs/CORE_CONNECTIONS.md)。
 
 - 增加面向 0.3 的 Core 工作台 `web serve`：显式本地会话、持久图片流程历史、认证原图/结果和已选作品原字节下载；Token 仅驻标签页内存，刷新重新连接，详情默认折叠。复用现有 API 的 Bearer/Host/Origin，固定静态资源随候选包分发，默认只读，页面尚不提供媒体写入按钮。原 Demo 保留，npm 0.2.7 尚不含新入口。见 [本地工作台](docs/LOCAL_WEB.md)。
 

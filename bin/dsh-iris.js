@@ -8,7 +8,8 @@ import { recoverCoreWriterLease } from '../lib/core-lease-recovery.js';
 import { doctor, formatDoctorReport } from '../lib/doctor.js';
 import { loadProviderCatalog, providerCatalogSnapshot, catalogCapabilitySnapshot, imageCandidatesFromCatalog, musicCandidatesFromCatalog, providerForTaskFromCatalog, providerTaskBinding, transcribeCandidatesFromCatalog, ttsCandidatesFromCatalog, videoCandidatesFromCatalog } from '../lib/provider-catalog.js';
 import { createConfiguredProviderAdapter } from '../lib/provider-adapters.js';
-import { providerForImageModel, selectMediaProtocol, dashscopeTtsInputIssue } from '../lib/provider-protocol.js';
+import { providerForImageModel, selectMediaProtocol, dashscopeTtsInputIssue, supportsImageEdit } from '../lib/provider-protocol.js';
+import { loadProviderRegistry } from '../lib/provider-extensions.js';
 import { prepareProviderInput } from '../lib/provider-adapter.js';
 import { createProviderTaskRunner } from '../lib/provider-task-runner.js';
 import { generateMusicTask } from '../lib/music-generation.js';
@@ -28,13 +29,13 @@ import { inspectExecutionLease, recoverExecutionLease } from '../lib/operation-r
 import { createConnectionPair } from '../lib/core-connections.js';
 
 function trackedProviderAdapter(provider, options, task) {
-  return createTrackedProviderAdapter(provider, options['provider-config'], task);
+  return createTrackedProviderAdapter(provider, options['provider-config'], task, options.providerRegistry);
 }
 
 async function generationCatalog(options, capability, modelRef, signal = cliAbortController.signal) {
   const file = required(options['provider-config'], 'provider-config');
   const catalog = loadProviderCatalog(file);
-  if (!modelRef) await refreshCatalogDirectories(file, catalog, capability, { signal });
+  if (!modelRef) await refreshCatalogDirectories(file, catalog, capability, { signal, registry: options.providerRegistry });
   return catalog;
 }
 
@@ -50,6 +51,8 @@ function usage() {
   return [
     'Usage:',
     '  JSON input: --input <json>, --input-file <path>, or --input - (stdin).',
+    '  --provider-extension <absolute-js-or-mjs-entry> explicitly loads trusted Provider code; repeat for multiple extensions. Experimental v0, no installation or directory discovery.',
+    '  dsh-iris providers protocols [--provider-extension <absolute-entry>] lists protocol/configuration descriptions without credentials or model calls.',
     '  dsh-iris skills <install|status|uninstall> --target kimi [--directory <absolute-skills-directory>]',
     '  dsh-iris skills <install|status|uninstall> --directory <absolute-skills-directory>',
     '  dsh-iris skills <install|status|uninstall> --bundle <absolute-connection-skill.json> --directory <absolute-skills-directory> [--dry-run]',
@@ -69,13 +72,14 @@ function usage() {
     '    stdio config also accepts scopes/capabilities/tools. HTTP config includes credentials and requires a new file inside the connection private directory.',
     '  dsh-iris api serve ... --connections-file <private-grants-file> --allow-mcp',
     '  dsh-iris web serve ... --connection-store <private-directory-outside-core> --allow-connection-management [--allow-mcp] [--allow-execution --provider-config <absolute-path>]',
+    '  dsh-iris web serve ... --provider-config <private-config> --allow-provider-management [--panel <trusted-panel-manifest.json>]',
     '    Explicit standard Streamable HTTP endpoint at /mcp; default remains disabled. Uses the existing Core service and user-selected connection tools.',
     '  dsh-iris operation list --data-root <execution-root> [--run-id <run-id>] [--limit <1..30>] [--cursor <operation-id>]',
     '  dsh-iris operation inspect <operation-id> --data-root <execution-root>',
     '  dsh-iris api serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>] [--allow-local-writes] [--allow-selection]',
     '    Explicit loopback-only API, read-only by default. Local writes only upload images/create Runs, without generation. The session token is saved privately; stdout contains no token.',
     '  dsh-iris web serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>] [--allow-local-writes] [--allow-execution] [--allow-selection]',
-    '    Workbench media APIs are read-only by default; explicit write flags do not require connection management. --allow-selection permits owner-only, revision-checked local selection without a Provider. The current page still browses and downloads; media write controls are pending.',
+    '    Workbench media APIs are read-only by default; explicit write flags do not require connection management. --allow-selection permits owner-only, revision-checked selection. The page supports image editing when execution is enabled; Provider management uses its own owner-only flag.',
     '  dsh-iris runtime recover --data-root <absolute-path> --confirm-stale-pid <pid>',
     '  dsh-iris providers list --provider-config <absolute-path>',
     '  dsh-iris capabilities list --provider-config <absolute-path>',
@@ -130,7 +134,7 @@ function usage() {
   ].join('\n');
 }
 
-function flags(args, allowed) {
+function parseFlags(args, allowed) {
   const parsed = {};
   for (let index = 0; index < args.length; index += 2) {
     const flag = args[index];
@@ -188,6 +192,7 @@ function generationInput(capability, input, options) {
 /** C-8: catchable signals dispose active runtimes before the CLI exits. */
 const activeRuntimes = new Set();
 const cliAbortController = new AbortController();
+let cliProviderRegistry;
 let shuttingDown = false;
 
 function registerRuntime(runtime) {
@@ -198,6 +203,7 @@ function registerRuntime(runtime) {
 async function disposeActiveRuntimes() {
   await Promise.allSettled([...activeRuntimes].map((runtime) => runtime.dispose().catch(() => {})));
   activeRuntimes.clear();
+  await cliProviderRegistry?.dispose();
 }
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
@@ -234,10 +240,16 @@ async function withApplication(dataRoot, callback, resolveImageCandidates, resol
   finally { try { await application.dispose(); } finally { unregister(); } }
 }
 
-async function main(args) {
+async function main(args, providerRegistry) {
+  const flags = (values, allowed) => Object.defineProperty(parseFlags(values, allowed), 'providerRegistry', { value: providerRegistry });
   if (!args.length || args.includes('--help') || args.includes('-h')) {
     console.log(usage());
     return args.length ? 0 : 2;
+  }
+
+  if (args[0] === 'providers' && args[1] === 'protocols') {
+    flags(args.slice(2), []);
+    console.log(JSON.stringify(providerRegistry.snapshot(), null, 2)); return 0;
   }
 
   if (args[0] === 'skills') {
@@ -338,12 +350,12 @@ async function main(args) {
       return 0;
     }
     if (args[1] !== 'serve') throw new CliUsageError(`不支持的 ${args[0]} 子命令`);
-    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes'), executionFlags = rest.filter(value => value === '--allow-execution'), selectionFlags = rest.filter(value => value === '--allow-selection'), mcpFlags = rest.filter(value => value === '--allow-mcp'), managementFlags = rest.filter(value => value === '--allow-connection-management');
-    if (localWriteFlags.length > 1 || executionFlags.length > 1 || selectionFlags.length > 1 || mcpFlags.length > 1 || managementFlags.length > 1) throw new CliUsageError('写入/执行/选择/MCP/连接管理参数重复');
+    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes'), executionFlags = rest.filter(value => value === '--allow-execution'), selectionFlags = rest.filter(value => value === '--allow-selection'), mcpFlags = rest.filter(value => value === '--allow-mcp'), managementFlags = rest.filter(value => value === '--allow-connection-management'), providerFlags = rest.filter(value => value === '--allow-provider-management');
+    if (localWriteFlags.length > 1 || executionFlags.length > 1 || selectionFlags.length > 1 || mcpFlags.length > 1 || managementFlags.length > 1 || providerFlags.length > 1) throw new CliUsageError('写入/执行/选择/MCP/管理参数重复');
     const allowExecution = executionFlags.length === 1, allowLocalWrites = localWriteFlags.length === 1 || allowExecution;
     const allowSelection = selectionFlags.length === 1;
     const allowConnectionManagement = managementFlags.length === 1;
-    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management'].includes(value)), ['data-root', 'token-file', 'provider-config', 'port', 'connections-file', 'connection-store']);
+    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management', '--allow-provider-management'].includes(value)), ['data-root', 'token-file', 'provider-config', 'port', 'connections-file', 'connection-store', 'panel']);
     const suppliedRoot = required(options['data-root'], 'data-root');
     const tokenFile = required(options['token-file'], 'token-file');
     if (!path.isAbsolute(suppliedRoot) || !path.isAbsolute(tokenFile)) throw new CliUsageError('data-root 与 token-file 必须是绝对路径');
@@ -353,15 +365,18 @@ async function main(args) {
     try { dataRoot = fs.realpathSync(suppliedRoot); }
     catch (_) { throw new CliUsageError('data-root 必须是已初始化且可读取的 Flow 根'); }
     const api = createLocalReadApi({ dataRoot, providerConfigPath: options['provider-config'], allowLocalWrites, serveWorkbench,
-      allowExecution, allowSelection, allowMcp: mcpFlags.length === 1, connectionsFile: options['connections-file'], allowConnectionManagement, connectionStore: options['connection-store'] });
+      allowExecution, allowSelection, allowMcp: mcpFlags.length === 1, connectionsFile: options['connections-file'], allowConnectionManagement, connectionStore: options['connection-store'], providerRegistry,
+      allowProviderManagement: providerFlags.length === 1, panelManifestPath: options.panel });
     const unregister = registerRuntime(api);
     try {
       const started = await api.start({ port: options.port === undefined ? 0 : Number(options.port) });
       writeLocalApiTokenFile(tokenFile, started.accessToken, dataRoot);
       console.log(JSON.stringify({ contractVersion: 0, readOnly: !allowLocalWrites && !allowSelection, origin: started.origin, tokenFile,
         ...(allowConnectionManagement ? { connectionManagement: true } : {}),
+        ...(providerFlags.length ? { providerManagement: true } : {}),
         ...(started.mcpEndpoint ? { mcpEndpoint: started.mcpEndpoint } : {}),
-        message: serveWorkbench ? (allowConnectionManagement ? 'Core 工作台与连接管理已启动；打开 origin 并选择 Token 文件。配置连接不执行媒体。'
+        message: serveWorkbench ? (providerFlags.length ? 'Core 工作台与供应商管理已启动；打开 origin 并选择 Token 文件。配置保存不生成媒体。'
+          : allowConnectionManagement ? 'Core 工作台与连接管理已启动；打开 origin 并选择 Token 文件。配置连接不执行媒体。'
           : allowLocalWrites || allowSelection ? 'Core 工作台已启动；打开 origin 并选择 Token 文件。媒体 API 按显式开关开放，当前页面提供作品浏览。'
           : '只读工作台已启动；打开 origin 并选择 Token 文件连接。退出后 Token 失效。')
           : allowExecution ? '有限执行 API 已启动；显式继续才执行，停止只中止本地等待，重启不自动重提。'
@@ -387,12 +402,13 @@ async function main(args) {
     if (verb === 'export') input.output_path = required(options.output, 'output');
     const resolveImageCandidates = options['provider-config'] ? async ({ modelRef, signal }) => {
       const catalog = await generationCatalog(options, 'image-gen', modelRef, signal);
-      return imageCandidatesFromCatalog(catalog, modelRef).map(route => ({ adapter: trackedProviderAdapter(route.provider, options),
-        model: route.modelRef, selectionReason: route.selectionReason, providerBinding: providerTaskBinding(route.provider) }));
+      return imageCandidatesFromCatalog(catalog, modelRef, providerRegistry).map(route => ({ adapter: trackedProviderAdapter(route.provider, options),
+        model: route.modelRef, supportsImageEdit: supportsImageEdit(route.provider.mediaProtocol, route.model, providerRegistry),
+        selectionReason: route.selectionReason, providerBinding: providerTaskBinding(route.provider, providerRegistry) }));
     } : undefined;
     const resolveTaskAdapter = options['provider-config'] ? task => {
       const catalog = loadProviderCatalog(options['provider-config']);
-      return trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task);
+      return trackedProviderAdapter(providerForTaskFromCatalog(catalog, task, providerRegistry), options, task);
     } : undefined;
     let result;
     try {
@@ -442,7 +458,7 @@ async function main(args) {
   if (['providers', 'capabilities'].includes(args[0]) && args[1] === 'list') {
     const options = flags(args.slice(2), ['provider-config']);
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
-    const report = args[0] === 'providers' ? providerCatalogSnapshot(catalog) : catalogCapabilitySnapshot(catalog);
+    const report = args[0] === 'providers' ? providerCatalogSnapshot(catalog) : catalogCapabilitySnapshot(catalog, providerRegistry);
     console.log(JSON.stringify(report, null, 2));
     return 0;
   }
@@ -466,7 +482,7 @@ async function main(args) {
       }
     }
     const result = await executeConfigCommand(required(options['provider-config'], 'provider-config'), group === 'config' ? verb : group + '.' + verb, input, {
-      signal: cliAbortController.signal,
+      signal: cliAbortController.signal, registry: providerRegistry,
       probe: async ({ provider, modelId, capability, signal }) => {
         if (capability === 'music-gen') return { skipped: true, ok: false, reason: 'Music 不发起小样本探测；请使用 run music 提交创作要求' };
         if (capability === 'vision') return probeVisionModel(provider, modelId, { bytes: Buffer.from(RED_TEST_IMAGE.split(',')[1], 'base64'), mediaType: 'image/png' }, { signal });
@@ -479,14 +495,14 @@ async function main(args) {
         }
         return withRawRuntime('writer', options['data-root'], async runtime => {
           const mediaCapability = capability === 'image-gen' ? 'image' : capability === 'video-gen' ? 'video' : capability;
-          if (mediaCapability === 'image') provider = providerForImageModel(provider, modelId);
-          const adapter = createConfiguredProviderAdapter(provider, { allowRateLimited: true, modelId });
+          if (mediaCapability === 'image') provider = providerForImageModel(provider, modelId, providerRegistry);
+          const adapter = createConfiguredProviderAdapter(provider, { allowRateLimited: true, modelId, registry: providerRegistry });
           let providerInput = mediaCapability === 'image'
             ? { prompt: 'red circle', n: 1, ...(['openai-chat-images', 'openai-responses-images'].includes(adapter.protocol) ? {} : {
               size: adapter.protocol === 'openai-images' ? '256x256' : '512*512'
             }) }
             : { text: '你好', voice: probeInput.voice || provider.ttsVoice || 'Cherry' };
-          let candidates = [{ adapter, model: qualifiedModelRef(provider.id, modelId), selectionReason: 'explicit', providerBinding: providerTaskBinding(provider) }];
+          let candidates = [{ adapter, model: qualifiedModelRef(provider.id, modelId), selectionReason: 'explicit', providerBinding: providerTaskBinding(provider, providerRegistry) }];
           if (['video', 'transcribe'].includes(mediaCapability)) {
             const normalized = generationInput(mediaCapability, { ...probeInput, model_ref: qualifiedModelRef(provider.id, modelId) },
               { allowVideoPaths: true, allowAudioPath: true });
@@ -527,8 +543,8 @@ async function main(args) {
       } catch (_) { throw new CliUsageError('输出文件已存在或父目录不可写'); }
     }
     const catalog = await generationCatalog(options, 'vision', options['model-ref'] || input.model_ref);
-    if (input.transcribe && !input.transcribe_model_ref) await refreshCatalogDirectories(options['provider-config'], catalog, 'transcribe', { signal: cliAbortController.signal });
-    const execute = runtime => executeVisionCommand({ command, input, catalog, runtime,
+    if (input.transcribe && !input.transcribe_model_ref) await refreshCatalogDirectories(options['provider-config'], catalog, 'transcribe', { signal: cliAbortController.signal, registry: providerRegistry });
+    const execute = runtime => executeVisionCommand({ command, input, catalog, runtime, registry: providerRegistry,
       onRateLimit: event => recordCatalogRateLimit(options['provider-config'], event),
       onModelAvailability: event => recordCatalogAvailability(options['provider-config'], event),
       modelRef: options['model-ref'] || '', signal: cliAbortController.signal,
@@ -586,10 +602,11 @@ async function main(args) {
     const input = jsonInput(options.input);
     const resolveImageCandidates = async ({ modelRef, signal }) => {
       const catalog = await generationCatalog(options, 'image-gen', modelRef, signal);
-      return imageCandidatesFromCatalog(catalog, modelRef).map(route => ({
+      return imageCandidatesFromCatalog(catalog, modelRef, providerRegistry).map(route => ({
         adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
+        supportsImageEdit: supportsImageEdit(route.provider.mediaProtocol, route.model, providerRegistry),
         selectionReason: route.selectionReason,
-        providerBinding: providerTaskBinding(route.provider)
+        providerBinding: providerTaskBinding(route.provider, providerRegistry)
       }));
     };
     let result;
@@ -610,12 +627,12 @@ async function main(args) {
     const normalized = generationInput('video', jsonInput(options.input), { allowVideoPaths: true });
     const { providerInput, modelRef } = normalized;
     const catalog = await generationCatalog(options, 'video-gen', modelRef);
-    const routes = videoCandidatesFromCatalog(catalog, modelRef);
+    const routes = videoCandidatesFromCatalog(catalog, modelRef, providerRegistry);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = videoTaskCandidates(routes.map((route) => ({
         adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
         selectionReason: route.selectionReason,
-        providerBinding: providerTaskBinding(route.provider)
+        providerBinding: providerTaskBinding(route.provider, providerRegistry)
       })), normalized);
       const result = await createProviderTaskRunner(runtime).submit({
         capability: 'video', candidates,
@@ -631,12 +648,12 @@ async function main(args) {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
     const normalized = generationInput('music', jsonInput(options.input));
     const catalog = await generationCatalog(options, 'music-gen', normalized.modelRef);
-    const routes = musicCandidatesFromCatalog(catalog, normalized.modelRef);
+    const routes = musicCandidatesFromCatalog(catalog, normalized.modelRef, providerRegistry);
     let result;
     await withRawRuntime('writer', options['data-root'], async runtime => {
       result = await generateMusicTask({ runner: createProviderTaskRunner(runtime),
         candidates: routes.map(route => ({ adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
-          selectionReason: route.selectionReason, providerBinding: providerTaskBinding(route.provider) })),
+          selectionReason: route.selectionReason, providerBinding: providerTaskBinding(route.provider, providerRegistry) })),
         providerInput: normalized.providerInput, options: normalized.musicOptions, signal: cliAbortController.signal });
       console.log(JSON.stringify(result, null, 2));
     });
@@ -647,12 +664,12 @@ async function main(args) {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
     const { providerInput, modelRef } = generationInput('tts', jsonInput(options.input));
     const catalog = await generationCatalog(options, 'tts', modelRef);
-    const routes = ttsCandidatesFromCatalog(catalog, modelRef);
+    const routes = ttsCandidatesFromCatalog(catalog, modelRef, providerRegistry);
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
       const candidates = routes.map((route) => ({
         adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
         selectionReason: route.selectionReason,
-        providerBinding: providerTaskBinding(route.provider)
+        providerBinding: providerTaskBinding(route.provider, providerRegistry)
       }));
       const result = await createProviderTaskRunner(runtime).submit({
         capability: 'tts', candidates,
@@ -669,7 +686,7 @@ async function main(args) {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
     const normalized = generationInput('transcribe', jsonInput(options.input), { allowAudioPath: true });
     const catalog = await generationCatalog(options, 'transcribe', normalized.modelRef);
-    const routes = transcribeCandidatesFromCatalog(catalog, normalized.modelRef);
+    const routes = transcribeCandidatesFromCatalog(catalog, normalized.modelRef, providerRegistry);
     let providerInput = normalized.providerInput;
     if (normalized.audioPath) {
       if (!fs.existsSync(normalized.audioPath)) throw new CliUsageError('音频文件不存在');
@@ -682,7 +699,7 @@ async function main(args) {
       const candidates = routes.map((route) => ({
         adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
         selectionReason: route.selectionReason,
-        providerBinding: providerTaskBinding(route.provider)
+        providerBinding: providerTaskBinding(route.provider, providerRegistry)
       }));
       const result = await createProviderTaskRunner(runtime).submit({
         capability: 'transcribe', candidates,
@@ -700,7 +717,7 @@ async function main(args) {
     const inspected = await withRuntime('reader', options['data-root'], commands => commands.execute('task.inspect', { task_id: args[2] }));
     const catalog = coreTaskWaitFinished(inspected.task) ? null : loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     const result = await withRuntime(catalog ? 'writer' : 'reader', options['data-root'], commands => commands.execute('task.wait', input), {
-      ...(catalog ? { resolveTaskAdapter: task => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task) } : {}) });
+      ...(catalog ? { resolveTaskAdapter: task => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task, providerRegistry), options, task) } : {}) });
     console.log(JSON.stringify(result, null, 2));
     return result.timedOut ? 3 : result.ready ? 0 : 1;
   }
@@ -710,7 +727,7 @@ async function main(args) {
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     await withRuntime('reader', options['data-root'], (commands) => commands.execute('task.inspect', { task_id: args[2] }));
     const result = await withRuntime('writer', options['data-root'], (commands) => commands.execute('task.observe', { task_id: args[2] }), {
-      resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task)
+      resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task, providerRegistry), options, task)
     });
     console.log(JSON.stringify(result, null, 2));
     return 0;
@@ -721,7 +738,7 @@ async function main(args) {
     const catalog = options['provider-config'] ? loadProviderCatalog(options['provider-config']) : null;
     await withRuntime('reader', options['data-root'], (commands) => commands.execute('task.inspect', { task_id: args[2] }));
     const result = await withRuntime('writer', options['data-root'], (commands) => commands.execute('task.redeliver', { task_id: args[2] }), {
-      ...(catalog ? { resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task) } : {})
+      ...(catalog ? { resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task, providerRegistry), options, task) } : {})
     });
     console.log(JSON.stringify(result, null, 2));
     return 0;
@@ -732,7 +749,7 @@ async function main(args) {
     const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
     await withRuntime('reader', options['data-root'], (commands) => commands.execute('task.inspect', { task_id: args[2] }));
     const result = await withRuntime('writer', options['data-root'], (commands) => commands.execute('task.cancel', { task_id: args[2] }), {
-      resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task), options, task)
+      resolveTaskAdapter: (task) => trackedProviderAdapter(providerForTaskFromCatalog(catalog, task, providerRegistry), options, task)
     });
     console.log(JSON.stringify(result, null, 2));
     return 0;
@@ -756,19 +773,19 @@ async function main(args) {
       resolveTaskCandidates: async ({ capability, modelRef }) => {
         const catalog = await generationCatalog(options, { image: 'image-gen', video: 'video-gen', music: 'music-gen' }[capability] || capability, modelRef);
         return (capability === 'video'
-        ? videoCandidatesFromCatalog(catalog, modelRef || undefined)
+        ? videoCandidatesFromCatalog(catalog, modelRef || undefined, providerRegistry)
         : capability === 'tts'
-          ? ttsCandidatesFromCatalog(catalog, modelRef || undefined)
+          ? ttsCandidatesFromCatalog(catalog, modelRef || undefined, providerRegistry)
           : capability === 'music'
-            ? musicCandidatesFromCatalog(catalog, modelRef || undefined)
+            ? musicCandidatesFromCatalog(catalog, modelRef || undefined, providerRegistry)
           : capability === 'transcribe'
-            ? transcribeCandidatesFromCatalog(catalog, modelRef || undefined)
-            : imageCandidatesFromCatalog(catalog, modelRef || undefined)
+            ? transcribeCandidatesFromCatalog(catalog, modelRef || undefined, providerRegistry)
+            : imageCandidatesFromCatalog(catalog, modelRef || undefined, providerRegistry)
       ).map((route) => ({
         adapter: trackedProviderAdapter(route.provider, options),
         model: route.modelRef,
         selectionReason: route.selectionReason,
-        providerBinding: providerTaskBinding(route.provider)
+        providerBinding: providerTaskBinding(route.provider, providerRegistry)
       }));
       }
     });
@@ -851,7 +868,19 @@ async function main(args) {
 }
 
 try {
-  process.exitCode = await main(process.argv.slice(2));
+  const args = [], entries = [], raw = process.argv.slice(2);
+  for (let index = 0; index < raw.length; index++) {
+    if (raw[index] !== '--provider-extension') args.push(raw[index]);
+    else {
+      const entry = raw[++index];
+      if (!entry || entry.startsWith('--')) throw new CliUsageError('--provider-extension 缺少入口路径');
+      entries.push(entry);
+    }
+  }
+  try {
+    if (args.length && !args.includes('--help') && !args.includes('-h')) cliProviderRegistry = await loadProviderRegistry(entries);
+    process.exitCode = await main(args, cliProviderRegistry);
+  } finally { await cliProviderRegistry?.dispose(); }
 } catch (error) {
   const code = error && error.code || 'IRIS_CLI_FAILED';
   const message = error && error.message || '命令执行失败';

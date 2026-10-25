@@ -12,7 +12,8 @@
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json",
-    "./doctor": "./lib/doctor.js"
+    "./doctor": "./lib/doctor.js",
+    "./provider-extensions": "./lib/provider-extensions.js"
   },
   "files": [
     "lib",

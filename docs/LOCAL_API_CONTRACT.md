@@ -4,13 +4,13 @@
 
 已发布固定流程通过 [CLI](IMAGE_FLOW.md)执行，未发布源码另有上方 Core 服务；[独立 Web Demo](WEB_PROTOTYPE.md)只消费内存演示，保留到 0.3.0 阶段统一润色。Demo 尚未接入只读 API，也不作为完整服务或写操作已实现的依据。
 
-未发布源码另有 [Core 工作台](LOCAL_WEB.md)，通过显式 `web serve` 同源提供固定静态资源并读取上述 API；登录页不包含私有数据，API/图片仍要求 Bearer。默认只读，创建、执行和选择 API 分别显式开启，不要求连接管理；页面媒体操作仍只读。npm 0.2.7 尚不含，不改变下方已发布 I4A/I4B 的能力边界。
+未发布源码另有 [Core 工作台](LOCAL_WEB.md)，通过显式 `web serve` 同源提供固定静态资源；登录页不包含私有数据，API/图片仍要求 Bearer。默认只读，创建、执行和选择分别显式开启，不要求连接管理；页面按能力接入改图、比较、选择、停止和下载。npm 0.2.7 尚不含，不改变下方已发布 I4A/I4B 的能力边界。
 
-源码另实现 [Operation 存储与版本门禁](LOCAL_OPERATIONS.md)，只在新专用根主动初始化；显式 `api serve --allow-execution` 装配 runner、持久接收/查询与本地停止，默认服务与页面媒体操作仍只读。v1 根复用零生成创建，写者拒绝损坏记录；具体执行与握手以服务指南为准。
+源码另实现 [Operation 存储与版本门禁](LOCAL_OPERATIONS.md)，只在新专用根主动初始化；显式 `api serve --allow-execution` 装配 runner、持久接收/查询与本地停止，默认模式与刷新恢复仍只读。v1 根复用零生成创建，写者拒绝损坏记录；具体执行与握手以服务指南为准。
 
 ## 1. 实例与启动
 
-一个服务实例显式绑定一个已初始化的专用 Flow 根和一个 Application Runtime。Provider 配置来源可显式提供，省略时仍可查看已有流程/图片，启用本地写入后也可上传；模型列表返回未配置，不能创建新 Run。由用户主动启动，固定仅监听 `127.0.0.1`；首次不支持远程监听、代理转发或自动扫描 DSH 配置。CLI 的 `flow init` 仍负责初始化新根，浏览器不能指定根路径、初始化旧根或变更 Provider 配置。
+一个服务实例显式绑定一个已初始化的专用 Flow 根和一个 Application Runtime。Provider 配置来源可显式提供，省略时仍可查看已有流程/图片，启用本地写入后也可上传；模型列表返回未配置，不能创建新 Run。由用户主动启动，固定仅监听 `127.0.0.1`；首次不支持远程监听、代理转发或自动扫描 DSH 配置。CLI 的 `flow init` 仍负责初始化新根，浏览器不能指定根路径或初始化旧根。未发布 C3 另以独立开关提供 owner 供应商管理，只操作启动时固定的配置，见 [管理契约](PROVIDER_SETTINGS.md)。
 
 API 使用 `/api/v0` 前缀，后续静态页面须与 API 同源。只有 HTTP 适配器负责验证外部输入、生成受控 DTO 和管理请求；不得把 `application.execute(name, input)`、现有 DSH `serveApi` 或 CLI 参数作为通用 HTTP 转发口。模型来自显式配置中允许改图的候选，Flow 继续绑定单一明确模型与 `n=1`。
 
@@ -32,10 +32,11 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 
 | 方法与路径 | 输入 | 语义 |
 |---|---|---|
-| `GET /session` | 无 | 返回实例标识、契约版本、允许的操作与输入上限；不返回根路径、Key 或端点 |
+| `GET /session` | 无 | 返回实例标识、契约版本、允许的操作与输入上限；未发布 owner 会话另有稳定 rootId（无请求区为 null），不返回根路径、Key 或端点 |
+| `GET /creation-requests`（未发布） | `kind=image-import/flow-create`、原 UUIDv4 `key` | 仅 owner；默认只读也可核对已有请求，返回 kind/state 与经核验的结果引用或 null，不补写或生成 |
 | `GET /models` | 无 | 返回当前可选的 `modelRef`、显示名和是否支持改图；不会探测 Provider、同步目录或修改用途 |
 | `POST /images`（I4B） | 原始 PNG/JPEG/WebP 字节、匹配的 Content-Type、Idempotency-Key | 本地提交后返回 201 和 Artifact 引用，同 Key 接回返回 200；不接受文件路径、URL、目录或 SVG |
-| `GET /runs` | `cursor`、`limit`，limit 1–30 | 已有流程摘要，不含 Prompt；只读，不观察远端 |
+| `GET /runs` | `cursor`、`limit`，limit 1–30；未发布源码另有 `selection=all/selected/unselected` | 已有流程摘要，不含 Prompt；只读，不观察远端。先按选择筛选再计算 total/分页，另有 counts 全部/已选/未选计数 |
 | `POST /runs`（I4B） | `{sourceArtifactId, modelRef, prompt, size?}`、Idempotency-Key | 固定 `image-edit/v0` / `n=1`，只保存输入与身份，零生成请求；本地提交后 201，同 Key 接回 200 |
 | `GET /runs/:id` | 无 | 返回下述 FlowView；只读，不创建 Task、补交付或继续步骤 |
 | `POST /runs/:id/continue`（未发布执行模式） | `{expectedRevision}`、Idempotency-Key | 持久接收后 202，同 Key 200；一次首次提交/观察/补交付/比较，不重提已有 Attempt |
@@ -48,6 +49,8 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 上传累积读取限制使用现有 `MAX_IMPORT_IMAGE_BYTES = 20 MiB`，不能只相信 Content-Length；最终交给 `readImportImage({imageBytes}, signal)` 检查实际格式和静态图片要求。连接关闭、超量与解析失败不留下临时可服务文件，不把 filename 当服务器路径。并发上传上限 1，超过返回忙；用户显式重试复用原 Key。
 
 上传复用现有图片验证与 Artifact 预留 ID 提交；请求与作品在同一次 writer 内保存。当前图片读取/下载仍限 64 MiB，类型 PNG/JPEG/WebP，先检查清单大小再校验内容哈希，最多两个活动读取。大型媒体磁盘流式、Range 和音视频仍待后续。下载不调用服务器本地 `flow.export(output_path)`；浏览器是否保存成功不属于持久 Run 事实。
+
+未发布 HTTP 列表摘要保留 id/recipe/createdAt/modelRef/source，另投影 updatedAt、revision、output/selection 引用（无值为 null），不附 Prompt、Task、供应商绑定或路径；CLI/MCP 列表保持原语义。省略 selection 等于 all，未知/重复参数或不属于筛选结果的 cursor 返回400。图库封面使用 selection，否则 source。
 
 ## 4. FlowView 与操作反馈
 
@@ -100,7 +103,7 @@ I2 保证相同 Run 使用原 Task；I4B 另保证同 Key 创建请求接回原 
 7. 新版 writer 和维护入口必须识别请求格式，未知/半初始化请求区拒绝写入。已发布旧程序没有这些新检查，不能靠一个标记保证其拒绝该根；此专用根只支持已验收的 request-aware writer，回退使用完整副本，不删除请求区伪装降级。已提交 Flow/图片仍可只读查看。
 8. 复用现有原子发布和重入能力，验证范围限进程异常退出/SIGKILL；不据此承诺断电、操作系统崩溃或共享存储下的跨文件事务。请求区本身不触发 Provider 目录刷新、探测、生成或任务观察。
 
-未发布 continue/Operation 使用独立 runner 与持久身份，显式启动只记录遗留中断，**不能自动重放 continue**。I4B 创建证据与执行验收分开；Web 的连接管理写入见 [连接契约](CORE_CONNECTIONS.md)。选择复用 Run 原子提交：当前版本的同目标选择不重写，旧版本即使目标相同也冲突；没有持久 Key/选择收据，响应丢失先 GET 核对，见 [持久选择](LOCAL_SELECTION.md)。页面创作按钮与创建恢复仍待接入。
+未发布 continue/Operation 使用独立 runner 与持久身份，显式启动只记录遗留中断，**不能自动重放 continue**。I4B 创建证据与执行验收分开；Web 的连接管理写入见 [连接契约](CORE_CONNECTIONS.md)。选择复用 Run 原子提交：当前版本的同目标选择不重写，旧版本即使目标相同也冲突；没有持久 Key/选择收据，响应丢失先 GET 核对，见 [持久选择](LOCAL_SELECTION.md)。源码已实现 [原创建 Key 查询、稳定根身份及浏览器恢复](WEB_RECOVERY.md)和真实创作按钮；刷新或找回创建成功均不自动首次执行。
 
 ## 6. 错误与验收
 

@@ -38,6 +38,8 @@ try {
   const session = await start({ serveWorkbench: true });
   const headers = { Authorization: 'Bearer ' + session.accessToken };
   const assets = new Map([['/', 'text/html'], ['/app.js', 'text/javascript'], ['/transport.js', 'text/javascript'],
+    ['/media-client.js', 'text/javascript'], ['/recovery.js', 'text/javascript'],
+    ['/creation.js', 'text/javascript'], ['/gallery.js', 'text/javascript'], ['/providers.js', 'text/javascript'], ['/appearance.js', 'text/javascript'],
     ['/flow-view.js', 'text/javascript'], ['/connections.js', 'text/javascript'], ['/styles.css', 'text/css'], ['/iris-mark.svg', 'image/svg+xml']]);
   for (const [resource, type] of assets) {
     const response = await nativeFetch(session.origin + resource);
@@ -99,7 +101,7 @@ try {
   assert.throws(() => presentReadOnlyFlow({ ...view, status: 'future' }), /不支持/);
   assert.throws(() => presentReadOnlyFlow({ ...view, contractVersion: 1 }), /不支持/);
   assert.throws(() => client.get('https://outside.invalid/api/v0/session'), TypeError);
-  assert.throws(() => client.postManagement('/api/v0/images', {}), TypeError, 'page transport cannot write media');
+  assert.throws(() => client.postManagement('/api/v0/images', {}), TypeError, 'management entry cannot dispatch media writes');
   const wrong = createReadClient('x'.repeat(43), { onUnauthorized: () => unauthorized++ });
   await assert.rejects(wrong.get('/api/v0/session'), error => error.status === 401);
   assert.equal(unauthorized, 1); wrong.close();
@@ -109,7 +111,7 @@ try {
   await assert.rejects(client.get('/api/v0/session'), { name: 'AbortError' });
   assert.deepEqual(tree(), before, 'static, API, media, download, errors and aborted reads write no Core bytes');
   assert.deepEqual(readFlowEvents(dataRoot), beforeEvents, 'opening and refreshing never submits or polls a Provider');
-  console.log('local Web: package assets, Host/Origin/Bearer boundaries, GET-only transport, all Flow states, original download and zero writes/provider calls OK');
+  console.log('local Web: package assets, Host/Origin/Bearer boundaries, read-only page calls, all Flow states, original download and zero writes/provider calls OK');
 } finally {
   globalThis.fetch = nativeFetch;
   for (const service of services) await service.dispose();

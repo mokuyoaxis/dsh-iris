@@ -4,6 +4,8 @@
 
 ## 当前形态
 
+未发布源码另提供独立 [Panel/主题](PANEL_EXTENSIONS.md)和 [C3 供应商设置](PROVIDER_SETTINGS.md)：页面可显式替换，配置管理复用应用层原子写入；默认媒体权限与 Core Task/Artifact 格式保持。它们不随已发布 0.2.7 提供，也不自动替换 DSH 内嵌 UI。
+
 Iris 仍以一个 npm 包交付，但已有两个执行入口：DSH 插件负责 Agent 工具、会话附件、浏览器、Web UI 和后台观察；Headless CLI 在没有 DSH/Cordis 的进程中显式接收数据根与私有 Provider 配置。两者共用 Core Runtime、Provider Task Runner、Task/Artifact Store 和本地 Command，不能在同一数据根上同时充当写者。
 
 ```text
@@ -62,6 +64,8 @@ DSH Host / Cordis                         Headless CLI
 | `client.js` | DSH Web Slot、统一任务/作品区、泡泡和提示词入口 | 有 |
 
 完整规则见 [Core Runtime v0](CORE_RUNTIME_CONTRACT.md)、[Artifact Manifest v0](ARTIFACT_MANIFEST.md)、[Provider Adapter v0](PROVIDER_ADAPTER_CONTRACT.md) 与 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。这些仍是内部契约，不是第三方 SDK 兼容承诺。
+
+面向 0.3 的未发布源码增加[Provider 扩展首版](PROVIDER_EXTENSIONS.md)：实例拥有协议描述、工厂、活动调用和异步释放；CLI/Core 服务显式传入注册实例，五类内置协议与外部协议共用候选/健康/恢复。实验性包入口仅开放媒体协议所需接口，DSH 默认行为及已有 binding/持久格式保持，尚未提供 DSH 外部加载设置、通用 Recipe 或完整 SDK。
 
 0.2.2 的 Core writer 在创建目录前发布完整 owner 意图，释放和显式恢复通过整体退役保留证据；普通启动不抢占。非图片 staging 复用文件复制接收与分块哈希，图片格式验证和 inline 解码仍可能使用完整 Buffer，不声称端到端流式传输。
 

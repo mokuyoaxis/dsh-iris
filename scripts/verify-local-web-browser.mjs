@@ -8,10 +8,18 @@ import { createApplicationRuntime } from '../lib/application-runtime.js';
 import { createLocalReadApi, writeLocalApiTokenFile } from '../lib/local-api.js';
 import { FLOW_MODEL, FLOW_SOURCE, FLOW_RESULT, imageFlowFixture, readFlowEvents } from '../tests/fixtures/image-flow-fixture.mjs';
 import { httpMcpClient } from '../tests/fixtures/mcp-http-client.mjs';
+import { verifyWebRecoveryBrowser } from '../tests/fixtures/web-recovery-browser-probe.mjs';
+import { verifyWebCreationBrowser } from '../tests/fixtures/web-creation-browser-probe.mjs';
+import { verifyWebModeBrowser } from '../tests/fixtures/web-mode-browser-probe.mjs';
+import { verifyPanelC3Browser } from '../tests/fixtures/panel-c3-browser-probe.mjs';
 
 const args = process.argv.slice(2);
-assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
-  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection]');
+assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection', '--recovery', '--creation', '--mode-closure', '--panel-c3'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
+  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3]');
+const modeClosure = args.includes('--mode-closure');
+const panelC3 = args.includes('--panel-c3');
+assert(!modeClosure || args.slice(4).every(flag => ['--no-sandbox', '--mode-closure'].includes(flag)), '--mode-closure runs only its focused scenarios');
+assert(!panelC3 || args.slice(4).every(flag => ['--no-sandbox', '--panel-c3'].includes(flag)), '--panel-c3 runs only its focused scenarios');
 assert.equal(args[0], '--browser-executable'); assert.equal(args[2], '--output');
 assert(path.isAbsolute(args[1]) && path.isAbsolute(args[3]));
 const executable = fs.realpathSync(args[1]), out = args[3];
@@ -19,7 +27,7 @@ const management = args.includes('--connection-management');
 fs.mkdirSync(out, { mode: 0o700 });
 const report = { status: 'running', checks: [], browserErrors: [], requests: [], layout: {}, screenshots: [],
   actualPaidCalls: 0, realApiImplemented: true, dailyDshBooted: false, noSandbox: args.includes('--no-sandbox'),
-  connectionManagement: management, selectionEnabled: args.includes('--allow-selection'), requestRootVersion: args.includes('--execution-root') || management ? 1 : null };
+  connectionManagement: management, selectionEnabled: args.includes('--allow-selection'), requestRootVersion: args.includes('--execution-root') || management || args.includes('--recovery') || modeClosure || panelC3 ? 1 : null };
 const save = () => fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 function tree(root) {
@@ -44,8 +52,16 @@ async function wait(check, label) {
 }
 function cdp(method, params = {}) {
   return new Promise((resolve, reject) => {
-    const id = ++sequence, timer = setTimeout(() => { pending.delete(id); reject(new Error('CDP timeout: ' + method)); }, 12000);
-    pending.set(id, { resolve, reject, timer }); socket.send(JSON.stringify({ id, method, params }));
+    const id = ++sequence, started = performance.now(), wallStarted = Date.now(), cpu = process.cpuUsage();
+    const timeoutError = new Error('CDP timeout: ' + method);
+    const timer = setTimeout(() => {
+      (report.cdpTimeouts ??= []).push({ id, method, timeoutMs: 12000,
+        elapsedMs: Math.round(performance.now() - started), wallElapsedMs: Date.now() - wallStarted,
+        driverCpuMicros: process.cpuUsage(cpu), pendingMethods: [...pending.values()].map(item => item.method),
+        callsite: timeoutError.stack });
+      pending.delete(id); reject(timeoutError);
+    }, 12000);
+    pending.set(id, { resolve, reject, timer, method }); socket.send(JSON.stringify({ id, method, params }));
   });
 }
 async function evaluate(expression) {
@@ -54,7 +70,8 @@ async function evaluate(expression) {
   return result.result.value;
 }
 async function click(selector) {
-  const point = await evaluate(`(async () => {const n=document.querySelector(${JSON.stringify(selector)});if(!n||n.disabled)throw Error('Control unavailable: '+${JSON.stringify(selector)});n.scrollIntoView({block:'center'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));const r=n.getBoundingClientRect();const point={x:r.x+r.width/2,y:r.y+r.height/2};if(!n.contains(document.elementFromPoint(point.x,point.y)))throw Error('Control obscured: '+${JSON.stringify(selector)});return point})()`);
+  await cdp('Page.bringToFront');
+  const point = await evaluate(`(() => {const n=document.querySelector(${JSON.stringify(selector)});if(!n||n.disabled)throw Error('Control unavailable: '+${JSON.stringify(selector)});n.scrollIntoView({block:'center'});const r=n.getBoundingClientRect();const point={x:r.x+r.width/2,y:r.y+r.height/2};if(!n.contains(document.elementFromPoint(point.x,point.y)))throw Error('Control obscured: '+${JSON.stringify(selector)});return point})()`);
   await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
   await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...point });
   await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...point });
@@ -91,7 +108,7 @@ async function readyRun(id) {
 
 try {
   await app.execute('flow.init', {});
-  if (args.includes('--execution-root') || management) await app.execute('execution.init', {});
+  if (report.requestRootVersion === 1) await app.execute('execution.init', {});
   const source = (await app.execute('artifact.import', { image_bytes: FLOW_SOURCE })).artifact;
   const create = prompt => app.execute('flow.create', { source_artifact_id: source.id, model_ref: FLOW_MODEL, prompt });
   const chosen = await create('保留主体，调整背景。<img src=x onerror=alert(1)>');
@@ -136,18 +153,45 @@ try {
   await cdp('Page.navigate', { url: session.origin + '/#' + chosen.run.id });
   await wait(() => evaluate("Boolean(document.documentElement.dataset.theme&&!document.querySelector('#connection').hidden)"), 'login mount');
   await evaluate('document.fonts.ready');
+  if (panelC3) {
+    await verifyPanelC3Browser({ out, dataRoot, tokenFile, cdp, evaluate, click, wait, chooseToken, readyRun, report, save,
+      dimensions, measure, capture, pausedResponses, restart: async providerConfigPath => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot, serveWorkbench: true, providerConfigPath, allowProviderManagement: true, allowExecution: true, allowSelection: true });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'Panel/C3 has no uncaught browser exceptions or CSP violations');
+  } else if (modeClosure) {
+    await verifyWebModeBrowser({ out, dataRoot, chosenRunId: chosen.run.id, unstartedRunId: unstarted.run.id, fixture: imageFlowFixture(dataRoot),
+      cdp, evaluate, click, wait, chooseToken, readyRun, tree, report, save, capture, pausedResponses,
+      restart: async (root, executionPorts, providerConfigPath, modes = {}) => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, allowExecution: true, allowSelection: true,
+          ...modes, executionPorts, providerConfigPath }); session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'mode closure has no browser errors');
+  } else {
   await check('public shell starts disconnected, with no stored credential', "!document.querySelector('#connection').hidden&&document.querySelector('#workspace').hidden&&localStorage.length===0&&sessionStorage.length===0&&!location.search");
   await measure('desktop-login'); await capture('desktop-login');
   await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
   await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
   await check('keyboard focus is visible', "document.activeElement!==document.body&&document.activeElement.matches(':focus-visible')");
   await chooseToken(tokenFile); await readyRun(chosen.run.id);
+  const initialTheme = await evaluate('document.documentElement.dataset.theme');
+  await evaluate('window.qaSavedRaf=requestAnimationFrame;window.requestAnimationFrame=()=>1');
+  try {
+    await click('#theme');
+    await check('pointer clicks remain usable without animation callbacks', `document.documentElement.dataset.theme!==${JSON.stringify(initialTheme)}`);
+  } finally {
+    await evaluate('window.requestAnimationFrame=qaSavedRaf;delete window.qaSavedRaf');
+    if (await evaluate('document.documentElement.dataset.theme') !== initialTheme) await click('#theme');
+  }
   if (report.selectionEnabled) {
-    await check('selection-enabled owner session remains usable for browsing without implicit page writes', `document.querySelector('#mode-badge').textContent===${JSON.stringify(management ? 'Core 工作台' : '作品浏览')}&&!document.querySelector('#workspace').hidden`);
+    await check('selection-enabled owner session remains usable for browsing without implicit page writes', `document.querySelector('#mode-badge').textContent===${JSON.stringify(management ? 'Core 工作台' : '可选择作品')}&&!document.querySelector('#workspace').hidden`);
   }
   await check('file connection reads real history, original images and stored selection', "document.querySelectorAll('.history-item').length===2&&document.querySelector('#status-title').textContent==='已选择结果'&&!document.querySelector('#download').disabled&&document.querySelector('#source-dimensions').textContent==='48 × 32'&&document.querySelector('#output-dimensions').textContent==='48 × 32'");
   await check('prompt is literal text, details collapsed, missing config is nonblocking', "document.querySelector('#prompt').textContent.includes('<img src=x')&&document.querySelectorAll('[onerror]').length===0&&!document.querySelector('#run-details').open&&!document.querySelector('#model-panel').open&&document.querySelector('#model-summary').textContent==='未指定配置'");
-  await check('token is absent from URL, input and browser storage', "!location.search&&!document.querySelector('#token').value&&!document.querySelector('#token-file').value&&localStorage.length===0&&sessionStorage.length===0");
+  await check('token is absent from URL, input and browser storage', "!location.search&&!document.querySelector('#token').value&&!document.querySelector('#token-file').value&&Object.keys(localStorage).every(k=>k==='iris.panel.appearance.v0')&&sessionStorage.length===0");
   await measure('desktop-selected'); await capture('desktop-selected');
   await click('#run-details>summary');
   await wait(() => evaluate("document.querySelector('#run-details .disclosure').textContent==='收起'"), 'expanded disclosure text');
@@ -211,7 +255,7 @@ try {
     const exported = JSON.parse(await evaluate("document.querySelector('#connection-configuration').value"));
     exportedToken = exported.mcpServers.iris.headers.Authorization.slice(7);
     assert.equal(exported.mcpServers.iris.url, session.origin + '/mcp');
-    await check('HTTP credentials appear only after explicit export and are labelled', "document.querySelector('#connection-export-note').textContent.includes('密钥')&&localStorage.length===0&&sessionStorage.length===0&&!location.search");
+    await check('HTTP credentials appear only after explicit export and are labelled', "document.querySelector('#connection-export-note').textContent.includes('密钥')&&Object.keys(localStorage).every(k=>k==='iris.panel.appearance.v0')&&sessionStorage.length===0&&!location.search");
     await click('#connection-download');
     await wait(() => fs.existsSync(path.join(downloads, 'iris-mcp.json')), 'real configuration download');
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(downloads, 'iris-mcp.json'))), exported);
@@ -257,7 +301,7 @@ try {
     await click('#connection-new'); await evaluate("document.querySelector('#connection-name').value='Renamed workspace'"); await click('#connection-save');
     await wait(() => evaluate("document.querySelectorAll('.connection-item').length===2&&!document.querySelector('#connection-save').disabled"), 'second same named profile');
     assert.notEqual(await evaluate("document.querySelector('.connection-item[aria-current=true]').dataset.connectionId"), managedConnectionId);
-    await click('#media-tab'); await dimensions(1366, 900);
+    await click('#studio-tab'); await dimensions(1366, 900);
   }
   await click(`[data-run-id="${unstarted.run.id}"]`); await readyRun(unstarted.run.id);
   await check('unstarted real Run stays unsubmitted and disables download', "document.querySelector('#status-title').textContent==='已保存，尚未开始'&&document.querySelector('#download').disabled&&document.querySelector('#output-image').hidden&&testBlobs.size===1");
@@ -288,7 +332,7 @@ try {
   await evaluate(`document.querySelector('#token').value=${JSON.stringify(session.accessToken)}`); await click('#connect'); await readyRun(chosen.run.id);
   await cdp('Page.reload');
   await wait(() => evaluate("Boolean(document.documentElement.dataset.theme&&!document.querySelector('#connection').hidden)"), 'reload without credentials');
-  await check('reload requires reconnection and keeps only the Run fragment', `location.hash===${JSON.stringify('#' + chosen.run.id)}&&document.querySelector('#workspace').hidden&&!document.querySelector('#token').value&&localStorage.length===0&&sessionStorage.length===0`);
+  await check('reload requires reconnection and keeps only the Run fragment', `location.hash===${JSON.stringify('#' + chosen.run.id)}&&document.querySelector('#workspace').hidden&&!document.querySelector('#token').value&&Object.keys(localStorage).every(k=>k==='iris.panel.appearance.v0')&&sessionStorage.length===0`);
   await chooseToken(tokenFile); await readyRun(chosen.run.id);
   const oldPort = Number(new URL(session.origin).port);
   await api.dispose(); api = createLocalReadApi(apiOptions); session = await api.start({ port: oldPort });
@@ -303,7 +347,7 @@ try {
     await check('service restart preserves revoked profile and clears runtime instances', "document.querySelector('#connection-state').textContent==='已撤销'&&document.querySelector('#connection-facts').textContent.includes('无握手实例')");
     await check('service restart preserves imported templates without scanning the client', "document.querySelector('#connection-template').options.length===2&&document.querySelector('#connection-template').options[1].textContent.includes('My client')");
     await assert.rejects(httpMcpClient(session.origin, exportedToken).request('tools/list'), error => error.status === 401);
-    await click('#media-tab');
+    await click('#studio-tab');
   }
   report.checks.push('service restart invalidates the old token; reconnect restores the same durable Run');
   assert(report.requests.every(request => request.method === 'GET' || management && request.method === 'POST'
@@ -314,6 +358,24 @@ try {
   assert.deepEqual(tree(dataRoot), before); assert.deepEqual(readFlowEvents(dataRoot), eventsBefore);
   report.checks.push('browser navigation, refresh, download and restart leave Core and Provider events unchanged');
   report.core = { before, after: tree(dataRoot), eventsBefore, eventsAfter: readFlowEvents(dataRoot) };
+  if (args.includes('--recovery')) {
+    await verifyWebRecoveryBrowser({ out, dataRoot, chosenRunId: chosen.run.id, cdp, evaluate, click, wait, chooseToken, readyRun,
+      tree, report, save, dimensions, measure, capture, restart: async (root, executionPorts) => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, allowExecution: true, allowSelection: true, executionPorts });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'recovery has no uncaught browser exceptions or dialogs');
+  }
+  if (args.includes('--creation')) {
+    await verifyWebCreationBrowser({ out, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, tree,
+      dimensions, measure, capture, pausedResponses, restart: async (root, executionPorts, providerConfigPath, modes = {}) => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, allowExecution: true, allowSelection: true,
+          ...modes, executionPorts, providerConfigPath }); session = await api.start({ port }); return session;
+      } });
+  }
+  }
   report.status = 'passed';
 } catch (error) {
   report.status = 'failed'; report.failure = error.stack; process.exitCode = 1;
@@ -333,5 +395,7 @@ try {
   }
   if (api) await api.dispose(); await app.dispose(); await new Promise(resolve => browserLog.end(resolve)); save();
   console.log(JSON.stringify({ status: report.status, checks: report.checks.length, screenshots: report.screenshots.length, output: out,
+    ...(report.modeClosure ? { modeChecks: report.modeClosure.checks.length } : {}),
+    ...(report.panelC3 ? { panelChecks: report.panelC3.checks.length } : {}),
     ...(report.failure ? { failure: report.failure } : {}) }, null, 2));
 }

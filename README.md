@@ -48,19 +48,21 @@ dsh-iris 为 Agent、Iris 工作台和独立 CLI 提供图像、视频、音乐�
 
 Iris 0.2.7 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和模型路由。本版修复宿主截图集成，并增加持久图片流程、本地 API 和显式 Core Skill 安装；连接复用、功能池、目录同步与既有媒体能力继续可用。Core 内部接口尚未冻结为公共 SDK。
 
-0.2.7 包含宿主截图适配、实际截图地址、主动截图自检、内部应用运行时与 [DSH 实例装配](docs/DSH_RUNTIME.md)、[首版持久改图流程](docs/IMAGE_FLOW.md)、[默认只读本地 API](docs/LOCAL_API.md)及主动启用的 [本地上传与创建](docs/LOCAL_CREATION.md)，见 [0.2.7 发布说明](docs/releases/0.2.7.md)。源码树另有 [面向 0.3.0 的独立 Web Demo](docs/WEB_PROTOTYPE.md)：大图创作、作品筛选与连接草稿三个页面，支持浅/深色与窄屏。Demo 使用内置样例，不连接模型、不计费；真实页面的创作与选择按钮继续按 [0.3 路线图](docs/ROADMAP.md#03-及以后)推进。
+0.2.7 包含宿主截图适配、实际截图地址、主动截图自检、内部应用运行时与 [DSH 实例装配](docs/DSH_RUNTIME.md)、[首版持久改图流程](docs/IMAGE_FLOW.md)、[默认只读本地 API](docs/LOCAL_API.md)及主动启用的 [本地上传与创建](docs/LOCAL_CREATION.md)，见 [0.2.7 发布说明](docs/releases/0.2.7.md)。源码树另保留 [面向 0.3.0 的独立 Web Demo](docs/WEB_PROTOTYPE.md)，使用内置样例、不计费；其布局已用于下方真实工作台，后续范围见 [0.3 路线图](docs/ROADMAP.md#03-及以后)。
 
 > 版本支持：Iris 0.2.7 沿用 0.2.5 的 12 个准确 DSH 版本，见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。保留旧 DSH 时仍需 Node.js ≥22.0.0，宿主若要求更高，以宿主为准。连接复用另需宿主提供对应公开接口。
 
-**0.3 开发预览（未发布）**：源码新增 [Core 工作台](docs/LOCAL_WEB.md)，默认浏览持久图片流程与已选作品下载，也可显式开启连接中心：自由命名、选择功能/工具权限、导出 MCP 配置、编辑和撤销。媒体生成与选择按钮尚未接入；已发布 npm 0.2.7 没有 `web serve`。
+**0.3 开发预览（未发布）**：源码中的 [Core 工作台](docs/LOCAL_WEB.md)已有创作、作品、连接与供应商页面：显式启用执行/选择后可改图、比较、保存选择和下载，默认媒体权限仍只读。连接中心管理 MCP 授权；[供应商设置](docs/PROVIDER_SETTINGS.md)另以 owner 开关配置连接、模型与用途。已发布 npm 0.2.7 没有 `web serve`。
 
 源码后端已提供 [持久选择 API](docs/LOCAL_SELECTION.md)：`api/web serve --allow-selection` 仅允许工作台所有者按当前 Run 版本保存原图或结果，不调用模型。创建、执行和选择的媒体开关可独立于连接管理使用，默认仍只读；这些后端接口也尚未发布。
 
+源码另有 [原请求核对与刷新恢复](docs/WEB_RECOVERY.md)：每次明确动作保留原身份，重连先 GET，找回创建不会自动首次执行；标签页恢复表不存 Token、Prompt 或文件，核对反馈默认折叠。npm 0.2.7 不含此功能。
+
 连接中心另支持纯数据接入模板和按有效工具生成的 [MCP Skill](docs/CORE_SKILLS.md#连接专属-mcp-skill未发布)。模板不增加权限；说明采用英文正文附中文标题，下载后显式指定客户端的 Skills 目录安装，本地修改受到保护。这些能力尚未发布。
 
-当前独立前端分为“作品”和“连接”：作品页并排查看原图与结果，模型摘要和流程详情默认折叠；连接页管理授权、模板与 Skill。浅/深色及窄屏布局已有实现。页面上传、执行和持久选择仍待接入；可交互的创作预览见 [Web Demo](docs/WEB_PROTOTYPE.md)，其中结果使用内置素材。
+独立前端以白色为主体，六色 105 度鸢尾渐变作点缀，支持明暗、密度及本地背景；[默认 Panel 可显式替换](docs/PANEL_EXTENSIONS.md)。创作页提供大画布与并排/叠图，作品页展示真实封面和筛选，连接页管理授权、模板与 Skill；高级参数和详情默认折叠。独立 [Web Demo](docs/WEB_PROTOTYPE.md)仍使用内置素材，与真实服务分开。
 
-源码另有 [Operation 存储与版本门禁](docs/LOCAL_OPERATIONS.md)及 [Core 执行服务](docs/CORE_SERVICE.md)：新专用根、单根 runner、显式继续/本地停止、连接授权与握手、[通用 MCP](docs/MCP.md) stdio/Streamable HTTP、明确功能/工具选择和配置导出，以及 DSH 可选共享 Flow 连接。MCP 当前业务范围是固定图片编辑流程，其他媒体按覆盖表后续接入。只读页面仍不开放创作按钮，不迁移现有请求根；这些入口尚未发布。
+源码另有 [Operation 存储与版本门禁](docs/LOCAL_OPERATIONS.md)及 [Core 执行服务](docs/CORE_SERVICE.md)：新专用根、单根 runner、显式继续/本地停止、连接授权与握手、[通用 MCP](docs/MCP.md) stdio/Streamable HTTP、明确功能/工具选择和配置导出，以及 DSH 可选共享 Flow 连接。当前新 Web/MCP 业务范围是固定图片编辑流程，其他媒体后续接入；不迁移现有请求根，这些入口尚未发布。
 
 ## 0.2.7 更新重点与现有能力
 

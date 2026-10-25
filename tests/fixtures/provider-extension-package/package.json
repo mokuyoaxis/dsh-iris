@@ -1,0 +1,8 @@
+{
+  "name": "iris-fixture-provider-extension",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./index.mjs",
+  "peerDependencies": { "@mokuyoaxis/dsh-iris": "0.2.7" }
+}

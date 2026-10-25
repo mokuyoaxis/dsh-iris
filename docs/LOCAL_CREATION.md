@@ -37,6 +37,8 @@ dsh-iris api serve --data-root /absolute/path/new-flow-core --token-file /absolu
 
 ## 重试、删除与中断
 
+未发布源码增加 owner-only 的原 Key 只读查询和 session 稳定 rootId，v0/v1 请求区均可读取；prepared 不自动补完，默认只读服务也不创建请求区。浏览器刷新先重新认证、GET 核对，详见 [工作台请求恢复](WEB_RECOVERY.md)。此查询不在已发布 npm 0.2.7 中。
+
 请求意图、预留身份、业务提交和完成状态共用同一次 Core writer。跨进程重启、端口变化或 Token 轮换后，同 Key 仍绑定原数据根和原输入；已有 Run 后续执行或选择过，重放返回其当前 FlowView，不回退进度。已有意图不因当前 Provider 配置变化另选模型/端点，未来执行仍遵守原 Flow binding。
 
 意图发布前的输入错误、busy、排队取消或断线不消费 Key；发布后断线不撤销本地提交。未完成上传需要重新提供相同字节；显式同 Key POST 才核对或补完，没有自动后台重放。关闭服务会停止接收和等待，并保留未完成证据。

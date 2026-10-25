@@ -1,8 +1,10 @@
 # Core 服务与 harness 接入（面向 0.3，未发布）
 
-源码已提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**公开 npm 0.2.7 尚不包含这些入口**；以下使用源码命令。首版只接固定 `image-edit/v0`，Web 可显式管理连接，页面媒体操作仍只读；选择可用 CLI 或显式 HTTP，服务器路径导出仍用 CLI。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
+源码已提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**公开 npm 0.2.7 尚不包含这些入口**；以下使用源码命令。首版只接固定 `image-edit/v0`，[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用 CLI，页面下载原字节。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
 
 ## 显式启动
+
+需要额外媒体协议时，可用重复的 `--provider-extension /absolute/entry.mjs` 在服务进程中显式加载可信扩展。注册实例随服务生命周期管理，启动本身不提交模型请求；harness 仍使用同一 Core 和原授权。见 [Provider 扩展](PROVIDER_EXTENSIONS.md)，不属于公开 npm 0.2.7。
 
 先准备新的专用根与已有的显式 Provider 配置，不迁移 DSH 或 v0 历史根：
 
@@ -72,6 +74,8 @@ MCP 调用取消或 EOF 只结束桥的本地请求；已经接收的 Operation 
 需要标准 HTTP MCP 时，在上面的 API 启动命令增加 `--allow-mcp`，使用 `origin/mcp` 和该连接的 Bearer 凭据；默认不开放。stdio/HTTP 共用能力/工具范围，HTTP 配置导出只写入新的私有文件，具体命令见 [通用 MCP](MCP.md)。
 
 ## DSH 可选服务连接
+
+工作台可另显式增加 [供应商管理](PROVIDER_SETTINGS.md)与选择 [Panel](PANEL_EXTENSIONS.md)。这两者不扩大连接/MCP 权限：上游凭据留在 Core，普通 harness 不能读写供应商设置。
 
 使用同一个 `connection create`，将 harness 改为 `dsh`、输出改为新的独立目录。Core 的 `server-grants.json` 支持 1–32 个授权项；多连接时由操作者明确合并各 grants 数组，保留 UUID/secret 与 0600，随后显式启动服务读取它。连接配置不自动热重载。
 
