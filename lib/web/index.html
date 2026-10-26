@@ -80,7 +80,7 @@
           <form id="connection-form">
             <fieldset id="connection-fields">
               <label for="connection-name">连接名称</label><input id="connection-name" maxlength="80" required placeholder="例如：我的编程助手 · 工作项目" autocomplete="off">
-              <h3>媒体功能</h3><div id="connection-media" class="media-options"></div><p class="field-note">图片目前提供固定编辑流程；其余功能将逐步接入。</p>
+              <h3>媒体功能</h3><div id="connection-media" class="media-options"></div><div id="connection-image-options" class="scope-options"></div><p class="field-note">图片生成与修改分别选择；其余功能将逐步接入。</p>
               <h3>操作权限</h3><div id="connection-scopes" class="scope-options"></div><p class="field-note">执行可能产生供应商费用；停止只结束本地等待。</p>
               <details id="connection-tool-details" class="tool-details"><summary><span>工具细选 <small id="connection-tool-count"></small></span><span class="disclosure">展开</span></summary><div id="connection-tools"></div></details>
               <div class="connection-form-actions"><button id="connection-save" type="submit">创建连接</button><span id="connection-save-note" class="muted">创建只保存配置，不调用模型。</span></div>
@@ -111,12 +111,13 @@
         <section class="card provider-editor" aria-labelledby="provider-editor-title">
           <div class="section-heading"><h2 id="provider-editor-title">添加供应商</h2><span id="provider-state" class="badge">未保存</span></div>
           <form id="provider-form"><fieldset id="provider-fields">
-            <label class="field-label" for="provider-preset">快速填写</label><select id="provider-preset"><option value="custom">自定义兼容服务</option><option value="openai">OpenAI · Images</option><option value="dashscope">百炼 · DashScope</option></select><p id="provider-preset-note" class="field-note">按服务文档填写；编程订阅或聊天登录不等于媒体 API 认证。</p>
+            <label class="field-label" for="provider-preset">快速填写</label><select id="provider-preset"><option value="custom">自定义兼容服务</option><option value="openai">OpenAI · Images</option><option value="dashscope">百炼 · DashScope</option><option value="comfyui">ComfyUI · 已有服务</option></select><p id="provider-preset-note" class="field-note">按服务文档填写；编程订阅或聊天登录不等于媒体 API 认证。</p>
             <div class="provider-two-fields"><div><label class="field-label" for="provider-name">名称</label><input id="provider-name" required maxlength="80" placeholder="例如：我的图片服务" autocomplete="off"></div><div><label class="field-label" for="provider-auth">认证方式</label><select id="provider-auth"><option value="bearer">API Key</option><option value="none">无需认证 · 本地服务</option></select></div></div>
             <label class="field-label" for="provider-url">Base URL</label><input id="provider-url" type="url" required maxlength="2048" placeholder="https://example.com/v1" autocomplete="off">
             <div class="provider-two-fields"><div><label class="field-label" for="provider-key-action">密钥操作 <small id="provider-key-state"></small></label><select id="provider-key-action"><option value="keep">保留已有密钥</option><option value="replace">填写 / 替换密钥</option><option value="clear">清除密钥</option></select></div><div id="provider-key-field" hidden><label class="field-label" for="provider-key">新 API Key</label><input id="provider-key" type="password" autocomplete="new-password" maxlength="8192" spellcheck="false" placeholder="仅填写新密钥"></div></div>
             <label class="provider-enabled"><input id="provider-enabled" type="checkbox" checked> 启用此供应商</label>
             <details id="provider-advanced" class="tool-details"><summary><span>高级连接设置</span><span class="disclosure">展开</span></summary><label class="field-label" for="provider-protocol">默认媒体协议</label><select id="provider-protocol"></select><label class="field-label" for="provider-media-url">媒体专用 Base URL（可选）</label><input id="provider-media-url" type="url" maxlength="2048" placeholder="留空沿用 Base URL"><p id="provider-id-note" class="field-note"></p></details>
+            <details id="comfyui-tools" class="tool-details" hidden><summary><span>ComfyUI 工作流 <small>文生图</small></span><span class="disclosure">展开</span></summary><p class="field-note">连接你已有的服务。将 ComfyUI 中的工作流导出为 API 格式，再明确绑定输入与输出。首版一次接收一张图片，不安装服务或节点。</p><div class="export-actions"><a id="comfyui-open" class="quiet" target="_blank" rel="noopener noreferrer" hidden>打开 ComfyUI ↗</a><label class="file-button secondary" for="comfyui-file">导入 API 工作流<input id="comfyui-file" type="file" accept="application/json,.json"></label></div><p id="comfyui-note" class="field-note" role="status">最多 40 KiB。导入只保存草稿，不执行工作流。</p><div id="comfyui-bindings" hidden><label class="field-label" for="comfyui-model">工作流名称 / 模型 ID</label><input id="comfyui-model" maxlength="120" placeholder="例如：my-sdxl"><label class="field-label" for="comfyui-prompt-node">提示词节点（替换 text）</label><select id="comfyui-prompt-node"></select><label class="field-label" for="comfyui-output-node">图片输出节点</label><select id="comfyui-output-node"></select><label class="field-label" for="comfyui-size-node">尺寸节点（可选）</label><select id="comfyui-size-node"></select><p class="field-note">其余参数和 seed 沿用你的工作流；输出节点须恰好产生一张图片。工作流可调用其节点服务，请只导入你了解的流程。</p><button id="comfyui-add" class="secondary" type="button">加入模型草稿</button></div></details>
             <div class="section-heading provider-section"><h3>模型与用途</h3><button id="provider-discover" class="quiet" type="button">读取模型目录</button></div><p id="provider-directory-note" class="field-note">先保存连接，再读取目录；目录成功不代表媒体实测通过。</p>
             <div class="provider-model-add"><input id="provider-model-id" maxlength="512" placeholder="手填模型 ID" aria-label="手填模型 ID" autocomplete="off"><button id="provider-model-add" class="secondary" type="button">添加</button></div>
             <div id="provider-directory" hidden><input id="provider-directory-search" type="search" placeholder="搜索目录" aria-label="搜索模型目录"><div id="provider-directory-list"></div><p class="field-note">添加后请明确勾选用途。目录只提供参考，不自动批准调用。</p></div>
@@ -134,11 +135,14 @@
         <summary><span>创作设置 <small id="input-summary">从一张图片开始</small></span><span class="disclosure">收起</span></summary>
         <form id="edit-form">
           <fieldset id="draft-fields">
+            <div id="creation-modes" class="view-switch creation-modes" aria-label="创作方式"><button type="button" data-creation-mode="generate" aria-pressed="false">生成图片</button><button type="button" data-creation-mode="edit" aria-pressed="true">修改图片</button></div>
+            <div id="source-input">
             <label for="image-file" class="field-label">原图</label>
             <label id="image-drop" class="image-drop" for="image-file"><img id="input-preview" alt="待创作的原图" hidden><span><strong id="file-name">选择一张图片</strong><small>点击或拖入 PNG / JPEG / WebP</small></span><span class="upload-arrow" aria-hidden="true">↗</span><input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="image-help"></label>
             <p id="image-help" class="field-note">仅支持静态图片，最大 20 MiB。</p>
+            </div>
             <label for="model" class="field-label">图片模型 <small>配置候选</small></label><select id="model" required><option value="">读取模型…</option></select>
-            <label for="edit-prompt" class="field-label">想改些什么？</label><textarea id="edit-prompt" rows="4" maxlength="12000" required placeholder="描述想保留的细节，以及想尝试的变化…"></textarea>
+            <label id="prompt-label" for="edit-prompt" class="field-label">想改些什么？</label><textarea id="edit-prompt" rows="4" maxlength="12000" required placeholder="描述想保留的细节，以及想尝试的变化…"></textarea>
             <details id="advanced-settings" class="tool-details"><summary><span>高级参数</span><span class="disclosure">展开</span></summary><label for="edit-size" class="field-label">输出尺寸（可选）</label><input id="edit-size" maxlength="32" placeholder="使用模型默认值" autocomplete="off"><p class="field-note">填写模型支持的尺寸；留空使用默认值。</p></details>
           </fieldset>
           <div class="model-management"><button id="manage-models" class="quiet inline-button" type="button">管理模型 ↗</button></div>

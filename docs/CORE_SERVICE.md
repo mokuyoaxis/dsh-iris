@@ -1,6 +1,6 @@
 # Core 服务与 harness 接入（面向 0.3，未发布）
 
-源码已提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**公开 npm 0.2.7 尚不包含这些入口**；以下使用源码命令。首版只接固定 `image-edit/v0`，[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用 CLI，页面下载原字节。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
+源码已提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**公开 npm 0.2.7 尚不包含这些入口**；以下使用源码命令。支持固定 `image-edit/v0`，显式新 v2 根另提供 [image-generate/v0 与 ComfyUI](IMAGE_GENERATION.md)。[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用 CLI，页面下载原字节。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
 
 ## 显式启动
 
@@ -20,7 +20,7 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
   --connections-file /absolute/new-mcp-pair/server-grants.json
 ```
 
-`--allow-execution` 同时开启零生成上传/创建与有限执行；不传时保持既有默认只读行为。服务需要已初始化的 v1 根和有效的显式配置。配置静态校验、启动和连接握手不调用模型。每次明确继续至多调用一次 `flow.continue`：首次提交或检查/补交付原 Task，不持续轮询，不重提已有 Attempt。
+`--allow-execution` 同时开启零生成上传/创建与有限执行；不传时保持既有默认只读行为。服务需要已初始化的 v1/v2 执行根和有效的显式配置。配置静态校验、启动和连接握手不调用模型。每次明确继续至多调用一次 `flow.continue`：首次提交或检查/补交付原 Task，不持续轮询，不重提已有 Attempt。
 
 第二个执行 Host 无法取得同根 runner 租约；同根可另开只读页面。接收后服务自行收尾，关页或断开 harness 不撤销已接收操作。writer 正忙时明确拒绝新接收，调用方保留原 Key 后显式重试，不能假定已排队。
 
@@ -65,7 +65,7 @@ node /absolute/iris/bin/dsh-iris.js mcp serve \
 
 不指定 scopes 时只请求 `read`。这是随候选 npm 包分发的正式 stdio 入口：使用官方 `@modelcontextprotocol/server` SDK 处理协议与 schema，薄桥仅调用同一个已授权 Core 服务，不另起业务写者、不经 Bash 转调 CLI。stdout 只写 MCP 消息，连接凭据只在私有文件与 HTTP 头中出现。
 
-共享工具契约为 `iris_core_connection/models/runs/run/import_image/create_run/continue/operation/lookup/stop/image/connections`，按协商权限注册；完整授权为 12 项，只读为 8 项。参数是真实 Run、revision、请求 UUID、模型、Prompt、图片字节与作品 ID；不会替换成固定提示词。图片读取返回原 MIME/Base64 字节，不生成缩略图冒充原图。inline 导入 Base64 最多 8 MiB 字符，Core 图片读取上限仍为 64 MiB。
+原 image-edit 工具契约为 `iris_core_connection/models/runs/run/import_image/create_run/continue/operation/lookup/stop/image/connections`，完整授权为 12 项，只读为 8 项。image-generate 另提供 `iris_core_create_generation`；只选文生图完整为 11 项，两组同时选择为 13 项，旧授权不扩张。参数是真实 Run、revision、请求 UUID、模型、Prompt、图片字节与作品 ID；不会替换成固定提示词。图片读取返回原 MIME/Base64 字节，不生成缩略图冒充原图。inline 导入 Base64 最多 8 MiB 字符，Core 图片读取上限仍为 64 MiB。
 
 MCP 调用取消或 EOF 只结束桥的本地请求；已经接收的 Operation 仍归 Core，重连按原 Key 查询。服务重启需显式 `iris_core_connection` 再握手；不会自动重试写调用。普通 EOF 断开连接，Core 离线时桥可关闭自身并记录远端断开未确认，不声称取消 Task。
 

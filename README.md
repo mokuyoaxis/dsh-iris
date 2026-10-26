@@ -54,6 +54,10 @@ Iris 0.2.7 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和�
 
 **0.3 开发预览（未发布）**：源码中的 [Core 工作台](docs/LOCAL_WEB.md)已有创作、作品、连接与供应商页面：显式启用执行/选择后可改图、比较、保存选择和下载，默认媒体权限仍只读。连接中心管理 MCP 授权；[供应商设置](docs/PROVIDER_SETTINGS.md)另以 owner 开关配置连接、模型与用途。已发布 npm 0.2.7 没有 `web serve`。
 
+新的专用 v2 执行根增加 [独立文生图与 ComfyUI 入口](docs/IMAGE_GENERATION.md)：生成/修改分别选择，ComfyUI 可连接已有服务并导入 API 工作流。MCP 文生图须明确授权 `image-generate`；原根与旧授权不自动升级。ComfyUI 已通过受控 HTTP/浏览器验证，真实 GPU 出图仍需部署验收。
+
+DSH 源码侧也已增加 [ComfyUI 专区](docs/IMAGE_GENERATION.md#dsh-工作台入口未发布)：无需密钥的已有服务连接、API 工作流/参数模板导入、只读检查和画图时的 LoRA 双权重等参数；画图与泡泡常用卡片共用入口。它沿用 DSH 原配置与任务，不要求另起 Core 服务；默认折叠和短暂鸢尾扫光跟随宿主主题及减少动画设置。npm 0.2.7 尚不包含此界面。
+
 源码后端已提供 [持久选择 API](docs/LOCAL_SELECTION.md)：`api/web serve --allow-selection` 仅允许工作台所有者按当前 Run 版本保存原图或结果，不调用模型。创建、执行和选择的媒体开关可独立于连接管理使用，默认仍只读；这些后端接口也尚未发布。
 
 源码另有 [原请求核对与刷新恢复](docs/WEB_RECOVERY.md)：每次明确动作保留原身份，重连先 GET，找回创建不会自动首次执行；标签页恢复表不存 Token、Prompt 或文件，核对反馈默认折叠。npm 0.2.7 不含此功能。
@@ -62,7 +66,7 @@ Iris 0.2.7 同时提供 DSH 插件与无 DSH 的 CLI，共用任务、产物和�
 
 独立前端以白色为主体，六色 105 度鸢尾渐变作点缀，支持明暗、密度及本地背景；[默认 Panel 可显式替换](docs/PANEL_EXTENSIONS.md)。创作页提供大画布与并排/叠图，作品页展示真实封面和筛选，连接页管理授权、模板与 Skill；高级参数和详情默认折叠。独立 [Web Demo](docs/WEB_PROTOTYPE.md)仍使用内置素材，与真实服务分开。
 
-源码另有 [Operation 存储与版本门禁](docs/LOCAL_OPERATIONS.md)及 [Core 执行服务](docs/CORE_SERVICE.md)：新专用根、单根 runner、显式继续/本地停止、连接授权与握手、[通用 MCP](docs/MCP.md) stdio/Streamable HTTP、明确功能/工具选择和配置导出，以及 DSH 可选共享 Flow 连接。当前新 Web/MCP 业务范围是固定图片编辑流程，其他媒体后续接入；不迁移现有请求根，这些入口尚未发布。
+源码另有 [Operation 存储与版本门禁](docs/LOCAL_OPERATIONS.md)及 [Core 执行服务](docs/CORE_SERVICE.md)：新专用根、单根 runner、显式继续/本地停止、连接授权与握手、[通用 MCP](docs/MCP.md) stdio/Streamable HTTP、明确功能/工具选择和配置导出，以及 DSH 可选共享 Flow 连接。当前新 Web/MCP 支持固定图片编辑及新 v2 根上的独立文生图，其他媒体后续接入；不迁移现有请求根，这些入口尚未发布。
 
 ## 0.2.7 更新重点与现有能力
 

@@ -96,7 +96,7 @@ export async function verifyWebCreationBrowser({ out, cdp, evaluate, click, wait
     result.checks.push('lost selection response reads current choice instead of replaying POST');
     const beforeReload = posts().length; await login({ keepHash: true }); await readyRun(id);
     assert.equal(posts().length, beforeReload); assert.equal(fixture.calls.submit.length, 1);
-    await check('reload requires fresh authentication and never generates', "sessionStorage.length===0&&localStorage.length===0&&!document.querySelector('#token').value&&!location.search");
+    await check('reload requires fresh authentication and never generates', "sessionStorage.length===0&&Object.keys(localStorage).every(key=>key==='iris.panel.appearance.v0')&&!document.querySelector('#token').value&&!location.search");
     for (const width of [390, 320]) {
       await dimensions(width); await measure('creation-mobile-' + width); await capture('creation-mobile-' + width);
       await check('fixed mobile inputs start folded at ' + width, "!document.querySelector('#creation-settings').open");

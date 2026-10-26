@@ -23,7 +23,7 @@ function factory({ id = 'fixture.extension', protocol = 'fixture-images', versio
 const first = await createProviderRegistry({ extensions: [factory()] });
 const second = await createProviderRegistry();
 try {
-  assert.equal(first.snapshot().protocols.length, 6); assert.equal(second.snapshot().protocols.length, 5);
+  assert.equal(first.snapshot().protocols.length, 7); assert.equal(second.snapshot().protocols.length, 6);
   assert.equal(imageCandidatesFromCatalog(catalog, '', first).length, 1);
   assert.throws(() => imageCandidatesFromCatalog(catalog), { code: 'IRIS_PROVIDER_IMAGE_PROTOCOL_INVALID' });
   assert.throws(() => imageCandidatesFromCatalog({ ...catalog, providers: [{ ...provider,
@@ -40,7 +40,7 @@ try {
   assert.throws(() => first.descriptor('fixture-images').capabilities.push('tts'));
   checks.push('descriptors are immutable and public snapshots contain configuration descriptions only');
 
-  for (const protocol of second.snapshot().protocols) {
+  for (const protocol of second.snapshot().protocols.filter(protocol => protocol.id !== 'comfyui')) {
     const value = { ...provider, mediaProtocol: protocol.id, models: [], baseUrl: protocol.id === 'dashscope'
       ? 'https://dashscope.aliyuncs.com/compatible-mode/v1' : 'https://fixture.invalid/v1///' };
     const endpoint = protocol.id === 'dashscope' ? 'https://dashscope.aliyuncs.com/api/v1' : 'https://fixture.invalid/v1';

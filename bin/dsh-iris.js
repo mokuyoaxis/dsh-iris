@@ -59,13 +59,13 @@ function usage() {
     '    install/uninstall accept --dry-run. Copy only iris-core; preserve local changes and archive managed updates/removals outside the scan directory. status is read-only and does not verify host discovery.',
     '  dsh-iris doctor [--data-root <absolute-path>] [--json]',
     '  dsh-iris api init --data-root <empty-existing-flow-root>',
-    '  dsh-iris execution init --data-root <empty-existing-flow-root>',
-    '    Initialize a NEW v1 request container for Operation storage only; no runner or generation. Existing v0 roots are never migrated.',
+    '  dsh-iris execution init --data-root <empty-existing-flow-root> [--image-generation]',
+    '    Initialize a NEW v1 request container, or v2 with --image-generation. No runner or generation; existing roots are never migrated.',
     '  dsh-iris execution inspect --data-root <v1-flow-root>',
     '  dsh-iris execution recover-lease --data-root <v1-flow-root> --confirm-stale-pid <pid>',
-    '  dsh-iris connection create --data-root <v1-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate|none>] [--tools <comma-separated-names|none>]',
     '  dsh-iris api serve ... --allow-execution --provider-config <absolute-path> [--connections-file <private-grants-file>]',
-    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate|none>] [--tools <comma-separated-names|none>]',
     '    Official SDK stdio bridge to an already running Core service. Read-only by default; stdout contains MCP messages only.',
     '  dsh-iris mcp capabilities',
     '  dsh-iris mcp config --connection-file <private-client-json> [--transport <stdio|http>] [--format <mcpServers|entry>] [--output <new-absolute-path>]',
@@ -119,8 +119,9 @@ function usage() {
     '  dsh-iris artifact export <id> --data-root <absolute-path> --output <absolute-path>',
     '  dsh-iris artifact rebuild --data-root <absolute-path>',
     '  dsh-iris flow init --data-root <new-absolute-path>',
-    '  dsh-iris flow create --data-root <absolute-path> --provider-config <absolute-path> --input <image-edit-json>',
-    '    Import the source image after flow init; use explicit model_ref and n=1. create saves private inputs but never submits.',
+    '  dsh-iris flow create --data-root <absolute-path> --provider-config <absolute-path> --input <image-json>',
+    '  dsh-iris models workflow-check <provider::workflow> --provider-config <absolute-path> [--input <workflow_parameters-json>] (read-only)',
+    '    Use explicit model_ref and n=1. Edits require an imported source; text-to-image requires a new execution init --image-generation root. create saves private inputs but never submits.',
     '  dsh-iris flow <list|inspect> [run-id] --data-root <absolute-path>',
     '  dsh-iris flow continue <run-id> --data-root <absolute-path> [--provider-config <absolute-path>]',
     '  dsh-iris flow select <run-id> --data-root <absolute-path> --input <json with artifact_id>',
@@ -272,7 +273,7 @@ async function main(args, providerRegistry) {
       flags(args.slice(2), []);
       const { BRIDGE_CAPABILITIES, BRIDGE_CONTROL_TOOLS } = await import('../lib/core-bridge-selection.js');
       console.log(JSON.stringify({ contractVersion: 0, capabilities: BRIDGE_CAPABILITIES, controlTools: BRIDGE_CONTROL_TOOLS,
-        implementedMedia: ['image-edit/v0'], selectionDoesNotGenerate: true }, null, 2)); return 0;
+        implementedMedia: ['image-edit/v0', 'image-generate/v0'], selectionDoesNotGenerate: true }, null, 2)); return 0;
     }
     if (!['serve', 'config'].includes(args[1])) throw new CliUsageError('mcp 支持 serve/config/capabilities');
     const options = flags(args.slice(2), ['connection-file', 'scopes', 'capabilities', 'tools', ...(args[1] === 'config' ? ['transport', 'format', 'output'] : [])]);
@@ -314,14 +315,16 @@ async function main(args, providerRegistry) {
         console.log(JSON.stringify(result, null, 2)); return 0;
       }
       if (args[1] !== 'init') throw new CliUsageError('不支持的 execution 子命令');
-      const options = flags(args.slice(2), ['data-root']);
+      const initArgs = args.slice(2), generationFlags = initArgs.filter(value => value === '--image-generation');
+      if (generationFlags.length > 1) throw new CliUsageError('参数重复：--image-generation');
+      const options = flags(initArgs.filter(value => value !== '--image-generation'), ['data-root']);
       const suppliedRoot = required(options['data-root'], 'data-root');
       if (!path.isAbsolute(suppliedRoot)) throw new CliUsageError('data-root 必须是已初始化的空 Flow 根绝对路径');
       let dataRoot;
       try { dataRoot = fs.realpathSync(suppliedRoot); }
       catch (_) { throw new CliUsageError('请先在新的专用数据根执行 flow init'); }
       const result = await withApplication(dataRoot, application =>
-        application.execute('execution.init', {}, { signal: cliAbortController.signal }));
+        application.execute('execution.init', generationFlags.length ? { imageGeneration: true } : {}, { signal: cliAbortController.signal }));
       console.log(JSON.stringify(result, null, 2)); return 0;
     }
     if (!['list', 'inspect'].includes(args[1])) throw new CliUsageError('operation 只支持只读 list/inspect');
@@ -465,7 +468,7 @@ async function main(args, providerRegistry) {
 
   if (['config', 'providers', 'models', 'assignments'].includes(args[0])) {
     const [group, verb] = args;
-    const verbs = { config: ['init', 'show', 'check'], providers: ['add', 'set', 'remove'], models: ['list', 'add', 'remove', 'caps', 'protocol', 'music-protocol', 'vision-input', 'discover', 'test'], assignments: ['list', 'set', 'clear'] };
+    const verbs = { config: ['init', 'show', 'check'], providers: ['add', 'set', 'remove'], models: ['list', 'add', 'remove', 'caps', 'protocol', 'music-protocol', 'vision-input', 'discover', 'test', 'workflow-check'], assignments: ['list', 'set', 'clear'] };
     if (!verbs[group].includes(verb)) throw new CliUsageError('未知配置命令');
     const positional = (group === 'providers' && verb === 'remove') || (group === 'models' && verb !== 'list');
     const id = positional ? required(args[2], group === 'providers' || verb === 'discover' ? 'provider-id' : 'model-ref') : undefined;
@@ -498,7 +501,7 @@ async function main(args, providerRegistry) {
           if (mediaCapability === 'image') provider = providerForImageModel(provider, modelId, providerRegistry);
           const adapter = createConfiguredProviderAdapter(provider, { allowRateLimited: true, modelId, registry: providerRegistry });
           let providerInput = mediaCapability === 'image'
-            ? { prompt: 'red circle', n: 1, ...(['openai-chat-images', 'openai-responses-images'].includes(adapter.protocol) ? {} : {
+            ? { prompt: 'red circle', n: 1, ...(['openai-chat-images', 'openai-responses-images', 'comfyui'].includes(adapter.protocol) ? {} : {
               size: adapter.protocol === 'openai-images' ? '256x256' : '512*512'
             }) }
             : { text: '你好', voice: probeInput.voice || provider.ttsVoice || 'Cherry' };

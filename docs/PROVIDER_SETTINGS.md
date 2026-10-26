@@ -15,7 +15,7 @@ node bin/dsh-iris.js web serve --data-root /absolute/existing-flow-root \
 
 管理是独立开关，只有 owner 可用；普通连接、MCP read/execute、连接管理、媒体执行或选择均不隐含此权限。可以只管理配置，不启用媒体写入；会话 `readOnly` 只描述媒体权限，`providerManagement` 单独描述管理权限。
 
-同时创作时，在已明确初始化的 **v1 执行根**另加 `--allow-execution --allow-selection`，步骤见 [工作台](LOCAL_WEB.md)。沿用原配置 JSON 与 CLI；不迁移旧根，服务启动不自动创建配置。
+同时改图时，在已明确初始化的 v1/v2 执行根另加 `--allow-execution --allow-selection`；文生图需新 v2 根，见 [文生图与 ComfyUI](IMAGE_GENERATION.md)。沿用原配置 JSON 与 CLI；不迁移旧根，服务启动不自动创建配置。
 
 ## 配置流程
 
@@ -24,7 +24,11 @@ node bin/dsh-iris.js web serve --data-root /absolute/existing-flow-root \
 3. 可以先仅保存连接，再主动读取目录；目录只使用已保存连接。也可直接手填模型 ID。
 4. 勾选图片/视频/语音/音乐/转写/视觉用途再保存。新勾选用途时，原本停用的对应功能会改为自动选择，摘要明确列出；可展开“功能模型池”改为停用或手动，手动按勾选顺序保存。已有自动/手动设置不因打开页面而改变。
 
-目录结果暂存在页面，搜索/加入草稿不写配置、不批准用途。目录元数据与实际协议支持不同；标注用途后运行时仍验证协议、限流和可用性。模型级图片/音乐协议在折叠项中选择。当前 Web 只提供图片编辑，保存其他用途不表示已进入 MCP/Web 创作。
+目录结果暂存在页面，搜索/加入草稿不写配置、不批准用途。目录元数据与实际协议支持不同；标注用途后运行时仍验证协议、限流和可用性。模型级图片/音乐协议在折叠项中选择。当前 Web 支持文生图与编辑，保存其他用途不表示已进入 MCP/Web 创作。
+
+ComfyUI 预设提供已有服务地址和默认折叠的 API 工作流导入。每份工作流作为一个明确的图片模型，绑定正向提示词、输出和可选尺寸节点；导入不执行，保存后才能从创作页选择。目录检查只验证服务并列出已配置工作流，不把远端 checkpoint 自动当成可调用工作流。流程与限制见 [ComfyUI 入口](IMAGE_GENERATION.md#comfyui-入口)。
+
+后端另提供 v1 参数模板与 `POST /api/v0/provider-management/workflow-check`：owner 提交 `{expectedRevision,modelRef,workflowParameters?}`，只查询官方节点定义，返回静态问题和可用参数选项，不写配置、不创建 Task、不入队。需同一供应商管理开关，仍受 Host/Origin、revision 与请求大小限制；Core 网页专属参数视图尚未接入，DSH 的独立入口见 [DSH 工作台](IMAGE_GENERATION.md#dsh-工作台入口未发布)。详见 [参数模板与检查](IMAGE_GENERATION.md#comfyui-参数模板与只读检查后端)。
 
 一次保存连接、模型用途和明确修改的功能池，复用原锁、revision 摘要、0600 备份与原子写入。未改动供应商、模型与额外字段保留，不提供硬删除。原模型可清空用途，新模型可撤销添加，供应商可停用。配置及备份仍含 Key，应保存在当前用户控制的私有位置。
 
@@ -44,6 +48,6 @@ Key 存在、声明用途或目录成功均不表示实测通过。页面显示�
 | POST `/api/v0/provider-management/save` | `{expectedRevision, provider, credential, assignments?}`，保存一次，返回新投影，不返回备份路径 |
 | POST `/api/v0/provider-management/discover` | `{expectedRevision, providerId}`，返回最多 256 模型、`persisted:false` 与截断标记，不写配置 |
 
-`provider` 只接受 `id/name/baseUrl/mediaBaseUrl/mediaProtocol/enabled/auth/models`；单次最多 256 模型，每项只接受 `id/capabilities/imageProtocol/musicProtocol`。未提交的原模型保留。`credential` 为 `{action:"keep"}`、`{action:"clear"}` 或 `{action:"replace",value:"new-key"}`，拒绝额外秘密字段。`assignments` 只含本次修改的能力，值为原有 `{mode:"auto"|"manual"|"disabled",models:[...],hostVision?:boolean}`，不创建第二套格式。
+`provider` 只接受 `id/name/baseUrl/mediaBaseUrl/mediaProtocol/enabled/auth/models`；单次最多 256 模型，每项接受 `id/capabilities/imageProtocol/musicProtocol` 及可选 `comfyWorkflow`。工作流支持 `{version:0,graph,promptNode,outputNode,sizeNode?}`，也支持增加明确 `parameters` 的 v1 模板；Core 当前导入控件创建 v0，后端保存/读取可保留 v1。普通保存省略工作流时保留原图，读取只返回摘要和参数描述，不回显 `graph`。未提交的原模型保留。`credential` 为 `{action:"keep"}`、`{action:"clear"}` 或 `{action:"replace",value:"new-key"}`，拒绝额外秘密字段。`assignments` 只含本次修改的能力，值为原有 `{mode:"auto"|"manual"|"disabled",models:[...],hostVision?:boolean}`，不创建第二套格式。
 
 未开启 405、连接越权 403、revision 冲突/锁占用 409、非法设置 400、正文过大 413。已加载的 [Provider 扩展](PROVIDER_EXTENSIONS.md)通过实例描述进入页面；页面不能安装或加载代码。环境凭据引用、DSH 来源桥（C3c）仍未实施。

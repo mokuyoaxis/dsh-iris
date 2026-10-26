@@ -35,7 +35,7 @@ try {
   assert.equal(pair.harnessKind, 'generic');
   const source = read(pair.clientFile), grant = readConnectionGrants(pair.serverFile)[0];
   let combinations = 0;
-  for (const capabilities of [[], ['image-edit']]) {
+  for (const capabilities of [[], ['image-edit'], ['image-generate'], ['image-edit', 'image-generate']]) {
     const possible = selectedBridgeTools(capabilities);
     for (const tools of [possible, [], possible.slice(0, 1)]) for (let mask = 0; mask < 8; mask++) {
       const requestedScopes = ['read', ...scopes.slice(1).filter((_scope, index) => mask & 1 << index)];
@@ -52,7 +52,7 @@ try {
       registry.dispose(); combinations++;
     }
   }
-  assert.equal(combinations, 48);
+  assert.equal(combinations, 96);
   for (const capabilities of [null, ['video'], ['image-edit', 'image-edit'], '*']) {
     assert.throws(() => checkedClientConnection({ ...source, capabilities }), { code: 'IRIS_CONNECTION_INPUT_INVALID' });
   }
@@ -99,5 +99,5 @@ try {
   await assert.rejects(forged.connect(), { code: 'IRIS_CONNECTION_CAPABILITY_DENIED' }); await forged.dispose();
   assert.deepEqual(snapshot(dataRoot), before, 'selection refusals, handshake and reads make no business-root writes');
   assert.equal(fixture.calls.submit.length, 0);
-  console.log('PASS 48 selection/scope combinations, every tool authorization, legacy frozen policy, empty/unknown input and 12 direct-API bypass refusals with zero writes/submits');
+  console.log('PASS 96 selection/scope combinations, every tool authorization, legacy frozen policy, empty/unknown input and 12 direct-API bypass refusals with zero writes/submits');
 } finally { await client?.dispose(); await api?.dispose(); await app.dispose(); }

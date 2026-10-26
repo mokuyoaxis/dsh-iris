@@ -75,7 +75,7 @@ try {
     return value.stdout ? JSON.parse(value.stdout) : null;
   }
   const metadata = await cliRun(['providers', 'protocols']);
-  assert.equal(metadata.protocols.length, 6); assert.equal(requests.length, 0);
+  assert.equal(metadata.protocols.length, 7); assert.equal(requests.length, 0);
   assert(!JSON.stringify(metadata).includes(origin));
   check('archive-extracted Iris resolves a separate package through the declared extension export; registration makes no model call');
   await cliRun(['config', 'init', '--provider-config', config]);

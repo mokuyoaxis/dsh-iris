@@ -324,3 +324,7 @@ footer { display:flex; justify-content:space-between; gap:12px; padding:24px 0; 
   .page-heading { align-items:start; flex-direction:column; gap:10px; }
 }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; scroll-behavior:auto!important; } }
+/* Generation shares the canvas, with no empty source or comparison column. */
+.creation-modes { display:flex; margin-bottom:12px }
+.creation-modes button { flex:1 }
+#run-view[data-recipe="image-generate/v0"] .image-pair { grid-template-columns:minmax(0,1fr) }

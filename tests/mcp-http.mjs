@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createApplicationRuntime } from '../lib/application-runtime.js';
 import { createLocalReadApi } from '../lib/local-api.js';
 import { createConnectionPair, readConnectionGrants } from '../lib/core-connections.js';
-import { BRIDGE_TOOL_NAMES } from '../lib/core-bridge-selection.js';
+import { LEGACY_BRIDGE_TOOLS_V0 as BRIDGE_TOOL_NAMES } from '../lib/core-bridge-selection.js';
 import { readCoreArtifactBytes } from '../lib/core-artifacts.js';
 import { FLOW_MODEL, FLOW_SOURCE, imageFlowFixture } from './fixtures/image-flow-fixture.mjs';
 import { stdioMcpClient } from './fixtures/mcp-client.mjs';

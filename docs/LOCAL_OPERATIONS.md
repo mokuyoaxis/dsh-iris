@@ -4,6 +4,8 @@
 
 Operation 表示一次有限调用，Run 表示创作流程，Task/Attempt 表示外部受理与结果。Operation 成功并不等于图片完成；running 是最后保存的本地状态，不证明处理器仍在线。存储 CLI 初始化/查询不执行模型；执行服务启动只标记遗留中断，查询和原 Key 重放不重新生成或观察 Provider。
 
+新增 [文生图](IMAGE_GENERATION.md)使用显式 `execution init --image-generation` 的新 v2 根，runner 和 Operation 语义相同，绑定没有来源/比较作品；首次执行前或停止时作品列表可为空。原 v0/v1 不自动迁移，旧写者拒绝 v2。以下不带开关的初始化仍建立原 v1 编辑执行根。
+
 ## 显式初始化与查询
 
 以下命令针对未发布源码；已公开 npm 0.2.7 没有此入口。需要 Node.js ≥22 和项目现有依赖：

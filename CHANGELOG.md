@@ -4,10 +4,18 @@
 
 ## [Unreleased]
 
+- 按 ComfyUI 官网及官方 `fe298e4` 源码复核请求/队列/历史/取图与 LoRA 元数据；更新兼容边界和 SaveImage 测试定义，保留旧版无数据输出的节点兼容。API 图中的越界整数也在模板边界拒绝，避免大种子被 JavaScript 静默舍入；真实 GPU 仍待验收。
+
+- DSH 工作台增加 [ComfyUI 专区](docs/IMAGE_GENERATION.md#dsh-工作台入口未发布)：无需密钥的已有服务连接、API 图/Iris 模板导入、明确节点与公开参数、只读检查和同名替换保护；原画图与泡泡卡片接通 LoRA 双权重等参数，额外设置默认折叠，并加入遵循减少动画设置的短暂鸢尾扫光。保留旧模型管理中的工作流字段，更换模板清除图片健康证据；不另起服务、不安装模型、不宣称真实 GPU 已验收。
+
+- ComfyUI 后端增加明确参数槽位（含 LoRA 双权重、负面提示词与种子）、官方节点定义的只读检查，以及首次提交前检查；CLI、Core 创建 API 和所选文生图 MCP 接通参数快照与原 Key 冲突保护。v0 固定模板保持，带参数的新 Run 由旧读取者拒绝；DSH 参数界面已接入，Core 专属参数视图待后续，未宣称真实 GPU 验收。见 [参数模板与检查](docs/IMAGE_GENERATION.md#comfyui-参数模板与只读检查后端)。
+
+- 新增 [Core 独立文生图与 ComfyUI 入口](docs/IMAGE_GENERATION.md)：显式新 v2 执行根、固定生成步骤/Task、原 Key 恢复和选择下载；Web 分开生成/修改，MCP 新能力由用户明确选择，旧 12 工具授权不扩张。ComfyUI 通过现有 Provider 扩展框架连接已有服务、导入 API 工作流并绑定输入/输出，使用原任务队列/历史/取图，不发送全局中断、不安装服务。受控 HTTP 与浏览器验证不等于真实 GPU 出图。
+
 - Core 默认 Panel 改用白色主体与六色 105 度鸢尾点缀，新增本地外观/背景、受限主题 JSON 和显式可信 Panel 资源清单，API/CLI/MCP 独立。见 [Panel 与外观](docs/PANEL_EXTENSIONS.md)。
 - 新增 C3 [供应商与模型设置](docs/PROVIDER_SETTINGS.md)：独立 owner 开关、非秘密投影、保留/替换/清除 Key、revision 冲突和单次原子保存；目录/手填模型、六类用途及全局自动/手动/停用。设置不生成媒体、不迁移格式、不接管 harness 登录；实测仍由明确 CLI 操作发起。
 
-- 新增[Provider 扩展首版](docs/PROVIDER_EXTENSIONS.md)：实例级协议描述/工厂、版本与重复注册检查、等待在途调用后异步释放；CLI/API 显式加载可信本地模块，五类内置协议与外部协议共用候选、目录、模型级覆盖、实测及 Task 恢复。实验性窄包入口不等于完整 SDK；保留原 binding/存储格式，不自动安装插件、扩张功能授权或迁移数据，DSH 默认内置行为保持。
+- 新增[Provider 扩展首版](docs/PROVIDER_EXTENSIONS.md)：实例级协议描述/工厂、版本与重复注册检查、等待在途调用后异步释放；CLI/API 显式加载可信本地模块，内置协议与外部协议共用候选、目录、模型级覆盖、实测及 Task 恢复。实验性窄包入口不等于完整 SDK；保留原 binding/存储格式，不自动安装插件、扩张功能授权或迁移数据，DSH 默认内置行为保持。
 
 - W1c 将 Demo 布局迁入真实 [Core 工作台](docs/LOCAL_WEB.md)：创作画布、右侧固定输入、真实作品筛选和独立连接页，支持深浅、窄屏、并排/叠图与放大。显式启用权限后可选图、改图、观察原任务、本地停止、按版本保存选择及下载；默认仍只读，刷新和回包丢失恢复不自动生成。HTTP 列表增加选择筛选/计数及有限结果摘要，不改变 CLI/MCP 列表或 Core 数据格式。
 
@@ -25,7 +33,7 @@
 - 增加面向 0.3 的 Operation 存储与版本门禁：新空 Flow 根显式 `execution init`，根内 Key 派生身份、原子接收、revision/活动冲突、有限持久状态和只读 `operation list/inspect`；维护保护引用，v0 不迁移，旧 0.2.7 写者拒绝 v1。见 [Operation 说明](docs/LOCAL_OPERATIONS.md)。
 - 新增显式 `api serve --allow-execution`：独立 runner 租约、真实 Provider 装配、单次继续、持久 202/原 Key 接回和本地停止，重启只标记中断，不自动生成或观察。连接身份/根 UUID/scopes 握手、官方 SDK `mcp serve` 与 DSH 可选共享 Flow 工具共用同一 Core 服务；原 DSH 媒体/Skills/UI 保持，页面按独立权限启用。新增依赖官方 MCP Server/Core 2.3.1 与 Zod 4.6.7，见 [Core 服务](docs/CORE_SERVICE.md)和 [连接契约](docs/CORE_CONNECTIONS.md)。
 
-- 增加面向 0.3 的 Core 工作台 `web serve`：显式本地会话、持久图片流程历史、认证原图/结果和已选作品原字节下载；Token 仅驻标签页内存，刷新重新连接，详情默认折叠。复用现有 API 的 Bearer/Host/Origin，固定静态资源随候选包分发，默认只读，页面尚不提供媒体写入按钮。原 Demo 保留，npm 0.2.7 尚不含新入口。见 [本地工作台](docs/LOCAL_WEB.md)。
+- 增加面向 0.3 的 Core 工作台 `web serve`：显式本地会话、持久图片流程历史、认证原图/结果和已选作品原字节下载；Token 仅驻标签页内存，刷新重新连接，详情默认折叠。复用现有 API 的 Bearer/Host/Origin，固定静态资源随候选包分发；默认只读，媒体写入、执行与选择由独立开关明确启用。原 Demo 保留，npm 0.2.7 尚不含新入口。见 [本地工作台](docs/LOCAL_WEB.md)。
 
 ## [0.2.7] - 2026-10-22
 

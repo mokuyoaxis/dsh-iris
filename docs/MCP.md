@@ -2,7 +2,9 @@
 
 同一套 Iris MCP 工具可通过 stdio 或 Streamable HTTP 接入支持对应传输和协议的客户端。无需为每个产品编写 Adapter，客户端名称也不用于授予能力。**公开 npm 0.2.7 不包含本页入口**，以下使用当前源码或已经验证的安装副本。
 
-业务数据、Operation、执行队列和 Provider 均归同一个 [Core 服务](CORE_SERVICE.md)。MCP 负责协议和工具交付，使用官方 SDK 2.3.1；不启动第二个业务写者，也不把调用转成 Shell 命令。当前实际媒体范围为固定 `image-edit/v0`，功能覆盖见下表。
+业务数据、Operation、执行队列和 Provider 均归同一个 [Core 服务](CORE_SERVICE.md)。MCP 负责协议和工具交付，使用官方 SDK 2.3.1；不启动第二个业务写者，也不把调用转成 Shell 命令。当前媒体范围为固定 `image-edit/v0` 和 [文生图 `image-generate/v0`](IMAGE_GENERATION.md)，后者需要显式初始化的新 v2 根。
+
+文生图创建可带 `workflowParameters`，仅使用所选 ComfyUI 模板明确开放的参数 ID 和标量值。先通过 `iris_core_models` 读取描述；参数随 Run 保存并纳入原请求 Key，不能传任意图补丁。节点/模型的只读检查属于 owner 配置接口，未新增 MCP 管理工具或扩张已有连接权限；Core 专属参数页面尚待后续，DSH 的独立工作台入口见 [DSH ComfyUI](IMAGE_GENERATION.md#dsh-工作台入口未发布)。
 
 ## 创建明确的连接
 
@@ -31,13 +33,14 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
 
 ## 选择能力和工具
 
-功能分组与操作权限分开。当前可选媒体分组为 `image-edit`；查看实际分组和工具：
+功能分组与操作权限分开。当前可选媒体分组为 `image-edit`、`image-generate`；查看实际分组和工具：
 
 ```bash
 node bin/dsh-iris.js mcp capabilities
 ```
 
 - `--capabilities image-edit`：图片导入、流程、模型查询、单次继续、原操作查询、本地停止和原图读取。
+- `--capabilities image-generate`：独立文生图创建、流程/模型查询、单次继续、原操作查询、本地停止和结果读取；可用 `image-edit,image-generate` 同时选择。原默认仍仅 image-edit。
 - `--capabilities none`：关闭图片流程工具，保留两项连接管理工具。
 - `--tools iris_core_models,iris_core_image`：在分组范围内进一步选择具体工具；`--tools none` 注册零工具。明确工具名单不会暗中补齐连接工具。
 - `--scopes read`：只读；`create` 允许上传/建 Run，`execute` 允许明确继续，`stop` 允许本地停止。必须包含 read；首次继续可能产生模型费用。
@@ -98,9 +101,9 @@ HTTP 使用官方 `createMcpHandler`，提供 2026-07-28 请求元数据模式�
 |---|---|---|
 | 静态图片导入、原图读取 | 已有 | image-edit 分组支持 |
 | 固定图片编辑 Flow、Run/原 Task 查询、比较图引用 | 已有 | image-edit 分组支持 |
-| 单次继续、原 Key 接回、本地停止 | 已有 | image-edit 分组支持 |
+| 单次继续、原 Key 接回、本地停止 | 已有 | image-edit / image-generate 分组支持，按原 Run 能力检查 |
 | 明确选择作品、导出到本机路径 | 已有 | 尚未接入，继续使用 CLI |
-| 独立文生图 | 已有 | 尚未接入 |
+| 独立文生图 | 已有 | image-generate 分组支持；新 v2 执行根，明确模型与单张输出 |
 | 视频/S2V、TTS、Music、转写 | 已有 | 尚未接入 |
 | 视觉、OCR、定位、摘要 | 已有 | 尚未接入 |
 | 裁剪、像素差异、抽帧、HTML 截图 | 已有 | 尚未接入 |
@@ -112,6 +115,8 @@ HTTP 使用官方 `createMcpHandler`，提供 2026-07-28 请求元数据模式�
 
 本轮验证 stdio/HTTP × 2025-11-25/2026-07-28，每个组合实际调用全部 12 个工具；另以两份独立已安装的官方 Client SDK 2.0.0/2.2.0 重跑四个组合。覆盖真实 Core 持久记录、原图字节、原 Key 跨进程/传输接回、能力/权限交叉、断开、本地停止和重启。Provider 响应为离线夹具，没有付费模型调用。
 
-这些结果不代表每个品牌客户端或 Agent 的自主使用都已验收。DSH 的可选原生桥与三项 Skills 保持；Skill 发现/安装仍按 [Core Skills](CORE_SKILLS.md)单独处理。真实 Web 可显式管理连接，媒体操作仍只读。
+另有文生图 stdio/HTTP 定向验收，覆盖新增创建工具、原 Key 和共享工具的功能授权；原 image-edit 仍为 12 工具，只选文生图为 11 工具，两者完整选择为 13 工具。新组不自动扩张旧文件或授权。
+
+这些结果不代表每个品牌客户端或 Agent 的自主使用都已验收。DSH 的可选原生桥与三项 Skills 保持；Skill 发现/安装仍按 [Core Skills](CORE_SKILLS.md)单独处理。真实 Web 按显式开关提供连接管理与媒体操作，默认只读。
 
 连接中心还支持[纯数据模板和连接专属 Skill](LOCAL_WEB.md#显式开启连接中心)：模板只选择现有传输与 JSON 格式，Skill 按当前有效工具生成，下载后用 `skills install --bundle` 显式安装。配置、工具权限和使用说明各自独立；Skill 不提供身份凭据，不自动注册 MCP 或扩展连接权限。这些入口均为未发布源码能力。

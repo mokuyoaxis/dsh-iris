@@ -10,7 +10,7 @@ import { createLocalReadApi } from '../lib/local-api.js';
 import { checkedConnectionTemplate, CONNECTION_TEMPLATE_EXAMPLE } from '../lib/connection-template.js';
 import { checkedConnectionSkillBundle, connectionSkillResources } from '../lib/connection-skill.js';
 import { manageCoreSkill } from '../lib/skill-installation.js';
-import { CORE_BRIDGE_TOOLS } from '../lib/core-bridge-tools.js';
+import { bridgeToolsForScopes } from '../lib/core-bridge-tools.js';
 import { stdioMcpClient } from './fixtures/mcp-client.mjs';
 import { httpMcpClient } from './fixtures/mcp-http-client.mjs';
 import { FLOW_SOURCE } from './fixtures/image-flow-fixture.mjs';
@@ -18,7 +18,7 @@ import { useTempDshHome } from './test-env.js';
 
 const { root } = useTempDshHome('iris-connection-delivery'), dataRoot = path.join(root, 'core'), directory = path.join(root, 'managed');
 const app = createApplicationRuntime({ dataRoot }), stores = [], services = [], children = [];
-const uuid = () => crypto.randomUUID(), allTools = CORE_BRIDGE_TOOLS.map(tool => tool.name);
+const uuid = () => crypto.randomUUID(), allTools = bridgeToolsForScopes(['read', 'create', 'execute', 'stop'], ['image-edit']).map(tool => tool.name);
 const json = value => JSON.stringify(value, null, 2) + '\n';
 const tree = directory => Object.fromEntries(fs.readdirSync(directory, { recursive: true }).filter(name => fs.lstatSync(path.join(directory, name)).isFile())
   .map(name => [name, crypto.createHash('sha256').update(fs.readFileSync(path.join(directory, name))).digest('hex')]));

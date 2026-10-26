@@ -43,7 +43,8 @@ try {
   const runningBefore = hashCore();
   const status = (await request('/api/v0/session')).body; assert.equal(status.connectionManagement, true); assert.equal(status.workbenchMediaReadOnly, false);
   assert(status.operations.includes('runs.continue')); assert(!status.operations.includes('runs.select'), 'execution does not implicitly grant selection');
-  const catalog = await ok('/catalog'); assert.equal(catalog.media.length, 6); assert.equal(catalog.groups.length, 1); assert.equal(catalog.httpEnabled, true);
+  const catalog = await ok('/catalog'); assert.equal(catalog.media.length, 6); assert.equal(catalog.groups.length, 2); assert.equal(catalog.httpEnabled, true);
+  assert.deepEqual(catalog.media.find(item => item.id === 'image').capabilities, ['image-edit', 'image-generate']);
   const first = profile('<img src=x onerror=alert(1)> / any brand');
   const created = await Promise.all([ok('/connections', first), ok('/connections', first)]);
   assert.equal(created[0].connectionId, first.key); assert.equal(created[1].connectionId, first.key);

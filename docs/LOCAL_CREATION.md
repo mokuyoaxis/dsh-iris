@@ -1,6 +1,8 @@
 # 本地上传与流程创建（0.2.7 / I4B）
 
-未发布源码另支持 [Operation 专用 v1 根](LOCAL_OPERATIONS.md)与 [Core 有限执行服务](CORE_SERVICE.md)，需在新空 Flow 根显式 `execution init`，执行另主动开启；上传/创建仍不生成。下文说明已发布 0.2.7 的 v0 初始化流程，两种根不自动转换。
+未发布源码另支持 [Operation 执行根](LOCAL_OPERATIONS.md)与 [Core 有限执行服务](CORE_SERVICE.md)，需在新空 Flow 根显式 `execution init`，执行另主动开启；上传/创建仍不生成。下文说明已发布 0.2.7 的 v0 初始化流程，各种根不自动转换。
+
+新的 `execution init --image-generation` 使用 v2 容器；owner 可通过 POST `/api/v0/generations` 保存 `{modelRef,prompt,size?,workflowParameters?}`，使用独立的 `generation-create` 原 Key 查询与重放，不接受来源图片。`workflowParameters` 仅用于明确开放槽位的 ComfyUI 模板，并纳入原 Key 和 Run 输入摘要；旧 `/runs` 不接受该字段。旧 `/runs` 创建仍必须提供来源，不能借旧编辑工具调用新能力。见 [独立文生图](IMAGE_GENERATION.md)。
 
 0.2.7 在 [只读本地 API](LOCAL_API.md)之上，增加显式启用的图片上传和固定 Run 创建。两者都只提交本地数据，不生成、不观察任务、不调用 Provider。实际生成仍使用 [Flow CLI](IMAGE_FLOW.md)；执行/取消 API 与真实 Web 接入留到后续。本功能从 npm 0.2.7 起随包分发。
 

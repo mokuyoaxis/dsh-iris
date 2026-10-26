@@ -65,7 +65,7 @@ DSH Host / Cordis                         Headless CLI
 
 完整规则见 [Core Runtime v0](CORE_RUNTIME_CONTRACT.md)、[Artifact Manifest v0](ARTIFACT_MANIFEST.md)、[Provider Adapter v0](PROVIDER_ADAPTER_CONTRACT.md) 与 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。这些仍是内部契约，不是第三方 SDK 兼容承诺。
 
-面向 0.3 的未发布源码增加[Provider 扩展首版](PROVIDER_EXTENSIONS.md)：实例拥有协议描述、工厂、活动调用和异步释放；CLI/Core 服务显式传入注册实例，五类内置协议与外部协议共用候选/健康/恢复。实验性包入口仅开放媒体协议所需接口，DSH 默认行为及已有 binding/持久格式保持，尚未提供 DSH 外部加载设置、通用 Recipe 或完整 SDK。
+面向 0.3 的未发布源码增加[Provider 扩展首版](PROVIDER_EXTENSIONS.md)：实例拥有协议描述、工厂、活动调用和异步释放；CLI/Core 服务显式传入注册实例，六类内置协议（含 ComfyUI）与外部协议共用候选/健康/恢复。实验性包入口仅开放媒体协议所需接口，尚未提供 DSH 外部模块加载设置、通用 Recipe 或完整 SDK。ComfyUI Task binding 另纳入模板摘要，见 [文生图与工作流入口](IMAGE_GENERATION.md)；原五类协议的 binding 与既有记录保持。
 
 0.2.2 的 Core writer 在创建目录前发布完整 owner 意图，释放和显式恢复通过整体退役保留证据；普通启动不抢占。非图片 staging 复用文件复制接收与分块哈希，图片格式验证和 inline 解码仍可能使用完整 Buffer，不声称端到端流式传输。
 

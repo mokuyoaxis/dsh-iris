@@ -36,7 +36,7 @@ function fixture(connections) {
     addEventListener() {}, removeEventListener() {} };
   const document = { getElementById() { return {}; } };
   vm.runInNewContext(exposed, { window, document, fetch, setInterval: () => 1, clearInterval() {},
-    setTimeout, console, AbortController }, { filename: 'client.js' });
+    setTimeout, clearTimeout, console, AbortController }, { filename: 'client.js' });
   entry.factory(name => { assert.equal(name, 'react'); return react; }).apply({ slots: {
     inject(_seat, callback) { callback(); }, register() {}
   } });
@@ -86,4 +86,21 @@ const added = manual.requests.find(request => request.url.endsWith('/providers_u
 assert.equal(added.apiKey, 'manual-fixture-key');
 assert.equal(added.baseUrl, 'https://manual.fixture.invalid/v1');
 assert.ok(!Object.hasOwn(added, 'dshProvider'));
+
+const comfy = fixture([]);
+await comfy.open();
+comfy.field('连接预设').props.onChange({ target: { value: 'comfyui' } });
+assert.equal(comfy.field('Base URL *').props.value, 'http://127.0.0.1:8188');
+assert.equal(comfy.field('认证方式').props.value, 'none');
+assert.ok(!nodes(comfy.render()).some(node => node.type === 'input' && node.props.type === 'password'));
+comfy.button('保存').props.onClick(); await tick();
+const local = comfy.requests.find(request => request.url.endsWith('/providers_upsert')).body;
+assert.equal(local.auth, 'none'); assert.equal(local.apiKey, ''); assert.equal(local.mediaProtocol, 'comfyui');
+assert(comfy.requests.filter(request => request.url.includes('/actions/')).every(request => /providers_(?:list|host_connections|upsert)$/.test(request.url)));
+
+const switching = fixture([{ provider: 'workbuddy', settingsNs: 'llm-pi-ai', name: 'Workbuddy', available: true }]);
+await switching.open(); switching.field('连接预设').props.onChange({ target: { value: 'comfyui' } });
+switching.field('连接来源').props.onChange({ target: { value: JSON.stringify(['llm-pi-ai', 'workbuddy']) } });
+assert.equal(switching.field('媒体协议').props.value, 'auto', 'Comfy preset must not leak into a DSH connection reference');
+assert.equal(switching.field('名称').props.value, '');
 console.log('ALL OK — actual provider form: host selection, hidden key fields, explicit protocol, reference-only save and manual configuration');

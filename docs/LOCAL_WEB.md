@@ -1,6 +1,6 @@
 # 本地 Core 工作台（面向 0.3，未发布）
 
-源码中的 `web serve` 提供独立的创作、作品、连接和供应商页面，使用 [本地 API](LOCAL_API.md) 与 [固定图片编辑流程](IMAGE_FLOW.md)，无需启动 DSH。默认只读；显式开启执行和选择后，可选图、填写要求、改图、比较、保存选择并下载。连接中心分配 MCP 能力；[供应商设置](PROVIDER_SETTINGS.md)管理媒体连接与模型用途，两者单独开启。
+源码中的 `web serve` 提供独立的创作、作品、连接和供应商页面，使用 [本地 API](LOCAL_API.md) 与固定图片流程，无需启动 DSH。默认只读；显式开启执行和选择后，可改图、比较、保存选择并下载。新的 v2 执行根另提供[文生图与 ComfyUI](IMAGE_GENERATION.md)。连接中心分配 MCP 能力；[供应商设置](PROVIDER_SETTINGS.md)管理媒体连接与模型用途，两者单独开启。
 
 **已发布的 npm 0.2.7 不包含此入口。** 以下命令针对包含本页实现的 Git 源码树，不能直接照搬到 0.2.7。原 [交互 Demo](WEB_PROTOTYPE.md) 继续保留，两者是不同入口。
 
@@ -56,7 +56,7 @@ node bin/dsh-iris.js web serve --data-root /absolute/new-core \
 
 ## 显式媒体权限
 
-`web serve` 与 `api serve` 使用相同的独立开关，不要求先开启连接管理：`--allow-local-writes` 开放零生成上传/创建；`--allow-execution` 同时开放创建与有限执行，仍需 v1 根及显式 Provider。`--allow-selection` 只开放 owner 持久选择，可直接用于已有 Flow 根，无需 Provider、创建请求区或执行器。
+`web serve` 与 `api serve` 使用相同的独立开关，不要求先开启连接管理：`--allow-local-writes` 开放零生成上传/创建；`--allow-execution` 同时开放创建与有限执行，需 v1/v2 执行根及显式 Provider。`--allow-selection` 只开放 owner 持久选择，可直接用于已有 Flow 根，无需 Provider、创建请求区或执行器。
 
 ```bash
 node bin/dsh-iris.js web serve --data-root /absolute/path/to/flow-root \
@@ -67,7 +67,7 @@ node bin/dsh-iris.js web serve --data-root /absolute/path/to/flow-root \
 
 ## 显式开启连接中心
 
-需要已主动初始化的 v1 Flow 根；新根的准备见 [Core 服务](CORE_SERVICE.md)。不要转换已有 v0 根。指定专用根外管理目录（父目录须存在）和新会话文件：
+需要已主动初始化的 v1/v2 执行根；新根的准备见 [Core 服务](CORE_SERVICE.md)。不要转换已有 v0 根。指定专用根外管理目录（父目录须存在）和新会话文件：
 
 ```bash
 node bin/dsh-iris.js web serve --data-root /absolute/new-core \
@@ -78,7 +78,7 @@ node bin/dsh-iris.js web serve --data-root /absolute/new-core \
 
 目录为 0700、档案为 0600；首次只接受空目录，之后按 rootId 识别。管理目录与 Core 数据根相互独立，不改静态 grants 或客户端日常配置。目录自身只允许一个管理写者，复用现有租约。异常退出遗留租约时，先检查 `doctor --data-root /absolute/new-connection-store/ownership --json`，再按实际 stale PID 使用 `runtime recover`，不自动清锁。
 
-连接页面支持自由命名、创建、编辑、撤销和 stdio/HTTP 配置导出。媒体分组目前只有图片编辑可选，其余五类标为未接入；工具细选默认折叠，操作权限与功能分开。默认只读服务只能分配 read；若要让 harness 导入、创建和执行，可在**同一个命令**显式增加 `--allow-execution --provider-config /absolute/providers.json`。执行服务会建立 runner 租约，接收/计费动作由用户或获授权客户端明确发起。连接管理不扩大媒体权限，owner 选择权限也不授予 harness。
+连接页面支持自由命名、创建、编辑、撤销和 stdio/HTTP 配置导出。图片生成与编辑分别选择，其余五类标为未接入；工具细选默认折叠，操作权限与功能分开。默认只读服务只能分配 read；若要让 harness 导入、创建和执行，可在**同一个命令**显式增加 `--allow-execution --provider-config /absolute/providers.json`。执行服务会建立 runner 租约，接收/计费动作由用户或获授权客户端明确发起。连接管理不扩大媒体权限，owner 选择权限也不授予 harness。
 
 创建不代表客户端已经加载。安装配置后，实际 MCP 客户端自报名称/版本会标记为“客户端声明”，桥版本独立记录；实例记录不保证进程持续在线。没有声明时显示未知，不扫盘推测安装状态。一个产品可按工作区创建多个连接。
 
@@ -127,4 +127,6 @@ node scripts/verify-local-web-browser.mjs --browser-executable /absolute/path/to
 
 `--panel-c3` 单独验证外观持久化、配置/冲突/回包丢失、窄屏及配置后受控真实改图，不与其他场景开关组合，不调用付费媒体。
 
-源码已把 [有限执行](CORE_SERVICE.md)、[持久选择](LOCAL_SELECTION.md)、[原身份恢复](WEB_RECOVERY.md)及 C3 供应商设置接到真实页面，并补充本机受控验证。标准平台、真实设备和发布前完整验收仍待完成，历史完整门禁停滞继续单独调查；独立文生图、其他媒体和最终演示素材按 [路线图](ROADMAP.md)推进。本页实现未发布，也不等于生产环境或真实付费验收完成。
+`--image-generation` 单独验证新 v2 根的文生图、恢复与选择下载、能力选择及 ComfyUI 导入/HTTP 队列链路；ComfyUI 为受控响应，不能替代实际 GPU 出图。
+
+源码已把 [有限执行](CORE_SERVICE.md)、[持久选择](LOCAL_SELECTION.md)、[原身份恢复](WEB_RECOVERY.md)、文生图及供应商设置接到真实页面，并补充本机受控验证。标准平台、真实设备和发布前完整验收仍待完成，历史完整门禁停滞继续单独调查；其他媒体和最终演示素材按 [路线图](ROADMAP.md)推进。本页实现未发布，也不等于生产环境或真实付费验收完成。

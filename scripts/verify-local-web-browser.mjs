@@ -12,14 +12,17 @@ import { verifyWebRecoveryBrowser } from '../tests/fixtures/web-recovery-browser
 import { verifyWebCreationBrowser } from '../tests/fixtures/web-creation-browser-probe.mjs';
 import { verifyWebModeBrowser } from '../tests/fixtures/web-mode-browser-probe.mjs';
 import { verifyPanelC3Browser } from '../tests/fixtures/panel-c3-browser-probe.mjs';
+import { verifyImageGenerationBrowser } from '../tests/fixtures/image-generation-browser-probe.mjs';
 
 const args = process.argv.slice(2);
-assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection', '--recovery', '--creation', '--mode-closure', '--panel-c3'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
-  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3]');
+assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection', '--recovery', '--creation', '--mode-closure', '--panel-c3', '--image-generation'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
+  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3|--image-generation]');
 const modeClosure = args.includes('--mode-closure');
 const panelC3 = args.includes('--panel-c3');
+const imageGeneration = args.includes('--image-generation');
 assert(!modeClosure || args.slice(4).every(flag => ['--no-sandbox', '--mode-closure'].includes(flag)), '--mode-closure runs only its focused scenarios');
 assert(!panelC3 || args.slice(4).every(flag => ['--no-sandbox', '--panel-c3'].includes(flag)), '--panel-c3 runs only its focused scenarios');
+assert(!imageGeneration || args.slice(4).every(flag => ['--no-sandbox', '--image-generation'].includes(flag)), '--image-generation runs only its focused scenarios');
 assert.equal(args[0], '--browser-executable'); assert.equal(args[2], '--output');
 assert(path.isAbsolute(args[1]) && path.isAbsolute(args[3]));
 const executable = fs.realpathSync(args[1]), out = args[3];
@@ -71,8 +74,14 @@ async function evaluate(expression) {
 }
 async function click(selector) {
   await cdp('Page.bringToFront');
-  const point = await evaluate(`(() => {const n=document.querySelector(${JSON.stringify(selector)});if(!n||n.disabled)throw Error('Control unavailable: '+${JSON.stringify(selector)});n.scrollIntoView({block:'center'});const r=n.getBoundingClientRect();const point={x:r.x+r.width/2,y:r.y+r.height/2};if(!n.contains(document.elementFromPoint(point.x,point.y)))throw Error('Control obscured: '+${JSON.stringify(selector)});return point})()`);
-  await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+  let point;
+  await wait(async () => {
+    const current = await evaluate(`(() => {const n=document.querySelector(${JSON.stringify(selector)});if(!n||n.disabled)throw Error('Control unavailable: '+${JSON.stringify(selector)});n.scrollIntoView({block:'center'});const r=n.getBoundingClientRect();const point={x:r.x+r.width/2,y:r.y+r.height/2};if(!n.contains(document.elementFromPoint(point.x,point.y)))throw Error('Control obscured: '+${JSON.stringify(selector)});return point})()`);
+    await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', ...current });
+    const afterMove = await evaluate(`(() => {const n=document.querySelector(${JSON.stringify(selector)}),r=n.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+    const stable = point && Math.abs(current.x - point.x) < .5 && Math.abs(current.y - point.y) < .5;
+    point = current; return stable && Math.abs(afterMove.x - current.x) < .5 && Math.abs(afterMove.y - current.y) < .5;
+  }, 'stable pointer target ' + selector);
   await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...point });
   await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...point });
 }
@@ -153,7 +162,16 @@ try {
   await cdp('Page.navigate', { url: session.origin + '/#' + chosen.run.id });
   await wait(() => evaluate("Boolean(document.documentElement.dataset.theme&&!document.querySelector('#connection').hidden)"), 'login mount');
   await evaluate('document.fonts.ready');
-  if (panelC3) {
+  if (imageGeneration) {
+    await verifyImageGenerationBrowser({ out, cdp, evaluate, click, wait, chooseToken, readyRun, tree, report, save,
+      dimensions, measure, capture, pausedResponses, restart: async (root, providerConfigPath, executionPorts, modes = {}) => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, providerConfigPath, allowProviderManagement: true,
+          allowExecution: true, allowSelection: true, executionPorts, ...modes });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'image generation has no browser errors');
+  } else if (panelC3) {
     await verifyPanelC3Browser({ out, dataRoot, tokenFile, cdp, evaluate, click, wait, chooseToken, readyRun, report, save,
       dimensions, measure, capture, pausedResponses, restart: async providerConfigPath => {
         const port = Number(new URL(session.origin).port); await api.dispose();
@@ -397,5 +415,6 @@ try {
   console.log(JSON.stringify({ status: report.status, checks: report.checks.length, screenshots: report.screenshots.length, output: out,
     ...(report.modeClosure ? { modeChecks: report.modeClosure.checks.length } : {}),
     ...(report.panelC3 ? { panelChecks: report.panelC3.checks.length } : {}),
+    ...(report.imageGeneration ? { generationChecks: report.imageGeneration.checks.length } : {}),
     ...(report.failure ? { failure: report.failure } : {}) }, null, 2));
 }

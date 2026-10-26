@@ -9,7 +9,7 @@ import { projectFlowFacts, presentFlow, canSelect } from '../prototypes/workbenc
 import { createDemoTransport, DEMO_MODELS } from '../prototypes/workbench/demo-transport.js';
 import { startWorkbenchPreview } from '../scripts/preview-workbench.mjs';
 import { DEMO_CONNECTION_TOOLS, previewDraftTools } from '../prototypes/workbench/workspace-panels.js';
-import { bridgeToolsForScopes, CORE_BRIDGE_TOOLS } from '../lib/core-bridge-tools.js';
+import { bridgeToolsForScopes } from '../lib/core-bridge-tools.js';
 import { useTempDshHome } from './test-env.js';
 
 const { root } = useTempDshHome('iris-web-prototype');
@@ -123,7 +123,7 @@ try {
   });
   assert.equal(badHost, 421);
   const head = await fetch(preview.origin, { method: 'HEAD' }); assert.equal(head.status, 200); assert.equal(await head.text(), '');
-  assert.deepEqual(DEMO_CONNECTION_TOOLS.map(tool => tool.name), CORE_BRIDGE_TOOLS.map(tool => tool.name));
+  assert.deepEqual(DEMO_CONNECTION_TOOLS.map(tool => tool.name), bridgeToolsForScopes(['read', 'create', 'execute', 'stop'], ['image-edit']).map(tool => tool.name), 'the retained demo models the original editing scope');
   for (const image of [true, false]) for (const scopes of [['read'], ['read', 'create'], ['read', 'execute', 'stop'], ['read', 'create', 'execute', 'stop']]) {
     assert.deepEqual(previewDraftTools(image, scopes).map(tool => tool.name), bridgeToolsForScopes(scopes, image ? ['image-edit'] : [], undefined).map(tool => tool.name));
   }

@@ -17,7 +17,7 @@
 
 `connection create` 只创建新私有目录及 `server-grants.json`、`client.json`。服务文件为 `{schemaVersion:0,grants:[...]}`；每项包含 rootId、connectionId、adapterId、harnessKind、label、accessToken、scopes，以及明确 capabilities/tools。客户端包含 schemaVersion、origin、rootId 和相同身份/凭据及所选 capabilities/tools；服务端授权仍由 grants 决定，修改客户端文件不能扩大范围。origin 固定为 `http://127.0.0.1:port`，不允许凭据、路径、跳转或远端域名。
 
-capabilities 为当前支持的功能分组列表（现有 image-edit），空列表只保留控制工具；tools 可进一步选择具体工具，空列表为零工具。两者与操作 scopes 分开。新授权持久写入具体名单，不因版本新增工具自动扩张。旧文件省略两项时仅解释为固定的旧图片流程/12 工具，不迁移文件；显式 null、未知和重复项拒绝。
+capabilities 为当前支持的功能分组列表（image-edit、image-generate），空列表只保留控制工具；tools 可进一步选择具体工具，空列表为零工具。两者与操作 scopes 分开。新授权持久写入具体名单，不因版本新增工具自动扩张。旧文件省略两项时仅解释为固定的旧图片编辑流程/12 工具，不迁移文件；显式 null、未知和重复项拒绝。
 
 文件为 0600，目录为 0700；读取拒绝符号链接、非普通文件、过大文件及 POSIX 过宽文件权限。Windows mode 不能替代 ACL。凭据不出现在 URL、普通 DTO 或诊断中。运行时认证表仅保留比较用摘要，私有持久档案保留连接密钥；scope 为有限的 `read/create/execute/stop`，必须含 read。静态 grants 只在显式启动时读取，修改静态授权后须重启；下面的管理目录支持显式 owner 即时更改，不自动修改日常 harness 配置。
 
