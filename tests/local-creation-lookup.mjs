@@ -50,7 +50,7 @@ try {
   const prepared = [];
   for (const kind of ['image-import', 'flow-create']) for (const stage of ['intent', 'result']) {
     const key = crypto.randomUUID(), input = kind === 'image-import' ? { ...imageInput, key } : { key, value };
-    const recordFile = path.join(fs.realpathSync(dataRoot), 'creation-requests/v0/requests', creationRequestId(marker, kind, key) + '.json');
+    const recordFile = path.join(fs.realpathSync.native(dataRoot), 'creation-requests/v0/requests', creationRequestId(marker, kind, key) + '.json');
     const rename = fs.renameSync;
     if (stage === 'result') fs.renameSync = (from, to) => {
       if (to === recordFile) throw Object.assign(new Error('fixture receipt failure'), { code: 'EIO' });

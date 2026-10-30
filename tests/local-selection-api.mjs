@@ -71,7 +71,7 @@ async function terminal(session, id) {
 
 try {
   const item = await make('main'), id = item.completed.run.id, source = item.source.id, output = item.completed.run.output.artifactId;
-  const runFile = path.join(fs.realpathSync(item.dataRoot), 'flow-store/v0/runs', id + '.json');
+  const runFile = path.join(fs.realpathSync.native(item.dataRoot), 'flow-store/v0/runs', id + '.json');
   const initialEvents = readFlowEvents(item.dataRoot);
   assert.throws(() => createLocalReadApi({ dataRoot: item.dataRoot, allowSelection: 'yes' }), TypeError);
   for (const expected_revision of [0, -1, 1.5, '1', null, Number.MAX_SAFE_INTEGER + 1]) {
