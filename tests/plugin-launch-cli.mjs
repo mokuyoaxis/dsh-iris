@@ -7,6 +7,7 @@ import net from 'node:net';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import sharp from 'sharp';
 import { httpMcpClient } from './fixtures/mcp-http-client.mjs';
 import { stdioMcpClient } from './fixtures/mcp-client.mjs';
@@ -21,8 +22,18 @@ const saveConfig = value => fs.writeFileSync(configFile, JSON.stringify(value));
 saveConfig(selected);
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+// Windows kill(SIGTERM) terminates unconditionally. Deliver the handler event
+// through a test-only preload; POSIX still exercises the actual OS signal.
+const cooperativeSignals = process.platform === 'win32' || process.env.IRIS_TEST_CLI_SIGNAL_MODE === 'ipc';
+const signalPreload = path.join(work, 'signal-preload.mjs');
+if (cooperativeSignals) fs.writeFileSync(signalPreload, `process.on('message', message => {
+  if (message === 'iris-test-sigterm' && !process.emit('SIGTERM')) throw new Error('CLI SIGTERM handler is not installed');
+});
+process.channel.unref();
+`);
+const signalArgs = cooperativeSignals ? ['--import', pathToFileURL(signalPreload).href] : [];
 function launch(args) {
-  const child = spawn(process.execPath, [cli, ...args], { stdio: ['ignore', 'pipe', 'pipe'],
+  const child = spawn(process.execPath, [...signalArgs, cli, ...args], { stdio: ['ignore', 'pipe', 'pipe', ...(cooperativeSignals ? ['ipc'] : [])],
     env: { ...process.env, DSH_HOME: work, IRIS_IMPORT_WORKBENCH_CONFIG: '', IRIS_CORE_CONNECTION_FILE: '' } });
   const entry = { child, stdout: '', stderr: '', exited: false }; children.push(entry);
   child.stdout.on('data', bytes => { entry.stdout += bytes; }); child.stderr.on('data', bytes => { entry.stderr += bytes; });
@@ -49,9 +60,12 @@ async function ready(entry) {
   assert.fail('CLI startup timed out');
 }
 async function stop(entry) {
-  if (!entry.exited) entry.child.kill('SIGTERM');
+  if (!entry.exited) {
+    if (cooperativeSignals) entry.child.send('iris-test-sigterm');
+    else entry.child.kill('SIGTERM');
+  }
   const result = await entry.closed;
-  if (process.platform !== 'win32') assert.equal(result.code, 143, entry.stderr);
+  assert.equal(result.code, 143, entry.stderr);
   return result;
 }
 let session, token;
@@ -221,7 +235,7 @@ ${slow ? 'await new Promise(resolve => setTimeout(resolve, 500));' : ''} return 
   const malformed = await command(['plugins', 'inspect', '--plugin-config', path.join(work, 'missing.json')], 1);
   const diagnostic = cliDiagnostic(malformed.stderr); assert.equal(diagnostic.stage, 'plugin-config'); assert.equal(diagnostic.code, 'ENOENT');
   checks.push('conflicting legacy extension/token flags and API Panel choice fail explicitly; structured startup errors locate the config and stage');
-  console.log(JSON.stringify({ ok: true, checks, work }, null, 2));
+  console.log(JSON.stringify({ ok: true, checks, work, signalDelivery: cooperativeSignals ? 'test-ipc-handler-event' : 'native-posix-signal' }, null, 2));
 } finally {
   for (const bridge of bridges) await bridge.kill();
   for (const child of children) if (!child.exited) await stop(child);

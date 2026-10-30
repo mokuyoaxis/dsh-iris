@@ -6,13 +6,24 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 const require = createRequire(import.meta.url), manifest = require.resolve('@mokuyoaxis/dsh-iris/package.json');
 const cli = path.resolve(path.dirname(manifest), JSON.parse(fs.readFileSync(manifest)).bin['dsh-iris']);
 const work = fs.mkdtempSync(path.join(process.env.IRIS_TEST_EVIDENCE_DIRECTORY || os.tmpdir(), 'iris-password-cli-'));
 const dataRoot = path.join(work, 'core'), irisHome = path.join(work, 'iris-home'), children = [], checks = [];
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+// Windows kill(SIGTERM) is a forced exit. Test normal shutdown by delivering
+// its handler event explicitly, while leaving the real SIGKILL case below.
+const cooperativeSignals = process.platform === 'win32' || process.env.IRIS_TEST_CLI_SIGNAL_MODE === 'ipc';
+const signalPreload = path.join(work, 'signal-preload.mjs');
+if (cooperativeSignals) fs.writeFileSync(signalPreload, `process.on('message', message => {
+  if (message === 'iris-test-sigterm' && !process.emit('SIGTERM')) throw new Error('CLI SIGTERM handler is not installed');
+});
+process.channel.unref();
+`);
+const signalArgs = cooperativeSignals ? ['--import', pathToFileURL(signalPreload).href] : [];
 function launch(args) {
-  const child = spawn(process.execPath, [cli, ...args], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env,
+  const child = spawn(process.execPath, [...signalArgs, cli, ...args], { stdio: ['ignore', 'pipe', 'pipe', ...(cooperativeSignals ? ['ipc'] : [])], env: { ...process.env,
     IRIS_HOME: irisHome, DSH_HOME: path.join(work, 'dsh-home'), IRIS_IMPORT_WORKBENCH_CONFIG: '' } });
   const result = { child, stdout: '', stderr: '', exited: false }; children.push(result);
   child.stdout.on('data', value => { result.stdout += value; }); child.stderr.on('data', value => { result.stderr += value; });
@@ -33,9 +44,12 @@ async function start(args) {
   assert.fail('Workbench startup timeout');
 }
 async function stop(server) {
-  if (!server.process.exited) server.process.child.kill('SIGTERM');
+  if (!server.process.exited) {
+    if (cooperativeSignals) server.process.child.send('iris-test-sigterm');
+    else server.process.child.kill('SIGTERM');
+  }
   const exit = await server.process.closed;
-  if (process.platform !== 'win32') assert.equal(exit.code, 143, server.process.stderr);
+  assert.equal(exit.code, 143, server.process.stderr);
 }
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const tree = () => Object.fromEntries(fs.readdirSync(dataRoot, { recursive: true }).filter(name => fs.lstatSync(path.join(dataRoot, name)).isFile())
@@ -93,5 +107,5 @@ try {
   await command(['web', 'password', 'reset', '--data-root', 'relative'], 2);
   assert.deepEqual(tree(), before);
   checks.push('offline reset uses the auth lease only; unsafe stores and conflicting/relative flags fail without changing Core or creating Token files');
-  console.log(JSON.stringify({ ok: true, checks, work }, null, 2));
-} finally { for (const result of children) if (!result.exited) { result.child.kill('SIGTERM'); await result.closed; } }
+  console.log(JSON.stringify({ ok: true, checks, work, signalDelivery: cooperativeSignals ? 'test-ipc-handler-event' : 'native-posix-signal' }, null, 2));
+} finally { for (const result of children) if (!result.exited) await stop({ process: result }); }

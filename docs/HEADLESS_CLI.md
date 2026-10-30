@@ -32,7 +32,7 @@ dsh-iris doctor --data-root /absolute/path/to/iris-data --json
 
 ## 异常退出后的写者租约
 
-SIGINT/SIGTERM 可被 CLI 捕获并释放运行中的租约；SIGKILL、OOM 或断电可能留下租约。后续写操作返回 `IRIS_CORE_DATA_ROOT_BUSY` 时，先用 `doctor --data-root <absolute-path> --json` 只读查看 `core-writer-lease`。仅当报告中的 owner PID 为 `missing`，并且你已确认没有跨主机或其他仍在写入的进程，才可显式回显该 PID：
+POSIX 上的 SIGINT/SIGTERM 可被 CLI 捕获并释放运行中的租约；Windows 请使用运行终端的 Ctrl+C 正常关闭。Windows 上 Node 的 `child.kill('SIGTERM')` 会强制结束进程，不能据此期待清理回调执行，见 [Node 信号说明](https://nodejs.org/docs/latest-v22.x/api/process.html#signal-events)。SIGKILL、OOM 或断电也可能留下租约。后续写操作返回 `IRIS_CORE_DATA_ROOT_BUSY` 时，先用 `doctor --data-root <absolute-path> --json` 只读查看 `core-writer-lease`。仅当报告中的 owner PID 为 `missing`，并且你已确认没有跨主机或其他仍在写入的进程，才可显式回显该 PID：
 
 ```bash
 dsh-iris runtime recover --data-root /absolute/path/to/iris-data --confirm-stale-pid 12345
