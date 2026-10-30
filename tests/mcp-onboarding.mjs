@@ -18,9 +18,9 @@ const application = createApplicationRuntime({ dataRoot }), children = [], check
 let api, session;
 const uuid = () => crypto.randomUUID(), digest = value => crypto.createHash('sha256').update(value).digest('hex');
 const tree = () => Object.fromEntries(fs.readdirSync(dataRoot, { recursive: true }).filter(name => fs.lstatSync(path.join(dataRoot, name)).isFile()).map(name => [name, digest(fs.readFileSync(path.join(dataRoot, name)))]));
-function toml(content) {
+function toml(content, env = process.env) {
   return new Promise((resolve, reject) => {
-    const child = spawn('python3', ['-c', 'import sys,json,tomllib;print(json.dumps(tomllib.loads(sys.stdin.read())))'], { stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn('python3', ['-c', 'import sys,json,tomllib;print(json.dumps(tomllib.load(sys.stdin.buffer)))'], { env, stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '', stderr = '';
     child.stdout.on('data', bytes => { stdout += bytes; }); child.stderr.on('data', bytes => { stderr += bytes; });
     child.once('error', reject); child.once('close', status => {
@@ -47,6 +47,8 @@ try {
   const tricky = { command: '/tmp/space $x \\ " \n\t\u007f中文', args: ['literal `echo nope`', '${not-an-env}', '\b\f\r\u0001'] };
   const formatted = formatMcpConfiguration(tricky, { format: 'codex-toml', transport: 'stdio' });
   assert.deepEqual((await toml(formatted.content)).mcp_servers.iris, tricky);
+  assert.deepEqual((await toml(formatted.content, { ...process.env, PYTHONIOENCODING: 'cp1252' })).mcp_servers.iris, tricky,
+    'UTF-8 TOML bytes round-trip even when Python text stdin defaults to a legacy Windows encoding');
   checks.push('Codex TOML independently parses with spaces, quotes, newlines, control characters and literal shell/env syntax intact');
   await application.execute('flow.init', {}); await application.execute('execution.init', { audio: true });
   api = createLocalReadApi({ dataRoot, allowConnectionManagement: true, connectionStore: directory, allowMcp: true }); session = await api.start();
