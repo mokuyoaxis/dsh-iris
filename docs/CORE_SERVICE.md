@@ -1,6 +1,6 @@
-# Core 服务与 harness 接入（面向 0.3，未发布）
+# Core 服务与 harness 接入（0.3 alpha）
 
-源码已提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**公开 npm 0.2.7 尚不包含这些入口**；以下使用源码命令。支持固定 `image-edit/v0`，显式新 v2 根另提供 [image-generate/v0 与 ComfyUI](IMAGE_GENERATION.md)。[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用 CLI，页面下载原字节。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
+0.3.0-alpha.1提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**稳定 npm 0.2.7 不包含这些入口**；以下使用源码命令，安装alpha包后可将 `node bin/dsh-iris.js` 换为 `npx dsh-iris`。支持固定 `image-edit/v0`，显式新 v2 根另提供 [image-generate/v0 与 ComfyUI](IMAGE_GENERATION.md)，新 v3 根另提供 [speech/v0 与 transcribe/v0](AUDIO_FLOWS.md)，同时保留图片流程。[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用 CLI，页面下载原字节。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
 
 ## 显式启动
 
@@ -20,7 +20,7 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
   --connections-file /absolute/new-mcp-pair/server-grants.json
 ```
 
-`--allow-execution` 同时开启零生成上传/创建与有限执行；不传时保持既有默认只读行为。服务需要已初始化的 v1/v2 执行根和有效的显式配置。配置静态校验、启动和连接握手不调用模型。每次明确继续至多调用一次 `flow.continue`：首次提交或检查/补交付原 Task，不持续轮询，不重提已有 Attempt。
+`--allow-execution` 同时开启零生成上传/创建与有限执行；不传时保持既有默认只读行为。服务需要已初始化的 v1/v2/v3 执行根和有效的显式配置。配置静态校验、启动和连接握手不调用模型。每次明确继续至多调用一次 `flow.continue`：首次提交或检查/补交付原 Task，不持续轮询，不重提已有 Attempt。
 
 第二个执行 Host 无法取得同根 runner 租约；同根可另开只读页面。接收后服务自行收尾，关页或断开 harness 不撤销已接收操作。writer 正忙时明确拒绝新接收，调用方保留原 Key 后显式重试，不能假定已排队。
 
@@ -55,6 +55,10 @@ node bin/dsh-iris.js execution recover-lease --data-root /absolute/new-core --co
 
 ## 正式 MCP
 
+Core与桥分别管理生命周期：Core由用户明确启动，harness拥有stdio桥进程，HTTP网关复用同一Core。桥关闭先阻止新请求、取消本地网络等待并收尾初始化，不停止Core或撤销已受理Operation。SDK初始化、握手和关闭并发时保持终态；重复dispose共享结果，HTTP授权失效时释放原桥实例。检查命令与客户端预设见[MCP首次接入](MCP.md#首次接入与客户端预设)。
+
+本地服务启动失败或关闭时，会依次尝试释放HTTP、MCP、runner、应用与连接/Provider资源；某一步失败仍继续释放其余资源，再聚合报告具体阶段。snapshot的cleanupFailed表示释放失败，不能当成完全成功；不自动清锁或再次启动服务。
+
 Core 服务保持运行，在 harness 内配置下面的命令及参数：
 
 ```bash
@@ -87,5 +91,7 @@ IRIS_CORE_SCOPES=read,create,execute,stop <your-existing-DSH-start-command>
 ```
 
 首版为**新增共享 Flow 工具的可选连接模式**：原 17 项媒体工具、三项 DSH Skills 和原生 UI 保持；另注册与 MCP 相同的授权 `iris_core_*` 工具。图片通过真实 DSH attachment 服务交付。默认不设置此文件时，不连接服务、不新增工具。Core Skills 的 [显式安装器](CORE_SKILLS.md)继续独立，MCP 握手不替代 Skill 发现。
+
+此 DSH 原生共享桥仍限图片组；新 v3 语音/转写使用通用 MCP 或 Core Web。选择音频组会明确拒绝原生桥启动，避免注册尚无附件投影的工具；不影响原17项媒体工具的语音/转写。
 
 传统媒体工具继续使用原根；共享 Flow 仅使用连接所绑定的 Core 根。Core 离线时共享工具明确失败，不切回本地另生成。此模式尚未把整个旧媒体栈、浏览器/视觉/会话服务或 DSH UI 迁成远程 RPC。Core 连接中心现阶段创建通用 MCP 档案；DSH 原生服务授权仍由上述静态文件管理，不自动修改 DSH 设置。

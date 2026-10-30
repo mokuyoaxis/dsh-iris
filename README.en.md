@@ -3,400 +3,177 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/logo/iris-interim-flower.png" width="400" alt="IRIS line-art iris flower (interim logo)">
+  <img src="docs/assets/logo/iris-interim-flower.png" width="240" alt="Iris line-art flower (interim mark)">
 </p>
 
-<h1 align="center">Iris Media for DSH</h1>
+<h1 align="center">Iris</h1>
 
-<p align="center"><strong>A multimodal media production runtime · DSH plugin and standalone CLI</strong></p>
+<p align="center"><strong>A multimodal workspace for your Agent.</strong></p>
 
 <p align="center">
-  <a href="#deepseek-harness-adaptation"><img alt="DeepSeek Harness compatible" src="https://img.shields.io/badge/DeepSeek%20Harness-compatible-4D6BFE.svg?style=flat-square"></a>
   <a href="https://www.npmjs.com/package/@mokuyoaxis/dsh-iris"><img alt="npm version" src="https://img.shields.io/npm/v/%40mokuyoaxis%2Fdsh-iris.svg?style=flat-square"></a>
   <a href="https://nodejs.org/"><img alt="Node.js 22 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
   <a href="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
 
-dsh-iris gives agents, the Iris workbench and a standalone CLI image, video, music, speech and visual understanding capabilities. Each image model can use DashScope, OpenAI Images, chat image generation or Responses. Shared Core Artifacts connect generation, vision, OCR and chat editing. The DSH workbench provides configuration and task management, while the 🫧 bubble offers draft optimization in the composer.
+Iris connects media services and keeps creative work, tasks and outputs together. Agents can generate, edit, inspect and reuse media through a standalone CLI, a native DSH plugin, or the 0.3 alpha Core workbench and generic MCP. Core owns execution and storage; users choose what each client can access.
 
-Music uses a Chat Completions interface with inline audio, confirmed model uses and function policies, configurable 502 retries, and playback/export. See [Music setup and usage](docs/MUSIC.md) (Chinese).
+**Release channels: `0.3.0-alpha.1` is the first 0.3 prerelease, available through npm `alpha`; stable `latest` remains `0.2.7`.** The standalone Web workbench, production MCP, ComfyUI and Core plugins require the alpha package. Stable 0.2.7 does not include these new entry points. Alpha contracts can change; see the [release notes](docs/releases/0.3.0-alpha.1.md) for scope.
 
-Iris 0.2.7 can [reference an existing DSH provider connection](docs/DSH_PROVIDER_CONNECTIONS.md) (Chinese), resolving its endpoint and API key per operation without storing a second key. It adds [automatic, selected-only, and disabled function pools](docs/FUNCTION_MODEL_POOLS.md) (Chinese): confirming a model's uses can enable automatic selection without a second assignment step. Discovery alone never expands the pool; existing lists and empty configurations retain their behavior. Selection uses stable priority with safe failover, without a round-robin cursor.
+| What you need | Entry | Availability |
+|---|---|---|
+| Media tools and prompt refinement inside DSH | [DSH plugin](#dsh-plugin-027) | Published 0.2.7 |
+| Media generation, task inspection and export in a terminal | [Standalone CLI](#standalone-cli-027) | Published 0.2.7; no DSH required |
+| A dedicated UI for models, creation and works | [Core quickstart](docs/CORE_QUICKSTART.md) | 0.3.0-alpha.1 / current source |
+| Other Agents sharing the same media workspace | [MCP](docs/MCP.md) · [Agent guide](docs/AGENT_CORE_QUICKSTART.md) | 0.3.0-alpha.1 / current source |
 
-Provider directories refresh on demand with a 10-minute successful cache. Confirmed model-not-found failures exclude that connection's model and capability from subsequent requests while preserving configured models and historical success. Directory details start collapsed; failed refreshes retain the last complete snapshot, and new models still require approval of their uses.
+## Workbench preview
 
-## A real generation example
+A white interface with subtle iris colors, light/dark themes, local backgrounds and mobile layouts. Advanced parameters and details start collapsed.
 
-<p align="center">
-  <img src="docs/assets/examples/iris-flower-generated.webp" width="720" alt="A violet-blue iris generated from a prompt optimized by Iris">
-</p>
+![Core studio: a real Run, image preview, selection and download](docs/assets/screenshots/core-studio-preview.webp)
 
-> Starting from the two-character draft “鸢尾花”: Iris composer optimization (`deepseek-v4-flash`, thinking `off`) → Alibaba Cloud Bailian `qwen-image-3.0-pro` generation · 2048×2048
-
-## Android 16 live UI
-
-These captures come from an Android browser connected to DSH under Termux/PRoot Debian ARM64, using the default DSH skin. Public copies have no EXIF, XMP, or IPTC metadata.
-
-| 🫧 in the conversation composer | Optimized draft written back |
+| Capability overview | Function model pools |
 |---|---|
-| ![Iris bubble control in the DSH composer](docs/assets/screenshots/prompt-general-before.webp) | ![Iris writes the optimized prompt back to the DSH composer](docs/assets/screenshots/prompt-general-after.webp) |
+| ![Core overview: six capabilities and their actual entries](docs/assets/screenshots/core-overview-preview.webp) | ![Function pools: automatic, manual and disabled policies](docs/assets/screenshots/core-model-pools-preview.webp) |
+| **Health spectrum and connection checks** | **MCP capabilities and operation permissions** |
+| ![Six-capability spectrum and optional keepalive](docs/assets/screenshots/core-spectrum-preview.webp) | ![Client authorization by image capability and operation scope](docs/assets/screenshots/core-connections-preview.webp) |
 
-<p align="center">
-  <img src="docs/assets/screenshots/image-task-succeeded.webp" width="520" alt="Succeeded image task in the Iris workbench">
-</p>
+> Real UI from the current source, using an isolated demo workspace and works from the earlier controlled replay. This capture session makes no paid-model or ComfyUI GPU calls. Only built-in themes are shown, without a personal background. See the [full gallery](docs/screenshots.md) for mobile, dark mode and provenance.
 
-> [See the complete six-image workflow: before, glass preview panel, write-back, succeeded task, and artifact](docs/screenshots.md)
+## What Iris provides
 
-The project is at an early stage; interfaces and configuration formats may still change between releases.
+- **Media and vision:** image generation/editing, video, music, speech, transcription and visual understanding, plus local crop, difference, video-frame and HTML screenshot tools. Entry-point coverage differs; see below.
+- **Per-function model pools:** automatic selection, a manually ordered list, or disabled. Automatic pools use confirmed, eligible models in stable order. Switching requires known non-acceptance; existing tasks keep their original binding.
+- **Persistent creative work:** Core stores tasks, artifacts and fixed flows. Inspect the original request, recover outputs, select an image and continue using it. Unknown acceptance never triggers automatic regeneration.
+- **User-selected Agent access:** MCP grants select media, operation scopes and tools. stdio and Streamable HTTP share Core, with generic configuration and explicit client templates.
+- **Optional plugins:** Providers, business operations, pages, settings forms and artifact previews can be contributed by plugins. Core validates and assembles them; users grant access. The bundled contact sheet demonstrates a complete persistent business.
 
-This document describes **Iris 0.2.7**. Pin the version when installing or upgrading, and check the host compatibility range below first.
+### Current entry-point coverage
 
-Iris 0.2.7 provides a DSH plugin and a headless CLI sharing tasks, artifacts and model routing. This release fixes host screenshots and adds persistent image workflows, a local API, and explicit Core Skill installation. Connection reuse, function pools, directory synchronization, and existing media features remain available. Core internals have not been frozen as a public SDK.
-
-Version 0.2.7 includes host screenshot adaptation, address resolution, an explicit screenshot check, an internal application runtime with [DSH instance ownership](docs/DSH_RUNTIME.md), a [first persistent image-edit workflow](docs/IMAGE_FLOW.md), a [local API that is read-only by default](docs/LOCAL_API.md), and [explicit local uploads and Run creation](docs/LOCAL_CREATION.md) (Chinese); see the [0.2.7 release notes](docs/releases/0.2.7.md). The source retains a separate [web demo for 0.3.0](docs/WEB_PROTOTYPE.md) using bundled samples without model calls or charges. Its layout now informs the real workbench below; remaining scope is on the [0.3 roadmap](docs/ROADMAP.md#03-及以后).
-
-> Version support: Iris 0.2.7 retains the 12 exact DSH versions declared in 0.2.5; see the [compatibility matrix](docs/DSH_COMPATIBILITY.md). Node.js must be at least 22.0.0 and meet any higher host requirement. Connection reuse also requires the relevant public host services.
-
-**0.3 development preview (unreleased):** the [Core workbench](docs/LOCAL_WEB.md) (Chinese) has Create, Artifacts, Connections, and Providers pages. Explicit execution/selection modes enable image editing, comparison, saved choices, and downloads; media permissions remain read-only by default. Connection management controls MCP grants, while a separate owner-only flag enables [provider and model settings](docs/PROVIDER_SETTINGS.md). Published npm 0.2.7 does not include `web serve`.
-
-The source also adds a [ComfyUI area in the DSH workbench](docs/IMAGE_GENERATION.md#dsh-工作台入口未发布) (Chinese): connect to an existing service without a key, import an API workflow or parameter template, inspect node definitions without queuing, and adjust exposed LoRA model/CLIP weights and other parameters. The image card and floating shortcuts share the same controls. It uses the existing DSH configuration and tasks, without another Core service, and follows the host theme with collapsed settings and a brief iris animation that respects reduced motion. This UI is not in npm 0.2.7; real GPU output remains unverified.
-
-The source backend also has a [persistent selection API](docs/LOCAL_SELECTION.md) (Chinese): `api/web serve --allow-selection` lets only the workbench owner save the source or result against the current Run revision, without a model call. Media creation, execution, and selection flags do not require connection management; the default remains read-only. These backend additions are unreleased.
-
-The source also adds [request lookup and refresh recovery](docs/WEB_RECOVERY.md) (Chinese): actions retain their original identities, and reconnecting reads existing results with GET without starting a recovered Run. The bounded tab journal stores no tokens, prompts, or files; recovery details start collapsed. npm 0.2.7 does not include this feature.
-
-The connection center also imports data-only connection templates and generates [MCP Skills for the effective tool selection](docs/CORE_SKILLS.md#连接专属-mcp-skill未发布) (Chinese guide). Templates grant no permission. Skill instructions use English with Chinese headings; download the descriptor and explicitly install it into a client scan directory, with local changes protected. These features are unreleased.
-
-The frontend keeps a white interface with small accents from a six-color, 105-degree iris gradient. Appearance settings include light/dark modes, density and a local background; the [default Panel can be explicitly replaced](docs/PANEL_EXTENSIONS.md). The canvas supports side-by-side/overlay comparison, the gallery shows real covers and filters, and connection management handles grants/templates/Skills. Advanced settings start collapsed. The separate [Web Demo](docs/WEB_PROTOTYPE.md) still uses bundled samples.
-
-The source also adds [Operation storage and a root-version gate](docs/LOCAL_OPERATIONS.md) and a [Core execution service](docs/CORE_SERVICE.md) (Chinese): one runner per dedicated root, explicit continuation/local stopping, authorized connection handshakes, [generic MCP](docs/MCP.md) over stdio/Streamable HTTP with explicit capability/tool selection and configuration export, and an optional DSH connection for shared Flows. Web/MCP support fixed image editing and [text-to-image generation on a new v2 root](docs/IMAGE_GENERATION.md). The ComfyUI entry connects to an existing service and imports API workflows; HTTP/browser fixture validation does not replace real GPU validation. Generation requires explicit `image-generate` authorization. Existing roots and grants are not upgraded, and these entries are unreleased.
-
-## What's new in 0.2.7 and existing features
-
-**Improve host screenshots and use image workflows and Skills outside DSH.** Function pools retain stable priority and safe failover, without cross-request round-robin.
-
-- **Host screenshots:** consume PNG data through Core, respect browser download-directory restrictions, use actual listening metadata, and offer an explicit screenshot check.
-- **Image workflows and local API:** persist CLI steps, tasks, comparisons, and selection. The released API is read-only by default, with opt-in uploads and creation. Unreleased execution and selection APIs are described in the development preview above.
-- **Core Skill installation:** distribute `iris-core` with CLI image guidance; explicitly install to Kimi or a supplied scan directory, preserve local changes, and archive managed updates/removals.
-
-- **Persistent image import:** save an existing image through the workbench, agent, or CLI for later vision, editing, and export. The source file stays intact and no model is called.
-- **Native Qwen editing:** use supported DashScope Qwen image editing models as well as chat image models; edited images retain a link to their source.
-- **Connection reuse and function pools:** reference a DSH API-key connection, and choose automatic, selected-only or disabled mode for each function. Confirming uses can also enable its automatic pool.
-- **Directories and checks:** refresh directories before automatic requests and exclude confirmed missing models from later requests. Capability checks and advanced sections start collapsed; paid probes require separate confirmation.
-- **Older and transitional hosts:** the twelve exact versions in the matrix share current features and use the same manifest, client peer and Doctor compatibility boundary.
-
-**Upgrades preserve your allowed scope:** existing lists and missing or empty assignments do not become automatic. New directory entries still require confirmation of their uses; absence alone does not prove a model unavailable. Explicitly add host vision or enable it in the automatic vision pool. Existing tasks retain their bindings. See [function pools](docs/FUNCTION_MODEL_POOLS.md).
-
-See the [0.2.7 release notes](docs/releases/0.2.7.md) for upgrade steps and validation limits, and the [CHANGELOG](CHANGELOG.md). Older-host support was restored in [0.2.5](docs/releases/0.2.5.md); image import arrived in [0.2.4](docs/releases/0.2.4.md), and music and Skills in [0.2.3](docs/releases/0.2.3.md).
-
-Future work includes additional protocol adapters and creative workflows; see the [roadmap](docs/ROADMAP.md#后续功能方向).
-
-## Two ways to use Iris
-
-| | Path A: DSH plugin | Path B: Headless CLI |
+| Capability | DSH / standalone CLI (alpha) | Core Web / MCP (alpha) |
 |---|---|---|
-| Who it's for | DeepSeek Harness users who want agent tools, the workbench, and in-chat prompt optimization | Users who want media generation, task tracking, and artifact export from the command line without DSH |
-| Entry point | Choose a pinned release under "Quickest start" below | `dsh-iris run ...` — see [Headless CLI](docs/HEADLESS_CLI.md) |
-| Data location | `$DSH_HOME/iris/v1/` (Core data root `core-v0`) | Any absolute path passed via `--data-root` |
-| Automatic observation | Yes (bounded DSH host ticks + restart takeover) | Explicit `task observe`; 0.2.2 also offers bounded `task wait` |
-| Dependencies | A DSH version in the compatibility matrix, and Node.js ≥ 22 meeting host requirements | Node.js ≥ 22 and `sharp` (`ffmpeg` and `ffprobe` for video frames) |
+| Image generation, import and editing | Available | Available; text-to-image requires a new generation-capable root |
+| Speech and transcription | Available | Available in a new v3 root |
+| Video, music and vision | Available, depending on service and local dependencies | Configurable uses; creation entries still pending |
+| ComfyUI workflows and exposed parameters | Added in alpha; absent from stable 0.2.7 | Implemented; live GPU inference remains unverified |
+| Contact-sheet plugin | Outside 0.2.7 | Available when explicitly enabled |
 
-Both paths read and write the same Core Task/Artifact facts: point the CLI at the `core-v0` data root of a DSH profile to inspect or export artifacts, and vice versa. Read-only inspection can coexist with a writer; export is a write operation and returns busy if that data root already has a writer.
+“Available” means an implemented entry, requiring a supported protocol, model and grant. A listed model, eligible candidate, reachable connection and successful media test are different facts. Speech and ComfyUI development checks include controlled services; they do not establish compatibility with arbitrary upstreams.
 
-> Image processing depends on `sharp` and its platform binaries. Failure to load `sharp` can also prevent the CLI or plugin from starting. Repair the dependency installation first, then run `dsh-iris doctor` to check the environment.
+## Quickstart
 
-## Optional legacy configuration import
+### Core workbench (0.3 alpha)
 
-For a new installation, add a provider or reference a DSH connection in the Iris workbench. Iris uses its own configuration and does not scan other projects by default.
+Pin the prerelease in your own project, then choose a **new private location**. Existing workspaces are not migrated:
 
-If you already have an ai-paint configuration, set `IRIS_IMPORT_WORKBENCH_CONFIG` to its absolute file path for a one-time provider import. Iris leaves the source untouched and does not keep configurations synchronized. The variable holds a file path, not an API key. See the [user guide](user_guide.md) for details.
+```bash
+npm install @mokuyoaxis/dsh-iris@0.3.0-alpha.1
 
-## Quickest start
+IRIS_PREVIEW="$HOME/.iris/preview"
+mkdir -p "$IRIS_PREVIEW"
+npx dsh-iris flow init --data-root "$IRIS_PREVIEW/core"
+npx dsh-iris execution init --audio --data-root "$IRIS_PREVIEW/core"
+npx dsh-iris config init --provider-config "$IRIS_PREVIEW/providers.json"
 
-Check the host with `dsh --version` and ensure `pnpm` is on your PATH. Iris and DSH have independent version numbers; Iris 0.2.7 retains the twelve exact hosts listed in the [compatibility matrix](docs/DSH_COMPATIBILITY.md).
+npx dsh-iris web serve \
+  --data-root "$IRIS_PREVIEW/core" --auth-store "$IRIS_PREVIEW/auth" \
+  --provider-config "$IRIS_PREVIEW/providers.json" \
+  --allow-provider-management --allow-execution --allow-selection \
+  --connection-store "$IRIS_PREVIEW/connections" \
+  --allow-connection-management --allow-mcp --port 3182
+```
 
-| Your DSH | Iris choice | Source |
-|---|---|---|
-| Exact 0.1.2 / 0.1.5 / 0.1.7 / 0.2 versions in the matrix | `0.2.7` | Pinned npm version |
-| Versions outside the matrix | Not yet validated | Check the actual host interfaces |
+For a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. Use `@mokuyoaxis/dsh-iris@alpha` to follow prereleases, or keep the exact version for a reproducible setup.
 
-### DSH plugin: install 0.2.7
+Open the printed **`loginUrl` once to set an access password**, then use the ordinary address. Remembered devices survive refreshes and normal restarts; sign back in with the same password after logout. Mobile browsers do not need access to Termux files.
 
-Install the pinned release into your Web profile:
+In **模型服务** (Model services), add a connection, read or enter exact models and confirm their uses. Choose a policy under **功能模型池** (Function pools), then generate in **创作** (Studio). Starting the service, editing configuration and reading a directory do not generate media. Clicking Generate calls the provider and may incur charges.
+
+Under **客户端** (Clients), create a connection, choose capabilities and permissions, then generate and merge the appropriate MCP configuration into your client. **Keep Core running.** stdio starts a bridge; HTTP uses the same service's `/mcp`. Templates do not install clients or grant additional access. Keep exported connection configuration private.
+
+See the [Core quickstart](docs/CORE_QUICKSTART.md) for login, recovery, switch descriptions and an Agent example. Enable plugins separately through an [explicit startup selection](docs/PLUGIN_STARTUP.md). Iris does not scan user disks or install plugin code automatically.
+
+### DSH plugin (0.2.7)
+
+Check `dsh --version`, Node.js ≥22 and `pnpm` on PATH. Iris 0.2.7 declares the 12 exact DSH versions in its [compatibility matrix](docs/DSH_COMPATIBILITY.md); other versions need separate verification.
 
 ```bash
 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.7
 dsh web
 ```
 
-The plugin loads on the next DSH start. The web UI defaults to `http://127.0.0.1:3080`; open the complete URL if startup output includes authentication parameters. Reload the backend and refresh the web client after updating.
+Under Settings → Iris Workbench, reference an existing DSH API-key connection or add a service. Choose its protocol, approve model uses and select pool policies. Native DSH mode uses host routes, attachments and lifecycle without a separate Core Web service; it provides 17 Agent tools and the 🫧 prompt-refinement entry.
 
-### Standalone CLI: install 0.2.7
+These commands retain the stable version. To use additions such as the alpha ComfyUI UI, explicitly install `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-alpha.1`. The exact supported host versions do not expand.
 
-Install in your own project without DSH:
+After configuration, a minimal request is:
+
+```text
+Use iris_draw_image to draw a white cat sitting beside a blue window.
+Use Iris to generate retro-rock background music and save it as an audio artifact.
+```
+
+See the [user guide](user_guide.md) and [release-oriented Agent prompt](docs/AGENT_QUICKSTART.md). Updates require a normal plugin backend reload and client refresh; an Agent should not restart unrelated work.
+
+### Standalone CLI (0.2.7)
+
+Install in your own project; DSH is not required:
 
 ```bash
 npm install @mokuyoaxis/dsh-iris@0.2.7
 npx dsh-iris --help
 ```
 
-Download the package separately with `npm pack @mokuyoaxis/dsh-iris@0.2.7`. Users who need historical Iris0.1.4 can still pin it; see the matrix for its DSH/Node requirements. It lacks the current Core media CLI and later features.
+Supply an explicit `--data-root` and private `--provider-config` for generation, task inspection and artifact export. See [Headless CLI](docs/HEADLESS_CLI.md). Its [`iris-core` Skill](docs/CORE_SKILLS.md) can be installed into an explicitly chosen Skills directory. An MCP connection has a separate permission-matched Skill.
 
-### Choosing a version in dsh-market
+Keep the full scoped package name **`@mokuyoaxis/dsh-iris`** when installing or searching a marketplace. The unscoped `dsh-iris` is a different plugin.
 
-The marketplace entry should resolve to the full package name `@mokuyoaxis/dsh-iris`. Check its Iris version and your local `dsh --version` against the [compatibility matrix](docs/DSH_COMPATIBILITY.md) for that release. Catalog and npm data may be cached. The actual package's top-level `engines.dsh`, Node requirement, and client peers define its requirements; a visible listing does not imply support for every DSH release.
+## Configuration and data
 
-> The unscoped `dsh-iris` on npm belongs to a different plugin. Always keep the fully scoped name `@mokuyoaxis/dsh-iris` when installing or updating Iris Media.
+- Iris does not scan other projects or clients by default. DSH can [reference host API-key connections](docs/DSH_PROVIDER_CONNECTIONS.md); the Core workbench manages its media services. A chat subscription or OAuth login is not media API authentication.
+- Existing lists and missing/empty assignments are not silently enabled on upgrade. New directory models need explicit use approval; an empty manual pool stays empty. See [function pools](docs/FUNCTION_MODEL_POOLS.md).
+- `IRIS_IMPORT_WORKBENCH_CONFIG` explicitly selects an old ai-paint configuration for [one-time import](user_guide.md#从旧工作台显式导入). It does not modify or continuously synchronize the source, or migrate a Core data root.
+- DSH data lives under `$DSH_HOME/iris/v1/`, with media Core data in `core-v0`. Standalone CLI/Web use the selected root. The new workbench does not automatically import works from other roots.
+- Each root has one writer and an instance execution queue; read-only inspection may coexist. The gallery is not a backup. There is no automatic disk quota or garbage collection; deletion, recovery and dependencies require explicit operations.
+- Credentials live in private storage: typically `0600` files and `0700` directories on POSIX. Windows still relies on accounts and ACLs. Keep secrets and authenticated URLs out of public configuration and captures. Workspace passwords, MCP credentials and provider keys are managed separately.
 
-After the first start, open "Settings → Iris workbench → + Add provider", reference a DSH connection or enter your endpoint and key, and choose the media protocol. Synchronize the directory and confirm model uses; first-time setup can enable automatic selection in the same step. Selected-only mode still requires a list. See [function pools](docs/FUNCTION_MODEL_POOLS.md) and the [user guide](user_guide.md) (Chinese).
+Node.js ≥22 and a loadable `sharp` installation are required. Video extraction needs `ffmpeg`/`ffprobe`. HTML capture needs the chosen browser backend; DSH host services and standalone Chromium have different requirements. On Termux/PRoot, keep data on a private Linux filesystem supporting permissions and hard links.
 
-Once configured, minimal instructions can be as simple as:
+## Real generation and native DSH
 
-```text
-Use iris_draw_image: draw a white cat sitting by a blue window.
-Summarize the image I just uploaded.
-Summarize /absolute/path/demo.mp4 with Iris, then turn the summary into speech.
-```
+<p align="center">
+  <img src="docs/assets/examples/iris-flower-generated.webp" width="520" alt="A blue-purple iris actually generated through Iris">
+</p>
 
-DSH profiles and plugin commands follow the [official installation docs](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md). Generating images, videos, or speech may incur provider charges.
+> Historical real generation: the draft “iris flower” was refined using `deepseek-v4-flash` (thinking off), then generated through DashScope `qwen-image-3.0-pro` at 2048×2048. This is separate from the controlled replay used for the new workbench captures.
 
-For a copyable installation and usage prompt, see [Agent quickstart prompt](docs/AGENT_QUICKSTART.md).
+<details>
+<summary>Native DSH on Android 16 / Termux</summary>
 
-## Feature overview
-
-![Iris architecture overview](docs/assets/diagrams/iris-architecture.png)
-
-- Image generation, text-to-video, image-to-video, and S2V digital-human video
-- Music generation, text-to-speech, and audio transcription
-- Visual question answering, long-image OCR, target grounding, cropping, and pixel-diff analysis
-- Video frame extraction and multimodal video summarization
-- Asynchronous task tracking, restart recovery, and token-authorized media playback
-- An independent work library that survives task-history cleanup and can re-index older `outputs/`
-- A multi-provider model pool with per `provider + model` capability assignment
-- Three file sources: browser upload, session attachments, and host paths
-- Workbench-independent composer prompt optimization with current-session and JSON-configured fixed model routing
-
-## Prerequisites
-
-- A Node.js version that satisfies your DeepSeek Harness release's requirement; Iris 0.2.x requires at least 22.0.0, while the published npm 0.1.4 historically requires 20.10.0
-- A working DeepSeek Harness environment with `pnpm` on the PATH
-- At least one supported media or vision provider
-- `ffmpeg` and `ffprobe` for extracting frames or summarizing a video file; summaries of existing Core frames need neither
-
-After installing the plugin, add a provider in the Iris workbench and assign models to the capabilities you need. Provider keys are kept in Iris's host-side configuration; on POSIX systems, Iris's own directories and files are tightened to `0700` and `0600` respectively, and neither the UI nor the API ever returns full keys. On Windows, file modes are not equivalent to ACLs — keep relying on your user directory and system account permissions.
-
-## DeepSeek Harness adaptation
-
-dsh-iris remains a native DSH plugin. Iris 0.2.7 registers 17 agent tools, including import, editing, and music, and uses host routing, attachments, models, and lifecycle services. The web client contributes settings, composer, and global-overlay UI. Iris does not start another service or listen on an extra port.
-
-Save an uploaded or local image as a persistent Artifact for viewing, editing and export; see [image import](docs/IMAGE_IMPORT.md) (Chinese).
-
-| Iris version | DSH range | Verification |
-|---|---|---|
-| Published stable `0.1.4` | `>=0.1.2-rc.1 <0.1.3-0` | Historical clean and daily Web profiles on Linux ARM64 |
-| Published stable `0.1.4` | `0.1.5-rc.1` | Historical daily Android/Linux profile checks |
-| `0.2.0` | Only `0.2.0-rc.2` | Installed-service isolation checks, Core diff, and SlotRegistry; user demonstration reported successful, with detailed browser actions and asynchronous restart/rollback verification continuing |
-| `0.2.2` | Only `0.2.0-rc.2` | Installed-service checks cover 15 tools and 31 boundaries; complete browser/mobile and real asynchronous restart acceptance remain pending |
-| `0.2.3` | Only `0.2.0-rc.2` | Adds music and a third skill; check actual loading with Host Doctor after upgrading |
-| `0.2.4` | `0.2.0-rc.2` or `0.2.1-alpha.4` | 17 tools / 3 skills; actual SDK, loader, and client slot isolation checks; full browser and hot reload checks remain separate |
-| `0.2.5` | 12 exact versions across the 0.1.2 / 0.1.5 / 0.1.7 / 0.2 lines; see the matrix | Official SDK isolation checks including Music and Qwen dispatch; old profiles also load the actual installed package |
-| `0.2.7` | Retains the 12 exact versions declared in 0.2.6 | Screenshot fixes, instance runtime, image workflows, local API, and Core Skill; standalone Web remains a source-only demo |
-| `0.2.6` | Retains the 12 exact versions declared in 0.2.5 | Adds connection reuse, function pools and directories; connection reuse requires public host services; see that release's notes |
-
-See the [compatibility matrix](docs/DSH_COMPATIBILITY.md) for the current scope and [rc.2 adaptation notes](docs/DSH_RC2_ADAPTATION.md) for historical changes. npm 0.1.4 does not contain these later adaptations.
-
-Version 0.2.5 adapts to host API capabilities and declares support for the exact versions tested. Other versions need separate validation. Checks cover loading, tools, Skills, routes and client slots; full browser interaction and old-data upgrades remain separate. Doctor identifies the boundaries it can observe at runtime.
-
-Core and the DSH Adapter are being separated: DSH keeps loading the same npm package, while the Adapter maps host capabilities into Core. A DSH API change should require an Adapter or client-bridge fix, not a rewrite of Task or Artifact semantics. Version 0.2.0 includes the headless CLI. The `dsh` prefix will be removed after a second real Host Adapter is implemented and accepted, with a new npm package at that point; see the [roadmap](docs/ROADMAP.md).
-
-## Tools
-
-### Generation, speech, and tasks
-
-| Tool | Purpose |
+| Prompt entry | Refined draft |
 |---|---|
-| `iris_draw_image` | Generate images from a prompt |
-| `iris_import_image` | Save a local or session image as a persistent Artifact for later operations |
-| `iris_edit_image` | Edit a source Artifact with a chat image model or supported native Qwen edit model, preserving provenance |
-| `iris_generate_video` | Text-to-video, image-to-video, or S2V digital-human video |
-| `iris_generate_music` | Generate music from a description and save playable, downloadable audio |
-| `iris_speak_text` | Synthesize speech from text |
-| `iris_transcribe_audio` | Transcribe audio to text |
-| `iris_task_status` | Check the status and outputs of one task or the recent tasks |
+| ![DSH prompt refinement entry](docs/assets/screenshots/prompt-general-before.webp) | ![Refined prompt written to the draft](docs/assets/screenshots/prompt-general-after.webp) |
 
-### Vision and image processing
+![Succeeded DSH image task](docs/assets/screenshots/image-task-succeeded.webp)
 
-| Tool | Purpose |
+Historical device captures from an Android browser connected to DSH in Termux/PRoot Debian ARM64, using the host's default skin. [Full sequence and provenance](docs/screenshots.md).
+
+</details>
+
+## Documentation and development
+
+| Topic | Documentation |
 |---|---|
-| `iris_look_at_image` | Ask a question about an image and get a vision model's answer |
-| `iris_relook_attachment` | Re-inspect an image attachment from the session with a new question |
-| `iris_long_ocr` | Recognize text in tall screenshots or long images, chunk by chunk |
-| `iris_locate` | Ground a target in an image and return pixel coordinates |
-| `iris_crop` | Crop an image by pixel region |
-| `iris_pixel_diff` | Compare two images and produce diff statistics and a heatmap |
-| `iris_html_screenshot` | Render an HTML string to a screenshot in a restricted environment |
+| Getting started | [Core quickstart](docs/CORE_QUICKSTART.md) · [Agent Core guide](docs/AGENT_CORE_QUICKSTART.md) · [DSH guide](user_guide.md) · [CLI](docs/HEADLESS_CLI.md) |
+| Workbench and connections | [Login](docs/WORKBENCH_LOGIN.md) · [Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Skills](docs/CORE_SKILLS.md) |
+| Models and flows | [Providers, pools and spectrum](docs/PROVIDER_SETTINGS.md) · [Images / ComfyUI](docs/IMAGE_GENERATION.md) · [Speech / transcription](docs/AUDIO_FLOWS.md) · [Task semantics](docs/TASK_SEMANTICS.md) |
+| Extensions | [Plugin contract](docs/PLUGINS.md) · [Startup](docs/PLUGIN_STARTUP.md) · [Panel](docs/PANEL_EXTENSIONS.md) · [Contact sheet](docs/CONTACT_SHEET.md) |
+| Releases and direction | [0.3 alpha release notes](docs/releases/0.3.0-alpha.1.md) · [0.2.7 stable](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
 
-### Video processing
+The DSH package retains [`iris-use`](.dsh/skills/iris-use/SKILL.md), [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) and [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md). Core and connection Skills do not replace them.
 
-| Tool | Purpose |
-|---|---|
-| `iris_video_frames` | Extract frames evenly from a video |
-| `iris_media_summarize` | Summarize a video from sampled frames plus optional audio transcription |
+The project uses ES Modules and needs no build step. Install the locked dependencies and run `npm test`; browser verification uses a real local service with controlled upstreams. New Core plugin contracts and configuration remain experimental, without a marketplace or stable SDK commitment. Specific verified Agent connections do not establish attachment presentation in every client.
 
-## File inputs
-
-Look, locate and OCR accept a local path, session attachment or Core image `artifact_id`; summaries can reuse `frame_artifact_ids`. Artifact inputs are read-only and checked against their MIME type and content hash. PNG/JPEG/WebP inputs need no manual JPEG conversion. See [vision CLI](docs/VISION_CLI.md).
-
-Look, OCR chunks, locate and chat editing prepare sending copies using account/model budgets, with an 8 MiB default. Core originals, downloaded dimensions and hashes stay intact. OCR reports resizing and small-text risk; locate returns source-pixel coordinates. See [input budgets](docs/CLI_MANAGEMENT.md#看图输入预算).
-
-Image editing uses a source Artifact ID and saves a linked new image through a chat image model or, in 0.2.4, supported native DashScope Qwen models. See [Artifact editing](docs/CLI_MANAGEMENT.md#artifact-聊天改图) and [workbench management](docs/WORKBENCH_ARTIFACTS.md) for supported models, filtering, selection, downloads and recovery.
-
-Iris accepts three file sources, in the recommended order:
-
-1. **Browser upload** — best for local files and cross-environment access; 64 MB per file.
-2. **Session attachments** — best for reusing media already uploaded or generated in the current session.
-3. **Host paths** — best for large files the host can read directly. Enter the path as seen by the host process; it is not always the path on the machine your browser runs on.
-
-Uploads are stored under `$DSH_HOME/iris/v1/uploads/` and kept for 7 days by default. For path-picking advice on different platforms, see [File access across environments](docs/file-access-across-environments.md) (Chinese).
-
-## Conversation prompt optimization
-
-Version 0.2.2 extends per-operation rules, assembly without a model call and editable comparisons. It groups general, image creation, image editing, video and S2V targets in a collapsible section. The interface defaults to faithful grouping of original text in its original order; rewriting requires an explicit choice, and optional suggestions are fetched and adopted separately. Default instructions follow the project's Skills; custom v1 configuration and the existing text API remain compatible. Rules are not persisted and no standalone prompt CLI is added. See the [prompt optimizer guide](docs/PROMPT_OPTIMIZER.md).
-
-Iris adds a borderless, text-free “🫧” control directly to the DSH composer, so the workbench does not need to be open. It opens a translucent glass panel with background blur and soft depth; on narrow screens and Android browsers it becomes a safe-area-aware, internally scrollable bottom sheet. It reads only the current unsent plain-text draft. The result is previewed first and is written back only after confirmation; Iris never sends it automatically. Drafts containing structured `@` or `/` references are left untouched for now so their identities are not lost.
-
-By default, the optimizer uses the model selected for the current session and falls back to DSH's default model when the session has none. The request carries no chat history, tools, attachments, or workspace content—only the current draft and target template. To prevent reasoning tokens from exhausting the generation budget before visible text is complete, `generation.reasoningEffort` defaults to `off-if-supported`: reasoning is disabled only when DSH model metadata explicitly advertises such an effort; otherwise the provider default is used, and the session High/Low setting is not inherited. JSON may select `provider-default`, `inherit`, or an exact effort ID advertised by the model. For predictable cost and latency, use a `fixed` route with a lightweight non-reasoning model. You can also export `prompt-optimizer.json`, change `route.mode` to `fixed`, name another `provider` and `model` already registered in DSH, and import it again. “Reset to defaults” restores Iris's built-in prompt, target templates, session-model routing, and generation settings. The composer control can be disabled independently and re-enabled from the Iris workbench; disabling it does not stop the workbench, agent tools, or task runtime. An optimization call may incur charges from the selected text model.
-
-## Model assignment and failover
-
-Iris organizes ordered model candidates by function. Capability assignments identify each executor with `providerId::modelId`; the same model name from a different provider or account is a separate option. Alibaba Cloud media calls may use a separate Workspace `mediaBaseUrl`.
-
-Version 0.2.2 uses explicit function labels, legacy capability bindings, or provider capability metadata. Bare accounts and model names no longer grant capabilities. Discovery retains unlabelled models; assign their functions in the workbench or with CLI `models caps`. Existing explicit labels, assignment order and safe failover are preserved. Earlier 0.2.1 inference no longer grants capabilities to bare accounts or model names.
-
-Generation capabilities accept multiple candidate models. Every request starts at the head of the ordered list; this is safe failover, not round-robin. Iris tries the next candidate only when the provider explicitly proves that the request was not accepted. A 500 response, timeout, disconnect, missing response, polling failure, or local persistence failure never authorizes automatic resubmission. Once accepted, Core may only resume observation or delivery. The music entry point separately supports configured, bounded HTTP 502 retries as linked new tasks; these may consume extra quota and can be disabled with `retry_502: 0`. See [Music](docs/MUSIC.md).
-
-The workbench lists paused observation, unknown acceptance/outcome, and successful generation with failed delivery under “Needs attention.” Re-observe never submits; re-deliver never regenerates; acknowledge/restore only changes the local reminder queue; only an explicitly confirmed informed retry creates a linked new task and may incur duplicate charges. Creating that task archives the original reminder while preserving its unknown facts and audit link. See [Task semantics](docs/TASK_SEMANTICS.md), [Architecture](docs/ARCHITECTURE.md), [Security](docs/SECURITY.md), and the [Fault-injection matrix](docs/FAULT_INJECTION.md).
-
-![Task lifecycle and acceptance boundary](docs/assets/diagrams/iris-task-lifecycle.png)
-
-Transcription is a separate `transcribe` capability and does not consume the TTS or vision model configuration.
-
-## Capability health and model verification
-
-The workbench and main bubble show gray for unconfigured, blue for unverified, green for success within seven days, and muted red for authentication or permission failures. The 0.2.2 also shows amber for temporary 429 cooldown and bright red for confirmed free quota or budget exhaustion, with a reason and recovery condition.
-
-Iris performs no background probes. Temporary 429 responses use `Retry-After`, or a 60-second default cooldown. Expiry restores candidate eligibility without a verification request. Confirmed free quota or budget exhaustion persists across restarts until an explicit model test succeeds; test buttons remain available. Vision, image, and TTS have built-in test samples; video and transcription tests require real input through the CLI. Network errors, 5xx responses, content-safety failures, cancellation, and unknown acceptance do not overwrite recent success evidence. Host Doctor only checks loading and host ports. See [Provider and capability health](docs/PROVIDER_HEALTH.md).
-
-## Offline diagnostics
-
-No DSH installation or running host is required, and no provider request is sent:
-
-```bash
-npx @mokuyoaxis/dsh-iris doctor
-npx @mokuyoaxis/dsh-iris doctor --json
-```
-
-The installed binary is `dsh-iris`. Exit code `0` is healthy, `1` means warnings, and `2` means hard errors. Offline Doctor checks Node.js, sharp, ffmpeg/ffprobe, a real but cleaned-up storage write probe, configuration, models/assignments, task semantics, temporary files, and orphaned or missing artifacts.
-
-A running DSH instance also provides a “Host diagnostics” card and `/iris/api/doctor` JSON protected by Iris's Host and browser-origin guards. These guards do not authenticate users. Doctor checks the host version, plugin, 17 tools and three skills, four route groups, host capabilities, client version, and four UI slots. It reads safe registration evidence without calling Browser, models, or providers. See [Host Doctor](docs/HOST_DOCTOR.md).
-
-## Composed workflow example
-
-Three bundled skills guide single media operations, creative workflows, and UI acceptance. The existing "look → redraw → self-check" example below is one optional route: review follows the requested goal, useful outputs remain available, and music is an optional asset step.
-
-![Composed workflow example](docs/assets/diagrams/iris-workflow-compose.png)
-
-The repository also carries SVG versions and editable drawio sources under [`docs/assets/diagrams/`](docs/assets/diagrams/); the npm package ships only the PNGs shown above. Diagram labels are currently in Chinese.
-
-## Data and tasks
-
-Runtime data lives under `$DSH_HOME/iris/v1/` by default:
-
-| Location | Contents |
-|---|---|
-| `providers.json` | Providers, capability assignments, and redacted health evidence; file mode 0600 |
-| `prompt-optimizer.json` | Imported optimizer prompt, target templates, model route, and generation settings; file mode 0600 |
-| `core-v0/` | New tasks, attempts, Artifact objects, manifests and recoverable quarantine transactions |
-| `tasks.json` | Legacy task metadata and attachment indexes; up to 500 records |
-| `artifacts.json` | Legacy work-library index and random access tokens; no prompt, provider, or task relationship |
-| `outputs/` | Legacy generated and processed media |
-| `uploads/` | Temporary copies of browser uploads |
-
-On first load, 0.1.1 tightens POSIX permissions across an existing `$DSH_HOME/iris/v1/` tree without modifying file contents or following symlinks. Large media downloads stream to a private temporary file and are moved into place atomically, instead of loading a whole video into memory.
-
-Asynchronous tasks are polled in the background. After a plugin restart, Iris can re-adopt tasks that are still running remotely. Cancellation signals propagate through local waits and polling; whether the remote computation itself can be cancelled depends on the provider's API.
-
-The work library has its own lifecycle: clearing terminal task history does not delete works, and older media can be recovered by re-indexing `outputs/`. Legacy deletion removes actual files with separate confirmation; see [Work library v0](docs/ARTIFACT_LIBRARY.md). Core deletion uses preview and recoverable quarantine; see [workbench management](docs/WORKBENCH_ARTIFACTS.md). Favorites, tags and search remain future work.
-
-Legacy media links carry random capability tokens. Core media uses random Artifact IDs and host/browser origin guards. Images are, wherever possible, also saved as DSH durable attachments so they stay usable in the conversation.
-
-## Security notes
-
-- Provider keys are never returned by status endpoints.
-- The DashScope media protocol only sends keys to official Alibaba Cloud HTTPS, regional, or Workspace domains. A separate `mediaBaseUrl` may split media from vision/chat traffic; other addresses default to the OpenAI Images–compatible protocol.
-- `/iris/*` accepts loopback Host headers only by default; LAN or reverse-proxy deployments must set `IRIS_TRUSTED_HOSTS` explicitly, and state-changing requests are also checked against cross-site origins.
-- `IRIS_TRUSTED_HOSTS` is not an authentication mechanism. When exposing DSH to the public internet or an untrusted network, configure authentication and HTTPS at the reverse proxy or host layer.
-- Paid model probes run one capability at a time and always confirm before a real provider call; video and transcription never submit empty-sample paid probes automatically.
-- HTML screenshots render inside a sandboxed page without same-origin privileges; scripts and external network access are disabled by default.
-- Legacy media links use random capability tokens; Core media reads verify Artifact content hashes. A host allowlist does not replace user authentication.
-- Iris provides no account system of its own; multi-user isolation and access control are the responsibility of the DeepSeek Harness deployment.
-
-## Known limitations
-
-- `sharp` bundles native components; glibc Linux, Windows, and macOS are the primary targets. Non-standard environments such as bare Termux may need extra work.
-- Video-file frame extraction and summaries require system-installed `ffmpeg` and `ffprobe`; summaries of existing Core frames need neither.
-- HTML screenshots load no remote scripts, fonts, or images; inline the resources you need first.
-- Under WSL, containers, and remote deployments, browser paths usually cannot be handed to the host directly — prefer uploading files.
-- Provider model lists are candidate sets only; whether a model truly supports a capability is settled by real calls.
-
-## Agent Skills
-
-Version 0.2.7 adds a host-independent [`iris-core`](skills/iris-core/SKILL.md) for image import, generation, editing, and retrieval through the existing standalone CLI. Instructions are in English with Chinese titles. Explicit `skills install/status/uninstall` commands support Kimi or a supplied scan directory, preserve local changes, and archive managed updates/removals. See [loading and scope](docs/CORE_SKILLS.md). These resources and commands ship in npm 0.2.7. The three DSH skills below remain registered as before; the unreleased [Core service](docs/CORE_SERVICE.md) provides the formal MCP entry with separately configured authorization.
-
-The DSH skill registry receives three bundled skills:
-
-| Skill | When to use |
-|---|---|
-| [`iris-use`](.dsh/skills/iris-use/SKILL.md) | Single generation/editing, vision/OCR, speech, music, task queries, and artifact delivery |
-| [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) | Image revisions, video assets, narration, S2V, and optional music |
-| [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md) | Interface reproduction and screenshot acceptance, including confirmed failure |
-
-Skills work independently of the session working directory. Project skills retain precedence, and tools still load when the registry is unavailable. All three use the [shared capability and artifact contract](.dsh/skills/iris-use/references/media-contract.md).
-
-To select a skill explicitly, use DSH's `/name` form:
-
-```text
-/iris-use Generate a rock soundtrack and return its audio artifact and playback link
-
-/iris-compose-media Inspect my uploaded product photo, create a matching poster, then verify the requested constraints
-
-/iris-verify-ui Compare the current screenshot with the reference, locate regressions, and return an evidence-based verdict
-```
-
-Natural-language requests and direct tool calls remain available. `iris-use` guides single operations; composition guides multi-step work, with music added only when requested. Skills do not replace tool loading or model assignment, or alter task and cost-confirmation boundaries.
-
-## Development and verification
-
-Run in the project directory:
-
-    npm test
-
-Tests cover config merging, model identity, task lifecycle, generation actions, HTTP/SSE routing, client interactions, and security boundaries. The project is pure ES Modules with no build step.
-
-The test scheduler runs on Node.js, launching one process per file and stopping at the first failure — no Bash involved. Temporary directories use system APIs and are cleaned up on exit. GitHub Actions defines a Linux/Windows × Node.js 22.0.0/latest 22.x matrix, with repeated natural-exit checks on the minimum version, and a pre-release hook re-runs the full suite. DSH host smoke tests on native Windows/WSL are still pending real-machine verification.
-
-Releases are triggered by `v*` tags through `.github/workflows/release.yml`: the full test suite runs first, then the tarball is packaged, a GitHub Release is created with the workflow's built-in `GITHUB_TOKEN` (tarball attached; release notes taken first from `docs/releases/<version>.md`, otherwise from the matching CHANGELOG section), and npm publish happens when an `NPM_TOKEN` secret is configured. No local GitHub credentials are needed.
-
-## Documentation
-
-- [User guide](user_guide.md) (Chinese)
-- [Changelog](CHANGELOG.md) (Chinese)
-- [Roadmap](docs/ROADMAP.md) (Chinese)
-- [File access across environments](docs/file-access-across-environments.md) (Chinese)
-- [Android 16 screenshot gallery](docs/screenshots.md)
-- [Task/Attempt v2 semantics (Chinese)](docs/TASK_SEMANTICS.md)
-
-## License
-
-[MIT](LICENSE)
+[MIT License](LICENSE)

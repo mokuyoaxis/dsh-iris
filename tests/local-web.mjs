@@ -37,9 +37,9 @@ try {
   assert.equal((await nativeFetch(ordinary.origin + '/')).status, 401, 'API mode does not silently add a public page');
   const session = await start({ serveWorkbench: true });
   const headers = { Authorization: 'Bearer ' + session.accessToken };
-  const assets = new Map([['/', 'text/html'], ['/app.js', 'text/javascript'], ['/transport.js', 'text/javascript'],
+  const assets = new Map([['/', 'text/html'], ['/startup.js', 'text/javascript'], ['/app.js', 'text/javascript'], ['/transport.js', 'text/javascript'],
     ['/media-client.js', 'text/javascript'], ['/recovery.js', 'text/javascript'],
-    ['/creation.js', 'text/javascript'], ['/gallery.js', 'text/javascript'], ['/providers.js', 'text/javascript'], ['/appearance.js', 'text/javascript'],
+    ['/creation.js', 'text/javascript'], ['/gallery.js', 'text/javascript'], ['/providers.js', 'text/javascript'], ['/comfyui.js', 'text/javascript'], ['/appearance.js', 'text/javascript'],
     ['/flow-view.js', 'text/javascript'], ['/connections.js', 'text/javascript'], ['/styles.css', 'text/css'], ['/iris-mark.svg', 'image/svg+xml']]);
   for (const [resource, type] of assets) {
     const response = await nativeFetch(session.origin + resource);

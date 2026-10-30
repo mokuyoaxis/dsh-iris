@@ -1,4 +1,4 @@
-# Core 文生图与 ComfyUI（面向 0.3，未发布）
+# Core 文生图与 ComfyUI（0.3 alpha）
 
 当前源码支持固定 `image-generate/v0`：无需原图，使用明确的 `provider::model` 和提示词生成一张图片。它与改图共用 Run、Operation、Task、作品、原 Key 恢复和有限执行；生成结果无需像素比较，明确选择后可下载或用作下一次改图的原图。**npm 0.2.7 不包含本页的新流程、页面或 MCP 入口。**
 
@@ -36,12 +36,15 @@ node bin/dsh-iris.js flow continue run_REPLACE_WITH_RETURNED_ID \
 需要你已运行的 ComfyUI HTTP 服务和一份能在该服务上执行的 API 工作流。Iris 不安装 ComfyUI、模型或自定义节点，不启动 GPU 服务；独立网页不嵌入节点编辑器。
 
 1. 供应商页选择“ComfyUI · 已有服务”，填写 Iris Core 能访问的地址；本机通常是 `http://127.0.0.1:8188`。远程 Core 的这个地址指向 Core 所在机器。原生 ComfyUI 可选无需认证，受保护的反向代理可使用 API Key/Bearer；不提供 Comfy Cloud/OAuth 登录适配。
-2. 在 ComfyUI 使用 **Export (API)** 导出。展开“ComfyUI 工作流”，导入最多 40 KiB、256 个节点的 JSON。普通画布格式不能直接执行。
-3. 填写稳定的工作流名称，明确选择正向提示词节点（替换其 `inputs.text`）、图片输出节点，以及可选尺寸节点（替换 `inputs.width/height`）。其余参数与 seed 沿用工作流；输出节点必须恰好产生一张图片。
-4. 点击“加入模型草稿”，再保存设置。创作页将此工作流作为图片模型选择。导入、保存和目录检查均不提交生成。
-5. “开始生成”提交一次工作流，之后明确查看原任务并取回图片。没有绑定尺寸节点时，创作页的输出尺寸应留空。服务缺少节点/模型或工作流执行失败时，请结合原 ComfyUI 任务检查。
+2. 在 ComfyUI 使用 **Export (API)** 导出。展开“ComfyUI 工作流”，导入 API 图或完整 Iris v0/v1 模板，最多 40 KiB、256 个节点；参数声明也计入模板大小。普通画布格式不能直接执行。
+3. 填写稳定的工作流名称，明确正向提示词节点（替换其 `inputs.text`）、图片输出节点和可选尺寸节点（替换 `inputs.width/height`）。展开“开放参数”，勾选已有标量输入、命名并选择整数/小数类型；右侧设置区提供使用时的表单预览。完整 v1 模板保留原参数 ID、类型、范围、选项和顺序。
+4. 已保存、启用的 ComfyUI 连接可做“只读检查”，不保存草稿、不创建 Task、不入队。点击“加入模型草稿”，同名替换需确认，再“保存设置”。连接地址或密钥尚有编辑时，先保存连接，再重新导入模板检查。
+5. 创作页选择此工作流，填写提示词及开放参数。LoRA 槽位分别显示模型与 CLIP 权重，更多参数默认折叠；“检查参数并读取选项”取得当前服务的候选，超出 256 项时保留手填。检查不会替换当前参数；修改输入或切换工作流使旧检查结论失效。
+6. “开始生成”才提交一次工作流，之后明确查看原任务并取回图片。没有绑定尺寸节点时使用模板尺寸，页面禁用尺寸覆盖。首次 v1 提交前后端重新检查实际参数；服务缺少节点/模型或执行失败时，请结合原 ComfyUI 任务检查。
 
 “打开 ComfyUI”在浏览器新标签打开所填服务地址；它不为远程服务建立代理或转发。工作流可调用节点自己的外部服务，应只导入你了解的流程。原始图配置保存在私有 Provider 文件及其备份中，普通设置读取只显示摘要和绑定，不回显图正文；不要将账号凭据写入图节点。
+
+参数表单按模板声明显示，不添加 LoRA 节点或安装模型；多个 LoRA 需要原图已有多个槽位。只读检查需 owner 与 `--allow-provider-management`，仅执行连接仍可填写已开放的参数并按原权限生成。生成点击时固定本次参数快照，新 v1 表单保存全部开放参数的取值；草稿不写入 sessionStorage，恢复表仍只保存请求身份。结果的“流程详情”显示 Run 中实际记录的参数 ID 与值，不用最新模板默认值补写历史；未记录的输入仍依赖原模板。真实 GPU 出图、节点级进度和推理预览尚未验收或接入。
 
 运行时使用 `/prompt`、`/history/{prompt_id}`、`/queue` 和 `/view`。历史和队列都找不到的原任务标记未知，不重新排队。取图只接受原服务的图片接口，不读取 ComfyUI 机器上的任意文件路径。工作流摘要进入原 Task 连接绑定；更改工作流后旧任务不会悄悄改用新图恢复。首版不调用共享服务的全局 `/interrupt`。
 
@@ -55,7 +58,7 @@ node bin/dsh-iris.js flow continue run_REPLACE_WITH_RETURNED_ID \
 - 官方[采样器种子](https://github.com/Comfy-Org/ComfyUI/blob/fe298e4e20f1ff26d30e8639267bbd0b57811390/nodes.py#L1606)支持 unsigned 64-bit；Iris 的整数输入限于 JavaScript 安全范围。API 图中直接填写的越界整数也会拒绝，请将种子调至 `0`–`9007199254740991` 后重新导出，避免静默舍入。
 - Iris 提交整份图，只导入所选输出节点的一张图片；其他输出节点或图内外部服务仍可能执行。[SaveImage](https://github.com/Comfy-Org/ComfyUI/blob/fe298e4e20f1ff26d30e8639267bbd0b57811390/nodes.py#L1669)默认可把图与提示词写入 PNG 元数据，Iris 保留原字节，不自动移除这些元数据。
 
-## DSH 工作台入口（未发布）
+## DSH 工作台入口（0.3 alpha）
 
 当前源码另在原 DSH 工作台中提供专用区域；**npm 0.2.7 尚不包含以下 ComfyUI 界面**。它使用 DSH 侧原配置和 Core Task，不要求另起独立 Core 服务或创建 v2 Flow 根，也不自动接管独立 Core 面板的配置。
 
@@ -70,7 +73,7 @@ node bin/dsh-iris.js flow continue run_REPLACE_WITH_RETURNED_ID \
 
 ## ComfyUI 参数模板与只读检查（后端）
 
-当前后端另支持 `comfyWorkflow.version: 1`，在已有 `graph`、`promptNode`、`outputNode` 和可选 `sizeNode` 上增加明确的 `parameters`。原 v0 模板保持；Core 网页导入仍创建 v0，Core 专用参数视图尚未接入。DSH 工作台已支持导入与声明这些参数；v1 完整模板也可通过 CLI `providers add/set` 的 `models[].comfyWorkflow` 保存。
+当前后端支持 `comfyWorkflow.version: 1`，在已有 `graph`、`promptNode`、`outputNode` 和可选 `sizeNode` 上增加明确的 `parameters`。原 v0 模板保持；Core 与 DSH 工作台均支持导入、声明及填写参数。没有开放参数时仍保存 v0 固定模板；v1 完整模板也可通过 CLI `providers add/set` 的 `models[].comfyWorkflow` 保存。
 
 例如，已有图中的 `10` 是 LoRA 节点、`7` 是负面提示词节点、`3` 是采样器，可声明下列参数。此片段只是参数声明，须与原 API 图和输入输出绑定一起保存：
 
@@ -109,7 +112,7 @@ node bin/dsh-iris.js flow create --data-root /absolute/new-image-core \
   --input '{"model_ref":"comfy::portrait","prompt":"An iris portrait","n":1,"workflow_parameters":{"lora":"portrait.safetensors","model_weight":0.7,"clip_weight":0.4,"negative":"","seed":42}}'
 ```
 
-HTTP `POST /api/v0/generations` 和 MCP `iris_core_create_generation` 使用可选 `workflowParameters` 对象；`iris_core_models` 返回已明确开放的参数描述。配置检查需 owner 与 `--allow-provider-management`，通过 `POST /api/v0/provider-management/workflow-check` 发送 `{expectedRevision,modelRef,workflowParameters?}`，不写配置或创建 Task。普通目录读取仍只列已配置工作流。
+HTTP `POST /api/v0/generations` 和 MCP `iris_core_create_generation` 使用可选 `workflowParameters` 对象；`iris_core_models` 返回已明确开放的参数描述。配置检查需 owner 与 `--allow-provider-management`，通过 `POST /api/v0/provider-management/workflow-check` 发送 `{expectedRevision,modelRef,workflowParameters?}`。未保存的模板可改用 `{expectedRevision,providerId,comfyWorkflow,workflowParameters?}`，仅访问已保存且启用的 ComfyUI 连接，不接受临时地址或凭据；两种选择不能混用。检查不写配置或创建 Task，配置在检查期间变化会拒绝旧结果。普通目录读取仍只列已配置工作流。
 
 单次参数最多 24 KiB，参数化 CLI 输入最多 96 KiB；HTTP 正文仍最多 64 KiB。参数会排序并纳入创建 Key 和 Run 输入摘要；同 Key 不同值冲突，同值不同键顺序可重放。带参数 Run 使用记录版本 2，旧读取者拒绝；无参数 Run、原固定模板和摘要保持，已有根不迁移。这里保存的是请求参数和模板绑定摘要，不保存另一份完整图；原模板改变后仍按原规则拒绝将旧任务重新绑定到新模板，并清除该图片模型的过期实测标记。原 Task 的远端查询不重新检查节点目录或生成。
 

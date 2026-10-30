@@ -32,6 +32,15 @@ const result = parsed(['skills', 'install', '--target', 'kimi']);
 assert.equal(result.action, 'installed'); assert.equal(result.discovery, 'not_checked');
 assert.equal(result.directory, directory);
 assert(fs.existsSync(path.join(directory, 'iris-core/references/tasks.md')));
+assert.deepEqual(fs.readFileSync(path.join(directory, 'iris-core/references/comfyui.md')), fs.readFileSync(path.join(repo, 'skills/iris-core/references/comfyui.md')));
+for (const source of ['SKILL.md', 'references/comfyui.md', 'references/cli.md', 'references/tasks.md']) {
+  const file = path.join(directory, 'iris-core', source);
+  for (const match of fs.readFileSync(file, 'utf8').matchAll(/\]\(([^)#]+)(?:#[^)]*)?\)/g)) {
+    if (/^[a-z]+:/i.test(match[1])) continue;
+    const target = path.resolve(path.dirname(file), match[1]);
+    assert(target.startsWith(path.join(directory, 'iris-core') + path.sep)); assert(fs.existsSync(target), 'installed reference must be self-contained: ' + match[1]);
+  }
+}
 const original = fs.readFileSync(path.join(directory, 'iris-core/SKILL.md'));
 assert.equal(parsed(['skills', 'status', '--target', 'kimi']).status, 'current');
 assert.equal(parsed(['skills', 'install', '--target', 'kimi']).action, 'unchanged');

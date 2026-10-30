@@ -24,6 +24,7 @@ const state = () => JSON.parse(fs.readFileSync(stateFile, 'utf8'));
 const reset = extra => fs.writeFileSync(stateFile, JSON.stringify({ submit: 0, poll: 0, download: 0, tasks: {}, ...extra }), { mode: 0o600 });
 let checks = 0;
 function cli(command, input, flags = [], expected = 0, healthWrite = false) {
+  const beforeCall = fs.readFileSync(config);
   const args = ['bin/dsh-iris.js', 'vision', command, '--provider-config', config, '--input', JSON.stringify(input), ...flags];
   const run = spawnSync(process.execPath, args, { cwd: repo, encoding: 'utf8', timeout: 15000, shell: false,
     env: { ...process.env, DSH_HOME: dshHome, NODE_OPTIONS: '--import=' + pathToFileURL(path.join(repo, 'tests/fixtures/headless-vision-fetch.mjs')).href,
@@ -38,7 +39,16 @@ function cli(command, input, flags = [], expected = 0, healthWrite = false) {
     assert.equal(cooling.modelId, 'selected'); assert.equal(cooling.httpStatus, 429); assert(cooling.until);
     delete saved.providers[0].health;
     assert.deepEqual(saved, catalog, '429 只记录健康资格，不能改账号、模型或分配');
-  } else assert.deepEqual(fs.readFileSync(config), configBefore);
+  } else if (command === 'summarize' && input.transcribe === true) {
+    const previous = JSON.parse(beforeCall), saved = JSON.parse(fs.readFileSync(config));
+    for (const provider of saved.providers) {
+      assert((provider.health?.observations || []).every(item => item.capability === 'transcribe'),
+        '显式音轨任务只能保存转写健康证据，不能把普通视觉成功写回配置');
+      delete provider.health;
+    }
+    for (const provider of previous.providers) delete provider.health;
+    assert.deepEqual(saved, previous, '转写不得改账号、模型或功能分配');
+  } else assert.deepEqual(fs.readFileSync(config), beforeCall, '普通视觉调用应保留配置原字节');
   assert(!fs.existsSync(path.join(dataRoot, '.iris-runtime-writer-v0')));
   checks++; return run;
 }
@@ -125,6 +135,8 @@ try {
     reset();
     const audioSummary = json('summarize', { video_path: video, max_frames: 2, transcribe: true, transcribe_model_ref: 'first::asr' }, ['--data-root', dataRoot]);
     assert.equal(audioSummary.transcription.status, 'complete'); assert.equal(state().submit, 1); assert.equal(state().poll, 2);
+    assert(JSON.parse(fs.readFileSync(config)).providers[0].health.observations.some(item => item.capability === 'transcribe'
+      && item.lastSuccess?.source === 'task'), '显式转写任务应保存成功证据');
     assert(state().vision[0].prompt.includes('fixture 转写正文')); assert(audioSummary.text.includes('音轨已结合'));
     const taskFile = path.join(dataRoot, 'task-store/v0/tasks', audioSummary.transcription.taskId + '.json');
     const task = JSON.parse(fs.readFileSync(taskFile)); assert.equal(task.attempts.length, 1); assert.equal(task.modelRef, 'first::asr');

@@ -6,7 +6,7 @@
 
 需要Node.js ≥ 22.0.0。按 [README](../README.md) 核对发布状态，安装 `npm install @mokuyoaxis/dsh-iris@0.2.7` 后运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；本地tarball也可用于安装。
 
-0.2.7 另提供宿主无关的 [`iris-core` Skill](CORE_SKILLS.md)，指导 Agent 使用这些图片、任务和作品命令；英文正文附中文标题，独立分发，不改变 DSH 三项 Skill。`skills install/status/uninstall` 可显式复制、检查和可恢复卸载，支持 Kimi 或自定义扫描目录，安装/卸载可 `--dry-run`。这些入口随 npm 0.2.7 分发；正式 MCP 仍待实现。
+0.2.7 另提供宿主无关的 [`iris-core` Skill](CORE_SKILLS.md)，指导 Agent 使用这些图片、任务和作品命令；英文正文附中文标题，独立分发，不改变 DSH 三项 Skill。`skills install/status/uninstall` 可显式复制、检查和可恢复卸载，支持 Kimi 或自定义扫描目录，安装/卸载可 `--dry-run`。这些入口随 npm 0.2.7 分发；该发行版不含正式 MCP，当前alpha源码的 Web/MCP 另见 [Core 快速开始](CORE_QUICKSTART.md)。
 
 0.2.1 提供 `vision look / locate / ocr / summarize`。文件输入的纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；图片/帧 Artifact ID 输入需显式数据根，以 reader 读取既有 Core 产物，只有主动音轨转写才创建 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)；S2V、HTML、配置、等待及批量管理见 [CLI 管理](CLI_MANAGEMENT.md)。
 

@@ -1,6 +1,6 @@
 # 本地上传与流程创建（0.2.7 / I4B）
 
-未发布源码另支持 [Operation 执行根](LOCAL_OPERATIONS.md)与 [Core 有限执行服务](CORE_SERVICE.md)，需在新空 Flow 根显式 `execution init`，执行另主动开启；上传/创建仍不生成。下文说明已发布 0.2.7 的 v0 初始化流程，各种根不自动转换。
+0.3 alpha源码另支持 [Operation 执行根](LOCAL_OPERATIONS.md)与 [Core 有限执行服务](CORE_SERVICE.md)，需在新空 Flow 根显式 `execution init`，执行另主动开启；上传/创建仍不生成。下文说明已发布 0.2.7 的 v0 初始化流程，各种根不自动转换。
 
 新的 `execution init --image-generation` 使用 v2 容器；owner 可通过 POST `/api/v0/generations` 保存 `{modelRef,prompt,size?,workflowParameters?}`，使用独立的 `generation-create` 原 Key 查询与重放，不接受来源图片。`workflowParameters` 仅用于明确开放槽位的 ComfyUI 模板，并纳入原 Key 和 Run 输入摘要；旧 `/runs` 不接受该字段。旧 `/runs` 创建仍必须提供来源，不能借旧编辑工具调用新能力。见 [独立文生图](IMAGE_GENERATION.md)。
 
@@ -39,7 +39,7 @@ dsh-iris api serve --data-root /absolute/path/new-flow-core --token-file /absolu
 
 ## 重试、删除与中断
 
-未发布源码增加 owner-only 的原 Key 只读查询和 session 稳定 rootId，v0/v1 请求区均可读取；prepared 不自动补完，默认只读服务也不创建请求区。浏览器刷新先重新认证、GET 核对，详见 [工作台请求恢复](WEB_RECOVERY.md)。此查询不在已发布 npm 0.2.7 中。
+0.3 alpha源码增加 owner-only 的原 Key 只读查询和 session 稳定 rootId，v0/v1 请求区均可读取；prepared 不自动补完，默认只读服务也不创建请求区。浏览器刷新先验证标签页保存的登录，再 GET 核对，详见 [工作台请求恢复](WEB_RECOVERY.md)。此查询不在已发布 npm 0.2.7 中。
 
 请求意图、预留身份、业务提交和完成状态共用同一次 Core writer。跨进程重启、端口变化或 Token 轮换后，同 Key 仍绑定原数据根和原输入；已有 Run 后续执行或选择过，重放返回其当前 FlowView，不回退进度。已有意图不因当前 Provider 配置变化另选模型/端点，未来执行仍遵守原 Flow binding。
 

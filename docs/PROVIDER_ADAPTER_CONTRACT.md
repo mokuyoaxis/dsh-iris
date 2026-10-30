@@ -25,7 +25,7 @@ Action / Task watcher / recovery / model discovery
 
 ## 描述结构
 
-已发布版本的协议工厂由内部注册表选择；0.2.0 基线提供 `dashscope` 和 `openai-images`，0.2.1 另有 `openai-chat-images` 与 `openai-responses-images`。面向 0.3 的未发布源码另提供[实例级 Provider 扩展首版](PROVIDER_EXTENSIONS.md)，经实验性窄入口显式加载可信协议；这不代表完整 SDK 冻结。生图模型可通过可选 `imageProtocol` 覆盖账号默认；选择、实测与 Task binding 共用有效协议，详见 [模型级图片协议](CLI_MANAGEMENT.md#模型级图片协议)。未知的显式 `mediaProtocol` 保留原值，未注册时在联网前拒绝；错误只包含合法协议标识，不回显端点或凭据。
+已发布版本的协议工厂由内部注册表选择；0.2.0 基线提供 `dashscope` 和 `openai-images`，0.2.1 另有 `openai-chat-images` 与 `openai-responses-images`。面向 0.3 的0.3 alpha源码另提供[实例级 Provider 扩展首版](PROVIDER_EXTENSIONS.md)，经实验性窄入口显式加载可信协议；这不代表完整 SDK 冻结。生图模型可通过可选 `imageProtocol` 覆盖账号默认；选择、实测与 Task binding 共用有效协议，详见 [模型级图片协议](CLI_MANAGEMENT.md#模型级图片协议)。未知的显式 `mediaProtocol` 保留原值，未注册时在联网前拒绝；错误只包含合法协议标识，不回显端点或凭据。
 
 未配置协议或选择 `auto` 时，官方端点可识别为对应协议；其他端点继续使用 OpenAI Images 兼容路径，并标记 `protocolInferred:true`。该标记表示尚待用户确认兼容性，不代表已经验证成功。显式选择协议会清除标记；旧记录中已保存的明确协议不追溯猜测其来源。CLI 与 DSH 共用选择逻辑，Task binding 绑定最终实际协议与端点。
 

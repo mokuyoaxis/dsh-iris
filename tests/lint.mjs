@@ -1076,7 +1076,7 @@ stage('documents');
     }
   }
   const roadmap = read('docs/ROADMAP.md');
-  for (const sec of ['当前状态', '近期优先：真实使用验收', '兼容性与限制', '质量要求', '暂不计划']) {
+  for (const sec of ['当前状态', '近期优先：插件契约与真实接入', '兼容性与限制', '质量要求', '暂不计划']) {
     if (!roadmap.includes(sec)) failures.push(`docs/ROADMAP.md 缺少「${sec}」节`);
   }
   const pkg = JSON.parse(read('package.json'));

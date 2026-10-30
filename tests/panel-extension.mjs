@@ -25,6 +25,10 @@ fs.writeFileSync(path.join(root, 'outside.html'), 'private'); fs.symlinkSync(pat
 fs.writeFileSync(file, JSON.stringify({ ...manifest, assets: { '/': 'linked.html' } })); assert.throws(() => loadPanelExtension(file), { code: 'IRIS_PANEL_INVALID' });
 fs.writeFileSync(file, JSON.stringify(manifest));
 assert.deepEqual(normalizeAppearance(DEFAULT_APPEARANCE), DEFAULT_APPEARANCE);
+for (const accent of ['violet', 'rose', 'apricot']) {
+  const previous = { ...DEFAULT_APPEARANCE, accent, theme: 'dark', density: 'compact', overlay: 75, blur: 6 };
+  assert.deepEqual(normalizeAppearance(previous), { ...previous, accent: 'iris' }, 'retired accents preserve existing display settings');
+}
 for (const invalid of [{ ...DEFAULT_APPEARANCE, background: 'https://example.com/x' }, { ...DEFAULT_APPEARANCE, overlay: 0 },
   { ...DEFAULT_APPEARANCE, accent: 'url(https://example.com)' }, { ...DEFAULT_APPEARANCE, contractVersion: 1 }]) assert.throws(() => normalizeAppearance(invalid));
 const app = createApplicationRuntime({ dataRoot }); let api;

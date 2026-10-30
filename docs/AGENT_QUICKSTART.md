@@ -1,5 +1,7 @@
 # 给 AI Agent 的简要 Prompt
 
+先选择入口：0.3.0-alpha.1 的 Core 工作台/MCP 使用 [Agent Core 指导](AGENT_CORE_QUICKSTART.md)与[从零启动](CORE_QUICKSTART.md)；下面的安装提示保留面向**稳定 0.2.7 的 DSH / CLI**，不是新 MCP 配置步骤。
+
 把下面一段交给负责安装或使用 Iris 的 Agent。版本与发布状态以当前 [README](../README.md) 为准；Iris 和 DSH 的版本号独立。
 
 下列 npm 示例对应 Iris 0.2.7，准确范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。执行安装命令前确认所选发行包的实际版本、工具和功能策略。

@@ -77,7 +77,7 @@ dsh-iris vision summarize \
 
 ## 配置和模型选择
 
-配置沿用 Iris Provider 文件，不执行配置迁移或模型发现。文件必须为普通文件，POSIX 权限限制为当前用户可读写（例如 `chmod 600 providers.json`）。可以直接只读使用已有 Iris 配置；不会推断 DSH_HOME、HOME 或当前目录。
+配置沿用 Iris Provider 文件，不执行配置迁移或模型发现。文件必须为普通文件，POSIX 权限限制为当前用户可读写（例如 `chmod 600 providers.json`）。普通视觉成功保留配置原字节，不持久刷新健康时间；明确模型不存在、限流等失败仍沿用健康记录规则。显式开启音轨转写会创建 Core 媒体任务并保存对应成功证据；这些写入不改变账号、模型或功能分配。不会推断 DSH_HOME、HOME 或当前目录。
 
 最小结构如下，`apiKey` 由你在私有文件中设置，不放在命令参数中：
 

@@ -13,13 +13,46 @@ import { verifyWebCreationBrowser } from '../tests/fixtures/web-creation-browser
 import { verifyWebModeBrowser } from '../tests/fixtures/web-mode-browser-probe.mjs';
 import { verifyPanelC3Browser } from '../tests/fixtures/panel-c3-browser-probe.mjs';
 import { verifyImageGenerationBrowser } from '../tests/fixtures/image-generation-browser-probe.mjs';
+import { verifyCoreComfyBrowser } from '../tests/fixtures/core-comfyui-browser-probe.mjs';
+import { verifyPanelFeedbackBrowser } from '../tests/fixtures/panel-feedback-browser-probe.mjs';
+import { verifyWebLoginBrowser } from '../tests/fixtures/web-login-browser-probe.mjs';
+import { verifyAudioBrowser } from '../tests/fixtures/audio-browser-probe.mjs';
+import { verifyOverviewBrowser } from '../tests/fixtures/workbench-overview-browser-probe.mjs';
+import { verifyCapabilityCatalogBrowser } from '../tests/fixtures/capability-catalog-browser-probe.mjs';
+import { verifyMcpOnboardingBrowser } from '../tests/fixtures/mcp-onboarding-browser-probe.mjs';
+import { verifyPluginPanelBrowser } from '../tests/fixtures/plugin-panel-browser-probe.mjs';
+import { verifyPluginBusinessBrowser } from '../tests/fixtures/plugin-business-browser-probe.mjs';
+import { verifyWorkbenchPasswordBrowser } from '../tests/fixtures/workbench-password-browser-probe.mjs';
+import { verifyProviderWorkbenchBrowser } from '../tests/fixtures/provider-workbench-browser-probe.mjs';
 
 const args = process.argv.slice(2);
-assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection', '--recovery', '--creation', '--mode-closure', '--panel-c3', '--image-generation'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
-  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3|--image-generation]');
+assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection', '--recovery', '--creation', '--mode-closure', '--panel-c3', '--image-generation', '--comfyui', '--panel-feedback', '--login', '--password-login', '--provider-workbench', '--audio', '--overview', '--capability-catalog', '--mcp-onboarding', '--plugin-panel', '--plugin-business'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
+  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3|--image-generation|--comfyui|--panel-feedback|--login|--password-login|--provider-workbench|--audio|--overview|--capability-catalog|--mcp-onboarding|--plugin-panel|--plugin-business]');
+const webLogin = args.includes('--login');
+const passwordLogin = args.includes('--password-login');
+const providerWorkbench = args.includes('--provider-workbench');
+assert(!providerWorkbench || args.slice(4).every(flag => ['--no-sandbox', '--provider-workbench'].includes(flag)), '--provider-workbench runs only its focused scenarios');
+assert(!passwordLogin || args.slice(4).every(flag => ['--no-sandbox', '--password-login'].includes(flag)), '--password-login runs only its focused scenarios');
+const audio = args.includes('--audio');
+const overview = args.includes('--overview');
+const capabilityCatalog = args.includes('--capability-catalog');
+const mcpOnboarding = args.includes('--mcp-onboarding');
+const pluginPanel = args.includes('--plugin-panel');
+const pluginBusiness = args.includes('--plugin-business');
+assert(!pluginBusiness || args.slice(4).every(flag => ['--no-sandbox', '--plugin-business'].includes(flag)), '--plugin-business runs only its focused scenarios');
+assert(!pluginPanel || args.slice(4).every(flag => ['--no-sandbox', '--plugin-panel'].includes(flag)), '--plugin-panel runs only its focused scenarios');
+assert(!mcpOnboarding || args.slice(4).every(flag => ['--no-sandbox', '--mcp-onboarding'].includes(flag)), '--mcp-onboarding runs only its focused scenarios');
+assert(!capabilityCatalog || args.slice(4).every(flag => ['--no-sandbox', '--capability-catalog'].includes(flag)), '--capability-catalog runs only its focused scenarios');
+assert(!overview || args.slice(4).every(flag => ['--no-sandbox', '--overview'].includes(flag)), '--overview runs only its focused scenarios');
+assert(!audio || args.slice(4).every(flag => ['--no-sandbox', '--audio'].includes(flag)), '--audio runs only its focused scenarios');
+assert(!webLogin || args.slice(4).every(flag => ['--no-sandbox', '--login'].includes(flag)), '--login runs only its focused scenarios');
 const modeClosure = args.includes('--mode-closure');
 const panelC3 = args.includes('--panel-c3');
 const imageGeneration = args.includes('--image-generation');
+const comfyui = args.includes('--comfyui');
+const panelFeedback = args.includes('--panel-feedback');
+assert(!panelFeedback || args.slice(4).every(flag => ['--no-sandbox', '--panel-feedback'].includes(flag)), '--panel-feedback runs only its focused scenarios');
+assert(!comfyui || args.slice(4).every(flag => ['--no-sandbox', '--comfyui'].includes(flag)), '--comfyui runs only its focused scenarios');
 assert(!modeClosure || args.slice(4).every(flag => ['--no-sandbox', '--mode-closure'].includes(flag)), '--mode-closure runs only its focused scenarios');
 assert(!panelC3 || args.slice(4).every(flag => ['--no-sandbox', '--panel-c3'].includes(flag)), '--panel-c3 runs only its focused scenarios');
 assert(!imageGeneration || args.slice(4).every(flag => ['--no-sandbox', '--image-generation'].includes(flag)), '--image-generation runs only its focused scenarios');
@@ -30,7 +63,7 @@ const management = args.includes('--connection-management');
 fs.mkdirSync(out, { mode: 0o700 });
 const report = { status: 'running', checks: [], browserErrors: [], requests: [], layout: {}, screenshots: [],
   actualPaidCalls: 0, realApiImplemented: true, dailyDshBooted: false, noSandbox: args.includes('--no-sandbox'),
-  connectionManagement: management, selectionEnabled: args.includes('--allow-selection'), requestRootVersion: args.includes('--execution-root') || management || args.includes('--recovery') || modeClosure || panelC3 ? 1 : null };
+  connectionManagement: management, selectionEnabled: args.includes('--allow-selection'), requestRootVersion: args.includes('--execution-root') || management || args.includes('--recovery') || modeClosure || panelC3 || panelFeedback || capabilityCatalog || mcpOnboarding || pluginPanel || providerWorkbench ? 1 : null };
 const save = () => fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 function tree(root) {
@@ -85,6 +118,12 @@ async function click(selector) {
   await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...point });
   await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...point });
 }
+async function toggleTheme() {
+  const next = await evaluate("document.documentElement.dataset.theme==='dark'?'light':'dark'");
+  await click('#appearance-open');
+  await evaluate(`(()=>{const n=document.querySelector('#appearance-theme');n.value=${JSON.stringify(next)};n.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+  await click('#appearance-close');
+}
 async function check(name, expression) { assert.equal(await evaluate(expression), true, name); report.checks.push(name); save(); }
 async function dimensions(width, height = 844) {
   await cdp('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false }); await sleep(80);
@@ -127,7 +166,8 @@ try {
   const before = tree(dataRoot), eventsBefore = readFlowEvents(dataRoot);
   const tokenFile = path.join(out, 'session-token');
   const apiOptions = { dataRoot, serveWorkbench: true, allowSelection: report.selectionEnabled, ...(management ? {
-    allowConnectionManagement: true, connectionStore: path.join(out, 'managed-connections'), allowMcp: true } : {}) };
+    allowConnectionManagement: true, connectionStore: path.join(out, 'managed-connections'), allowMcp: true } : {}),
+    ...(passwordLogin ? { workbenchAuth: { directory: path.join(out, 'password-auth') } } : {}) };
   api = createLocalReadApi(apiOptions); session = await api.start();
   writeLocalApiTokenFile(tokenFile, session.accessToken, dataRoot);
   browser = spawn(executable, ['--headless=new', ...(report.noSandbox ? ['--no-sandbox'] : []), '--disable-gpu',
@@ -151,7 +191,11 @@ try {
     if (value.method === 'Runtime.exceptionThrown') report.browserErrors.push(value.params.exceptionDetails.exception?.description || value.params.exceptionDetails.text);
     if (value.method === 'Log.entryAdded' && /Content Security Policy|Refused to/.test(value.params.entry.text)) report.browserErrors.push(value.params.entry.text);
     if (value.method === 'Page.javascriptDialogOpening') report.browserErrors.push('Unexpected native dialog');
-    if (value.method === 'Network.requestWillBeSent') report.requests.push({ method: value.params.request.method, url: value.params.request.url });
+    if (value.method === 'Network.requestWillBeSent') {
+      const url = new URL(value.params.request.url);
+      if (url.hash.startsWith('#login=')) url.hash = '#login=[redacted]';
+      report.requests.push({ method: value.params.request.method, url: url.href });
+    }
     if (value.method === 'Fetch.requestPaused') pausedResponses.push(value.params.requestId);
   });
   await cdp('Runtime.enable'); await cdp('Page.enable'); await cdp('Network.enable'); await cdp('Log.enable');
@@ -160,9 +204,98 @@ try {
   report.browser = await cdp('Browser.getVersion');
   await dimensions(1366, 900);
   await cdp('Page.navigate', { url: session.origin + '/#' + chosen.run.id });
-  await wait(() => evaluate("Boolean(document.documentElement.dataset.theme&&!document.querySelector('#connection').hidden)"), 'login mount');
+  await wait(() => evaluate("document.readyState!=='loading'&&document.querySelector('#connection')?.hidden===false"), 'login mount');
   await evaluate('document.fonts.ready');
-  if (imageGeneration) {
+  if (passwordLogin) {
+    await verifyWorkbenchPasswordBrowser({ session, debugOrigin: `http://127.0.0.1:${port}`, cdp, evaluate, click, wait, report, save, dimensions, measure, capture, pausedResponses,
+      restart: async () => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi(apiOptions); session = await api.start({ port }); return session;
+      }, reset: async () => {
+        const response = await fetch(session.origin + '/api/v0/workbench/password-reset', { method: 'POST', headers: {
+          Authorization: 'Bearer ' + session.accessToken, 'Content-Type': 'application/json' }, body: '{}' });
+        assert.equal(response.status, 200); return (await response.json()).setupUrl;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'password workbench has no browser exceptions or CSP violations');
+  } else if (providerWorkbench) {
+    await verifyProviderWorkbenchBrowser({ out, dataRoot, tokenFile, session, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture,
+      restart: async providerConfigPath => {
+        await api.dispose(); api = createLocalReadApi({ dataRoot, serveWorkbench: true, providerConfigPath, allowProviderManagement: true,
+          allowExecution: true, allowSelection: true, allowConnectionManagement: true, connectionStore: path.join(out, 'provider-connections') });
+        session = await api.start(); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'provider workbench has no browser exceptions or CSP violations');
+  } else if (pluginBusiness) {
+    await verifyPluginBusinessBrowser({ cdp, evaluate, click, wait, report, save, dimensions, measure, capture });
+    assert.deepEqual(report.browserErrors, [], 'Business Panel has no browser exceptions or CSP violations');
+  } else if (pluginPanel) {
+    await verifyPluginPanelBrowser({ out, dataRoot, chosenRunId: chosen.run.id, cdp, evaluate, click, wait, chooseToken, readyRun,
+      report, save, dimensions, measure, capture, pausedResponses,
+      restart: async options => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot, serveWorkbench: true, ...options });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'Plugin Panel has no browser exceptions or CSP violations');
+  } else if (mcpOnboarding) {
+    await verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture, downloads,
+      restart: async allowMcp => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot, serveWorkbench: true, allowMcp,
+          allowConnectionManagement: true, connectionStore: path.join(out, 'onboarding-connections') });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'MCP onboarding has no browser exceptions or CSP violations');
+  } else if (capabilityCatalog) {
+    await verifyCapabilityCatalogBrowser({ out, dataRoot, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture,
+      restart: async pluginRegistry => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot, serveWorkbench: true, allowLocalWrites: true, pluginRegistry,
+          allowConnectionManagement: true, connectionStore: path.join(out, 'catalog-connections'), allowMcp: true });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'capability catalog has no browser exceptions or CSP violations');
+  } else if (overview) {
+    await verifyOverviewBrowser({ out, dataRoot, chosenRunId: chosen.run.id, tokenFile, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, tree,
+      restart: async (root, providerConfigPath, modes = {}) => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, providerConfigPath, ...modes });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'overview has no browser exceptions or CSP violations');
+  } else if (audio) {
+    await verifyAudioBrowser({ out, tokenFile, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads, pausedResponses,
+      restart: async (root, providerConfigPath, executionPorts, modes = {}) => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, providerConfigPath, allowExecution: true, allowSelection: true, executionPorts, ...modes });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'audio has no browser exceptions or CSP violations');
+  } else if (webLogin) {
+    await verifyWebLoginBrowser({ out, dataRoot, session, tokenFile, cdp, evaluate, click, wait, chooseToken, report, save,
+      dimensions, measure, capture, pausedResponses, tree, restart: async () => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot, serveWorkbench: true }); session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'one-click login has no browser exceptions or CSP violations');
+  } else if (panelFeedback) {
+    await verifyPanelFeedbackBrowser({ out, tokenFile, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture,
+      restart: async providerConfigPath => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot, serveWorkbench: true, providerConfigPath, allowProviderManagement: true,
+          allowExecution: true, allowSelection: true, allowConnectionManagement: true, connectionStore: path.join(out, 'feedback-connections'), allowMcp: true });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'Panel feedback has no uncaught browser errors');
+  } else if (comfyui) {
+    await verifyCoreComfyBrowser({ out, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture,
+      restart: async (root, providerConfigPath, modes = {}) => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, providerConfigPath, allowProviderManagement: true,
+          allowExecution: true, allowSelection: true, ...modes }); session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'ComfyUI has no browser exceptions or CSP violations');
+  } else if (imageGeneration) {
     await verifyImageGenerationBrowser({ out, cdp, evaluate, click, wait, chooseToken, readyRun, tree, report, save,
       dimensions, measure, capture, pausedResponses, restart: async (root, providerConfigPath, executionPorts, modes = {}) => {
         const port = Number(new URL(session.origin).port); await api.dispose();
@@ -198,18 +331,18 @@ try {
   const initialTheme = await evaluate('document.documentElement.dataset.theme');
   await evaluate('window.qaSavedRaf=requestAnimationFrame;window.requestAnimationFrame=()=>1');
   try {
-    await click('#theme');
+    await toggleTheme();
     await check('pointer clicks remain usable without animation callbacks', `document.documentElement.dataset.theme!==${JSON.stringify(initialTheme)}`);
   } finally {
     await evaluate('window.requestAnimationFrame=qaSavedRaf;delete window.qaSavedRaf');
-    if (await evaluate('document.documentElement.dataset.theme') !== initialTheme) await click('#theme');
+    if (await evaluate('document.documentElement.dataset.theme') !== initialTheme) await toggleTheme();
   }
   if (report.selectionEnabled) {
     await check('selection-enabled owner session remains usable for browsing without implicit page writes', `document.querySelector('#mode-badge').textContent===${JSON.stringify(management ? 'Core 工作台' : '可选择作品')}&&!document.querySelector('#workspace').hidden`);
   }
   await check('file connection reads real history, original images and stored selection', "document.querySelectorAll('.history-item').length===2&&document.querySelector('#status-title').textContent==='已选择结果'&&!document.querySelector('#download').disabled&&document.querySelector('#source-dimensions').textContent==='48 × 32'&&document.querySelector('#output-dimensions').textContent==='48 × 32'");
   await check('prompt is literal text, details collapsed, missing config is nonblocking', "document.querySelector('#prompt').textContent.includes('<img src=x')&&document.querySelectorAll('[onerror]').length===0&&!document.querySelector('#run-details').open&&!document.querySelector('#model-panel').open&&document.querySelector('#model-summary').textContent==='未指定配置'");
-  await check('token is absent from URL, input and browser storage', "!location.search&&!document.querySelector('#token').value&&!document.querySelector('#token-file').value&&Object.keys(localStorage).every(k=>k==='iris.panel.appearance.v0')&&sessionStorage.length===0");
+  await check('owner login is kept only in tab storage, never the URL, form or localStorage', `!location.search&&!document.querySelector('#token').value&&!document.querySelector('#token-file').value&&Object.keys(localStorage).every(k=>k==='iris.panel.appearance.v0')&&Object.keys(sessionStorage).every(k=>k==='iris.workbench.session.v0')&&sessionStorage.getItem('iris.workbench.session.v0')===${JSON.stringify(session.accessToken)}`);
   await measure('desktop-selected'); await capture('desktop-selected');
   await click('#run-details>summary');
   await wait(() => evaluate("document.querySelector('#run-details .disclosure').textContent==='收起'"), 'expanded disclosure text');
@@ -227,8 +360,9 @@ try {
   let managedConnectionId, exportedToken;
   if (management) {
     await click('#connections-tab');
+    await click('#connection-new');
     await wait(() => evaluate("!document.querySelector('#connection-fields').disabled"), 'connection form ready');
-    await check('connection center has six media choices, unsupported groups disabled and tools collapsed', "document.querySelectorAll('#connection-media input').length===6&&document.querySelectorAll('#connection-media input:disabled').length===5&&!document.querySelector('#connection-tool-details').open&&document.querySelector('#connection-tool-count').textContent==='8 个可用'");
+    await check('connection center separates usable media from five folded future groups and keeps tools collapsed', "document.querySelectorAll('#connection-media input').length===1&&document.querySelectorAll('#connection-media-unavailable input:disabled').length===5&&!document.querySelector('#connection-future').open&&!document.querySelector('#connection-tool-details').open&&document.querySelector('#connection-tool-count').textContent==='8 个可用'");
     const label = '<img src=x onerror=alert(1)> / My own harness';
     await cdp('Fetch.enable', { patterns: [{ urlPattern: session.origin + '/api/v0/connection-management/connections', requestStage: 'Response' }] });
     await evaluate(`document.querySelector('#connection-name').value=${JSON.stringify(label)}`); await click('#connection-save');
@@ -273,7 +407,7 @@ try {
     const exported = JSON.parse(await evaluate("document.querySelector('#connection-configuration').value"));
     exportedToken = exported.mcpServers.iris.headers.Authorization.slice(7);
     assert.equal(exported.mcpServers.iris.url, session.origin + '/mcp');
-    await check('HTTP credentials appear only after explicit export and are labelled', "document.querySelector('#connection-export-note').textContent.includes('密钥')&&Object.keys(localStorage).every(k=>k==='iris.panel.appearance.v0')&&sessionStorage.length===0&&!location.search");
+    await check('exported HTTP credentials are labelled and never enter login or persistent storage', `document.querySelector('#connection-export-note').textContent.includes('密钥')&&Object.keys(localStorage).every(k=>k==='iris.panel.appearance.v0')&&Object.keys(sessionStorage).every(k=>k==='iris.workbench.session.v0')&&sessionStorage.getItem('iris.workbench.session.v0')===${JSON.stringify(session.accessToken)}&&!JSON.stringify(sessionStorage).includes(${JSON.stringify(exportedToken)})&&!location.search`);
     await click('#connection-download');
     await wait(() => fs.existsSync(path.join(downloads, 'iris-mcp.json')), 'real configuration download');
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(downloads, 'iris-mcp.json'))), exported);
@@ -283,12 +417,13 @@ try {
     await click('#connections-refresh');
     await wait(() => evaluate("document.querySelector('#connection-state').textContent==='使用过'"), 'declared client fact');
     await check('real MCP declaration is separate from bridge and unproven liveness', "document.querySelector('#connection-facts').textContent.includes('Any brand / actual MCP')&&document.querySelector('#connection-facts').textContent.includes('Iris HTTP MCP bridge')&&document.querySelector('#connection-facts').textContent.includes('iris.mcp')&&document.querySelector('#connection-facts').textContent.includes('不表示持续在线')");
-    await evaluate("document.querySelector('#connection-name').value='Renamed workspace'");
+    await click('[data-connection-view="settings"]'); await evaluate("document.querySelector('#connection-name').value='Renamed workspace'");
     await click('#connection-media input[value="image"]'); await click('#connection-save');
     await wait(() => evaluate("document.querySelector('.connection-item strong').textContent==='Renamed workspace'&&!document.querySelector('#connection-save').disabled"), 'save changed grant');
     assert.equal((await remote.request('tools/list')).tools.length, 2);
     await check('saved capability change is visible and tools remain collapsed', "document.querySelector('#connection-tool-count').textContent==='2 个可用'&&!document.querySelector('#connection-tool-details').open&&document.querySelector('#connections-feedback').textContent.includes('已保存')");
     // Hold an actual export response. A hidden-and-reopened tab must not reveal it later.
+    await click('[data-connection-view="delivery"]');
     await cdp('Fetch.enable', { patterns: [{ urlPattern: session.origin + '/api/v0/connection-management/connections/*/export', requestStage: 'Response' }] });
     await click('#connection-export-button'); await wait(() => pausedResponses.length > 0, 'held export response');
     await click('#media-tab'); await click('#connections-tab');
@@ -302,6 +437,7 @@ try {
     await cdp('Fetch.continueRequest', { requestId: pausedResponses.shift() }); await cdp('Fetch.disable');
     await wait(() => evaluate("!document.querySelector('#connection-skill-generate').disabled"), 'released skill response');
     await check('a late skill snapshot clears pending feedback without repopulating a cleared view', "document.querySelector('#connection-skill-result').hidden&&!document.querySelector('#connection-skill-preview').value&&!document.querySelector('#connections-feedback').textContent.includes('正在处理')");
+    await click('[data-connection-view="settings"]');
     for (const width of [390, 320]) {
       await dimensions(width); await measure('connections-mobile-' + width); await capture('connections-mobile-' + width);
       await click('#connection-tool-details>summary');
@@ -309,8 +445,8 @@ try {
       await check('tool disclosure expands once at ' + width, "document.querySelector('#connection-tool-details').open&&document.querySelector('#connection-tool-details .disclosure').textContent==='收起'");
       await measure('connections-mobile-expanded-' + width); await click('#connection-tool-details>summary');
     }
-    await click('#theme'); await capture('connections-dark'); await click('#theme');
-    await click('#connection-revoke');
+    await toggleTheme(); await capture('connections-dark'); await toggleTheme();
+    await click('[data-connection-view="details"]'); await click('#connection-revoke');
     await check('revocation requires an explicit local confirmation', "!document.querySelector('#connection-revoke-confirm').hidden&&document.querySelector('#connection-state').textContent==='使用过'");
     await click('#connection-revoke-yes');
     await wait(() => evaluate("document.querySelector('#connection-state').textContent==='已撤销'"), 'revoked connection');
@@ -343,15 +479,14 @@ try {
     await dimensions(width); await measure('mobile-' + width); await capture('mobile-' + width);
     await click('#run-details>summary'); await measure('mobile-' + width + '-expanded'); await click('#run-details>summary');
   }
-  await click('#theme'); await capture('mobile-320-dark'); await click('#theme');
+  await toggleTheme(); await capture('mobile-320-dark'); await toggleTheme();
   await click('#disconnect');
   await check('disconnect releases Blob URLs and private view contents', "testBlobs.size===0&&document.querySelector('#workspace').hidden&&!document.querySelector('#prompt').textContent&&!document.querySelector('#token').value");
   await click('#paste-panel>summary');
   await evaluate(`document.querySelector('#token').value=${JSON.stringify(session.accessToken)}`); await click('#connect'); await readyRun(chosen.run.id);
   await cdp('Page.reload');
-  await wait(() => evaluate("Boolean(document.documentElement.dataset.theme&&!document.querySelector('#connection').hidden)"), 'reload without credentials');
-  await check('reload requires reconnection and keeps only the Run fragment', `location.hash===${JSON.stringify('#' + chosen.run.id)}&&document.querySelector('#workspace').hidden&&!document.querySelector('#token').value&&Object.keys(localStorage).every(k=>k==='iris.panel.appearance.v0')&&sessionStorage.length===0`);
-  await chooseToken(tokenFile); await readyRun(chosen.run.id);
+  await wait(() => evaluate("Boolean(document.documentElement.dataset.theme)"), 'reload mount'); await readyRun(chosen.run.id);
+  await check('reload validates the retained tab login and restores the original Run', `location.hash===${JSON.stringify('#' + chosen.run.id)}&&document.querySelector('#connection').hidden&&!document.querySelector('#token').value&&Object.keys(localStorage).every(k=>k==='iris.panel.appearance.v0')&&sessionStorage.getItem('iris.workbench.session.v0')===${JSON.stringify(session.accessToken)}`);
   const oldPort = Number(new URL(session.origin).port);
   await api.dispose(); api = createLocalReadApi(apiOptions); session = await api.start({ port: oldPort });
   const newToken = path.join(out, 'restarted-token'); writeLocalApiTokenFile(newToken, session.accessToken, dataRoot);
@@ -416,5 +551,14 @@ try {
     ...(report.modeClosure ? { modeChecks: report.modeClosure.checks.length } : {}),
     ...(report.panelC3 ? { panelChecks: report.panelC3.checks.length } : {}),
     ...(report.imageGeneration ? { generationChecks: report.imageGeneration.checks.length } : {}),
+    ...(report.comfyui ? { comfyChecks: report.comfyui.checks.length } : {}),
+    ...(report.panelFeedback ? { feedbackChecks: report.panelFeedback.checks.length } : {}),
+    ...(report.webLogin ? { loginChecks: report.webLogin.checks.length } : {}),
+    ...(report.audio ? { audioChecks: report.audio.checks.length } : {}),
+    ...(report.overview ? { overviewChecks: report.overview.checks.length } : {}),
+    ...(report.capabilityCatalog ? { catalogChecks: report.capabilityCatalog.checks.length } : {}),
+    ...(report.mcpOnboarding ? { onboardingChecks: report.mcpOnboarding.checks.length } : {}),
+    ...(report.pluginPanel ? { pluginPanelChecks: report.pluginPanel.checks.length } : {}),
+    ...(report.pluginBusiness ? { pluginBusinessChecks: report.pluginBusiness.checks.length } : {}),
     ...(report.failure ? { failure: report.failure } : {}) }, null, 2));
 }

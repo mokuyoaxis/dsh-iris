@@ -2,6 +2,16 @@
 
 Iris与DSH的版本号独立。安装前运行 `dsh --version`，并核对要安装的Iris版本；发布状态见 [README](../README.md)。
 
+## Iris 0.3.0-alpha.1
+
+本次alpha沿用下方12个准确宿主版本声明，独立Core Web/MCP不要求安装DSH。需要DSH新增的ComfyUI入口时明确安装预发布：
+
+```bash
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-alpha.1
+```
+
+稳定通道仍为0.2.7。沿用声明不代表本次alpha重新实测了所有宿主组合；宿主/客户端SDK与实际装载结果仍须分别核对。
+
 ## Iris 0.2.7
 
 0.2.7 沿用 0.2.5/0.2.6 的以下 12 个准确版本声明。截图修复与实例装配不扩大宿主支持范围。连接引用另需供应商目录、脱敏设置及凭据公开服务；缺少接口时使用手动供应商。首次配置与升级规则见 [功能模型池](FUNCTION_MODEL_POOLS.md)。

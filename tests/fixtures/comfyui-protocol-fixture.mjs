@@ -36,7 +36,7 @@ export const COMFY_SCHEMAS = {
 };
 export async function comfyProtocolFixture() {
   const requests = [], graphs = [], schemas = structuredClone(COMFY_SCHEMAS);
-  let mode = 'normal', phase = 'queued';
+  let mode = 'normal', phase = 'queued', beforeInfo;
   const server = http.createServer(async (req, res) => {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const url = new URL(req.url, 'http://fixture');
@@ -51,6 +51,7 @@ export async function comfyProtocolFixture() {
       if (mode === 'redirect') { res.writeHead(302, { Location: 'http://127.0.0.1:1/credential-trap' }); res.end(); return; }
       if (mode === 'hang') return;
       const type = decodeURIComponent(url.pathname.slice('/object_info/'.length));
+      await beforeInfo?.(type);
       return send(schemas[type] ? { [type]: schemas[type] } : {});
     }
     if (url.pathname === '/prompt' && req.method === 'POST') {
@@ -69,6 +70,7 @@ export async function comfyProtocolFixture() {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   return { baseUrl: 'http://127.0.0.1:' + server.address().port, requests, graphs, schemas,
+    set beforeInfo(value) { beforeInfo = value; },
     set mode(value) { mode = value; }, set phase(value) { phase = value; },
     async close() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); } };
 }

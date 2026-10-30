@@ -136,6 +136,41 @@ try {
   }
   assert.equal(terminal.state, 'succeeded'); assert.equal(terminal.id, accepted.operation.id); assert.equal(fixture.calls.submit.length, 1);
   assert.equal((await record(full.connectionId)).state, 'revoked');
+  await ok('/connections/' + full.connectionId + '/delete', { expectedRevision: 2 });
+  assert.equal(await record(full.connectionId), undefined);
+  assert.equal((await request('/api/v0/operations/' + accepted.operation.id)).body.operation.state, 'succeeded', 'deleting a grant preserves accepted work');
+  const removedIds = [];
+  const beforeDelete = hashCore();
+  for (const transport of ['stdio', 'http']) {
+    const input = profile('Delete connected ' + transport); await ok('/connections', input);
+    const exported = await config(input.key, transport), token = readProfile(input.key).accessToken;
+    const client = transport === 'stdio' ? stdioMcpClient(path.resolve('bin/dsh-iris.js'), '', 'read', { launch: exported })
+      : httpMcpClient(session.origin, token);
+    if (transport === 'stdio') children.push(client);
+    await client.initialize(); await client.call('iris_core_models', {});
+    const active = await record(input.key), route = BASE + '/connections/' + input.key + '/delete';
+    const unprivileged = await request(route, { expectedRevision: 1 }, { token, headers: { 'Iris-Connection-Id': input.key, 'Iris-Runtime-Id': active.instances[0].runtimeInstanceId } });
+    assert.equal(unprivileged.status, 403);
+    assert.equal((await request(route, { expectedRevision: 1 }, { headers: { Origin: 'https://outside.invalid' } })).status, 403);
+    assert.equal((await request(route, { expectedRevision: 0 })).status, 409);
+    const staticDelete = await request(BASE + '/connections/' + pair.connectionId + '/delete', { expectedRevision: 1 });
+    assert.equal(staticDelete.status, 409); assert.equal(staticDelete.body.error.code, 'IRIS_CONNECTION_NOT_FOUND', 'static grants cannot be deleted by management');
+    assert.equal((await request(route, { expectedRevision: 1 })).body.deleted, true);
+    assert.equal((await request(route, { expectedRevision: 1 })).body.idempotentReplay, true);
+    assert.equal(await record(input.key), undefined);
+    assert.equal((await request(BASE + '/connections', input)).status, 409, 'stale creation cannot revive a deleted grant');
+    assert.equal((await request(BASE + '/connections/' + input.key + '/export', { transport, format: 'entry' })).status, 409);
+    assert.equal((await request(BASE + '/connections/' + input.key + '/skill', {})).status, 409);
+    if (transport === 'stdio') { assert.equal((await client.call('iris_core_models', {})).isError, true); assert.equal((await client.close()).status, 0); }
+    else await assert.rejects(client.request('tools/list'), error => error.status === 401);
+    removedIds.push(input.key);
+  }
+  assert.deepEqual(hashCore(), beforeDelete, 'deletion and MCP invalidation never modify business bytes');
+  assert.deepEqual(fs.readFileSync(pair.serverFile), staticBefore);
+  await api.dispose(); api = createLocalReadApi(options); session = await api.start({ port });
+  assert((await list()).every(item => !removedIds.includes(item.connectionId) && item.connectionId !== full.connectionId));
+  for (const id of removedIds) assert.equal((await ok('/connections/' + id + '/delete', { expectedRevision: 1 })).idempotentReplay, true);
+  console.log('PASS delete connected stdio/HTTP grants, owner/Origin/CAS boundaries, replay/restart and accepted-operation preservation');
   console.log('PASS private exports, stable concurrent creation, arbitrary labels, default metadata unknown, persisted revoke and owner restart');
 } finally {
   for (const child of children.reverse()) await child.kill();

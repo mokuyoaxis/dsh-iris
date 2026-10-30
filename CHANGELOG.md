@@ -4,16 +4,62 @@
 
 ## [Unreleased]
 
+## [0.3.0-alpha.1] - 2026-10-30
+
+0.3 首个预发布：独立 Core 工作台、通用 MCP 和显式插件贡献与原 DSH/CLI 共用持久执行和作品。通过 `alpha` 通道获取，稳定 `latest` 保留 0.2.7；现有数据根不自动迁移。范围、入口与限制见 [发布说明](docs/releases/0.3.0-alpha.1.md)。
+
+- 发布工作流区分稳定和 alpha/beta/rc 渠道，预发布明确使用 npm dist-tag 与 GitHub prerelease，验证远端版本及渠道；新增实际 Shell 隔离回归，预发布不占用稳定版入口。
+
+- 统一插件图片来源的目录、预览和执行权限：带图片输入的业务共享同一数据根内 ≤8 MiB 的 PNG/JPEG/WebP，其他业务的调用和历史仍分别授权；无图片用途的业务不再默认读取裸图片。图库读取遇到维护提交窗口中的缺失文件时，在确认写者活跃后改报写入繁忙，真实损坏继续报错。CLI 启动测试改用单调时钟，补充超时双时钟与子进程诊断，保留原限额。
+
+- DSH 的 Core 作品、任务和高级诊断刷新只接受最新请求的结果，卸载后的回包不再更新界面；旧错误和结束加载回调也不能覆盖当前请求。
+
+- 修复普通视觉成功改写供应商配置和健康时间导致的设置草稿冲突，保留媒体任务与显式实测证据；补齐 React 测试夹具及路线图守卫。修复租约准备文件中断后的安全初始化、插件原 UUID 重试唤醒、DSH 晚到服务与释放回滚、桥接业务选择及 MCP 可选元数据阻塞。上游 JSON/媒体下载增加累计限额，交付保留错误类别；DSH 展开入口补键盘语义，legacy 视觉不再把截断结果当成功。
+
+- 重组中英文 README，以 Core 工作区和实际入口覆盖为主线，分别说明稳定 0.2.7 的 DSH/CLI 与 alpha Web/MCP/插件能力；新增 [Core 从零启动](docs/CORE_QUICKSTART.md)及英文正文附中文标题的 [Agent 接入指导](docs/AGENT_CORE_QUICKSTART.md)。更新实际候选包的默认背景工作台截图及来源，保留历史真实生成和 DSH 真机证据；本轮媒体为受控回放，不代表新增付费模型/GPU 验收。
+
+- Core [模型服务](docs/PROVIDER_SETTINGS.md)拆分供应商、功能模型池与健康检测：六色浅光谱区分候选、近期成功和受阻原因，全局池独立保存并可手动排序。供应商支持停用/恢复、影响预览与确认删除，当前根的未完成/可恢复依赖阻止删除，作品和历史保留。连接检查只读，保活默认关闭且仅本次服务有效；媒体验证先打开指定模型草稿，点击创作按钮才进入持久任务，真实成功受理记录精确健康证据。两类编辑页补齐返回/取消确认，长页保留退出登录入口；不增加依赖或迁移配置。
+
+- 新增[Core 启动与插件启用](docs/PLUGIN_STARTUP.md)：`plugins list/inspect`、明确 JSON 入口/业务/Panel 选择及 `api/web serve --plugin-config`。`--token-dir` 支持原命令重复启动，每次新建私有会话文件、保留旧文件，固定端口与原连接目录继续使用 MCP 配置。启动失败和信号退出按服务/runner → 插件顺序收尾；加载不授权，不自动安装、扫盘或修改客户端。
+
+- 新增可选[多图对照板](docs/CONTACT_SHEET.md)真实业务：只使用公开插件 SDK 和现有 Sharp，把已有图片排成新 PNG。显式启用后复用 Core 单根 runner、持久 `plugin.execute`、原 UUID/输入门禁及预留输出身份；Web 有制作入口和不依赖插件实现的业务记录页，连接按准确依赖选择后通过通用 MCP 目录/执行工具使用。安装不授权；重启不自动重做，缺失/升级插件和缩权均明确检查，原记录/已入库作品保留。验证包含实际图片、官方 MCP 双传输/协议、Chromium 和两个 SIGKILL 窗口；仍为 alpha 实验契约。
+
+- 默认 Core Panel 支持显式组合插件页面、设置表单与作品预览，共享主题、API 客户端与登录上下文；表单默认折叠，预览按实际媒体类型选择。新增公开 `createCorePluginWorkbench` 与设置贡献类型，有限资源不开放目录；切页/退出释放挂载，错误标注贡献与阶段。整套 Panel 替换保留；设置复用已开启的 Core Provider 管理，持久业务另行显式开启。见 [Web 贡献](docs/PLUGINS.md#web-贡献和生命周期)。
+
+- MCP接入增加通用/Claude Code/Codex/Kimi Code的8个显式预设、原生Codex TOML与Claude JSON导出、只读 `mcp check` 和 `mcp presets`；连接页保留手动/数据模板并下载正确格式，不扫描或自动配置客户端。修复Core客户端、stdio桥和HTTP网关的启动/关闭竞态，错误保留阶段、关联ID和原操作身份。原授权不扩张，Core仍显式启动；见[MCP指南](docs/MCP.md)。
+
+- Core 新增统一能力目录：MCP/DSH 工具、授权选项、Web 会话操作及连接 Skill 同源；插件贡献列出身份、版本与接入边界，连接中心默认折叠展示。服务显式复用插件注册器，注册/发现不授权，旧工具快照不扩张。见 [能力目录](docs/PLUGINS.md#core-能力目录与授权)。
+
+- 新增实验性 [Core 插件贡献 v0](docs/PLUGINS.md)及公开类型：五类贡献共用身份、兼容、生命周期与准确依赖。业务按明确授权进入 Core 队列，新插件 Provider 的 Task/Attempt 保存依赖并阻止跨版本误恢复；旧扩展/绑定保持。装配支持明确 CLI 配置或公开 SDK，不含安装器或市场。
+
+- Core 工作台新增能力总览：六类媒体卡片区分实际入口、保存配置、候选与历史实测，已有功能直达真实草稿；未接入的 Web/MCP 能力说明 CLI/DSH 范围，本地工具与详情默认折叠。只读刷新不调用供应商、不覆盖未保存配置；沿用原 API、授权和存储格式。
+
+- 统一 Core 音乐协议显示为“Chat Completions（内嵌音频）”，保留 `gemini-web-music` 配置标识。区分图片协议沿用默认与音乐必须明确选择，补齐音频流程、只读下载及认证选项的准确说明，同步供应商文档和 CLI 帮助；调用、授权与配置行为保持。
+
+- Core Web/MCP 接入 [语音合成与音频转写](docs/AUDIO_FLOWS.md)：新专用 v3 音频执行根、固定步骤/原 Task、来源音频持久保存和 Attempt 内临时上传；播放器、纯文本转写、原字节下载和作品分类共用单根 runner。MCP 按 tts/transcribe 分组明确授权并生成对应连接 Skill，旧图片授权不扩权；原 Key、未知受理不重提和原交付缓存恢复保持。通过受控 HTTP/stdio 与 Chromium 验证，未调用真实付费模型，不迁移现有根。
+
+- Core 工作台普通 `web serve` 默认使用[访问口令](docs/WORKBENCH_LOGIN.md)：首次设置，之后普通地址登录，默认记住设备30天并跨正常重启；退出撤销当前浏览器会话，再用原口令进入。`web login --data-root` 取地址、`web password reset --data-root` 撤销全部浏览器会话并重新设置，不修改 Core/MCP 数据。根外私有存储、异步 scrypt、独立浏览器凭据与 Host/Origin 边界；显式 Token 模式保留原一次性链接，SDK 可选启用，无新增依赖。
+
+- Core“客户端”“模型服务”改为概览卡片与独立编辑分组，接入帮助、未接入能力和技术详情后置；供应商保留六色极浅识别、ComfyUI彩蛋与未保存草稿保护。明暗统一在“外观”，移除顶栏重复按钮和紫罗兰/玫瑰/杏色点缀选项，固定鸢尾；旧外观设置只归一点缀，背景与布局保留。见 [工作台](docs/LOCAL_WEB.md)与 [外观](docs/PANEL_EXTENSIONS.md)。
+
+- Core 连接页补齐创建授权、导出配置和客户端启用的 MCP 指引，显示当前 HTTP 开关，并区分 stdio 桥接与 HTTP 服务。新增确认后删除连接：持久撤销、从列表移除并保留私有归档，旧凭据与旧创建 Key 不会复活；作品、任务和客户端配置保留。供应商从 ComfyUI 切回自定义时恢复此前 API 连接草稿，预设、实际协议与模式动画保持一致。见 [连接中心](docs/LOCAL_WEB.md#显式开启连接中心)。
+
+- 修复 Core 连接页默认改图草稿夹带生图工具、创建时被拒绝的问题；“新建连接”增加提示与手机定位/聚焦。供应商切换 ComfyUI 增加模式标识和一次鸢尾扫光。旧 Token 模式使用独立标签页会话存储，刷新先只读验证；退出或401清除，浏览器禁止存储时明确提示，不自动生成。普通口令模式另支持记住设备。见 [Core 工作台](docs/LOCAL_WEB.md)。
+
+- 现有 `iris-core` 增加 [ComfyUI 独立参考](skills/iris-core/references/comfyui.md)：先集中确认缺少的工作流/LoRA/参数要求，按真实目录选择，保留原任务恢复；区分普通 API、ComfyUI 和 ComfyUI 出图后交给 API 改图。连接专属 MCP Skill 按实际开放的目录、创建、执行和改图工具生成指导，不扩权；随包安装与自包含引用通过定向验证，DSH 三项 Skill 保持。
+
+- Core 工作台接通 ComfyUI v1 导入、已有标量参数命名与表单预览、LoRA 双权重/种子等控件，以及原 Run 参数查看。草稿只读检查沿用已保存连接和 owner/revision 门禁，检查不保存或入队；切换模型清空覆盖，检查变化失效，生成点击固定参数，未知受理不重提。更多参数默认折叠，窄屏/深浅色与减少动画保持；未接入真实 GPU 或新增 MCP 权限。见 [ComfyUI 入口](docs/IMAGE_GENERATION.md#comfyui-入口)。
+
 - 按 ComfyUI 官网及官方 `fe298e4` 源码复核请求/队列/历史/取图与 LoRA 元数据；更新兼容边界和 SaveImage 测试定义，保留旧版无数据输出的节点兼容。API 图中的越界整数也在模板边界拒绝，避免大种子被 JavaScript 静默舍入；真实 GPU 仍待验收。
 
-- DSH 工作台增加 [ComfyUI 专区](docs/IMAGE_GENERATION.md#dsh-工作台入口未发布)：无需密钥的已有服务连接、API 图/Iris 模板导入、明确节点与公开参数、只读检查和同名替换保护；原画图与泡泡卡片接通 LoRA 双权重等参数，额外设置默认折叠，并加入遵循减少动画设置的短暂鸢尾扫光。保留旧模型管理中的工作流字段，更换模板清除图片健康证据；不另起服务、不安装模型、不宣称真实 GPU 已验收。
+- DSH 工作台增加 [ComfyUI 专区](docs/IMAGE_GENERATION.md#dsh-工作台入口03-alpha)：无需密钥的已有服务连接、API 图/Iris 模板导入、明确节点与公开参数、只读检查和同名替换保护；原画图与泡泡卡片接通 LoRA 双权重等参数，额外设置默认折叠，并加入遵循减少动画设置的短暂鸢尾扫光。保留旧模型管理中的工作流字段，更换模板清除图片健康证据；不另起服务、不安装模型、不宣称真实 GPU 已验收。
 
-- ComfyUI 后端增加明确参数槽位（含 LoRA 双权重、负面提示词与种子）、官方节点定义的只读检查，以及首次提交前检查；CLI、Core 创建 API 和所选文生图 MCP 接通参数快照与原 Key 冲突保护。v0 固定模板保持，带参数的新 Run 由旧读取者拒绝；DSH 参数界面已接入，Core 专属参数视图待后续，未宣称真实 GPU 验收。见 [参数模板与检查](docs/IMAGE_GENERATION.md#comfyui-参数模板与只读检查后端)。
+- ComfyUI 后端增加明确参数槽位（含 LoRA 双权重、负面提示词与种子）、官方节点定义的只读检查，以及首次提交前检查；CLI、Core 创建 API 和所选文生图 MCP 接通参数快照与原 Key 冲突保护。v0 固定模板保持，带参数的新 Run 由旧读取者拒绝；Core 与 DSH 参数界面均已接入，未宣称真实 GPU 验收。见 [参数模板与检查](docs/IMAGE_GENERATION.md#comfyui-参数模板与只读检查后端)。
 
 - 新增 [Core 独立文生图与 ComfyUI 入口](docs/IMAGE_GENERATION.md)：显式新 v2 执行根、固定生成步骤/Task、原 Key 恢复和选择下载；Web 分开生成/修改，MCP 新能力由用户明确选择，旧 12 工具授权不扩张。ComfyUI 通过现有 Provider 扩展框架连接已有服务、导入 API 工作流并绑定输入/输出，使用原任务队列/历史/取图，不发送全局中断、不安装服务。受控 HTTP 与浏览器验证不等于真实 GPU 出图。
 
 - Core 默认 Panel 改用白色主体与六色 105 度鸢尾点缀，新增本地外观/背景、受限主题 JSON 和显式可信 Panel 资源清单，API/CLI/MCP 独立。见 [Panel 与外观](docs/PANEL_EXTENSIONS.md)。
-- 新增 C3 [供应商与模型设置](docs/PROVIDER_SETTINGS.md)：独立 owner 开关、非秘密投影、保留/替换/清除 Key、revision 冲突和单次原子保存；目录/手填模型、六类用途及全局自动/手动/停用。设置不生成媒体、不迁移格式、不接管 harness 登录；实测仍由明确 CLI 操作发起。
+- 新增 C3 [供应商与模型设置](docs/PROVIDER_SETTINGS.md)：独立 owner 开关、非秘密投影、保留/替换/清除 Key、revision 冲突和单次原子保存；目录/手填模型、六类用途及全局自动/手动/停用。设置不生成媒体、不迁移格式、不接管 harness 登录；显式媒体实测沿用 CLI，Web 验证草稿入口见本节模型服务更新。
 
 - 新增[Provider 扩展首版](docs/PROVIDER_EXTENSIONS.md)：实例级协议描述/工厂、版本与重复注册检查、等待在途调用后异步释放；CLI/API 显式加载可信本地模块，内置协议与外部协议共用候选、目录、模型级覆盖、实测及 Task 恢复。实验性窄包入口不等于完整 SDK；保留原 binding/存储格式，不自动安装插件、扩张功能授权或迁移数据，DSH 默认内置行为保持。
 
@@ -25,7 +71,7 @@
 
 - 新增显式 `api/web serve --allow-selection`：仅 owner 可提交原图/结果及当前 Run 版本，同 writer 核对并原子保存；旧版本冲突，同版本重复选择不重写，不调用 Provider。创建、执行与选择开关不依赖连接管理，仍分别显式启用；默认只读、MCP 权限保持。页面选择遵守同一门禁，见 [持久选择](docs/LOCAL_SELECTION.md)。
 
-- 连接中心新增纯数据模板导入与按有效工具生成的 MCP Skill：模板只选择传输/JSON 格式，不增加权限；英文说明附中文标题，下载后通过 `skills install/status/uninstall --bundle` 显式安装，复用摘要、更新归档与本地修改保护。配置和 Skill 按当前服务权限取交集，原 `iris-core` 及 DSH 三项 Skills 保持。见 [连接专属 Skill](docs/CORE_SKILLS.md#连接专属-mcp-skill未发布)。
+- 连接中心新增纯数据模板导入与按有效工具生成的 MCP Skill：模板只选择传输/JSON 格式，不增加权限；英文说明附中文标题，下载后通过 `skills install/status/uninstall --bundle` 显式安装，复用摘要、更新归档与本地修改保护。配置和 Skill 按当前服务权限取交集，原 `iris-core` 及 DSH 三项 Skills 保持。见 [连接专属 Skill](docs/CORE_SKILLS.md#连接专属-mcp-skill03-alpha)。
 
 - 新增显式 Core 连接中心：根外私有档案、稳定创建身份、修订保护、自由命名、媒体/工具/操作权限选择、stdio/HTTP 配置导出及持久撤销；官方 SDK 的客户端名称/版本以自报事实记录，不扫盘判断安装状态。可与同一有限执行服务组合，媒体权限独立启用，DSH 原生配置与 Skills 保持。见 [连接中心](docs/LOCAL_WEB.md#显式开启连接中心)和 [连接契约](docs/CORE_CONNECTIONS.md)。
 
@@ -33,7 +79,7 @@
 - 增加面向 0.3 的 Operation 存储与版本门禁：新空 Flow 根显式 `execution init`，根内 Key 派生身份、原子接收、revision/活动冲突、有限持久状态和只读 `operation list/inspect`；维护保护引用，v0 不迁移，旧 0.2.7 写者拒绝 v1。见 [Operation 说明](docs/LOCAL_OPERATIONS.md)。
 - 新增显式 `api serve --allow-execution`：独立 runner 租约、真实 Provider 装配、单次继续、持久 202/原 Key 接回和本地停止，重启只标记中断，不自动生成或观察。连接身份/根 UUID/scopes 握手、官方 SDK `mcp serve` 与 DSH 可选共享 Flow 工具共用同一 Core 服务；原 DSH 媒体/Skills/UI 保持，页面按独立权限启用。新增依赖官方 MCP Server/Core 2.3.1 与 Zod 4.6.7，见 [Core 服务](docs/CORE_SERVICE.md)和 [连接契约](docs/CORE_CONNECTIONS.md)。
 
-- 增加面向 0.3 的 Core 工作台 `web serve`：显式本地会话、持久图片流程历史、认证原图/结果和已选作品原字节下载；Token 仅驻标签页内存，刷新重新连接，详情默认折叠。复用现有 API 的 Bearer/Host/Origin，固定静态资源随候选包分发；默认只读，媒体写入、执行与选择由独立开关明确启用。原 Demo 保留，npm 0.2.7 尚不含新入口。见 [本地工作台](docs/LOCAL_WEB.md)。
+- 增加面向 0.3 的 Core 工作台 `web serve`：显式本地会话、持久图片流程历史、认证原图/结果和已选作品原字节下载；登录按标签页保留，刷新只读验证，详情默认折叠。复用现有 API 的 Bearer/Host/Origin，固定静态资源随候选包分发；默认只读，媒体写入、执行与选择由独立开关明确启用。原 Demo 保留，npm 0.2.7 尚不含新入口。见 [本地工作台](docs/LOCAL_WEB.md)。
 
 ## [0.2.7] - 2026-10-22
 
@@ -412,7 +458,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.7...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-alpha.1...HEAD
+[0.3.0-alpha.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.7...v0.3.0-alpha.1
 [0.2.7]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.4...v0.2.5

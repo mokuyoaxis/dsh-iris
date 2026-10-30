@@ -4,7 +4,7 @@ Iris 的方向是本地优先、Agent 可调用的多模态创作工作台。用
 
 ## 当前状态
 
-本文对应 **Iris 0.2.7**，发布状态见 [README](../README.md)。包名为 `@mokuyoaxis/dsh-iris`，同时提供 DSH 插件与独立 CLI；本版增加截图修复、实例运行时、持久图片流程、本地 API 和 Core Skill 安装，详见 [0.2.7 发布说明](releases/0.2.7.md)。
+本文对应 **Iris 0.3.0-alpha.1**，发布状态见 [README](../README.md)。包名为 `@mokuyoaxis/dsh-iris`，保留DSH插件与独立CLI，新增Core Web、通用MCP与显式插件贡献，详见 [alpha发布说明](releases/0.3.0-alpha.1.md)。稳定通道0.2.7与其[历史说明](releases/0.2.7.md)保留。
 
 - 图片生成、Artifact ID 看图/OCR/定位和聊天改图，支持按模型配置图片协议。
 - 持久图片导入与原生 Qwen 改图；六类功能可选自动池、手选或停用，宿主视觉需明确启用。0.2.5 建立的 12 个准确 DSH 版本范围保持。
@@ -26,19 +26,21 @@ DSH与CLI共用Task和Artifact，同一数据根只允许一个写者。纯视�
 
 [DSH Core 装配](DSH_RUNTIME.md)也已迁入实例：写入共用应用队列，连接解析引用、观察器和启动接管由插件持有，卸载等待在途操作。原根与业务保持；legacy 配置等存储仍未实例化，Flow 尚未接入 DSH 工作台。
 
-0.2.7 已有 [I4A 默认只读 API](LOCAL_API.md)与 [I4B 本地创建](LOCAL_CREATION.md)：显式回环监听、Bearer/Host/Origin、受控图片，以及新空根主动启用的上传/Run 创建和持久 Key 身份接回。GET 不执行步骤，本地创建也不生成；未发布源码的有限执行、本地停止、Operation 与持久选择见 [API 契约](LOCAL_API_CONTRACT.md)。
+0.2.7 已有 [I4A 默认只读 API](LOCAL_API.md)与 [I4B 本地创建](LOCAL_CREATION.md)：显式回环监听、Bearer/Host/Origin、受控图片，以及新空根主动启用的上传/Run 创建和持久 Key 身份接回。GET 不执行步骤，本地创建也不生成；0.3 alpha源码的有限执行、本地停止、Operation 与持久选择见 [API 契约](LOCAL_API_CONTRACT.md)。
 
-源码树保留 [独立 Web Demo](WEB_PROTOTYPE.md)，只消费演示数据、不调用模型、不计费。真实工作台已迁入其创作/作品/连接结构，新增 [供应商设置](PROVIDER_SETTINGS.md)与 [Panel/外观](PANEL_EXTENSIONS.md)；Demo 内存草稿不导入 Core。本机受控验证已完成，标准平台及发布验收、媒体扩展继续推进，没有已承诺的发布日期。
+源码树保留 [独立 Web Demo](WEB_PROTOTYPE.md)，只消费演示数据、不调用模型、不计费。真实工作台已迁入其创作/作品/连接结构，新增 [供应商设置](PROVIDER_SETTINGS.md)与 [Panel/外观](PANEL_EXTENSIONS.md)；Demo 内存草稿不导入 Core。本次先按alpha范围交付，真实上游、更多设备与媒体入口继续按实际验证推进。
 
-## 近期优先：真实使用验收
+## 近期优先：插件契约与真实接入
 
-**未发布源码进展**：[Core 工作台](LOCAL_WEB.md)已有创作、作品、连接与供应商页面；按独立开关提供改图、有限观察/本地停止、版本约束选择、原字节下载、真实筛选及 owner 配置管理。[Core 服务](CORE_SERVICE.md)提供 Operation、单根 runner 与授权桥；[原请求恢复](WEB_RECOVERY.md)重连只读、不自动首次执行。默认媒体权限仍只读，独立凭据来源和其他媒体继续推进。npm 0.2.7 尚不含这些新入口。
+0.3 alpha提供 [Core 插件贡献契约](PLUGINS.md)、统一目录、接入预设和默认 Panel 三处组合挂载。[多图对照板](CONTACT_SHEET.md)现已通过公开接口贯穿真实业务、持久 Operation/原 UUID、Web 选择、MCP和包外消费者；验证重启/强杀、缺失/准确版本、缩权及原作品读取。后续按实际反馈完善启用/分发体验和媒体覆盖，不把显式程序化装配称为插件市场。契约仍为实验性，RC与稳定版时间尚未确定。
+
+**0.3 alpha源码进展**：[Core 工作台](LOCAL_WEB.md)已有创作、作品、连接与供应商页面；按独立开关提供改图、有限观察/本地停止、版本约束选择、原字节下载、真实筛选及 owner 配置管理。[Core 服务](CORE_SERVICE.md)提供 Operation、单根 runner 与授权桥；[原请求恢复](WEB_RECOVERY.md)重连只读、不自动首次执行。默认媒体权限仍只读，独立凭据来源和其他媒体继续推进。npm 0.2.7 尚不含这些新入口。
 
 连接名目采用用户建档和 MCP 客户端声明，不扫盘或按品牌白名单限制。源码已支持纯数据模板导入及按连接有效工具交付 Skill，复用显式安装器；下一步完善真实 Web 创作和全媒体分组。客户端身份声明与媒体实测分别展示。
 
-[通用 MCP](MCP.md)已有 stdio/Streamable HTTP、generic 默认连接、明确功能/工具范围和配置导出，支持固定图片编辑及独立文生图；新 v2 根与 [ComfyUI 入口](IMAGE_GENERATION.md)已提供受控验证。后续按现有 Core 的真实受理/恢复/交付能力逐组接入视频、语音、音乐、转写和视觉，由用户选择；不因客户端连接成功就视为全媒体已覆盖。
+[通用 MCP](MCP.md)已有 stdio/Streamable HTTP、generic 默认连接、明确功能/工具范围和配置导出，支持固定图片编辑及独立文生图；新 v2 根与 [ComfyUI 入口](IMAGE_GENERATION.md)已提供受控验证。新 v3 根另完成 [TTS/转写闭环](AUDIO_FLOWS.md)，包括Web播放/文本/下载、原任务恢复和MCP可选分组。后续按现有 Core 的真实受理/恢复/交付能力逐组接入视频、音乐和视觉；音频真实供应商与设备验收仍待完成，不因客户端连接成功就视为全媒体已覆盖。
 
-[DSH ComfyUI 专区](IMAGE_GENERATION.md#dsh-工作台入口未发布)已接通现有供应商、画图与泡泡卡片，提供参数模板和只读节点检查；仍使用宿主原 Task，固定 Flow 尚未进入 DSH 面板。独立 Core 专属参数视图、真实 GPU 与远程部署验收继续后续推进；官网/源码契约核对不等于推理验收。
+[DSH ComfyUI 专区](IMAGE_GENERATION.md#dsh-工作台入口03-alpha)已接通现有供应商、画图与泡泡卡片，提供参数模板和只读节点检查；仍使用宿主原 Task，固定 Flow 尚未进入 DSH 面板。独立 Core 已补 v1 导入/表单预览、LoRA 双权重等参数及原 Run 参数查看；工作流卡片/预设、真实 GPU 与远程部署验收继续后续推进，官网/源码与受控浏览器验证不等于推理验收。
 
 优先完善图片创作与配乐、短片素材准备等完整流程：复用已有作品、按需生成、试听或查看结果，再导出可继续处理的素材。分别交付音视频素材不等于自动混音成片。
 
@@ -68,8 +70,8 @@ DSH 工作台与 Headless CLI 共用 Core 的可恢复隔离和恢复入口，�
 
 ### 0.3 及以后
 
-- `0.3`：Recipe、可恢复 Flow、显式启动的本地 API 和最小独立工作台；
-- `0.4`：在有真实消费者后公开 Provider/Host SDK；
+- `0.3`：可恢复 Flow、本地 API、独立工作台和实验性插件贡献；优先改善 MCP 首次接入及公开贡献的实际消费；
+- `0.4`：根据真实插件/宿主消费者继续完善 SDK，Host 扩展及兼容承诺按验证范围推进；
 - `1.0`：冻结经过多宿主和升级验证的公共契约。
 
 ## 兼容性与限制

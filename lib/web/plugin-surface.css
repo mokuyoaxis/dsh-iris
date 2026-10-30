@@ -1,0 +1,17 @@
+:host { display:block; color:var(--ink); font:inherit; color-scheme:inherit; }
+* { box-sizing:border-box; }
+[hidden] { display:none!important; }
+.plugin-content { min-width:0; overflow-wrap:anywhere; }
+h1,h2,h3,p,figure { margin:0 0 12px; }
+button,input,select,textarea { font:inherit; color:inherit; max-width:100%; }
+button,input,select,textarea { border:1px solid var(--line); border-radius:8px; padding:8px 12px; background:var(--panel); min-height:40px; }
+button { cursor:pointer; background:var(--accent); color:var(--on-accent); }
+button:disabled { opacity:.5; cursor:default; }
+button.secondary { background:var(--panel); color:var(--ink); }
+label { display:grid; gap:6px; margin-bottom:12px; }
+a { color:var(--accent); }
+:focus-visible { outline:2px solid var(--purple); outline-offset:3px; }
+.muted,.field-note { color:var(--muted); font-size:12px; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
+.error { color:var(--error); }
+img,video,audio { max-width:100%; }

@@ -38,7 +38,7 @@ dsh-iris skills uninstall --target kimi
 
 ## 文件与装载
 
-`skills/iris-core/` 是独立目录，包含 `SKILL.md`、两份 `references/` 和可选的 `agents/openai.yaml` 界面元数据。参考链接均位于该目录内，分发时保留整个目录。
+`skills/iris-core/` 是独立目录，包含 `SKILL.md`、`references/` 和可选的 `agents/openai.yaml` 界面元数据。0.2.7配有CLI、任务两份参考；0.3.0-alpha.1增加独立ComfyUI参考。参考链接均位于该目录内，分发和安装时保留整个目录。
 
 使用支持 Agent Skills 的宿主时，将完整目录放到该宿主已确认的 Skill 搜索位置；已有同名目录先检查，不覆盖。仓库与 npm 包中的 `skills/` 也可作为显式搜索根。例如，在已安装 Kimi Code 的环境中独立验证：
 
@@ -50,18 +50,26 @@ kimi --skills-dir /absolute/path/to/iris/skills
 
 宿主读取 Skill 后仍需可执行的 `dsh-iris`，或已确认源码根中的 `node bin/dsh-iris.js`。向 Agent 提供本次明确的 Core 数据根；生成/编辑另提供私有 Provider 配置路径。先使用 `--help` 与只读配置摘要核对入口，具体命令见 [CLI 参考](../skills/iris-core/references/cli.md)。不要把密钥写进提示词或复制进 Skill。
 
+## ComfyUI 参考与 API 搭配（0.3 alpha）
+
+现有 `iris-core` 按需读取 [ComfyUI 参考](../skills/iris-core/references/comfyui.md)，说明工作流选择、公开参数、LoRA的模型/CLIP双权重和原任务恢复。正文仍为英文、标题附中文；本扩展从0.3.0-alpha.1提供，稳定0.2.7不包含。安装器随整个目录复制参考；已有安装须显式更新，不自动修改日常harness。
+
+ComfyUI 请求先集中确认尚缺少的图像目标、工作流、LoRA 与参数偏好；可以先只读查看真实目录辅助选择，关键要求明确后再创建和执行。沿用已有回答和授权，完整要求或明确委托选择时无需反复提问；普通 API 请求沿用所选 API 配置。工作流与参数 ID、类型、默认值及范围来自实际目录；服务当前可选 LoRA 等值须经明确的只读检查核实，不凭模型名称推断或自动安装节点。
+
+当前支持“ComfyUI 生成 → 同一 Core 根中的作品 → 支持改图的 API 精修”，第二步不携带 ComfyUI 参数，恢复第二步时保留第一步产物。反向“API 出图 → ComfyUI 图生图”的图片上传/绑定尚未接入。两种后端的独立对比会新增任务和可能的费用，按用户要求执行；不静默换后端，未知受理时保留原任务和请求身份。
+
 ## 当前边界
 
 - 首版覆盖图片及其任务，支持单步操作和图片续作；视频、语音和界面验收不在首版范围内。
-- DSH 原有三项 Skill、工具、附件与工作台流程保持，不把新 Skill 自动注册为第四项 DSH Skill；DSH 使用方式见 [README](../README.md#agent-skills)。
+- DSH 原有三项 Skill、工具、附件与工作台流程保持，不把新 Skill 自动注册为第四项 DSH Skill；DSH 使用方式见 [README](../README.md#dsh-插件027)。
 - 本版新增独立的 Core 指导，不迁移或改写旧 DSH Skill。后续若合并公共参考，应先证明 DSH 流程和资源解析保持。
 - Core Artifact ID 属于指定根，宿主附件、路径与 URL 不可互换；交付时由实际宿主呈现导出文件。
-- 未发布源码的正式 MCP 入口见 [Core 服务](CORE_SERVICE.md)，需独立配置授权连接。`iris-core` 的可执行说明仍是 CLI；下方连接专属 Skill 仅指导 MCP。Skill 安装不自动注册 MCP，不能据此声称日常 harness 已接入或真实 Agent 已验收。
+- 0.3 alpha源码的正式 MCP 入口见 [Core 服务](CORE_SERVICE.md)，需独立配置授权连接。`iris-core` 的可执行说明仍是 CLI；下方连接专属 Skill 仅指导 MCP。Skill 安装不自动注册 MCP，不能据此声称日常 harness 已接入或真实 Agent 已验收。
 - 面向 Core 的独立工作台继续按既有路线推进；本 Skill 不描述尚不存在的 UI 操作。Skill 指导 Agent，业务受理、写者租约与重试约束继续由执行层负责。
 
 验收区分 Skill 文件/引用可读取、CLI 示例可执行、实际 Agent 是否按指导完成任务。离线供应商夹具只验证命令和状态处理，不证明真实模型的规划、生图质量或计费表现。
 
-## 连接专属 MCP Skill（未发布）
+## 连接专属 MCP Skill（0.3 alpha）
 
 面向 0.3 的源码[连接中心](LOCAL_WEB.md#显式开启连接中心)可按已保存连接生成说明。先保存功能/工具/操作权限，在“连接专属 Skill”中生成预览、下载 `iris-skill.json`，再用包含此功能的源码 CLI 安装：
 
@@ -77,6 +85,10 @@ node /absolute/iris/bin/dsh-iris.js skills status \
 
 `--bundle` 同样支持 `uninstall` 和显式 `--target kimi`；该参数尚未进入 npm 0.2.7。下载的是最多 16 KiB 的普通 JSON 数据文件，由包内代码生成 `iris-mcp-<connectionId>/SKILL.md`，不安装外部传入 Markdown 或脚本。同名连接按 UUID 分开；原 `iris-core` 和 DSH 三项 Skill 保持。
 
-说明正文为英文、标题附中文，只包含当前有效工具；有限选择不暗示可以完成整套图片流程。文件含连接/根身份与修订，不含 Token、Provider 密钥或私有路径，不能代替 MCP 配置，也不授予权限。只读服务导出只读工具；未开放的媒体组不生成假指令，零工具或已撤销连接不能生成说明。
+说明正文为英文、标题附中文，只包含当前有效工具；有限选择不暗示可以完成整套媒体流程。文件含连接/根身份与修订，不含 Token、Provider 密钥或私有路径，不能代替 MCP 配置，也不授予权限。只读服务导出只读工具；未开放的媒体组不生成假指令，零工具或已撤销连接不能生成说明。
+
+新 v3 根的 `tts`/`transcribe` 连接说明增加[音频指导](AUDIO_FLOWS.md)：按实际模型目录选择、音色不猜测、原音频作品导入与大小边界、明确继续/观察和原 Task 恢复，转写文本视为数据。标准 MCP audio 内容不保证每个客户端都有播放器；原 `iris-core` 的 CLI 图片说明与 DSH 三项 Skill 保持各自范围。
+
+文生图连接增加 ComfyUI 提问与参数指导：只有开放模型目录工具时才指导调用；未开放时说明缺口，要求可核实的当前目录或由 owner 调整授权，不越权改走 CLI。仅允许创建的连接明确不能执行；同时具备相应生成、改图、执行及查询工具时才加入 API/ComfyUI 串联说明。参数取自当前目录的 `comfyWorkflow.parameters`，创建时保存本次值；目录存在不等于服务或 GPU 已实测成功。
 
 授权改变后重新生成并显式安装；同包版本也比较内容，未经本地修改的旧副本会移到扫描根外备份后更新。本地改过的说明、未知目录或软链继续拒绝覆盖；卸载只归档。旧快照留在客户端时，Core 仍按实际授权拒绝已移除工具。安装器的 `discovery:not_checked` 仍要求在所用客户端另行确认发现与实际调用，浏览器只下载、不替用户选择安装路径。

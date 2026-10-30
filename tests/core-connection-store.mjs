@@ -109,6 +109,53 @@ try {
     const recovered = make({ directory: crashDirectory }); await recovered.start();
     assert.equal(recovered.list()[0].connectionId, crashKey); assert.equal(recovered.list()[0].state, 'revoked');
   } finally { child.kill('SIGKILL'); await exited; }
+  const removedDirectory = path.join(root, 'deleted-store'), removal = make({ directory: removedDirectory }); await removal.start();
+  const removing = { ...input, key: crypto.randomUUID(), label: 'Remove without deleting business data' };
+  removal.create(removing);
+  const removingFile = path.join(removedDirectory, 'profiles', removing.key + '.json'), archiveFile = path.join(removedDirectory, 'archived', removing.key + '.json');
+  const originalProfile = fs.readFileSync(removingFile), launch = removal.exportConfig(removing.key, { transport: 'stdio', format: 'entry' });
+  const exportFile = launch.configuration.args[launch.configuration.args.indexOf('--connection-file') + 1], exportBefore = fs.readFileSync(exportFile);
+  assert.throws(() => removal.remove(removing.key, { expectedRevision: 9 }), { code: 'IRIS_CONNECTION_CONFIG_CHANGED' });
+  assert.deepEqual(fs.readFileSync(removingFile), originalProfile); assert(!fs.existsSync(archiveFile));
+  try {
+    fs.renameSync = (from, to) => { if (to === removingFile) throw Object.assign(new Error('controlled revoke failure'), { code: 'EIO' }); return rename(from, to); };
+    assert.throws(() => removal.remove(removing.key, { expectedRevision: 1 }), { code: 'EIO' });
+  } finally { fs.renameSync = rename; }
+  assert.equal(removal.list()[0].state, 'pending'); assert.deepEqual(fs.readFileSync(removingFile), originalProfile);
+  const link = fs.linkSync;
+  try {
+    fs.linkSync = (from, to) => { if (to === archiveFile) throw Object.assign(new Error('controlled archive failure'), { code: 'EIO' }); return link(from, to); };
+    assert.throws(() => removal.remove(removing.key, { expectedRevision: 1 }), { code: 'EIO' });
+  } finally { fs.linkSync = link; }
+  assert.equal(removal.list()[0].state, 'revoked'); assert.equal(changes.at(-1).grant, null);
+  assert.deepEqual(removal.activeGrants(), []); assert(!fs.existsSync(archiveFile)); await removal.dispose();
+  const retry = make({ directory: removedDirectory }); await retry.start();
+  assert.equal(retry.list()[0].state, 'revoked', 'an interrupted deletion remains durably revoked and visible');
+  assert.throws(() => retry.remove(removing.key, { expectedRevision: 1 }), { code: 'IRIS_CONNECTION_CONFIG_CHANGED' });
+  assert.equal(retry.remove(removing.key, { expectedRevision: 2 }).deleted, true); assert.deepEqual(retry.list(), []);
+  assert.equal(retry.remove(removing.key, { expectedRevision: 1 }).idempotentReplay, true, 'lost delete responses are safe to replay');
+  assert.throws(() => retry.create(removing), { code: 'IRIS_CONNECTION_REVOKED' });
+  assert.throws(() => retry.exportConfig(removing.key, { transport: 'http', format: 'entry' }), { code: 'IRIS_CONNECTION_REVOKED' });
+  assert.deepEqual(fs.readFileSync(archiveFile), fs.readFileSync(removingFile)); assert.deepEqual(fs.readFileSync(exportFile), exportBefore);
+  if (process.platform !== 'win32') { assert.equal(fs.statSync(path.dirname(archiveFile)).mode & 0o777, 0o700); assert.equal(fs.statSync(archiveFile).mode & 0o777, 0o600); }
+  const archiveBytes = fs.readFileSync(archiveFile); fs.writeFileSync(archiveFile, archiveBytes.toString() + ' ');
+  assert.throws(() => retry.remove(removing.key, { expectedRevision: 1 }), { code: 'IRIS_CONNECTION_CONFIG_CHANGED' });
+  assert.throws(() => retry.create(removing), { code: 'IRIS_CONNECTION_CONFIG_CHANGED' });
+  await retry.dispose(); await assert.rejects(make({ directory: removedDirectory }).start(), { code: 'IRIS_CONNECTION_CONFIG_INVALID' });
+  fs.writeFileSync(archiveFile, archiveBytes);
+  const afterDeleteRestart = make({ directory: removedDirectory }); assert.deepEqual(await afterDeleteRestart.start(), []); assert.deepEqual(afterDeleteRestart.list(), []);
+  assert.equal(afterDeleteRestart.remove(removing.key, { expectedRevision: 1 }).idempotentReplay, true);
+  assert.throws(() => afterDeleteRestart.create(removing), { code: 'IRIS_CONNECTION_REVOKED' });
+  const interrupted = { ...input, key: crypto.randomUUID(), label: 'Archive published before process loss' }; afterDeleteRestart.create(interrupted);
+  const interruptedArchive = path.join(removedDirectory, 'archived', interrupted.key + '.json');
+  try {
+    fs.linkSync = (from, to) => { link(from, to); if (to === interruptedArchive) throw Object.assign(new Error('controlled loss after archive publication'), { code: 'EIO' }); };
+    assert.throws(() => afterDeleteRestart.remove(interrupted.key, { expectedRevision: 1 }), { code: 'EIO' });
+  } finally { fs.linkSync = link; }
+  await afterDeleteRestart.dispose();
+  const recoveredDelete = make({ directory: removedDirectory }); assert.deepEqual(await recoveredDelete.start(), []); assert.deepEqual(recoveredDelete.list(), []);
+  assert.throws(() => recoveredDelete.create(interrupted), { code: 'IRIS_CONNECTION_REVOKED' });
   assert.deepEqual(snapshot(), before, 'connection owner storage never changes business Core bytes');
+  console.log('Deleted connections: CAS, revoke/archive failures, safe replay, restart, private recovery records and no credential revival OK');
   console.log('Managed connections: single writer, private/root boundaries, stable keys, CAS/drift protection, immutable exports, metadata checkpoint and persistent revoke OK');
 } finally { for (const store of stores.reverse()) await store.dispose(); await app.dispose(); }

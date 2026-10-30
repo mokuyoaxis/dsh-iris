@@ -1,8 +1,10 @@
-# Provider 扩展首版（面向 0.3，未发布）
+# Provider 扩展首版（0.3 alpha）
 
 源码支持实例级媒体协议注册及显式加载可信扩展。**公开 npm 0.2.7 尚不包含此入口**；下列命令用于当前源码或由其生成的候选包。`@mokuyoaxis/dsh-iris/provider-extensions` 是实验性 v0 窄入口，不是完整 Core SDK，也未承诺长期兼容。
 
 六类内置协议（含 [ComfyUI API 工作流](IMAGE_GENERATION.md)）和外部协议消费同样的描述及 Adapter 契约；独立 CLI/API 使用自己的注册实例。当前 DSH 嵌入入口没有新增外部模块加载设置，原有工具、Skills 和存储规则保持。
+
+源码另提供 [Core 插件贡献 v0](PLUGINS.md)：Provider、业务操作、Web 页面/作品渲染器共用身份、兼容、生命周期和依赖描述。新入口为程序化 `plugins` SDK；本页的工厂及 CLI 参数继续保留。新插件 Provider 的 Task/Attempt 记录准确依赖并纳入 binding，旧扩展的无插件绑定保持；Web 挂载与动态 MCP 装配尚未接入。
 
 ## 显式使用
 
@@ -73,4 +75,4 @@ Core 会对错误与健康证据中的连接 Key 再做精确脱敏，`auth:none
 
 源树的 `tests/provider-extensions.mjs` 覆盖实例隔离、协议描述、旧哈希、冲突/版本、在途释放与失败。`scripts/verify-provider-extensions-package.mjs` 将候选包解到仓库外，复制独立测试插件包，只经上述公开入口接入真实 CLI/API/Core；受控 HTTP Provider 验证原 Task 恢复、原图编辑、Key 接回和图片字节。
 
-验证脚本明确复用已有依赖，不代表重新安装全部依赖或真实供应商付费验收；测试插件和验收脚本不进入 npm 包。未发布源码另有 [C3 管理 API/页面](PROVIDER_SETTINGS.md)和独立 [Panel/主题](PANEL_EXTENSIONS.md)；外部凭据桥、任意 Recipe/工具注册与完整插件市场仍是后续工作。
+验证脚本明确复用已有依赖，不代表重新安装全部依赖或真实供应商付费验收；测试插件和验收脚本不进入 npm 包。0.3 alpha源码另有 [C3 管理 API/页面](PROVIDER_SETTINGS.md)和独立 [Panel/主题](PANEL_EXTENSIONS.md)；外部凭据桥、任意 Recipe/工具注册与完整插件市场仍是后续工作。

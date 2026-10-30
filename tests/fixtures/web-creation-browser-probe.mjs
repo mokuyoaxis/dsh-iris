@@ -21,9 +21,12 @@ export async function verifyWebCreationBrowser({ out, cdp, evaluate, click, wait
   const posts = () => report.requests.filter(item => item.method === 'POST');
   async function login({ keepHash = false } = {}) {
     const token = path.join(out, 'creation-token-' + ++tokens); writeLocalApiTokenFile(token, session.accessToken, root);
+    const retained = await evaluate(`sessionStorage.getItem('iris.workbench.session.v0')===${JSON.stringify(session.accessToken)}`);
     if (keepHash) await cdp('Page.reload'); else await cdp('Page.navigate', { url: session.origin + '/' });
-    await wait(() => evaluate("Boolean(document.documentElement.dataset.theme&&!document.querySelector('#connection').hidden)"), 'creation login');
-    await chooseToken(token);
+    await wait(() => evaluate("Boolean(document.documentElement.dataset.theme)"), 'creation mount');
+    if (!retained) {
+      await wait(() => evaluate("!document.querySelector('#connection').hidden&&!document.querySelector('#connect').disabled"), 'new service login'); await chooseToken(token);
+    }
     await wait(() => evaluate("!document.querySelector('#workspace').hidden&&document.querySelector('#model-summary').textContent!=='读取中'"), 'creation workspace');
   }
   async function fresh(name, options = {}) {
@@ -96,13 +99,18 @@ export async function verifyWebCreationBrowser({ out, cdp, evaluate, click, wait
     result.checks.push('lost selection response reads current choice instead of replaying POST');
     const beforeReload = posts().length; await login({ keepHash: true }); await readyRun(id);
     assert.equal(posts().length, beforeReload); assert.equal(fixture.calls.submit.length, 1);
-    await check('reload requires fresh authentication and never generates', "sessionStorage.length===0&&Object.keys(localStorage).every(key=>key==='iris.panel.appearance.v0')&&!document.querySelector('#token').value&&!location.search");
+    await check('reload validates the retained tab login and never generates', "!!sessionStorage.getItem('iris.workbench.session.v0')&&Object.keys(localStorage).every(key=>key==='iris.panel.appearance.v0')&&!document.querySelector('#token').value&&!location.search");
     for (const width of [390, 320]) {
       await dimensions(width); await measure('creation-mobile-' + width); await capture('creation-mobile-' + width);
       await check('fixed mobile inputs start folded at ' + width, "!document.querySelector('#creation-settings').open");
       await click('#creation-settings>summary'); await measure('creation-mobile-' + width + '-settings'); await click('#creation-settings>summary');
     }
-    await click('#theme'); await capture('creation-mobile-dark'); await click('#theme'); await dimensions(1366, 900);
+    for (const theme of ['dark','light']) {
+      await click('#appearance-open');
+      await evaluate(`(()=>{const n=document.querySelector('#appearance-theme');n.value=${JSON.stringify(theme)};n.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+      await click('#appearance-close'); if (theme==='dark') await capture('creation-mobile-dark');
+    }
+    await dimensions(1366, 900);
     const beforeReuse = tree(root), beforeReusePosts = posts().length;
     await click('#reuse-selected'); await wait(() => evaluate("!document.querySelector('#draft-preview').hidden&&!document.querySelector('#draft-fields').disabled"), 'new draft from selected artifact');
     await check('reuse creates only an editable draft with a fresh prompt', "document.querySelector('#edit-prompt').value===''&&document.querySelector('#run-view').hidden&&!location.hash");

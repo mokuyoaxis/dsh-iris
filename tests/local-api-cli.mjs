@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { createApplicationRuntime } from '../lib/application-runtime.js';
 import { FLOW_MODEL, FLOW_SOURCE, imageFlowFixture, readFlowEvents } from './fixtures/image-flow-fixture.mjs';
 import { useTempDshHome } from './test-env.js';
+import { snapshotLintProcesses } from '../scripts/lint-trace.mjs';
 
 const { root } = useTempDshHome('iris-local-api-cli');
 const cli = fileURLToPath(new URL('../bin/dsh-iris.js', import.meta.url)), children = [];
@@ -18,7 +19,8 @@ function tree(directory) {
 }
 function launch(args) {
   const child = spawn(process.execPath, [cli, ...args], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, IRIS_IMPORT_WORKBENCH_CONFIG: '' } });
-  const entry = { child, stdout: '', stderr: '', exited: false }; children.push(entry);
+  const entry = { child, stdout: '', stderr: '', exited: false,
+    mode: args.slice(0, 2).join(' '), features: args.filter(arg => arg.startsWith('--allow-')) }; children.push(entry);
   child.stdout.on('data', bytes => { entry.stdout += bytes; }); child.stderr.on('data', bytes => { entry.stderr += bytes; });
   entry.closed = new Promise((resolve, reject) => {
     child.once('error', reject); child.once('close', (code, signal) => { entry.exited = true; resolve({ code, signal }); });
@@ -26,12 +28,15 @@ function launch(args) {
   return entry;
 }
 async function ready(entry) {
-  const deadline = Date.now() + 20000;
-  while (Date.now() < deadline) {
+  const started = performance.now(), deadline = started + 20000;
+  while (performance.now() < deadline) {
     if (entry.stdout.includes('\n')) return JSON.parse(entry.stdout.split('\n')[0]);
     if (entry.exited) throw new Error('API CLI exited before startup: ' + entry.stderr);
     await new Promise(resolve => setTimeout(resolve, 50));
   }
+  console.error('API_CLI_STARTUP_TIMEOUT ' + JSON.stringify({ mode: entry.mode, features: entry.features,
+    elapsedMs: performance.now() - started, stdoutBytes: Buffer.byteLength(entry.stdout), stderrBytes: Buffer.byteLength(entry.stderr),
+    processSnapshot: snapshotLintProcesses(entry.child.pid) }));
   throw new Error('API CLI startup timeout');
 }
 async function stop(entry) {
@@ -56,6 +61,7 @@ try {
   const session = await ready(first);
   assert.equal(session.readOnly, true); assert.equal(session.contractVersion, 0);
   assert.equal(new URL(session.origin).hostname, '127.0.0.1'); assert.equal(session.tokenFile, tokenFile);
+  assert.equal(session.loginUrl, undefined, 'API mode does not expose workbench login');
   const token = fs.readFileSync(tokenFile, 'utf8').trim();
   assert(/^[A-Za-z0-9_-]{43}$/.test(token));
   if (process.platform !== 'win32') assert.equal(fs.statSync(tokenFile).mode & 0o777, 0o600);
@@ -89,6 +95,24 @@ try {
   assert.equal((await fetch(webSession.origin + '/api/v0/session')).status, 401);
   assert.equal((await query(webSession, webToken, '/api/v0/runs/' + created.run.id)).body.status, 'not_started');
   assert(!web.stdout.includes(webToken)); assert(!web.stderr.includes(webToken));
+  assert(webSession.loginUrl.startsWith(webSession.origin + '/#login='));
+  const redeemed = await fetch(webSession.origin + '/api/v0/workbench/login', { method: 'POST',
+    headers: { Origin: webSession.origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket: new URL(webSession.loginUrl).hash.slice(7) }) });
+  assert.equal(redeemed.status, 200);
+  const browserToken = (await redeemed.json()).accessToken;
+  assert.notEqual(browserToken, webToken);
+  assert.equal((await query(webSession, browserToken, '/api/v0/session')).response.status, 200);
+  const login = launch(['web', 'login', '--origin', webSession.origin, '--token-file', webTokenFile]);
+  assert.equal((await login.closed).code, 0);
+  const freshLink = JSON.parse(login.stdout);
+  assert(freshLink.loginUrl.startsWith(webSession.origin + '/#login=')); assert.notEqual(freshLink.loginUrl, webSession.loginUrl);
+  assert(!login.stdout.includes(webToken)); assert(!login.stderr.includes(webToken));
+  assert.equal(fs.readFileSync(webTokenFile, 'utf8').trim(), webToken, 'getting a link preserves the owner file');
+  const stale = await failure(['web', 'login', '--origin', webSession.origin, '--token-file', tokenFile], 2);
+  assert.match(stale.stderr, /Token 已失效/); assert(!stale.stderr.includes(token));
+  await failure(['web', 'login', '--origin', 'https://outside.invalid', '--token-file', webTokenFile], 2);
+  await failure(['web', 'login', '--origin', webSession.origin + '/?token=bad', '--token-file', webTokenFile], 2);
+  await failure(['web', 'login', '--origin', webSession.origin, '--token-file', 'relative'], 2);
   await stop(web);
   const uninitializedWrites = await failure(['web', 'serve', '--data-root', dataRoot, '--token-file', path.join(root, 'no-web-write'), '--allow-local-writes'], 1);
   assert.match(uninitializedWrites.stderr, /IRIS_CREATION_/);

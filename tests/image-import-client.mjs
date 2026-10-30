@@ -11,6 +11,7 @@ const window = { __ModuleLoader__: { load(value) { entry = value; } }, dispatchE
 const React = {
   createElement(type, props, ...children) { return { type, props: { ...props, children } }; },
   useState(initial) { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], value => { values[i] = value; }]; },
+  useRef(initial) { const i = cursor++; if (!(i in values)) values[i] = { current: initial }; return values[i]; },
   useEffect() {}
 };
 let success = true;

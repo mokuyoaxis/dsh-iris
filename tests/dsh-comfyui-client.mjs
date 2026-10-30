@@ -24,7 +24,8 @@ function mount(name, initialProps, handler) {
     const request = { url, body: options.body ? JSON.parse(options.body) : {}, signal: options.signal }; requests.push(request);
     return handler(request);
   };
-  const window = { __ModuleLoader__: { load(value) { entry = value; } }, fetch, addEventListener() {}, removeEventListener() {}, dispatchEvent(event) { events.push(event); } };
+  const window = { __ModuleLoader__: { load(value) { entry = value; } }, fetch, innerWidth: 800, innerHeight: 600,
+    addEventListener() {}, removeEventListener() {}, dispatchEvent(event) { events.push(event); } };
   vm.runInNewContext(source.replace('var clientSlots = clientSlotsPort(ctx);', 'window.testComponent=' + name + ';var clientSlots = clientSlotsPort(ctx);'),
     { window, document: { getElementById() { return {}; } }, fetch, setTimeout, clearTimeout, setInterval: () => 1, clearInterval() {}, AbortController,
       CustomEvent: class { constructor(type) { this.type = type; } }, console: { log() {} } });
@@ -106,7 +107,9 @@ const card = mount('ActionCard', { action: 'image', capability: 'image-gen', fie
   if (request.url.endsWith('/state')) return response({});
   throw new Error('lost submission');
 });
-card.render().find(node => node.props.className === 'iris-act-head').props.onClick(); card.render(); await tick();
+const cardHeader = card.render().find(node => node.props.className === 'iris-act-head');
+assert.equal(cardHeader.type, 'button'); assert.equal(cardHeader.props.type, 'button'); assert.equal(cardHeader.props['aria-expanded'], false);
+cardHeader.props.onClick(); assert.equal(card.render().find(node => node.props.className === 'iris-act-head').props['aria-expanded'], true); await tick();
 const modelSelect = () => card.render().find(node => node.type === 'select');
 modelSelect().props.onChange({ target: { value: 'p::same' } });
 let control = card.render().find(node => typeof node.type === 'function' && node.type.name === 'ComfyParameters');
@@ -120,4 +123,17 @@ const execute = card.button('生成图片'); execute.props.onClick(); execute.pr
 assert.equal(card.requests.filter(request => request.url.endsWith('/image')).length, 1);
 assert.equal(card.requests.find(request => request.url.endsWith('/image')).body.workflow_sha, summary.sha256);
 assert.equal(card.button('生成图片').props.disabled, true, 'unknown submission stops further sends'); card.unmount();
+const history = mount('HistoryBrowser', { recent: [{ id: 't_history', createdAt: new Date().toISOString(), status: 'failed', cap: 'image' }] }, () => response({}));
+let heading = history.render().find(node => node.props.className === 'iris-hist-head');
+assert.equal(heading.type, 'button'); assert.equal(heading.props.type, 'button'); assert.equal(heading.props['aria-expanded'], true);
+heading.props.onClick(); assert.equal(history.render().find(node => node.props.className === 'iris-hist-head').props['aria-expanded'], false); history.unmount();
+const bubble = mount('FloatingBubble', {}, () => response({})), target = {};
+let bubbleRoot = bubble.render()[0], prevented = 0;
+assert.equal(bubbleRoot.props.role, 'button'); assert.equal(bubbleRoot.props.tabIndex, 0); assert.equal(bubbleRoot.props['aria-expanded'], false);
+bubbleRoot.props.onKeyDown({ key: 'Enter', target, currentTarget: target, preventDefault() { prevented++; } });
+bubbleRoot = bubble.render()[0]; assert.equal(bubbleRoot.props['aria-expanded'], true);
+bubbleRoot.props.onKeyDown({ key: ' ', target: {}, currentTarget: target, preventDefault() { assert.fail('nested control key must not toggle the bubble'); } });
+assert.equal(bubble.render()[0].props['aria-expanded'], true);
+bubbleRoot.props.onKeyDown({ key: ' ', target, currentTarget: target, preventDefault() { prevented++; } });
+assert.equal(bubble.render()[0].props['aria-expanded'], false); assert.equal(prevented, 2); bubble.unmount();
 console.log('PASS DSH ComfyUI components: explicit replacement, stale digest and draft preservation, unknown save/submission, declared parameters retained, late response rejection, typed weights, model switching and duplicate submit');

@@ -2,7 +2,7 @@
 
 这是面向 **0.3.0** 的交互预览，包含创作、作品和连接草稿三个页面。首轮布局已围绕大图预览、紧凑参数面板和默认折叠的详情整理，仍用于验证操作方向，尚未定稿。
 
-Demo 可在源码树中独立预览，无需 DSH；使用内存演示与内置样图，不连接模型、不计费，也不写入 Core 数据。未发布源码的真实工作台已接入固定图片编辑及[独立文生图](IMAGE_GENERATION.md)；npm 0.2.7 不含该页面，也不携带 prototypes/ 和预览脚本。
+Demo 可在源码树中独立预览，无需 DSH；使用内存演示与内置样图，不连接模型、不计费，也不写入 Core 数据。0.3 alpha源码的真实工作台已接入固定图片编辑及[独立文生图](IMAGE_GENERATION.md)；npm 0.2.7 不含该页面，也不携带 prototypes/ 和预览脚本。
 
 ## 启动预览
 
@@ -46,7 +46,7 @@ node scripts/preview-workbench.mjs
 
 原型位于 `prototypes/workbench/`，使用原生 HTML/CSS/JavaScript，复用 Iris 图标和示例图片，没有新框架或生产依赖。运行详情和工具预览默认折叠，关闭显示“展开”、打开显示“收起”；提供浅/深色、键盘焦点与 320/390px 布局。
 
-0.2.7 已有 [默认只读 API](LOCAL_API.md)及显式开启的 [本地上传/Run 创建](LOCAL_CREATION.md)，带持久请求意图和身份接回；未发布源码另有 [Operation 与有限执行服务](CORE_SERVICE.md)、[版本约束选择](LOCAL_SELECTION.md)及真实创作页面。此 Demo 仍独立使用内存样例，其布局、提示词和样例效果用于说明方向，不代表模型能力；真实页面的恢复、故障与发布门禁继续独立验收。
+0.2.7 已有 [默认只读 API](LOCAL_API.md)及显式开启的 [本地上传/Run 创建](LOCAL_CREATION.md)，带持久请求意图和身份接回；0.3 alpha源码另有 [Operation 与有限执行服务](CORE_SERVICE.md)、[版本约束选择](LOCAL_SELECTION.md)及真实创作页面。此 Demo 仍独立使用内存样例，其布局、提示词和样例效果用于说明方向，不代表模型能力；真实页面的恢复、故障与发布门禁继续独立验收。
 
 [本地 API 契约](LOCAL_API_CONTRACT.md)区分已发布的只读/本地创建，以及未发布的有限执行、本地停止和 owner 持久选择。相同 Run 的 Task 复用、HTTP 创建幂等与选择的版本门禁分别验证；替换演示传输时仍须单独验证浏览器写入、原身份恢复与无 DSH 的完整流程。
 

@@ -51,6 +51,12 @@ Provider `submit()` 必须返回以下四种结构之一：
 
 错误记录不得包含 `cause`、stack、请求体、响应正文、API Key、Authorization、POSIX/Windows 私有绝对路径或签名 URL。调用方可以在当前进程中保留原始异常用于调试，但不得把它当作 Task/Attempt JSON 或事件载荷。
 
+## 上游响应与交付限额（0.3 alpha）
+
+内置 HTTP 媒体传输按实际响应累计字节，不仅依赖 Content-Length；chunked 或压缩解码后的正文同样计数。元数据/错误 JSON 最多 2 MiB，含内嵌媒体的成功 JSON 最多 128 MiB；产物限额为图片 64 MiB、音频 128 MiB、文本 8 MiB、视频 1 GiB。超限中止读取，下载临时文件在原收尾路径清理，不替换既有目标；超时和取消规则继续适用。这是单个响应/产物限额，不是作品库自动配额或 GC。
+
+超限不会证明生成未受理，仍保留原提交/交付阶段的事实，不触发自动重新生成。交付保留已分类的 network、timeout、provider、protocol、local_io 等错误，不再一律归为本地落盘失败。
+
 ## 当前接入边界
 
 `lib/provider-contract.js`、Task v2 复制落盘原语和零网络 Fake Provider 已冻结本契约。完整图片能力现在都会在请求前写入 Attempt：DashScope 旧异步返回远端 ID 后进入观察；DashScope 新同步、OpenAI Images、聊天生图与 Responses 生图的有效成功响应记为 `completed/accepted`，随后独立推进本地产物交付。异步与同步候选可以在同一个 Task 中安全切换。

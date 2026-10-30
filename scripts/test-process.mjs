@@ -14,7 +14,11 @@ export function testProcessArgs(testFile) {
 export function runTestProcess(testFile, { cwd, timeoutMs }) {
   return new Promise((resolve) => {
     const traceFile = path.basename(testFile) === 'lint.mjs' ? createLintTrace(cwd) : undefined;
-    const started = performance.now();
+    const started = performance.now(), startedWall = Date.now();
+    const timing = () => {
+      const elapsedMs = Math.round(performance.now() - started);
+      return { elapsedMs, wallElapsedMs: Date.now() - startedWall, timerLatenessMs: Math.max(0, elapsedMs - timeoutMs) };
+    };
     if (traceFile) recordLintTrace(traceFile, 'runner-start', { node: process.version, platform: process.platform,
       arch: process.arch, timeoutMs });
     const child = spawn(process.execPath, testProcessArgs(testFile), {
@@ -34,11 +38,11 @@ export function runTestProcess(testFile, { cwd, timeoutMs }) {
         if (traceFile) {
           console.error('[lint] 高优先级异常：整体超时。保留首次失败现场，复查通过不解除未定位风险。');
           recordLintTrace(traceFile, 'runner-timeout', { childPid: child.pid, timeoutMs,
-            elapsedMs: Math.round(performance.now() - started), processSnapshot: snapshotLintProcesses(child.pid) });
+            ...timing(), processSnapshot: snapshotLintProcesses(child.pid) });
           console.error(`[lint] 超时现场：${path.relative(cwd, traceFile)}`);
         } else {
           console.error('TEST_TIMEOUT_CONTEXT ' + JSON.stringify({ testFile: path.relative(cwd, testFile),
-            childPid: child.pid, timeoutMs, elapsedMs: Math.round(performance.now() - started),
+            childPid: child.pid, timeoutMs, ...timing(),
             processSnapshot: snapshotLintProcesses(child.pid) }));
         }
       } catch (cause) {

@@ -2,7 +2,7 @@
 
 The current executable binding is `dsh-iris`, which uses shared Application/Core operations without a running DSH host. Check the installed command with `dsh-iris --help`. In a confirmed source checkout, `node /absolute/path/to/iris/bin/dsh-iris.js` is also available. A missing command does not authorize installing software or changing package versions.
 
-These image, artifact, and task commands exist in 0.2.6. This skill is a new, unreleased package resource. Development-only Flow commands, local HTTP writes, and a future UI are not prerequisites.
+These image, artifact, and task commands exist in 0.2.6; the Core skill is bundled from 0.2.7. The development [ComfyUI reference](comfyui.md) has its own version and parameter requirements. Flow commands and a workbench are not prerequisites for the standalone API image path below.
 
 ## Establish the context · 明确本次上下文
 
@@ -50,7 +50,7 @@ Write the user's original or authorized revised request into the input file, for
 dsh-iris run image --data-root "$IRIS_DATA_ROOT" --provider-config "$IRIS_PROVIDER_FILE" --input-file "$IRIS_INPUT_FILE"
 ```
 
-Set `n` to the requested count (1–4); do not increase it for testing. Supply `size` only when requested and supported. Omit `model_ref` unless a model was specified; use an allowed `providerId::modelId` for an explicit choice. An explicit choice has no candidate fallback. Default candidate switching requires evidence of non-acceptance.
+Set `n` to the requested count (1–4); do not increase it for testing. Supply `size` only when requested and supported. Use the configured API policy when it matches the request; explicitly select an actual allowed API model when a mixed pool could choose ComfyUI. ComfyUI always requires the confirmed workflow and `n:1`; follow its separate reference. An explicit choice has no candidate fallback. Default candidate switching requires evidence of non-acceptance.
 
 ## Edit an existing image · 编辑已有图片
 

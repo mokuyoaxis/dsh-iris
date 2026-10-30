@@ -38,18 +38,43 @@ try {
   const checked = await call('/api/v0/provider-management/workflow-check', check);
   assert.equal(checked.status, 200); assert(JSON.parse(checked.text).ok); assert.equal(fixture.graphs.length, 0);
   assert.deepEqual(fs.readFileSync(configPath), configBytes);
+  const draft = { expectedRevision: settings.revision, providerId: 'comfy', comfyWorkflow: structuredClone(COMFY_WORKFLOW) };
+  const draftCheck = await call('/api/v0/provider-management/workflow-check', draft);
+  assert.equal(draftCheck.status, 200); assert(JSON.parse(draftCheck.text).ok);
+  assert.deepEqual(fs.readFileSync(configPath), configBytes); assert.equal(fixture.graphs.length, 0);
+  for (const invalid of [{ ...draft, modelRef: 'comfy::portrait' }, { ...draft, providerId: 'absent' },
+    { ...draft, expectedRevision: 'stale' }, { ...draft, baseUrl: 'https://untrusted.invalid' },
+    { ...draft, comfyWorkflow: { ...COMFY_WORKFLOW, graph: {} } }, { ...check, providerId: 'comfy' }]) {
+    assert([400, 409].includes((await call('/api/v0/provider-management/workflow-check', invalid)).status));
+  }
   assert.equal((await call('/api/v0/provider-management/workflow-check', { ...check, expectedRevision: 'stale' })).status, 409);
   assert.equal((await call('/api/v0/provider-management/workflow-check', { ...check, workflowParameters: { injected: true } })).status, 400);
   const grant = readConnectionGrants(pair.serverFile)[0], beforeDenied = fixture.requests.length;
   assert.equal((await call('/api/v0/provider-management/workflow-check', check, { Authorization: 'Bearer ' + grant.accessToken, 'Iris-Connection-Id': grant.connectionId })).status, 403);
   assert.equal((await call('/api/v0/provider-management/workflow-check', check, { Origin: 'https://outside.invalid' })).status, 403);
+  assert.equal((await call('/api/v0/provider-management/workflow-check', draft, { Authorization: 'Bearer ' + grant.accessToken, 'Iris-Connection-Id': grant.connectionId })).status, 403);
+  assert.equal((await call('/api/v0/provider-management/workflow-check', draft, { Origin: 'https://outside.invalid' })).status, 403);
   assert.equal(fixture.requests.length, beforeDenied, 'denied checks do not contact the provider');
+  fixture.mode = 'unauthorized';
+  const unavailable = await call('/api/v0/provider-management/workflow-check', draft);
+  assert.equal(unavailable.status, 502); assert.equal(JSON.parse(unavailable.text).error.code, 'IRIS_COMFYUI_CHECK_UNAVAILABLE');
+  assert(!unavailable.text.includes('private fixture upstream detail')); fixture.mode = 'normal';
+  let started, release;
+  const begun = new Promise(resolve => { started = resolve; }), gate = new Promise(resolve => { release = resolve; });
+  fixture.beforeInfo = async () => { fixture.beforeInfo = undefined; started(); await gate; };
+  const pendingCheck = call('/api/v0/provider-management/workflow-check', draft);
+  await begun;
+  try {
+    const changed = JSON.parse(configBytes); changed.providers[0].name = 'Changed during inspection'; write(configPath, changed); release();
+    const stale = await pendingCheck; assert.equal(stale.status, 409); assert.equal(JSON.parse(stale.text).error.code, 'IRIS_CONFIG_CHANGED');
+  } finally { release(); fixture.beforeInfo = undefined; fs.writeFileSync(configPath, configBytes); }
   const createOnly = createLocalReadApi({ dataRoot, providerConfigPath: configPath, allowLocalWrites: true }); services.push(createOnly);
   const co = await createOnly.start();
+  const requestsAfterChecks = fixture.requests.length;
   const invalidDraft = await fetch(co.origin + '/api/v0/generations', { method: 'POST', headers: { Authorization: 'Bearer ' + co.accessToken,
     'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ modelRef: 'comfy::portrait', prompt: 'Invalid draft', workflowParameters: { unknown: true } }) });
   assert.equal(invalidDraft.status, 400); await invalidDraft.arrayBuffer();
-  assert.equal(fixture.requests.length, beforeDenied, 'draft validation without execution remains local');
+  assert.equal(fixture.requests.length, requestsAfterChecks, 'draft validation without execution remains local');
   const readonly = createLocalReadApi({ dataRoot, providerConfigPath: configPath }); services.push(readonly);
   const ro = await readonly.start();
   const denied = await fetch(ro.origin + '/api/v0/provider-management/workflow-check', { method: 'POST',

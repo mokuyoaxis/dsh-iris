@@ -4,7 +4,7 @@
 
 本适配随 Iris `0.2.0` 发布；npm 0.1.4 包不包含这些后续修正。Iris 0.2.0 要求 Node.js `>=22.0.0`，DSH engines、五项客户端 peers 与 Host Doctor 仅放行准确版本 `0.2.0-rc.2`，不再沿用旧版支持窗口，也不推定其他 0.2 预览版或正式版兼容。
 
-旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 按历史验证范围使用稳定包 `@mokuyoaxis/dsh-iris@0.1.4`。安装与 npm tarball 下载方式见 [README](../README.md#最快开始)。保留的旧桥接与 fixture 测试不构成 Iris 0.2.0 的旧宿主支持承诺。
+旧 DSH `>=0.1.2-rc.1 <0.1.3-0` 或 `0.1.5-rc.1` 按历史验证范围使用稳定包 `@mokuyoaxis/dsh-iris@0.1.4`。安装与 npm tarball 下载方式见 [README](../README.md#快速开始)。保留的旧桥接与 fixture 测试不构成 Iris 0.2.0 的旧宿主支持承诺。
 
 Iris 0.2.1 沿用相同 Node/DSH 要求，新增 Artifact 改图工具后共注册 15 个工具；最新服务隔离检查为 31 项。宿主适配与业务功能分别验收，浏览器限制见下文。
 

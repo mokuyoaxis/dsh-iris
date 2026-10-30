@@ -1,7 +1,7 @@
 {
   "name": "@mokuyoaxis/dsh-iris",
-  "version": "0.2.7",
-  "description": "Multi-provider image, video, music, and speech generation, transcription, visual understanding, and prompt optimization with an integrated Iris workbench for DeepSeek Harness.",
+  "version": "0.3.0-alpha.1",
+  "description": "A multimodal workspace for Agents: Core Web, MCP, CLI and native DSH tools with model pools, durable media tasks, ComfyUI and explicit plugins.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -13,9 +13,18 @@
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json",
     "./doctor": "./lib/doctor.js",
-    "./provider-extensions": "./lib/provider-extensions.js"
+    "./provider-extensions": "./lib/provider-extensions.js",
+    "./plugins": {
+      "types": "./lib/plugins.d.ts",
+      "default": "./lib/plugins.js"
+    },
+    "./contact-sheet": {
+      "types": "./plugins/contact-sheet/index.d.mts",
+      "default": "./plugins/contact-sheet/index.mjs"
+    }
   },
   "files": [
+    "plugins/contact-sheet",
     "lib",
     "bin",
     "cordis.patch.yml",
@@ -63,7 +72,10 @@
     "vision",
     "dashscope",
     "prompt-optimization",
-    "media-workbench"
+    "media-workbench",
+    "mcp",
+    "comfyui",
+    "agent-tools"
   ],
   "license": "MIT",
   "engines": {

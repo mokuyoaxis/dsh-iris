@@ -1,4 +1,4 @@
-# Core 连接与能力握手 v0（未发布）
+# Core 连接与能力握手 v0（0.3 alpha）
 
 该契约服务于 [Core 执行服务与 harness 桥](CORE_SERVICE.md)，不是公开 JavaScript SDK。连接配置均为显式根外私有 JSON，不扫描宿主账号、配置或进程。
 
@@ -10,18 +10,24 @@
 |---|---|
 | adapterId | 适配实现，如 `iris.mcp`、`iris.dsh-service` |
 | harnessKind | 获授权的产品类别：`kimi`、`dsh` 或 `generic`；不是认证依据 |
-| rootId | v1 数据空间 UUID，授权与客户端均绑定它，不使用本机路径作跨端身份 |
+| rootId | v1/v2/v3 数据空间 UUID，授权与客户端均绑定它，不使用本机路径作跨端身份 |
 | connectionId | 一项明确授权的 profile/工作区连接 UUID |
 | runtimeInstanceId | 本次客户端实例 UUID；同一连接最多保留 8 项实例事实 |
 | Operation ownerInstanceId | Core 执行进程归属，与调用者身份分开 |
 
 `connection create` 只创建新私有目录及 `server-grants.json`、`client.json`。服务文件为 `{schemaVersion:0,grants:[...]}`；每项包含 rootId、connectionId、adapterId、harnessKind、label、accessToken、scopes，以及明确 capabilities/tools。客户端包含 schemaVersion、origin、rootId 和相同身份/凭据及所选 capabilities/tools；服务端授权仍由 grants 决定，修改客户端文件不能扩大范围。origin 固定为 `http://127.0.0.1:port`，不允许凭据、路径、跳转或远端域名。
 
-capabilities 为当前支持的功能分组列表（image-edit、image-generate），空列表只保留控制工具；tools 可进一步选择具体工具，空列表为零工具。两者与操作 scopes 分开。新授权持久写入具体名单，不因版本新增工具自动扩张。旧文件省略两项时仅解释为固定的旧图片编辑流程/12 工具，不迁移文件；显式 null、未知和重复项拒绝。
+capabilities 为当前支持的功能分组列表（image-edit、image-generate、tts、transcribe），空列表只保留控制工具；tools 可进一步选择具体工具，空列表为零工具。音频两组需新 v3 根，旧根的握手与管理拒绝它们，见[音频流程](AUDIO_FLOWS.md)。两者与操作 scopes 分开。新授权持久写入具体名单，不因版本新增工具自动扩张。旧文件省略两项时仅解释为固定的旧图片编辑流程/12 工具，不迁移文件；显式 null、未知和重复项拒绝。
+
+内置选项、权限标题、工具输入与说明来自同一 Core 声明。显式装配插件后，[统一目录](PLUGINS.md#core-能力目录与授权)列出五类贡献；查看/安装不会扩大授权。页面、表单、渲染器可独立选入 Panel。持久业务另由服务 `allowedOperations` 启用，再由连接可选 `pluginOperations` 保存准确 operations 依赖；缺省/空均不选择，不自动迁移旧连接或跟随升级。
+
+握手可用 `requestedPluginOperations` 显式缩小到原授权中的准确依赖。通用业务目录/执行及原 Operation/image 控制工具再与 scope、tools 和服务门禁求交；instructions 与 Skill 不授予权限。修改持久选择/scope/tools 后旧握手失效，已接收业务在后续 Core 命令前重新核对当前授权。关闭桥接实例不等于撤销执行授权。插件缺失时可保留原依赖只读历史；新选择只允许服务已启用的准确版本。实例见[多图对照板](CONTACT_SHEET.md)。
 
 文件为 0600，目录为 0700；读取拒绝符号链接、非普通文件、过大文件及 POSIX 过宽文件权限。Windows mode 不能替代 ACL。凭据不出现在 URL、普通 DTO 或诊断中。运行时认证表仅保留比较用摘要，私有持久档案保留连接密钥；scope 为有限的 `read/create/execute/stop`，必须含 read。静态 grants 只在显式启动时读取，修改静态授权后须重启；下面的管理目录支持显式 owner 即时更改，不自动修改日常 harness 配置。
 
-这是同一用户明确共享的数据空间，read 可读根内流程，execute/stop 可作用于该空间的流程/操作；它不是按连接划分的数据租户隔离。需要分隔作品时使用不同数据空间与授权。
+这是同一用户明确共享的数据空间。流程读取、执行和停止仍需对应功能、工具与 scope；插件业务及历史另需所选的准确依赖，read 本身不开放所有记录。
+
+选入声明图片输入的插件业务后，可从同一根的共享图库选取和预览 PNG/JPEG/WebP（单张 ≤8 MiB），包括其他业务的图片产物；实际处理器只可读取本次输入绑定的来源 ID。共享来源不授予来源业务的调用、历史或停止权限。未声明图片输入的业务不隐含图库权限，超限图片也不由此放行；已选媒体功能与本业务产物沿用各自交付权限。它不是按连接划分的数据租户隔离，需要分隔图片时使用不同数据空间与授权。
 
 ## 握手与调用
 
@@ -54,27 +60,32 @@ POST `/api/v0/connections/:id/disconnect`：连接端提交 `{}`，断开自身�
 
 `api/web serve --allow-connection-management --connection-store /absolute/private-directory` 显式开启；页面操作见 [本地工作台](LOCAL_WEB.md#显式开启连接中心)。同一服务可合并只读静态 grants 和可管理档案，活动授权总计最多 32 项。默认不开启，不扫描品牌、进程或文件系统寻找 harness。
 
-管理目录含 `store.json`（schemaVersion/rootId）、`profiles/<connectionId>.json`（单档案权威记录）、`clients/<content-sha256>.json`（不可变导出副本）、`templates/<content-sha256>.json`（纯数据模板）和 `ownership/`（复用 Core 租约）。目录与业务根不可相互包含，现有非空未知目录或异根/异版本均拒绝，不迁移。档案含标签、明确授权、revision、创建/更新/撤销时间、创建输入摘要与最近客户端声明；原子单记录提交后同步变更认证表。崩溃留下未知文件时保留并拒绝启动，不自动删除或猜测修复。
+管理目录含 `store.json`（schemaVersion/rootId）、`profiles/<connectionId>.json`（单档案权威记录）、`clients/<content-sha256>.json`（不可变导出副本）、`templates/<content-sha256>.json`（纯数据模板）、`archived/<connectionId>.json`（删除时的撤销档案检查点）和 `ownership/`（复用 Core 租约）。目录与业务根不可相互包含，现有非空未知目录或异根/异版本均拒绝，不迁移。档案含标签、明确授权、revision、创建/更新/撤销时间、创建输入摘要与最近客户端声明；原子单记录提交后同步变更认证表。崩溃留下未知文件时保留并拒绝启动，不自动删除或猜测修复。
 
 以下路径均以 `/api/v0/connection-management` 开头，只接受本次服务的 owner Token。连接凭据即使有 execute 也无权管理：
 
 | 路由 | 输入 / 行为 |
 |---|---|
-| GET/HEAD `/catalog` | 本服务可授予的 scopes、媒体/功能/工具目录及模板示例；未接入项明确列空 |
-| GET/HEAD `/templates` | 已导入的纯数据模板及内容摘要身份，无凭据 |
+| GET/HEAD `/catalog` | 本服务可授予的 availableScopes、Core scopeOptions/controlTools、媒体/功能/工具目录、默认选择及模板示例；另含已装配插件的贡献与接入边界，未接入媒体分组仍列空 |
+| GET/HEAD `/templates` | 已导入templates及内容摘要身份、内置显式presets和支持formats；无凭据，不检测本机安装 |
 | POST `/templates` | `{schemaVersion:0,title,transport,format,documentationUrl?}`；相同内容幂等，首次 201、重放 200 |
-| GET/HEAD `/connections` | 管理/静态档案及当前实例，无凭据；撤销档案仍保留 |
+| GET/HEAD `/connections` | 管理/静态档案及当前实例，无凭据；撤销档案仍列出，删除档案不列出 |
 | POST `/connections` | `{key,label,scopes,capabilities,tools?}`；key 为 UUIDv4，成为 connectionId。首次 201，同 Key/输入 200，不新造密钥；不同输入 409 |
 | POST `/connections/:id/update` | `{expectedRevision,label,scopes,capabilities,tools?}`，CAS 更新；只允许服务已开启的权限 |
 | POST `/connections/:id/revoke` | `{expectedRevision}`，持久撤销并阻止后续认证；重放不复活或重提 Operation |
-| POST `/connections/:id/export` | `{transport:stdio/http,format:mcpServers/entry}` 或 `{templateId}`，两者不可混用；HTTP 含密钥，要求服务已开启 MCP |
+| POST `/connections/:id/delete` | `{expectedRevision}`，先持久撤销，再建立私有归档检查点并从列表移除；已删除的同身份请求可幂等重放 |
+| POST `/connections/:id/export` | `{transport,format}`、`{templateId}`或`{presetId}`，互斥；支持通用JSON、Claude JSON和Codex TOML。HTTP含密钥，要求服务已开启MCP |
 | POST `/connections/:id/skill` | `{}`，按已保存授权与当前服务权限交集返回公开 Skill 交付 JSON 和 Markdown 预览；撤销或零工具拒绝 |
 
 正文上限 8 KiB，未知字段拒绝。创建/编辑/导出不调用 Provider；授权变化清除旧握手，HTTP 工厂按新名单重建，stdio 旧进程的实际 API 调用仍受 Core 新授权检查。标签修改保留实例。已接收操作不会因撤销而伪造 canceled 或退款。导出文件按内容身份排他创建，旧副本或外部修改不被覆盖；外部修改档案也明确拒绝覆盖，需停服核对。
 
+导出响应保留configuration/containsCredentials，另附实际content、filename和mediaType；TOML的configuration为规范字段对象，content为原生文本。内置预设不写入templates目录、不消耗自定义配额；旧模板schemaVersion与摘要保持，新数据模板也可明确选择claude-json/codex-toml。前端按实际内容复制或下载，不将TOML再次JSON.stringify。见[MCP首次接入](MCP.md#首次接入与客户端预设)。
+
+撤销保留列表；删除只移除可管理连接，不支持删除静态 grants。删除检查点与原撤销档案保持相同字节、0600 权限，归档目录为 0700；不移走原档案、不改原格式、不移除客户端导出文件、Skill、业务任务或作品。归档写入失败时连接仍被撤销并显示在列表，刷新版本后可明确重试；归档成功后，即使响应丢失或服务重启，同一删除可重放，同一创建 Key 返回409，不能重新生成有效凭据。恢复资料仍保存在私有管理目录，当前没有界面恢复或永久清除入口；保留的密钥已失效。启动校验归档身份、撤销状态与原档案摘要，冲突时保留现场并拒绝启动。
+
 模板只允许标题（最多 80 字符）、`stdio/http`、`mcpServers/entry` 和无认证信息的 HTTPS 文档地址。内容寻址、最多 64 项，同一管理租约保护；重启校验内容与文件名，不覆盖漂移文件。新内容产生新模板，不编辑或自动删除旧模板；手动选择始终可用。模板不接受命令、环境变量、端点、权限、密钥或外部脚本，不扫描/启动客户端，也不自动打开文档。
 
-Skill 交付文件为 `schemaVersion:0,kind:iris-mcp-skill` 的公开快照，含 rootId、connectionId、revision、label、scopes、capabilities 和当前有效 tools；不含密钥或本机私有路径。它是安装器的有限数据输入，不接受外部 Markdown/文件树。包内渲染器生成 `iris-mcp-<connectionId>/SKILL.md`，英文正文附中文标题，只指导实际开放的工具，不回落到 CLI 绕过授权。配置导出与 Skill 均考虑当前服务权限；服务改成只读后不会继续导出 execute scopes。快照不会自动更新或撤销文件，实际权限仍由 Core 每次检查。安装与保护规则见 [连接专属 Skill](CORE_SKILLS.md#连接专属-mcp-skill未发布)。
+Skill 交付文件为 `schemaVersion:0,kind:iris-mcp-skill` 的公开快照，含 rootId、connectionId、revision、label、scopes、capabilities 和当前有效 tools；不含密钥或本机私有路径。它是安装器的有限数据输入，不接受外部 Markdown/文件树。包内渲染器生成 `iris-mcp-<connectionId>/SKILL.md`，英文正文附中文标题，只指导实际开放的工具，不回落到 CLI 绕过授权。配置导出与 Skill 均考虑当前服务权限；服务改成只读后不会继续导出 execute scopes。快照不会自动更新或撤销文件，实际权限仍由 Core 每次检查。安装与保护规则见 [连接专属 Skill](CORE_SKILLS.md#连接专属-mcp-skill03-alpha)。
 
 MCP 桥从官方 SDK 获取客户端 name/version/title，经有界投影，通过 POST `/api/v0/connections/:id/client-info` 记录 `{clientInfo,transport}`。握手响应的 `connectionFeatures:['client-info']` 协商此可选扩展；旧服务缺少该能力时桥不提交声明。元数据必须属于已握手实例，来源标记 `client-declared`，不授予 scopes 或改变 adapterId。首次、身份变化及至少一分钟间隔的后续请求记录最近声明；没有声明保持 null。共享 HTTP 凭据依然只代表一个逻辑桥，不推断真实进程数。
 

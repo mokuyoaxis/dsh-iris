@@ -7,6 +7,9 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createCoreRuntime, inspectCoreWriterLease } from '../lib/core-runtime.js';
 import { recoverCoreWriterLease } from '../lib/core-lease-recovery.js';
+import { initializeFlowRoot } from '../lib/flow-store.js';
+import { initializeLocalRequestRoot } from '../lib/local-request-root.js';
+import { isAbandonedWriterPreparation } from '../lib/core-writer-lease.js';
 
 const childFile = fileURLToPath(new URL('./fixtures/core-lease-crash-child.mjs', import.meta.url));
 const base = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-lease-interruptions-'));
@@ -52,7 +55,22 @@ try {
     if (['prepare-written', 'release-intent-removed', 'release-owner-removed'].includes(stage)) assert.equal(evidence.status, 'absent');
     else recover(dataRoot);
     await canWrite(dataRoot);
+    if (stage === 'prepare-written') {
+      const name = fs.readdirSync(dataRoot).find(name => name.includes('.prepare-'));
+      const preserved = fs.readFileSync(path.join(dataRoot, name));
+      initializeFlowRoot(dataRoot); initializeLocalRequestRoot(dataRoot, 3);
+      assert.deepEqual(fs.readFileSync(path.join(dataRoot, name)), preserved, 'initialization preserves the abandoned preparation evidence');
+    }
   }
+  const notAbandoned = root('not-abandoned');
+  const preparation = '.iris-runtime-writer-v0.owner.json.prepare-' + process.pid + '-0123456789ab';
+  const liveOwner = { contractVersion: 0, instanceId: crypto.randomUUID(), pid: process.pid, createdAt: new Date().toISOString() };
+  fs.writeFileSync(path.join(notAbandoned, preparation), JSON.stringify(liveOwner), { mode: 0o600 });
+  assert.equal(isAbandonedWriterPreparation(notAbandoned, preparation), false);
+  assert.throws(() => initializeFlowRoot(notAbandoned), { code: 'IRIS_FLOW_ROOT_NOT_EMPTY' });
+  fs.writeFileSync(path.join(notAbandoned, preparation), '{}');
+  assert.equal(isAbandonedWriterPreparation(notAbandoned, preparation), false);
+  assert.throws(() => initializeFlowRoot(notAbandoned), { code: 'IRIS_FLOW_ROOT_NOT_EMPTY' });
   for (const stage of ['recovery-claim-published', 'recovery-audit-published', 'recovery-retired', 'recovery-intent-removed']) {
     const dataRoot = root(stage); crash('owner-published', dataRoot);
     crash(stage, dataRoot, inspectCoreWriterLease(dataRoot).pid);

@@ -1,29 +1,38 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-auth="token" data-startup="pending">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>Iris · Core 工作台</title>
   <link rel="icon" type="image/svg+xml" href="/iris-mark.svg">
+  <script src="/startup.js"></script>
   <link rel="stylesheet" href="/styles.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body>
+  <div class="startup-screen" role="status" aria-live="polite">
+    <div class="startup-brand" aria-hidden="true">Iris<span>.</span></div>
+    <p class="startup-message">正在打开工作区…</p>
+    <div class="startup-failure"><p>工作台未能载入，请重新加载。</p><a href="/">重新加载</a></div>
+    <noscript><p>请启用 JavaScript 后重新加载工作台。</p></noscript>
+  </div>
   <a class="skip-link" href="#main-content">跳到工作区</a>
   <div class="app-shell">
   <aside id="app-sidebar" class="app-sidebar" hidden>
-    <a class="brand" href="/" aria-label="Iris 工作台首页"><img src="/iris-mark.svg" alt="" width="32" height="32"><span>Iris<span class="brand-dot">.</span></span></a>
+    <a class="brand" href="#overview" aria-label="Iris 工作台总览"><img src="/iris-mark.svg" alt="" width="32" height="32"><span>Iris<span class="brand-dot">.</span></span></a>
     <p class="sidebar-label">你的工作区</p>
     <nav id="workspace-nav" class="workspace-nav" aria-label="工作台" hidden>
-      <button id="studio-tab" class="nav-item" type="button" aria-current="page"><span aria-hidden="true">✧</span> 创作</button>
-      <button id="media-tab" class="nav-item" type="button" aria-current="false"><span aria-hidden="true">▦</span> 作品</button>
-      <button id="connections-tab" class="nav-item" type="button" aria-current="false" hidden><span aria-hidden="true">⌘</span> 连接 <span id="connections-count" class="count">0</span></button>
-      <button id="providers-tab" class="nav-item" type="button" aria-current="false" hidden><span aria-hidden="true">◈</span> 供应商</button>
+      <button id="overview-tab" class="nav-item" type="button" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg> 总览</button>
+      <button id="studio-tab" class="nav-item" type="button" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 4 5 5M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15z"/></svg> 创作</button>
+      <button id="media-tab" class="nav-item" type="button" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="8" r="1"/></svg> 作品</button>
+      <button id="connections-tab" class="nav-item" type="button" aria-current="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8m-4-5v5m-4-13 2 2-2 2m5 0h3"/></svg> 客户端 <span id="connections-count" class="count">0</span></button>
+      <button id="providers-tab" class="nav-item" type="button" aria-current="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="7" rx="2"/><rect x="4" y="14" width="16" height="7" rx="2"/><path d="M8 6.5h.01M8 17.5h.01M12 6.5h4m-4 11h4"/></svg> 模型服务</button>
+      <div id="plugin-navigation" class="plugin-navigation" role="group" aria-label="已启用扩展" hidden></div>
     </nav>
     <details id="recent-panel" class="recent-panel" open><summary><span>最近流程 <span id="history-count" class="count">0</span></span><span class="disclosure">收起</span></summary>
       <p id="history-empty" class="muted" hidden>还没有流程。你的第一次创作会保存在这里。</p>
-      <nav id="history-list" aria-label="已保存的图片流程"></nav>
+      <nav id="history-list" aria-label="已保存的创作流程"></nav>
       <button id="load-more" class="quiet full" type="button" hidden>加载更多</button>
     </details>
     <div class="sidebar-bottom"><span class="workspace-avatar" aria-hidden="true">i</span><span>本地工作区<small>作品与任务保存在 Core</small></span></div>
@@ -31,24 +40,56 @@
   <div class="main-area">
   <header class="site-header">
     <span class="breadcrumb">工作区 <span aria-hidden="true">/</span> <strong id="page-label">Iris Core</strong></span>
-    <div class="header-actions"><span id="mode-badge" class="badge">只读预览</span><button id="appearance-open" class="quiet" type="button">外观</button><button id="theme" class="quiet" type="button">深色</button><button id="disconnect" class="quiet" type="button" hidden>断开</button></div>
+    <div class="header-actions"><span id="mode-badge" class="badge">只读预览</span><button id="appearance-open" class="quiet" type="button">外观</button><button id="disconnect" class="quiet" type="button" hidden>退出登录</button></div>
   </header>
   <main id="main-content" tabindex="-1">
     <section id="connection" class="connection card" aria-labelledby="connection-title">
       <p class="eyebrow">YOUR LOCAL WORKSPACE</p>
       <h1 id="connection-title">接回你的创作</h1>
-      <p class="intro">让一个想法，从图片开始。连接本地工作区，继续创作或接回已保存的作品。</p>
-      <label class="file-button" for="token-file">选择 Token 文件<input id="token-file" type="file" aria-describedby="token-help"></label>
-      <p id="token-help" class="muted">使用启动命令生成的会话文件。Token 只在本标签页内存中使用，刷新后需重新连接。</p>
-      <details id="paste-panel"><summary><span>粘贴 Token</span><span class="disclosure">展开</span></summary>
+      <p class="intro">让想法成为作品。连接本地工作区，继续创作或接回已保存的作品。</p>
+      <div id="password-login" hidden>
+        <p id="password-hint" class="muted">正在读取工作台登录状态…</p>
+        <form id="password-form" autocomplete="on">
+          <input name="username" value="Iris" autocomplete="username" hidden>
+          <label for="password">访问口令</label>
+          <div class="password-row"><input id="password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required spellcheck="false" autocapitalize="none"><button id="password-show" class="quiet" type="button" aria-pressed="false" aria-controls="password">显示</button></div>
+          <div id="password-confirm-row" hidden><label for="password-confirm">再次输入口令</label><input id="password-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" spellcheck="false" autocapitalize="none"></div>
+          <label class="password-remember" for="password-remember"><input id="password-remember" type="checkbox" checked><span>记住此设备 <small>30 天</small></span></label>
+          <button id="password-submit" class="full" type="submit" disabled>进入工作台</button>
+        </form>
+        <button id="password-retry" class="quiet" type="button" hidden>重新读取登录状态</button>
+        <details class="password-help"><summary><span>忘记口令</span><span class="disclosure">展开</span></summary><p>可在运行 Iris 的终端重置工作台口令。重置会注销工作台登录，作品、任务和 MCP 连接会保留。</p><code>dsh-iris web password reset --data-root 你的工作区路径</code></details>
+      </div>
+      <p id="login-help" class="muted">点击启动终端给出的登录链接，即可进入。登录后刷新可继续；链接失效时，可在终端重新获取。</p>
+      <details id="paste-panel"><summary><span>备用登录</span><span class="disclosure">展开</span></summary>
+        <label class="file-button" for="token-file">选择 Token 文件<input id="token-file" type="file" aria-describedby="token-help"></label>
+        <p id="token-help" class="muted">使用本次启动生成的文件，或粘贴其中的 Token。退出会清除当前标签页的登录，服务重启后需要重新登录。</p>
         <form id="connect-form">
           <label for="token">会话 Token</label>
           <div class="token-row"><input id="token" type="password" autocomplete="off" spellcheck="false" maxlength="128" placeholder="粘贴启动时生成的 Token"><button id="connect" type="submit">连接</button></div>
         </form>
       </details>
-      <p class="scope-note">连接与浏览不会生成图片。创作和作品选择按服务已开启的权限提供。</p>
+      <p class="scope-note">连接与浏览不会提交媒体任务。创作和作品选择按服务已开启的权限提供。</p>
     </section>
     <p id="feedback" role="status" aria-live="polite" hidden></p>
+    <p id="session-notice" class="field-note" role="status" aria-live="polite" hidden></p>
+    <section id="overview-panel" class="overview-panel" aria-labelledby="overview-title" hidden>
+      <div class="overview-welcome card">
+        <div><p class="eyebrow">IRIS WORKSPACE</p><h1 id="overview-title">你的多模态工作区</h1><p class="muted">从一个想法开始，让作品在不同工具之间接续。</p></div>
+        <div class="overview-welcome-actions"><button id="overview-create" type="button">开始创作</button><button id="overview-gallery" class="secondary" type="button">浏览作品</button></div>
+      </div>
+      <dl id="overview-stats" class="overview-stats" aria-label="当前工作区"></dl>
+      <div class="overview-section-heading"><div><h2>创作能力</h2><p class="muted">入口、配置与实测记录分别呈现。</p></div><button id="overview-refresh" class="quiet" type="button">刷新状态</button></div>
+      <p id="overview-feedback" class="field-note" role="status" hidden></p>
+      <div id="overview-capabilities" class="overview-capabilities"></div>
+      <details id="overview-tools" class="overview-tools card"><summary><span>更多 Core 工具 <small>现有入口与覆盖范围</small></span><span class="disclosure">展开</span></summary><div class="overview-tool-grid">
+        <article><h3>裁剪与图片差异</h3><p>CLI 可裁剪图片、保存差异热力图；创作页已有图片比较，独立工具面板待接入。</p><code>run crop · media diff</code></article>
+        <article><h3>视频抽帧</h3><p>CLI 可提取视频帧并保存为作品，需系统 ffmpeg / ffprobe；面板与 MCP 待接入。</p><code>media frames</code></article>
+        <article><h3>HTML 截图</h3><p>CLI 使用显式指定的 Chromium，DSH 使用宿主浏览器；Core 面板与 MCP 待接入。</p><code>media html</code></article>
+        <article><h3>提示词优化与组装</h3><p>共享核心与 DSH 泡泡已有实现，需对应文本模型服务；独立 Core 面板与 MCP 待接入。</p></article>
+      </div></details>
+      <details id="overview-notes" class="overview-notes"><summary><span>这些状态如何判断</span><span class="disclosure">展开</span></summary><p>模型候选来自当前工作区配置，标注用途不等于接口可调用。历史实测仅表示记录时的结果；打开或刷新总览不会测试模型、同步远端目录或提交媒体任务。</p><p>作品页展示当前工作区的流程及其关联作品，不会自动汇入其他数据根或旧 DSH 工作区。</p></details>
+    </section>
     <details id="recovery-panel" class="card compact-details" hidden>
       <summary><span>操作核对 <small id="recovery-summary"></small></span><span class="disclosure">展开</span></summary>
       <p id="recovery-note" class="muted" role="status" aria-live="polite"></p>
@@ -57,8 +98,22 @@
       <button id="recovery-clear" class="quiet" type="button" hidden>处理本地标识</button>
       <div id="recovery-clear-confirm" hidden><p class="field-note">清除后，本标签页将不再按这些标识核对未知操作。原流程和任务仍保留，也不会停止执行。请先核对原结果；确定清除本地标识吗？</p><button id="recovery-clear-yes" class="secondary danger" type="button">确认清除本地标识</button><button id="recovery-clear-no" class="quiet" type="button">返回</button></div>
     </details>
+    <p id="plugin-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+    <section id="plugin-page-panel" hidden aria-labelledby="plugin-page-title">
+      <div class="page-heading"><div><p class="eyebrow">WORKSPACE EXTENSION</p><h1 id="plugin-page-title"></h1><p id="plugin-page-identity" class="muted"></p></div></div>
+      <div id="plugin-page-slot" class="card plugin-slot"></div>
+    </section>
+    <section id="plugin-history-panel" hidden aria-labelledby="plugin-history-title">
+      <div class="page-heading"><div><p class="eyebrow">SAVED OPERATIONS</p><h1 id="plugin-history-title">业务记录</h1><p class="muted">记录与作品由 Core 保存，插件移除后仍可查看。</p></div><button id="plugin-history-refresh" class="quiet" type="button">重新读取</button></div>
+      <p id="plugin-history-feedback" class="field-note" role="status"></p><div id="plugin-history-list"></div>
+    </section>
+    <section id="plugin-settings-panel" hidden aria-labelledby="plugin-settings-title">
+      <div class="page-heading"><div><p class="eyebrow">EXTENSION SETTINGS</p><h1 id="plugin-settings-title">扩展设置</h1><p class="muted">展开需要的表单，保存前请核对修改。</p></div></div>
+      <div id="plugin-settings-list"></div>
+    </section>
     <section id="gallery-panel" hidden aria-labelledby="gallery-title">
       <div class="page-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h1 id="gallery-title">灵感，留在这里。</h1><p class="muted">每一次选择，都可以回到原来的创作。</p></div><button id="gallery-new" class="secondary" type="button">＋ 新建流程</button></div>
+      <div id="gallery-types" class="view-switch gallery-types" aria-label="作品类别" hidden><button type="button" data-gallery-kind="image" aria-pressed="true">图片</button><button type="button" data-gallery-kind="speech" aria-pressed="false">语音</button><button type="button" data-gallery-kind="transcribe" aria-pressed="false">转写</button></div>
       <div class="gallery-toolbar"><div id="gallery-filters" class="view-switch" aria-label="作品筛选"><button type="button" data-filter="all" aria-pressed="true">全部 <span>0</span></button><button type="button" data-filter="selected" aria-pressed="false">已选择 <span>0</span></button><button type="button" data-filter="unselected" aria-pressed="false">未选择 <span>0</span></button></div><button id="gallery-refresh" class="quiet" type="button">刷新</button></div>
       <p id="gallery-feedback" class="muted" role="status" aria-live="polite"></p>
       <div id="gallery-grid" class="gallery-grid" aria-busy="false"></div>
@@ -66,84 +121,126 @@
       <button id="gallery-more" class="secondary" type="button" hidden>加载更多作品</button>
     </section>
     <section id="connections-panel" hidden aria-label="连接中心">
-      <div class="connections-heading"><div><p class="eyebrow">CONNECT YOUR HARNESS</p><h1>把能力接到你的工具</h1><p class="muted">自由命名连接，选择权限，再将配置交给支持 MCP 的客户端。</p></div></div>
+      <div class="page-heading management-heading"><div><h1>客户端连接</h1><p class="muted">让你的编程助手，通过 MCP 使用 Iris。</p></div><div class="page-actions"><button id="connections-refresh" class="quiet" type="button">刷新</button><button id="connection-new" class="secondary" type="button">＋ 新建连接</button></div></div>
       <p id="connections-feedback" role="status" aria-live="polite" hidden></p>
       <div class="connections-workspace">
-        <aside class="card connection-sidebar">
-          <div class="section-heading"><h2>我的连接</h2><button id="connections-refresh" class="quiet" type="button">刷新</button></div>
-          <div id="connections-list"></div><p id="connections-empty" class="muted">尚无连接</p>
-          <button id="connection-new" class="secondary full" type="button">＋ 新建连接</button>
-        </aside>
-        <section class="card connection-editor" aria-labelledby="connection-editor-title">
-          <div class="section-heading"><h2 id="connection-editor-title">新建连接</h2><span id="connection-state" class="badge">尚未保存</span></div>
-          <dl id="connection-facts" hidden></dl>
+        <div id="connections-overview"><div id="connections-list" class="service-grid"></div><div id="connections-empty" class="management-empty"><span class="empty-mark" aria-hidden="true">MCP</span><h2>连接你的第一个客户端</h2><p>自由命名，选择要开放的能力，再把配置交给客户端。</p></div>
+          <details id="connection-help" class="management-help"><summary><span>如何接入 MCP？</span><span class="disclosure">展开</span></summary><div class="connection-guide" aria-label="MCP 接入步骤"><ol><li><strong>1 · 创建连接</strong><span>命名并选择功能、权限</span></li><li><strong>2 · 生成配置</strong><span>选择客户端支持的接入方式</span></li><li><strong>3 · 客户端启用</strong><span>导入 MCP 配置，连接后刷新这里</span></li></ol><p id="connection-service-note" class="field-note"></p></div></details>
+          <details id="connection-contributions" class="management-help" hidden><summary><span>已加载的插件贡献</span><span class="disclosure">展开</span></summary><p class="field-note">加载与查看不会授予权限。以下列出声明与接入状态，客户端仍只能使用你明确选择的工具。</p><ul id="connection-contribution-list"></ul></details>
+        </div>
+        <section id="connection-editor" class="card connection-editor management-editor" hidden aria-labelledby="connection-editor-title">
+          <div class="editor-heading"><button id="connection-back" class="quiet back-button" type="button">← 返回列表</button><div class="section-heading"><h2 id="connection-editor-title">新建连接</h2><span id="connection-state" class="badge">尚未保存</span></div></div>
+          <div id="connection-leave-confirm" class="inline-confirm" hidden><p>放弃未保存的连接修改并返回列表？</p><button id="connection-leave-discard" type="button" class="secondary">放弃修改</button><button id="connection-leave-keep" type="button" class="quiet">继续编辑</button></div>
+          <nav class="editor-tabs" aria-label="连接设置分组"><button type="button" data-connection-view="settings" aria-pressed="true">功能与权限</button><button type="button" data-connection-view="delivery" aria-pressed="false">接入配置</button><button type="button" data-connection-view="details" aria-pressed="false">详情与管理</button></nav>
+          <div id="connection-view-settings">
           <form id="connection-form">
             <fieldset id="connection-fields">
               <label for="connection-name">连接名称</label><input id="connection-name" maxlength="80" required placeholder="例如：我的编程助手 · 工作项目" autocomplete="off">
-              <h3>媒体功能</h3><div id="connection-media" class="media-options"></div><div id="connection-image-options" class="scope-options"></div><p class="field-note">图片生成与修改分别选择；其余功能将逐步接入。</p>
-              <h3>操作权限</h3><div id="connection-scopes" class="scope-options"></div><p class="field-note">执行可能产生供应商费用；停止只结束本地等待。</p>
+              <h3>媒体功能</h3><div id="connection-media" class="media-options"></div><div id="connection-image-options" class="scope-options"></div><details id="connection-future" class="tool-details"><summary><span>更多功能 <small>尚未接入</small></span><span class="disclosure">展开</span></summary><div id="connection-media-unavailable" class="media-options"></div></details>
+              <div id="connection-plugin-section" hidden><h3>插件业务</h3><div id="connection-plugin-options" class="scope-options"></div><p class="field-note">默认不开放。选择具体业务后，再选择允许的操作权限；安装插件不会自动授权。</p></div>
+              <h3>操作权限</h3><div id="connection-scopes" class="scope-options"></div><p class="field-note">只读可浏览记录；插件业务还需允许执行。绘图还需开放“导入与创建”和“执行流程”。执行可能产生供应商费用；停止只结束本地等待。</p>
               <details id="connection-tool-details" class="tool-details"><summary><span>工具细选 <small id="connection-tool-count"></small></span><span class="disclosure">展开</span></summary><div id="connection-tools"></div></details>
-              <div class="connection-form-actions"><button id="connection-save" type="submit">创建连接</button><span id="connection-save-note" class="muted">创建只保存配置，不调用模型。</span></div>
+            <div class="connection-form-actions"><button id="connection-save" type="submit">创建连接</button><span id="connection-save-note" class="muted">创建只保存配置，不调用模型。</span></div>
             </fieldset>
           </form>
+          </div>
+          <div id="connection-view-delivery" hidden>
           <section id="connection-export" class="connection-section" hidden aria-labelledby="export-title">
             <h3 id="export-title">接入配置</h3><p class="field-note">按已保存的授权生成。把配置加入客户端，重新连接后在这里刷新。</p>
             <label class="template-choice" for="connection-template">接入模板<select id="connection-template"><option value="">手动选择</option></select></label>
-            <details class="tool-details"><summary><span>导入模板</span><span class="disclosure">展开</span></summary><p class="field-note">模板只选择传输与 JSON 格式，不增加权限、不执行命令。其他客户端可手动映射单条 entry。</p><div class="export-actions"><button id="connection-template-example" class="quiet" type="button">下载示例</button><button id="connection-template-import" class="quiet" type="button">导入 JSON</button><input id="connection-template-file" type="file" accept="application/json,.json" hidden></div></details>
+            <details class="tool-details"><summary><span>导入模板</span><span class="disclosure">展开</span></summary><p class="field-note">模板只选择传输与配置格式，不增加权限、不执行命令，也不查找或改写客户端文件。其他客户端可手动映射单条 entry。</p><div class="export-actions"><button id="connection-template-example" class="quiet" type="button">下载示例</button><button id="connection-template-import" class="quiet" type="button">导入 JSON</button><input id="connection-template-file" type="file" accept="application/json,.json" hidden></div></details>
             <p id="connection-template-note" class="field-note" hidden></p>
-            <div class="export-options"><label>传输<select id="connection-transport"><option value="stdio">stdio · 本机</option><option value="http">HTTP · 本机</option></select></label><label>格式<select id="connection-format"><option value="mcpServers">mcpServers</option><option value="entry">单条 entry</option></select></label><button id="connection-export-button" class="secondary" type="button">生成配置</button></div>
+            <div class="export-options"><label>传输<select id="connection-transport"><option value="stdio">stdio · 本机</option><option value="http">HTTP · 本机</option></select></label><label>格式<select id="connection-format"><option value="mcpServers">mcpServers</option><option value="entry">单条 entry</option><option value="claude-json">Claude Code · JSON</option><option value="codex-toml">Codex · TOML</option></select></label><button id="connection-export-button" class="secondary" type="button">生成配置</button></div>
+            <p id="connection-transport-note" class="field-note"></p>
+            <p class="field-note">按所选客户端合并 JSON 或 TOML，保留已有配置，然后在客户端启用。其他客户端也可手动填写单条 entry。</p>
             <div id="connection-export-result" hidden><p id="connection-export-note" class="field-note"></p><textarea id="connection-configuration" readonly spellcheck="false" rows="7" aria-label="MCP 接入配置"></textarea><div class="export-actions"><button id="connection-copy" class="quiet" type="button">复制</button><button id="connection-download" class="quiet" type="button">下载 JSON</button><button id="connection-clear-export" class="quiet" type="button">隐藏配置</button></div></div>
             <details id="connection-skill-details" class="tool-details"><summary><span>连接专属 Skill</span><span class="disclosure">展开</span></summary><p class="field-note">英文说明附中文标题，仅包含当前有效工具。下载文件不含密钥；权限改变后请重新生成并安装。</p><button id="connection-skill-generate" class="secondary" type="button">生成说明</button><div id="connection-skill-result" hidden><textarea id="connection-skill-preview" readonly spellcheck="false" rows="8" aria-label="Skill 说明预览"></textarea><p class="field-note">下载后，在本机明确指定客户端的 Skills 目录安装：</p><code class="skill-install-command">dsh-iris skills install --bundle /absolute/path/iris-skill.json --directory /absolute/path/skills</code><div class="export-actions"><button id="connection-skill-download" class="quiet" type="button">下载 Skill 文件</button><button id="connection-skill-clear" class="quiet" type="button">隐藏说明</button></div></div></details>
           </section>
+          </div>
+          <div id="connection-view-details" hidden><dl id="connection-facts" hidden></dl>
           <section id="connection-revoke-section" class="connection-section" hidden>
-            <button id="connection-revoke" class="quiet danger" type="button">撤销连接</button>
+            <div class="export-actions"><button id="connection-revoke" class="quiet danger" type="button">撤销连接</button><button id="connection-delete" class="quiet danger" type="button">删除连接</button></div>
             <div id="connection-revoke-confirm" hidden><p>撤销后，已导出的配置立即失效。已接收的操作继续保留；不会取消供应商任务或保证停止计费。</p><div class="export-actions"><button id="connection-revoke-yes" class="secondary danger" type="button">确认撤销</button><button id="connection-revoke-no" class="quiet" type="button">返回</button></div></div>
+            <div id="connection-delete-confirm" hidden><p>删除后，连接将从列表移除，旧配置失效。作品、任务和已接收的操作保留；不会取消供应商任务。Iris 保留私有撤销档案，不会修改客户端的 MCP 配置。</p><div class="export-actions"><button id="connection-delete-yes" class="secondary danger" type="button">确认删除</button><button id="connection-delete-no" class="quiet" type="button">返回</button></div></div>
           </section>
+          </div>
         </section>
       </div>
     </section>
     <section id="providers-panel" hidden aria-labelledby="providers-title">
-      <div class="page-heading"><div><p class="eyebrow">MADE FOR YOUR MODELS</p><h1 id="providers-title">为创作，接好模型。</h1><p class="muted">配置媒体连接与模型用途，所有已授权的工具共用同一份设置。</p></div><button id="providers-refresh" class="quiet" type="button">重新读取</button></div>
+      <div class="page-heading management-heading"><div><h1 id="providers-title">模型服务 <span id="providers-count" class="count">0</span></h1><p class="muted">连接 API 或 ComfyUI，为创作准备好模型。</p></div><div class="page-actions"><button id="providers-refresh" class="quiet" type="button">重新读取</button><button id="provider-new" class="secondary" type="button">＋ 添加服务</button></div></div>
       <p id="providers-feedback" role="status" aria-live="polite" hidden></p>
+      <nav id="provider-sections" class="editor-tabs provider-sections" aria-label="模型服务分组"><button type="button" data-provider-section="suppliers" aria-pressed="true">供应商</button><button type="button" data-provider-section="pools" aria-pressed="false">功能模型池</button><button type="button" data-provider-section="health" aria-pressed="false">健康检测</button></nav>
+      <div id="provider-close-confirm" class="inline-confirm" hidden><p>放弃未保存修改并离开？</p><div class="export-actions"><button id="provider-close-discard" class="secondary" type="button">放弃修改</button><button id="provider-close-cancel" class="quiet" type="button">继续编辑</button></div></div>
       <div id="providers-reload-confirm" class="card reload-confirm" hidden><p>重新读取将放弃当前未保存编辑，并载入文件中的最新设置。</p><button id="providers-reload-yes" class="secondary" type="button">确认重新读取</button><button id="providers-reload-no" class="quiet" type="button">保留草稿</button></div>
+      <section id="provider-pool-panel" class="card provider-pool-panel" hidden aria-label="功能模型池"><p class="field-note">自动按已确认用途选择；手动按优先顺序；停用停止新调用。池变化只影响新请求。</p><form id="provider-pool-form"><fieldset id="provider-pool-fields"><div id="provider-assignments"></div><div class="provider-footer"><button id="provider-pool-save" type="submit">保存模型池</button><button id="provider-pool-cancel" class="quiet" type="button">取消更改</button><p id="provider-pool-note" class="field-note"></p></div></fieldset></form></section>
+      <section id="provider-health-panel" hidden aria-label="能力健康与连接检查"><div class="section-heading"><h2>能力光谱</h2><button id="provider-health-refresh" class="quiet" type="button">刷新状态</button></div><p class="field-note">候选、近期成功与当前受阻分别呈现。刷新只读本地记录。</p><div id="provider-spectrum" class="provider-spectrum"></div><details id="provider-health-details" class="card provider-health-details"><summary><span id="provider-health-title">能力详情</span><span class="disclosure">展开</span></summary><div id="provider-health-models"></div></details><h2 class="provider-check-heading">连接检查与保活</h2><p class="field-note">只读取目录或 ComfyUI 服务状态，不生成媒体；连接可达不等于模型可用。保活默认关闭，仅本次 Core 服务生效。</p><div id="provider-monitors" class="service-grid"></div></section>
       <div class="providers-workspace">
-        <aside class="card provider-sidebar"><div class="section-heading"><h2>供应商</h2><span id="providers-count" class="count">0</span></div><div id="providers-list"></div><p id="providers-empty" class="muted">先连接一个媒体服务。</p><button id="provider-new" class="secondary full" type="button">＋ 添加供应商</button></aside>
-        <section class="card provider-editor" aria-labelledby="provider-editor-title">
-          <div class="section-heading"><h2 id="provider-editor-title">添加供应商</h2><span id="provider-state" class="badge">未保存</span></div>
+        <div id="providers-overview"><div id="providers-list" class="service-grid"></div><div id="providers-empty" class="management-empty"><span class="empty-mark" aria-hidden="true">API</span><h2>从一个模型服务开始</h2><p>使用自己的 API，或连接已经运行的 ComfyUI。</p></div></div>
+        <section id="provider-editor" class="card provider-editor management-editor" hidden aria-labelledby="provider-editor-title">
+          <div class="editor-heading"><button id="provider-back" class="quiet back-button" type="button">← 返回列表</button><div class="section-heading"><div class="provider-heading"><h2 id="provider-editor-title">添加供应商</h2><span id="provider-comfy-mode" class="provider-mode-pill" hidden><span aria-hidden="true">✦</span> ComfyUI Studio</span></div><span id="provider-state" class="badge">未保存</span></div></div>
+          <nav class="editor-tabs" aria-label="模型服务设置分组"><button type="button" data-provider-view="connection" aria-pressed="true">连接</button><button type="button" data-provider-view="models" aria-pressed="false">模型与用途</button><button type="button" data-provider-view="workflow" aria-pressed="false" hidden>ComfyUI 工作流</button></nav>
           <form id="provider-form"><fieldset id="provider-fields">
+            <section id="provider-view-connection">
             <label class="field-label" for="provider-preset">快速填写</label><select id="provider-preset"><option value="custom">自定义兼容服务</option><option value="openai">OpenAI · Images</option><option value="dashscope">百炼 · DashScope</option><option value="comfyui">ComfyUI · 已有服务</option></select><p id="provider-preset-note" class="field-note">按服务文档填写；编程订阅或聊天登录不等于媒体 API 认证。</p>
-            <div class="provider-two-fields"><div><label class="field-label" for="provider-name">名称</label><input id="provider-name" required maxlength="80" placeholder="例如：我的图片服务" autocomplete="off"></div><div><label class="field-label" for="provider-auth">认证方式</label><select id="provider-auth"><option value="bearer">API Key</option><option value="none">无需认证 · 本地服务</option></select></div></div>
+            <div class="provider-two-fields"><div><label class="field-label" for="provider-name">名称</label><input id="provider-name" required maxlength="80" placeholder="例如：我的媒体服务" autocomplete="off"></div><div><label class="field-label" for="provider-auth">认证方式</label><select id="provider-auth"><option value="bearer">API Key</option><option value="none">无需认证</option></select></div></div>
             <label class="field-label" for="provider-url">Base URL</label><input id="provider-url" type="url" required maxlength="2048" placeholder="https://example.com/v1" autocomplete="off">
             <div class="provider-two-fields"><div><label class="field-label" for="provider-key-action">密钥操作 <small id="provider-key-state"></small></label><select id="provider-key-action"><option value="keep">保留已有密钥</option><option value="replace">填写 / 替换密钥</option><option value="clear">清除密钥</option></select></div><div id="provider-key-field" hidden><label class="field-label" for="provider-key">新 API Key</label><input id="provider-key" type="password" autocomplete="new-password" maxlength="8192" spellcheck="false" placeholder="仅填写新密钥"></div></div>
             <label class="provider-enabled"><input id="provider-enabled" type="checkbox" checked> 启用此供应商</label>
             <details id="provider-advanced" class="tool-details"><summary><span>高级连接设置</span><span class="disclosure">展开</span></summary><label class="field-label" for="provider-protocol">默认媒体协议</label><select id="provider-protocol"></select><label class="field-label" for="provider-media-url">媒体专用 Base URL（可选）</label><input id="provider-media-url" type="url" maxlength="2048" placeholder="留空沿用 Base URL"><p id="provider-id-note" class="field-note"></p></details>
-            <details id="comfyui-tools" class="tool-details" hidden><summary><span>ComfyUI 工作流 <small>文生图</small></span><span class="disclosure">展开</span></summary><p class="field-note">连接你已有的服务。将 ComfyUI 中的工作流导出为 API 格式，再明确绑定输入与输出。首版一次接收一张图片，不安装服务或节点。</p><div class="export-actions"><a id="comfyui-open" class="quiet" target="_blank" rel="noopener noreferrer" hidden>打开 ComfyUI ↗</a><label class="file-button secondary" for="comfyui-file">导入 API 工作流<input id="comfyui-file" type="file" accept="application/json,.json"></label></div><p id="comfyui-note" class="field-note" role="status">最多 40 KiB。导入只保存草稿，不执行工作流。</p><div id="comfyui-bindings" hidden><label class="field-label" for="comfyui-model">工作流名称 / 模型 ID</label><input id="comfyui-model" maxlength="120" placeholder="例如：my-sdxl"><label class="field-label" for="comfyui-prompt-node">提示词节点（替换 text）</label><select id="comfyui-prompt-node"></select><label class="field-label" for="comfyui-output-node">图片输出节点</label><select id="comfyui-output-node"></select><label class="field-label" for="comfyui-size-node">尺寸节点（可选）</label><select id="comfyui-size-node"></select><p class="field-note">其余参数和 seed 沿用你的工作流；输出节点须恰好产生一张图片。工作流可调用其节点服务，请只导入你了解的流程。</p><button id="comfyui-add" class="secondary" type="button">加入模型草稿</button></div></details>
+            </section>
+            <section id="provider-view-workflow" hidden>
+            <details id="comfyui-tools" class="tool-details" hidden>
+              <summary><span>ComfyUI 工作流 <small>文生图</small></span><span class="disclosure">展开</span></summary>
+              <p class="field-note">导入 → 确认节点 → 开放参数 → 预览。连接已有服务，一次接收一张图片。</p>
+              <div class="export-actions"><a id="comfyui-open" class="quiet" target="_blank" rel="noopener noreferrer" hidden>打开 ComfyUI ↗</a><label class="file-button secondary" for="comfyui-file">导入 API 工作流<input id="comfyui-file" type="file" accept="application/json,.json"></label></div>
+              <p id="comfyui-note" class="field-note" role="status">最多 40 KiB。支持 API 图和完整 Iris v0/v1 模板，导入不执行生成。</p>
+              <div id="comfyui-bindings" hidden>
+                <label class="field-label" for="comfyui-model">工作流名称 / 模型 ID</label><input id="comfyui-model" maxlength="120" placeholder="例如：my-sdxl">
+                <details class="comfy-group"><summary><span>输入与输出节点</span><span class="disclosure">展开</span></summary>
+                  <label class="field-label" for="comfyui-prompt-node">正向提示词节点</label><select id="comfyui-prompt-node"></select>
+                  <label class="field-label" for="comfyui-output-node">图片输出节点</label><select id="comfyui-output-node"></select>
+                  <label class="field-label" for="comfyui-size-node">尺寸节点（可选）</label><select id="comfyui-size-node"></select>
+                </details>
+                <details id="comfyui-exposed" class="comfy-group"><summary><span>开放参数 <small id="comfyui-exposed-count">0 / 32</small></span><span class="disclosure">展开</span></summary><p class="field-note">勾选已有输入并命名。LoRA 模型与 CLIP 权重分别开放；不添加节点或安装模型。</p><div id="comfyui-slots"></div></details>
+                <section class="comfy-preview" aria-label="工作流表单预览"><div class="section-heading"><h3>使用时的表单</h3><span id="comfyui-preview-count" class="badge">固定工作流</span></div><div id="comfyui-preview"></div></section>
+                <p class="field-note">只读检查使用已保存连接；检查不保存、不入队。未开放的输入沿用模板，输出节点须恰好产生一张图。</p>
+                <div class="export-actions"><button id="comfyui-check" class="secondary" type="button">只读检查</button><button id="comfyui-add" class="secondary" type="button">加入模型草稿</button><button id="comfyui-discard" class="quiet" type="button">放弃导入</button></div>
+                <div id="comfyui-replace" class="comfy-confirm" role="group" aria-label="确认替换工作流" hidden><p>同名工作流已存在。替换后新调用使用新模板，旧任务保持原绑定。</p><div class="export-actions"><button id="comfyui-replace-yes" type="button">确认替换草稿</button><button id="comfyui-replace-no" class="quiet" type="button">取消</button></div></div>
+              </div>
+            </details>
+            </section>
+            <section id="provider-view-models" hidden>
             <div class="section-heading provider-section"><h3>模型与用途</h3><button id="provider-discover" class="quiet" type="button">读取模型目录</button></div><p id="provider-directory-note" class="field-note">先保存连接，再读取目录；目录成功不代表媒体实测通过。</p>
             <div class="provider-model-add"><input id="provider-model-id" maxlength="512" placeholder="手填模型 ID" aria-label="手填模型 ID" autocomplete="off"><button id="provider-model-add" class="secondary" type="button">添加</button></div>
             <div id="provider-directory" hidden><input id="provider-directory-search" type="search" placeholder="搜索目录" aria-label="搜索模型目录"><div id="provider-directory-list"></div><p class="field-note">添加后请明确勾选用途。目录只提供参考，不自动批准调用。</p></div>
-            <p class="field-note">勾选模型用途时，原本停用的对应功能会改为自动选择；可在下方功能模型池调整。</p><div id="provider-models"></div><p id="provider-models-empty" class="field-note">也可以先仅保存连接，稍后添加模型。</p>
-            <details id="provider-functions" class="tool-details"><summary><span>功能模型池 <small>全局设置</small></span><span class="disclosure">展开</span></summary><p class="field-note">“自动”按已确认用途与协议选择；“手动”按勾选顺序；“停用”停止新调用。视觉的宿主模型只适用于有对应宿主服务的场景。</p><div id="provider-assignments"></div></details>
-            <div class="provider-save-area"><p id="provider-save-summary" class="field-note"></p><p id="provider-binding-warning" class="field-note">改地址、协议、停用或清除认证可能阻止旧任务恢复。历史任务不会改绑或自动重新提交。</p><button id="provider-save" type="submit">保存设置</button><span id="provider-save-note" class="field-note">一次保存连接、模型和明确选择的用途，不调用生成。</span></div>
+            <p class="field-note">确认用途后可加入自动池；在“功能模型池”统一调整策略。</p><div id="provider-models"></div><p id="provider-models-empty" class="field-note">也可以先仅保存连接，稍后添加模型。</p>
+            </section>
+            <div class="provider-save-area"><p id="provider-save-summary" class="field-note"></p><div class="provider-footer"><button id="provider-save" type="submit">保存设置</button><button id="provider-cancel" class="quiet" type="button">取消编辑</button></div></div>
           </fieldset></form>
+          <details id="provider-management-tools" class="tool-details"><summary><span>供应商管理</span><span class="disclosure">展开</span></summary><p id="provider-binding-warning" class="field-note">停用可恢复；修改连接或删除可能影响旧任务恢复，不会取消远端任务或退款。删除仅检查当前 Core 工作区的依赖。</p><div class="export-actions"><button id="provider-toggle" class="secondary" type="button">停用供应商</button><button id="provider-delete" class="quiet danger" type="button">删除供应商</button></div><div id="provider-delete-confirm" class="inline-confirm" hidden><p id="provider-delete-impact"></p><button id="provider-delete-yes" class="secondary danger" type="button">确认删除</button><button id="provider-delete-no" class="quiet" type="button">取消</button></div></details>
         </section>
       </div>
     </section>
     <section id="workspace" hidden aria-labelledby="studio-title">
-      <div class="page-heading"><div><p class="eyebrow">A LITTLE ROOM TO CREATE</p><h1 id="studio-title">让想法，有画面。</h1><p class="muted">保留喜欢的部分，试一点新的可能。</p></div><button id="new-run" class="secondary" type="button">＋ 新建流程</button></div>
+      <div class="page-heading"><div><p class="eyebrow">A LITTLE ROOM TO CREATE</p><h1 id="studio-title">让想法，有画面。</h1><p id="studio-note" class="muted">保留喜欢的部分，试一点新的可能。</p></div><button id="new-run" class="secondary" type="button">＋ 新建流程</button></div>
       <div class="studio-grid">
       <details id="creation-settings" class="card composer" open>
         <summary><span>创作设置 <small id="input-summary">从一张图片开始</small></span><span class="disclosure">收起</span></summary>
         <form id="edit-form">
           <fieldset id="draft-fields">
-            <div id="creation-modes" class="view-switch creation-modes" aria-label="创作方式"><button type="button" data-creation-mode="generate" aria-pressed="false">生成图片</button><button type="button" data-creation-mode="edit" aria-pressed="true">修改图片</button></div>
+            <div id="creation-modes" class="view-switch creation-modes" aria-label="创作方式"><button type="button" data-creation-mode="generate" aria-pressed="false">生成图片</button><button type="button" data-creation-mode="edit" aria-pressed="true">修改图片</button><button type="button" data-creation-mode="tts" aria-pressed="false" hidden>语音合成</button><button type="button" data-creation-mode="transcribe" aria-pressed="false" hidden>音频转写</button></div>
             <div id="source-input">
             <label for="image-file" class="field-label">原图</label>
             <label id="image-drop" class="image-drop" for="image-file"><img id="input-preview" alt="待创作的原图" hidden><span><strong id="file-name">选择一张图片</strong><small>点击或拖入 PNG / JPEG / WebP</small></span><span class="upload-arrow" aria-hidden="true">↗</span><input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="image-help"></label>
             <p id="image-help" class="field-note">仅支持静态图片，最大 20 MiB。</p>
             </div>
-            <label for="model" class="field-label">图片模型 <small>配置候选</small></label><select id="model" required><option value="">读取模型…</option></select>
+            <div id="audio-source-input" hidden><label for="audio-file" class="field-label">原音频</label><label class="file-button secondary" for="audio-file">选择音频<input id="audio-file" type="file" accept="audio/wav,audio/x-wav,audio/mpeg,audio/ogg,audio/flac,.wav,.mp3,.ogg,.flac"></label><p id="audio-file-name" class="field-note">WAV / MP3 / OGG / FLAC，最大20 MiB。</p><audio id="audio-input-preview" controls preload="metadata" hidden></audio></div>
+            <label id="model-label" for="model" class="field-label">图片模型 <small>配置候选</small></label><select id="model" required><option value="">读取模型…</option></select>
             <label id="prompt-label" for="edit-prompt" class="field-label">想改些什么？</label><textarea id="edit-prompt" rows="4" maxlength="12000" required placeholder="描述想保留的细节，以及想尝试的变化…"></textarea>
-            <details id="advanced-settings" class="tool-details"><summary><span>高级参数</span><span class="disclosure">展开</span></summary><label for="edit-size" class="field-label">输出尺寸（可选）</label><input id="edit-size" maxlength="32" placeholder="使用模型默认值" autocomplete="off"><p class="field-note">填写模型支持的尺寸；留空使用默认值。</p></details>
+            <details id="speech-options" class="tool-details" hidden><summary><span>音色（可选）</span><span class="disclosure">展开</span></summary><label for="speech-voice" class="field-label">模型支持的音色标识</label><input id="speech-voice" maxlength="64" placeholder="留空沿用协议默认值" autocomplete="off"><p class="field-note">按所选模型的要求填写，不同模型的音色名称可能不同。</p></details>
+            <section id="comfy-creation" class="comfy-studio" aria-label="ComfyUI 工作流参数" hidden><div class="section-heading"><h3>工作流参数</h3><span class="badge">ComfyUI</span></div><p id="comfy-creation-summary" class="field-note"></p><div id="comfy-creation-fields"></div><button id="comfy-creation-check" type="button" class="quiet inline-button">检查参数并读取选项</button><p id="comfy-creation-note" class="field-note" role="status">尚未检查，不会自动生成。</p></section>
+            <details id="advanced-settings" class="tool-details"><summary><span>高级参数</span><span class="disclosure">展开</span></summary><label for="edit-size" class="field-label">输出尺寸（可选）</label><input id="edit-size" maxlength="32" placeholder="使用模型默认值" autocomplete="off"><p id="edit-size-note" class="field-note">填写模型支持的尺寸；留空使用默认值。</p></details>
           </fieldset>
           <div class="model-management"><button id="manage-models" class="quiet inline-button" type="button">管理模型 ↗</button></div>
           <button id="start-edit" class="full" type="submit" disabled>开始改图</button>
@@ -157,16 +254,22 @@
         <div class="canvas-toolbar"><span class="canvas-label">创作画布</span><div id="view-modes" class="view-switch" aria-label="比较方式"><button type="button" data-view="pair" aria-pressed="true">并排</button><button type="button" data-view="overlay" aria-pressed="false" disabled>叠图</button></div><button id="refresh" class="quiet" type="button">刷新</button></div>
         <div id="viewer-empty" class="viewer-empty"><img id="draft-preview" alt="待改图的本地预览" hidden><span class="empty-mark" aria-hidden="true">✧</span><h2>从一张图片开始</h2><p class="muted">选好原图，写下想法。作品会保存在当前工作区。</p></div>
         <div id="run-view" hidden>
+          <section id="audio-result" class="audio-result" hidden aria-label="音频与转写结果"><div class="audio-result-header"><span class="audio-result-icon" aria-hidden="true">♪</span><div><p class="eyebrow" id="audio-result-kind">AUDIO</p><h3 id="audio-result-title">原任务的作品</h3></div></div><div id="audio-source-result" hidden><p class="field-label">原音频</p><audio id="source-audio" controls preload="metadata"></audio></div><div id="audio-output-result" hidden><p class="field-label">合成语音</p><audio id="output-audio" controls preload="metadata"></audio></div><pre id="transcript-result" class="transcript-result" hidden></pre><p id="audio-result-note" class="field-note" role="status"></p></section>
           <div id="image-pair" class="image-pair">
             <figure id="source-card" class="image-card"><figcaption><span>原图</span><small id="source-selected" class="selected-label" hidden>已选择</small></figcaption><button id="source-preview" class="image-stage" type="button" aria-label="放大原图"><span id="source-placeholder" class="muted">读取中…</span><img id="source-image" alt="此流程保存的原图" hidden></button><p id="source-dimensions" class="image-dimensions"></p><button id="select-source" class="choice-button" type="button" aria-pressed="false" disabled>选择原图</button></figure>
             <figure id="output-card" class="image-card"><figcaption><span>生成结果</span><small id="output-selected" class="selected-label" hidden>已选择</small></figcaption><button id="output-preview" class="image-stage" type="button" aria-label="放大生成结果"><span id="output-placeholder" class="muted">尚无已保存的结果</span><img id="output-image" alt="此流程保存的生成结果" hidden></button><p id="output-dimensions" class="image-dimensions"></p><button id="select-output" class="choice-button" type="button" aria-pressed="false" disabled>选择结果</button></figure>
           </div>
           <div id="overlay-view" class="overlay-view" hidden><div class="overlay-stage"><img id="overlay-source" alt="叠图原图"><img id="overlay-output" alt="叠图结果"></div><label for="compare-split">原图 / 结果分界<input id="compare-split" type="range" min="0" max="100" value="50"></label></div>
+          <details id="plugin-preview" class="plugin-preview compact-details" hidden>
+            <summary><span>扩展预览</span><span class="disclosure">展开</span></summary>
+            <div class="plugin-preview-options"><label>作品<select id="plugin-artifact" aria-label="扩展预览作品"></select></label><label>查看方式<select id="plugin-renderer" aria-label="作品预览方式"></select></label></div>
+            <div id="plugin-preview-slot" class="plugin-slot"></div>
+          </details>
           <div class="run-heading"><div><h2 id="status-title"></h2><p id="status-message" class="muted"></p></div><button id="stop-operation" class="secondary" type="button" hidden>停止等待</button></div>
           <p id="operation-note" class="field-note" hidden></p>
           <div class="result-actions"><p id="selection-feedback" role="status" aria-live="polite">选择喜欢的版本，再保存到设备。</p><button id="download" type="button" disabled>下载已选作品</button></div>
           <div class="reuse-actions"><button id="reuse-selected" class="quiet" type="button" disabled>用已选作品新建</button><span id="run-meta" class="meta"></span></div>
-          <details id="run-details" class="run-details"><summary><span>流程详情</span><span class="disclosure">展开</span></summary><section class="prompt-section" aria-labelledby="prompt-title"><h3 id="prompt-title">修改要求</h3><p id="prompt"></p></section><dl id="run-facts"></dl><p class="muted">像素差异只描述图片变化，不代表质量评分。</p></details>
+          <details id="run-details" class="run-details"><summary><span>流程详情</span><span class="disclosure">展开</span></summary><section class="prompt-section" aria-labelledby="prompt-title"><h3 id="prompt-title">修改要求</h3><p id="prompt"></p></section><section id="run-parameters" class="comfy-record" hidden><h3>本次记录的工作流参数</h3><dl id="run-parameter-values"></dl><p class="field-note">来自此流程的输入快照；未记录的输入沿用当时模板。</p></section><dl id="run-facts"></dl><p class="muted">像素差异只描述图片变化，不代表质量评分。</p></details>
         </div>
       </section>
       </div>
@@ -176,9 +279,9 @@
   </div></div>
   <dialog id="image-dialog" aria-labelledby="image-dialog-title"><div class="section-heading"><h2 id="image-dialog-title">图片预览</h2><button id="close-image-dialog" class="quiet" type="button" aria-label="关闭图片预览">关闭</button></div><img id="expanded-image" alt="放大的作品"><p class="field-note">显示原始图片，不改变作品像素。</p></dialog>
   <dialog id="appearance-dialog" class="appearance-dialog" aria-labelledby="appearance-title">
-    <div class="section-heading"><div><p class="eyebrow">A TOUCH OF IRIS</p><h2 id="appearance-title">你的外观</h2></div><button id="appearance-close" class="quiet" type="button">关闭</button></div>
+    <div class="section-heading"><h2 id="appearance-title">外观</h2><button id="appearance-close" class="quiet" type="button">关闭</button></div>
     <div class="iris-swatch" aria-label="鸢尾六色渐变"></div><p class="field-note">一点鸢尾色，留白给创作。设置仅保存在此浏览器。</p>
-    <div class="provider-two-fields"><div><label class="field-label" for="appearance-theme">明暗</label><select id="appearance-theme"><option value="light">浅色</option><option value="dark">深色</option><option value="system">跟随系统</option></select></div><div><label class="field-label" for="appearance-accent">点缀色</label><select id="appearance-accent"><option value="iris">鸢尾 · 默认</option><option value="violet">紫罗兰</option><option value="rose">玫瑰</option><option value="apricot">杏色</option></select></div></div>
+    <label class="field-label" for="appearance-theme">颜色模式</label><select id="appearance-theme"><option value="light">浅色</option><option value="dark">深色</option><option value="system">跟随系统</option></select>
     <label class="field-label" for="appearance-density">界面密度</label><select id="appearance-density"><option value="comfortable">舒适</option><option value="compact">紧凑</option></select>
     <details id="appearance-background" class="tool-details"><summary><span>自选背景</span><span class="disclosure">展开</span></summary><label class="file-button secondary" for="appearance-image">选择本地图片<input id="appearance-image" type="file" accept="image/png,image/jpeg,image/webp" disabled></label><p id="appearance-image-note" class="field-note">没有自选背景。图片不会上传到 Core。</p><p class="field-note">PNG / JPEG / WebP，最大 5 MiB；图片比较区保持中性底色。</p><label class="field-label" for="appearance-position">位置</label><select id="appearance-position"><option value="center">居中</option><option value="top">顶部</option><option value="bottom">底部</option></select><label class="field-label" for="appearance-overlay">遮罩 <output id="appearance-overlay-value">86%</output></label><input id="appearance-overlay" type="range" min="50" max="100" value="86"><label class="field-label" for="appearance-blur">模糊 <output id="appearance-blur-value">0 px</output></label><input id="appearance-blur" type="range" min="0" max="20" value="0"><button id="appearance-remove" class="quiet" type="button" disabled>移除背景</button></details>
     <details class="tool-details"><summary><span>分享外观设置</span><span class="disclosure">展开</span></summary><p class="field-note">JSON 只包含配色与显示设置，不包含背景图片、连接或密钥。</p><div class="export-actions"><button id="appearance-export" class="quiet" type="button">导出设置</button><label class="file-button secondary" for="appearance-import">导入设置<input id="appearance-import" type="file" accept="application/json,.json"></label></div></details>

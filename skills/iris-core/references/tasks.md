@@ -2,6 +2,8 @@
 
 Inspect the Task in its original data root first. Tasks do not persist prompts; do not reconstruct the user's input from a task summary. Inspection has no provider side effects. Observe or recover only as needed for the current request.
 
+For ComfyUI and mixed API work, see [workflow and recovery details](comfyui.md). Keep each stage's original Task. A persistent Flow uses its original Run/Operation and binding; do not use a standalone retry to change that Flow's model or template.
+
 | Recorded fact | Action |
 |---|---|
 | Accepted and still queued/running | Observe or wait for the original Task; do not create another generation |

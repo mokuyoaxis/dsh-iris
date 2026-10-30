@@ -1,0 +1,8 @@
+{
+  "name": "iris-fixture-core-plugin",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": "./index.mjs",
+  "peerDependencies": { "@mokuyoaxis/dsh-iris": ">=0.3.0-alpha.1 <0.4.0" },
+  "private": true
+}

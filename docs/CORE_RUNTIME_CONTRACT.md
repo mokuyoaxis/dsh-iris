@@ -13,6 +13,7 @@ Core Runtime 由调用方显式创建、启动和释放。数据根、操作权�
 - `dataRoot` 必须由 DSH Host Adapter、CLI 或测试宿主选择后，以绝对路径显式传给 Core。Core 不读取 `DSH_HOME`、`HOME` 或当前工作目录来猜测位置。
 - 每个数据根只允许一个写者。写者必须在读取、初始化、规范化配置、接回旧作品、重建索引或启动任务观察器之前取得数据根租约，并持有到实例完成释放。
 - 其他进程可以用 `reader` 打开同一数据根，但只能执行无副作用的检查。DSH 正在使用该数据根时，CLI 写操作返回 `IRIS_CORE_DATA_ROOT_BUSY`；用户可以停止现有写者，或显式选择另一数据根。
+- 0.3 alpha应用运行时读取图库时，若索引引用的文件缺失且能确认写者仍活跃，返回 `IRIS_CORE_DATA_ROOT_BUSY`（本地 API 为 409 `IRIS_API_ROOT_BUSY`），提示写入结束后显式重试；维护提交窗口不再直接建议重建索引。正常读取仍允许；损坏 JSON、内容校验失败，以及没有活跃写者的缺失记录继续明确报错，不自动修复、重试或接管租约。
 - 只读不是隐式写入：不得创建缺失文件、修改权限、隔离损坏文件、修复/迁移记录、接回 `outputs/`、更新健康时间或启动任务观察器。
 - 写者冲突必须 fail-fast，普通 Runtime **不得自动夺取**租约。0.2.0 提供独立的 `runtime recover` 显式流程：先由只读 Doctor 报告 owner，再要求用户回显陈旧 PID，并在接管时复核证据、写私有审计；活跃、未知或损坏状态拒绝。PID 不存在本身仍不是跨主机安全证明。
 - 路径别名必须在取得租约前解析为同一物理数据根。不能只依赖字符串规范化或原子 `rename`：后者可以防止半写文件，不能阻止两个带缓存的进程互相覆盖。
@@ -22,6 +23,8 @@ Core Runtime 由调用方显式创建、启动和释放。数据根、操作权�
 0.2.2在原 v0 租约目录旁增加 `.iris-runtime-writer-v0.owner.json` 意图证据：完整私有 owner 先准备，再通过排他 hard link 原子发布，随后创建目录并链接 `owner.json`。新写者同时尊重目录和意图；创建中断仍保留完整 PID。文件系统不支持 hard link 时安全失败，不回退到可能半写的锁。Task、Artifact、配置格式和 CLI 参数不变，既有完整 v0 目录仍可诊断与显式恢复。
 
 正常释放先整体 rename 非空目录为本实例 UUID 的退役目录，最后撤下意图；不会先在占位目录里删除 owner。退役目录本身不占有固定租约，但若撤下意图前中断，剩余意图仍阻止普通 writer，需要在 owner 已退出且证据完整时显式恢复。意图撤下后的清理只涉及本实例退役证据，清理失败不阻止新 writer；遗留退役目录不会在下次启动时自动删除。
+
+0.3 alpha源码允许新根初始化保留一类未发布的租约准备文件：名称、完整 owner/PID 必须吻合，文件为普通文件、仅一个硬链接，且该 PID 已确认不存在。它不占有租约，初始化不删除或改写该证据。活跃、未知、损坏、符号链接及其他残留仍拒绝；这不是通配符清理或自动恢复授权。
 
 恢复使用数据根中按前驱 UUID 排他发布的完整记录，保留原 owner，不替换或删除旧恢复步骤。Doctor 的 `phase` 可为 `owned`、`pending`、`recovering`；恢复再次中断时回显最新报告中的 PID，并复核链中每个 PID 均为 missing。并发恢复与旧观察被新 writer 接替均拒绝，不向新租约目录写入陈旧 claim。无 PID 的旧空目录、仅剩 `.owner.stale-*` 而缺少恢复 owner 的旧现场、未知文件、损坏或符号链接证据仍拒绝并保留。
 
@@ -83,7 +86,7 @@ created --start--> started --dispose--> disposing --finish-dispose--> disposed
 
 首批执行面包括图片生成/改图、`artifact.import/inspect/list/export`、`media.diff`、`task.inspect/list`，以及显式 `task.observe/reobserve/redeliver/cancel`。观察每次至多一次 poll，没有后台轮询定时器；补交付复用原 Task/交付缓存，远端取消只有确认后才算成功。需要 Provider 时由入口注入解析函数，并按原 Task 的供应商、模型和 binding 核对；完整本地交付缓存不解析 Provider。
 
-应用运行时另装配 `flow.init/create/inspect/list/continue/select/export`，首版只提供 [固定改图流程](IMAGE_FLOW.md)。显式新根保存私有 Run 输入、预留 Task/比较 Artifact 身份和引用；Task 增加可选 `flowBinding` 记录 Run 与步骤，旧记录不批量改写。已有 Attempt 后继续操作只核对原事实、观察或补交付，不重新 submit；完整异步 Flow 结果也先缓存，再按原 Artifact ID 交付。原图和流程作品/Task 同步纳入删除保护。未发布源码的 [HTTP 执行与本地停止](CORE_SERVICE.md)、[owner 选择](LOCAL_SELECTION.md)复用上述实例；通用 Recipe 与 DSH Flow 界面仍待完成。
+应用运行时另装配 `flow.init/create/inspect/list/continue/select/export`，首版只提供 [固定改图流程](IMAGE_FLOW.md)。显式新根保存私有 Run 输入、预留 Task/比较 Artifact 身份和引用；Task 增加可选 `flowBinding` 记录 Run 与步骤，旧记录不批量改写。已有 Attempt 后继续操作只核对原事实、观察或补交付，不重新 submit；完整异步 Flow 结果也先缓存，再按原 Artifact ID 交付。原图和流程作品/Task 同步纳入删除保护。0.3 alpha源码的 [HTTP 执行与本地停止](CORE_SERVICE.md)、[owner 选择](LOCAL_SELECTION.md)复用上述实例；通用 Recipe 与 DSH Flow 界面仍待完成。
 
 ## DSH Adapter 与实例装配的当前边界
 
@@ -99,9 +102,9 @@ legacy 配置/任务/作品、上传与 SSE 仍保留原机制，不宣称同进
 
 I4B 在新空专用 Flow 根增加 `creation-requests/v0`，通过显式 `api init` 和 `--allow-local-writes` 开放 [本地上传/Run 创建](LOCAL_CREATION.md)。内部 [local-creation.js](../lib/local-creation.js)复用实例 FIFO，在一个 Core writer 中发布 prepared 意图、以预留身份提交作品/Run、标记 succeeded；已有 Run 允许进度推进，重放不覆盖。请求 store 无 HTTP/DSH/Runtime 依赖；新版 writer 检查未知/损坏格式，维护盘点保护未完成引用。成功结果删除后同 Key 不复活，现有 Task/Artifact/Run schema 保持。
 
-未发布 I4C 增加 [Operation 存储](LOCAL_OPERATIONS.md)及 [显式执行服务](CORE_SERVICE.md)：新空 Flow 根 v1、派生身份、有限状态与原绑定/引用保护；独立 runner 复用既有租约协议，业务调用仍走同一 writer。CLI 保持存储查询，并通过显式 HTTP 服务装配一次继续/本地停止；不转换已有 v0 根。
+0.3 alpha 的 I4C 增加 [Operation 存储](LOCAL_OPERATIONS.md)及 [显式执行服务](CORE_SERVICE.md)：新空 Flow 根 v1、派生身份、有限状态与原绑定/引用保护；独立 runner 复用既有租约协议，业务调用仍走同一 writer。CLI 保持存储查询，并通过显式 HTTP 服务装配一次继续/本地停止；不转换已有 v0 根。
 
-默认只读路径不取得 writer；0.2.7 的显式本地创建仅解析 descriptor，上传与创建不生成。未发布执行模式复用 CLI 的真实 Adapter/原绑定解析，并增加连接与有限 Operation HTTP；另有显式 [owner 选择 API](LOCAL_SELECTION.md)，在同 writer 内核对预期 Run 版本并原子保存，不新建格式或调用 Provider。创建、执行与选择独立于连接管理，页面媒体按钮仍待接入。0.2.7 已有 v0 请求区检查，其真实 CLI 拒写 v1；更早且不含该检查的 binary 不在此保证内。新专用根只交给已验收的 request-aware writer，不承诺断电跨文件事务。
+默认只读路径不取得 writer；0.2.7 的显式本地创建仅解析 descriptor，上传与创建不生成。alpha执行模式复用 CLI 的真实 Adapter/原绑定解析，并增加连接与有限 Operation HTTP；另有显式 [owner 选择 API](LOCAL_SELECTION.md)，在同 writer 内核对预期 Run 版本并原子保存，不新建格式或调用 Provider。创建、执行与选择独立于连接管理；当前 [Core 页面](LOCAL_WEB.md)已接通这些入口，权限未开启时保持只读。0.2.7 已有 v0 请求区检查，其真实 CLI 拒写 v1；更早且不含该检查的 binary 不在此保证内。新专用根只交给已验收的 request-aware writer，不承诺断电跨文件事务。
 
 作品存储新增内部 `inspectCoreArtifactMetadata`，用于在读取大文件前验证清单与普通文件大小；该元数据入口不核验完整字节哈希，不能单独据此向外提供媒体。HTTP Host 在限额内继续使用 `readCoreArtifactBytes` 并复核已取字节的摘要，才返回图片。既有作品读取、持久化格式与内容哈希要求保持。
 

@@ -1,8 +1,8 @@
 # 固定图片流程（0.2.7）
 
-未发布源码另提供 [image-generate/v0 与 ComfyUI 入口](IMAGE_GENERATION.md)，需显式的新 v2 执行根；下文保留 0.2.7 的原固定编辑流程，旧根不自动迁移。
+0.3 alpha源码另提供 [image-generate/v0 与 ComfyUI 入口](IMAGE_GENERATION.md)，需显式的新 v2 执行根；下文保留 0.2.7 的原固定编辑流程，旧根不自动迁移。
 
-未发布源码可通过 [Core 执行服务](CORE_SERVICE.md)、正式 MCP 和 DSH 可选共享 Flow 连接消费同一固定流程，另有显式启用的 [owner 持久选择 API](LOCAL_SELECTION.md)。真实 [Core 工作台](LOCAL_WEB.md)已接入创作、执行与选择；本文保留已发布 0.2.7 的 CLI 使用方式。
+0.3 alpha源码可通过 [Core 执行服务](CORE_SERVICE.md)、正式 MCP 和 DSH 可选共享 Flow 连接消费同一固定流程，另有显式启用的 [owner 持久选择 API](LOCAL_SELECTION.md)。真实 [Core 工作台](LOCAL_WEB.md)已接入创作、执行与选择；本文保留已发布 0.2.7 的 CLI 使用方式。
 
 0.2.7 提供 `image-edit/v0`：导入原图 → 指定模型改图 → 本地像素比较 → 选择原图或新版 → 导出。真实执行入口是独立 CLI 和内部应用运行时，尚未接入 DSH 工作台或真实独立 Web；[Web Demo](WEB_PROTOTYPE.md)仅说明面向 0.3.0 的交互方向。本流程从 npm 0.2.7 起随包分发。
 

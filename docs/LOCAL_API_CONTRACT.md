@@ -1,12 +1,16 @@
 # 独立本地 API 契约（0.3 / I4）
 
-0.2.7 已实现 **I4A 默认只读**与 **I4B 显式本地创建**：显式本机监听、Bearer/Host/Origin、受控流程/媒体，以及主动启用的上传/创建与持久身份接回，见 [只读 API](LOCAL_API.md)和 [本地创建](LOCAL_CREATION.md)。未发布源码另实现 [有限执行服务](CORE_SERVICE.md)、[连接握手](CORE_CONNECTIONS.md)与 [owner 持久选择](LOCAL_SELECTION.md)。本契约尚未冻结为公开 SDK，只有上述 I4A/I4B 入口随 npm 0.2.7 分发。
+0.2.7实现 **I4A 默认只读**与 **I4B 显式本地创建**：显式本机监听、Bearer/Host/Origin、受控流程/媒体，以及主动启用的上传/创建与持久身份接回，见 [只读 API](LOCAL_API.md)和 [本地创建](LOCAL_CREATION.md)。0.3.0-alpha.1另提供 [有限执行服务](CORE_SERVICE.md)、[连接握手](CORE_CONNECTIONS.md)与 [owner持久选择](LOCAL_SELECTION.md)。本契约尚未冻结为公开SDK；稳定0.2.7只包含上述I4A/I4B入口。
 
-已发布固定流程通过 [CLI](IMAGE_FLOW.md)执行，未发布源码另有上方 Core 服务；[独立 Web Demo](WEB_PROTOTYPE.md)只消费内存演示，保留到 0.3.0 阶段统一润色。Demo 尚未接入只读 API，也不作为完整服务或写操作已实现的依据。
+已发布固定流程通过 [CLI](IMAGE_FLOW.md)执行，0.3 alpha源码另有上方 Core 服务；[独立 Web Demo](WEB_PROTOTYPE.md)只消费内存演示，保留到 0.3.0 阶段统一润色。Demo 尚未接入只读 API，也不作为完整服务或写操作已实现的依据。
 
-未发布源码另有 [Core 工作台](LOCAL_WEB.md)，通过显式 `web serve` 同源提供固定静态资源；登录页不包含私有数据，API/图片仍要求 Bearer。默认只读，创建、执行和选择分别显式开启，不要求连接管理；页面按能力接入改图、比较、选择、停止和下载。npm 0.2.7 尚不含，不改变下方已发布 I4A/I4B 的能力边界。
+0.3 alpha源码另有 [Core 工作台](LOCAL_WEB.md)，通过显式 `web serve` 同源提供固定静态资源；登录页不包含私有数据，API/图片仍要求 Bearer。默认只读，创建、执行和选择分别显式开启，不要求连接管理；页面按能力接入改图、比较、选择、停止和下载。npm 0.2.7 尚不含，不改变下方已发布 I4A/I4B 的能力边界。
 
 源码另实现 [Operation 存储与版本门禁](LOCAL_OPERATIONS.md)，只在新专用根主动初始化；显式 `api serve --allow-execution` 装配 runner、持久接收/查询与本地停止，默认模式与刷新恢复仍只读。v1 根复用零生成创建，写者拒绝损坏记录；具体执行与握手以服务指南为准。
+
+0.3 alpha源码的 [Core 音频流程](AUDIO_FLOWS.md)另在新 v3 根增加 `/audio-models`、`/audio`、`/speeches`、`/transcriptions`、作品 `/audio` 和 `/text`，以及 Run 类别筛选。音频与图片共用原 runner/Task/Key；现有图片 `/content` 保持图片类型限制。播放/下载最多64 MiB音频或1 MiB文本，输入音频最多20 MiB且核对容器/MIME，不接收任意路径/URL。下方 I4A/I4B 表继续描述已发布图片切片，不能据此把音频入口用于旧根。
+
+源码另有 owner 专用只读 `GET/HEAD /api/v0/capabilities`：返回 `contractVersion:0,state,scopeOptions,controlTools,groups,tools,media,plugins,contributions`，装配插件时附 Core 版本及准确贡献依赖。无模型密钥、数据根或可加载脚本路径；无凭据401，连接凭据403，未知查询参数400。此完整目录不表示当前用户授权或媒体健康。连接管理目录复用同一投影并另附 availableScopes/defaults 等服务选项；`session.operations` 由 Core 的 Web 映射和实际根版本、开关、授权交集生成。详情见 [插件目录](PLUGINS.md#core-能力目录与授权)，不改变已发布 I4A/I4B 的契约范围。
 
 ## 1. 实例与启动
 
@@ -18,9 +22,12 @@ I4B 的上传与 Run 创建均不生成，完成本地提交后返回 201，同 
 
 ## 2. 身份与浏览器边界
 
-- 每次启动产生 32 字节随机会话 Token，CLI 通过必填 `--token-file` 写入新的根外私有文件（POSIX 0600），不打印 Token。服务鉴权使用 Token 摘要和等时比较；调用进程读取私有文件，以 `Authorization: Bearer …` 发送，不进入 URL、命令行参数、Run、日志或错误文本。未来浏览器只在标签页内存保留 Token；页面重新连接不开始生成。首版文件交付替代最初的终端显示提案，支持自动化且避免管道日志收集 Token。
-- **所有 API，包括模型列表、状态与媒体，都验证身份**；Token 比较使用等时比较。首版不使用 Cookie，也不建立“同源就已认证”的假设。退出页面丢弃客户端 Token；停机使该进程 Token 失效。
+- `api serve` 每次启动产生32字节随机 owner Token，CLI 通过 `--token-file` 或 `--token-dir` 写入新的根外私有文件（POSIX0600），不打印 Token。服务鉴权使用摘要和等时比较；调用进程读取私有文件，以 `Authorization: Bearer …` 发送，不进入 URL、命令行参数、Run、日志或错误文本。普通 `web serve` 改由根外私有认证存储管理口令与浏览器会话；记住设备时浏览器独立凭据保存在 origin 隔离的 localStorage，普通模式用 sessionStorage，不保存口令或 owner/MCP 密钥。刷新先 GET 验证，不开始生成，见[工作台登录](WORKBENCH_LOGIN.md)。
+- 模型列表、业务状态、媒体与管理 API 均要求 Bearer 身份；owner Token 使用摘要及等时比较。不使用 Cookie，也不建立“同源就已认证”的假设。工作台主动退出经服务确认后撤销当前浏览器会话，401清除失效的客户端登录；口令模式的有效浏览器会话跨正常重启保留，进程 owner 控制令牌仍轮换。
+- 普通 `web serve` 的有限登录入口为 `GET/HEAD /api/v0/workbench/auth`、严格同源 `POST /setup`、`POST /password-login`、`POST /logout`（后三者均在 `/api/v0/workbench` 下），字段和权限见[口令接口](WORKBENCH_LOGIN.md#接口与装配)。首次设置要求启动器交付的随机片段票据，没有10分钟窗口，成功后失效。`POST /setup-link` 与 `/password-reset` 只接受本机 owner 控制令牌，浏览器及 MCP 凭据不可调用。
+- 显式 `--token-file` / `--token-dir` 的旧工作台模式保留 `POST /api/v0/workbench/login`、`/login-link` 和10分钟一次性链接；票据与浏览器身份仅在进程内保留摘要，服务重启失效。口令模式拒绝这两个旧接口。`api serve` 不开放工作台登录入口，MCP仍使用连接专属凭据。
 - `Host` 必须精确匹配实际监听 authority。带 `Origin` 的请求仅允许该页面精确 origin；`Origin: null`、外站 origin 和不匹配 Host 拒绝，不采信 `Forwarded` 或 `X-Forwarded-*`。无 Origin 的本机 CLI 请求仍须通过 Host 与 Token 检查。不同 origin 的 OPTIONS 不开放 CORS。
+- 公开工作台首页允许外站顶层GET导航，以便直接点击登录链接；必须是document/navigate，不把此例外用于iframe、脚本、外站fetch或业务API，Host和已有Origin检查仍保留。
 - 当前 API 响应使用限制性 CSP。未来页面的脚本/样式只从本站加载，无内联脚本、第三方资源、对象、框架嵌入或表单提交；用户内容用文本节点展示，媒体通过带认证的 fetch 获取 Blob 后展示/下载，不将 Token 放入 `<img>` URL。
 - JSON、状态、媒体和错误响应使用 `Cache-Control: no-store`、`X-Content-Type-Options: nosniff`；API 不重定向到 Provider URL。首切片仅为意外服务错误记录净化调用帧与关联 ID。若增加访问日志，只记录方法、固定路由类型、状态、随机关联 ID 与耗时，不记录 Authorization、正文、查询参数或绝对路径。
 
@@ -28,15 +35,26 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 
 ## 3. 有限路由
 
+实验性公开插件工作台可通过 `allowedOperations` 开启持久 `plugin.execute`；媒体执行仍独立开关。它增加以下有限路由，逐请求核对 scope/tools/准确依赖，插件处理器只能调用已声明的 Core 子集；不是通用命令转发。
+
+| 方法与路径 | 输入 | 语义 |
+|---|---|---|
+| `GET /plugin-operations/catalog` | `offset`、`limit=1..30` | 当前连接选择的业务、准确依赖、输入 Schema、available及现有图片；分页沿用作品库 offset/total，过滤不支持类型及超过8 MiB的图片，nextOffset用于继续读取 |
+| `POST /plugin-operations` | UUIDv4 `Idempotency-Key`，`{operationId,dependency,input}`，正文最多64 KiB | 202持久回执；同 Key 同输入读原记录，变更冲突。需要 execute和plugin_call，接受及Core命令处检查有效授权 |
+| `GET /plugin-operations` | `limit=1..30`、`cursor` | 按当前准确业务选择过滤后分页的持久历史；owner可读全部，不要求插件实现仍安装 |
+| `GET /operations/:id`、`GET /operations?key=…`、`POST /operations/:id/cancel` | 原 ID/UUID；cancel正文 `{}` | 复用原查询/接回/本地停止，按记录的准确依赖鉴权；新业务结果含Core确认的artifactIds |
+
+会话附 `pluginExecution/pluginOperations` 和允许的 plugins.catalog/plugins.execute 等别名。工作台有内建业务记录页，插件缺失仍可查原作品。启动将遗留在途记录标为 interrupted，不自动重做；业务 succeeded 仅表示处理器返回及Core命令完成。详见[真实业务](CONTACT_SHEET.md)。
+
 下列 GET/HEAD 已有实现，Operation 路由需未发布的显式执行模式；I4B 只含 images/runs 两个 POST，执行模式另含 continue/cancel，selection 需独立 `--allow-selection` 且仅限 owner。JSON 响应含 `contractVersion: 0`；列表最多 30 项，摘要不含 Prompt；创建 JSON 上限 64 KiB，执行/选择/连接 JSON 上限 8 KiB。未知/重复查询参数和带正文的只读请求拒绝。
 
 | 方法与路径 | 输入 | 语义 |
 |---|---|---|
-| `GET /session` | 无 | 返回实例标识、契约版本、允许的操作与输入上限；未发布 owner 会话另有稳定 rootId（无请求区为 null），不返回根路径、Key 或端点 |
+| `GET /session` | 无 | 返回实例标识、契约版本、允许的操作与输入上限；owner 会话另有稳定 rootId（无请求区为 null），默认 Panel 显式选中扩展时附 panelContributions（身份、准确依赖、本站资源 URL）；连接凭据不获此清单，不返回根路径、Key 或端点 |
 | `GET /creation-requests`（未发布） | `kind=image-import/flow-create`、原 UUIDv4 `key` | 仅 owner；默认只读也可核对已有请求，返回 kind/state 与经核验的结果引用或 null，不补写或生成 |
 | `GET /models` | 无 | 返回当前可选的 `modelRef`、显示名和是否支持改图；不会探测 Provider、同步目录或修改用途 |
 | `POST /images`（I4B） | 原始 PNG/JPEG/WebP 字节、匹配的 Content-Type、Idempotency-Key | 本地提交后返回 201 和 Artifact 引用，同 Key 接回返回 200；不接受文件路径、URL、目录或 SVG |
-| `GET /runs` | `cursor`、`limit`，limit 1–30；未发布源码另有 `selection=all/selected/unselected` | 已有流程摘要，不含 Prompt；只读，不观察远端。先按选择筛选再计算 total/分页，另有 counts 全部/已选/未选计数 |
+| `GET /runs` | `cursor`、`limit`，limit 1–30；0.3 alpha源码另有 `selection=all/selected/unselected` | 已有流程摘要，不含 Prompt；只读，不观察远端。先按选择筛选再计算 total/分页，另有 counts 全部/已选/未选计数 |
 | `POST /runs`（I4B） | `{sourceArtifactId, modelRef, prompt, size?}`、Idempotency-Key | 固定 `image-edit/v0` / `n=1`，只保存输入与身份，零生成请求；本地提交后 201，同 Key 接回 200 |
 | `GET /runs/:id` | 无 | 返回下述 FlowView；只读，不创建 Task、补交付或继续步骤 |
 | `POST /runs/:id/continue`（未发布执行模式） | `{expectedRevision}`、Idempotency-Key | 持久接收后 202，同 Key 200；一次首次提交/观察/补交付/比较，不重提已有 Attempt |

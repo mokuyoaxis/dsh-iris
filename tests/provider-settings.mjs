@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import crypto from 'node:crypto';
-import { executeConfigCommand } from '../lib/provider-config-service.js';
+import { executeConfigCommand, recordCatalogAvailability } from '../lib/provider-config-service.js';
 import { loadProviderCatalog, imageCandidatesFromCatalog, providerTaskBinding } from '../lib/provider-catalog.js';
 import { createProviderRegistry } from '../lib/provider-extensions.js';
 import { createLocalReadApi } from '../lib/local-api.js';
@@ -31,7 +30,6 @@ const input = async () => { const value = await show(), item = value.providers[0
   provider: { id: item.id, name: item.name, baseUrl: item.baseUrl, mediaBaseUrl: item.mediaBaseUrl,
     mediaProtocol: item.mediaProtocol, enabled: item.enabled, auth: item.auth,
     models: item.models.map(({ id, capabilities, imageProtocol, musicProtocol }) => ({ id, capabilities, imageProtocol, musicProtocol })) }, credential: { action: 'keep' } }; };
-const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 async function call(session, resource, value, extra = {}) {
   const response = await fetch(session.origin + resource, { method: value === undefined ? 'GET' : 'POST',
     headers: { Authorization: 'Bearer ' + session.accessToken, ...(value !== undefined ? { 'Content-Type': 'application/json' } : {}), ...extra },
@@ -40,7 +38,16 @@ async function call(session, resource, value, extra = {}) {
 }
 try {
   const original = fs.readFileSync(file), binding = providerTaskBinding(initial.providers[0], registry);
-  assert.equal((await show()).revision, hash(original)); assert(!(JSON.stringify(await show())).includes(key)); assert.equal(requests.length, 0);
+  assert.match((await show()).revision, /^[a-f0-9]{64}$/); assert(!(JSON.stringify(await show())).includes(key)); assert.equal(requests.length, 0);
+  const draftBeforeHealth = await input();
+  recordCatalogAvailability(file, { providerId: 'original', modelId: 'media-edit', capability: 'image-gen', ok: true, stage: 'submit', source: 'task' });
+  const healthBeforeSave = loadProviderCatalog(file).providers[0].health;
+  assert.equal((await show()).revision, draftBeforeHealth.expectedRevision, 'a completed task must not invalidate an unrelated owner draft');
+  await executeConfigCommand(file, 'settings.save', draftBeforeHealth, { registry });
+  assert.deepEqual(loadProviderCatalog(file).providers[0].health, healthBeforeSave, 'saving a configuration draft preserves newer health facts');
+  // Restore this test's explicit seed; subsequent backup assertions use that seed.
+  fs.writeFileSync(file, original, { mode: 0o600 });
+  for (const name of fs.readdirSync(root).filter(name => name.includes('.backup-'))) fs.renameSync(path.join(root, name), path.join(root, name.replace('.backup-', '.health-evidence-')));
   const value = await input(); value.provider.name = 'Renamed'; value.provider.models = [{ id: 'media-edit', capabilities: ['image-gen', 'vision'], imageProtocol: 'auto' }];
   value.assignments = { vision: { mode: 'auto', models: [] } };
   const saved = await executeConfigCommand(file, 'settings.save', value, { registry });

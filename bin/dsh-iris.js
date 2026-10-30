@@ -27,6 +27,10 @@ import { manageCoreSkill } from '../lib/skill-installation.js';
 import { createTrackedProviderAdapter } from '../lib/configured-image-runtime.js';
 import { inspectExecutionLease, recoverExecutionLease } from '../lib/operation-runner.js';
 import { createConnectionPair } from '../lib/core-connections.js';
+import { builtinLaunchPlugins, loadPluginLaunch } from '../lib/plugin-launch.js';
+import { checkLocalApiTokenDirectory, writeLocalApiTokenDirectory } from '../lib/local-api-token-directory.js';
+import { resolveWorkbenchAuthDirectory } from '../lib/workbench-auth.js';
+import { manageWorkbenchPassword } from '../lib/workbench-auth-cli.js';
 
 function trackedProviderAdapter(provider, options, task) {
   return createTrackedProviderAdapter(provider, options['provider-config'], task, options.providerRegistry);
@@ -53,22 +57,29 @@ function usage() {
     '  JSON input: --input <json>, --input-file <path>, or --input - (stdin).',
     '  --provider-extension <absolute-js-or-mjs-entry> explicitly loads trusted Provider code; repeat for multiple extensions. Experimental v0, no installation or directory discovery.',
     '  dsh-iris providers protocols [--provider-extension <absolute-entry>] lists protocol/configuration descriptions without credentials or model calls.',
+    '  dsh-iris plugins list',
+    '  dsh-iris plugins inspect --plugin-config <absolute-startup.json>',
+    '    Explicit trusted plugin entries, versions, contributions and selections; inspect imports/activates trusted code but does not start Core or grant connections.',
+    '  dsh-iris web serve ... --plugin-config <absolute-startup.json> [--auth-store <absolute-private-directory>]',
+    '    entries load plugins; operations enables exact business IDs; panel selects pages/settings/renderers. MCP grants remain separate. Do not combine with --provider-extension.',
     '  dsh-iris skills <install|status|uninstall> --target kimi [--directory <absolute-skills-directory>]',
     '  dsh-iris skills <install|status|uninstall> --directory <absolute-skills-directory>',
     '  dsh-iris skills <install|status|uninstall> --bundle <absolute-connection-skill.json> --directory <absolute-skills-directory> [--dry-run]',
     '    install/uninstall accept --dry-run. Copy only iris-core; preserve local changes and archive managed updates/removals outside the scan directory. status is read-only and does not verify host discovery.',
     '  dsh-iris doctor [--data-root <absolute-path>] [--json]',
     '  dsh-iris api init --data-root <empty-existing-flow-root>',
-    '  dsh-iris execution init --data-root <empty-existing-flow-root> [--image-generation]',
-    '    Initialize a NEW v1 request container, or v2 with --image-generation. No runner or generation; existing roots are never migrated.',
+    '  dsh-iris execution init --data-root <empty-existing-flow-root> [--image-generation|--audio]',
+    '    Initialize a NEW v1 request container, v2 with --image-generation, or v3 with --audio (images + speech/transcription). Existing roots are never migrated.',
     '  dsh-iris execution inspect --data-root <v1-flow-root>',
     '  dsh-iris execution recover-lease --data-root <v1-flow-root> --confirm-stale-pid <pid>',
-    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe|none>] [--tools <comma-separated-names|none>]',
     '  dsh-iris api serve ... --allow-execution --provider-config <absolute-path> [--connections-file <private-grants-file>]',
-    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe|none>] [--tools <comma-separated-names|none>]',
     '    Official SDK stdio bridge to an already running Core service. Read-only by default; stdout contains MCP messages only.',
     '  dsh-iris mcp capabilities',
-    '  dsh-iris mcp config --connection-file <private-client-json> [--transport <stdio|http>] [--format <mcpServers|entry>] [--output <new-absolute-path>]',
+    '  dsh-iris mcp presets',
+    '  dsh-iris mcp config --connection-file <private-client-json> [--preset <generic|claude|codex|kimi>-<stdio|http> | --transport <stdio|http> --format <mcpServers|entry|claude-json|codex-toml>] [--output <new-absolute-path>]',
+    '  dsh-iris mcp check --connection-file <private-client-json> [--scopes <read,create,execute,stop>]',
     '    stdio config also accepts scopes/capabilities/tools. HTTP config includes credentials and requires a new file inside the connection private directory.',
     '  dsh-iris api serve ... --connections-file <private-grants-file> --allow-mcp',
     '  dsh-iris web serve ... --connection-store <private-directory-outside-core> --allow-connection-management [--allow-mcp] [--allow-execution --provider-config <absolute-path>]',
@@ -77,9 +88,17 @@ function usage() {
     '  dsh-iris operation list --data-root <execution-root> [--run-id <run-id>] [--limit <1..30>] [--cursor <operation-id>]',
     '  dsh-iris operation inspect <operation-id> --data-root <execution-root>',
     '  dsh-iris api serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>] [--allow-local-writes] [--allow-selection]',
-    '    Explicit loopback-only API, read-only by default. Local writes only upload images/create Runs, without generation. The session token is saved privately; stdout contains no token.',
-    '  dsh-iris web serve --data-root <existing-flow-root> --token-file <new-absolute-path-outside-root> [--provider-config <absolute-path>] [--port <0..65535>] [--allow-local-writes] [--allow-execution] [--allow-selection]',
-    '    Workbench media APIs are read-only by default; explicit write flags do not require connection management. --allow-selection permits owner-only, revision-checked selection. The page supports image editing when execution is enabled; Provider management uses its own owner-only flag.',
+    '    Explicit loopback-only API, read-only by default. Local writes import images/audio and create Runs within the root capabilities, without generation. The session token is saved privately; stdout contains no token.',
+    '  dsh-iris web serve --data-root <existing-flow-root> [--auth-store <absolute-private-directory>] [--provider-config <absolute-path>] [--port <0..65535>] [--allow-local-writes] [--allow-execution] [--allow-selection]',
+    '    Default: set one access password, then sign in at origin. Remembered browser sessions survive normal restarts. No Token file is required.',
+    '    Auth state defaults to $IRIS_HOME/web-auth/<root-key> ($IRIS_HOME defaults to ~/.iris). Open the initial loginUrl once to set your password.',
+    '  dsh-iris web login --data-root <existing-flow-root> [--auth-store <absolute-private-directory>]',
+    '  dsh-iris web password reset --data-root <existing-flow-root> [--auth-store <absolute-private-directory>]',
+    '    Reset only the workbench password/browser sessions; Core work and MCP grants remain intact. Prints a setup link while the service is running.',
+    '    Explicit --token-file or --token-dir keeps the legacy Token/link login mode. Do not combine them with --auth-store. api serve still requires one of these Token options.',
+    '  dsh-iris web login --origin <http://127.0.0.1:port> --token-file <current-session-token-file>',
+    '    Get a fresh one-time login link without restarting the workbench.',
+    '    Workbench media APIs are read-only by default; explicit write flags do not require connection management. --allow-selection permits owner-only, revision-checked image selection. Execution enables supported image/speech/transcription flows; Provider management uses its own owner-only flag.',
     '  dsh-iris runtime recover --data-root <absolute-path> --confirm-stale-pid <pid>',
     '  dsh-iris providers list --provider-config <absolute-path>',
     '  dsh-iris capabilities list --provider-config <absolute-path>',
@@ -241,6 +260,40 @@ async function withApplication(dataRoot, callback, resolveImageCandidates, resol
   finally { try { await application.dispose(); } finally { unregister(); } }
 }
 
+/** Own the service and its plugin registry in order, including cancellation during import/start. */
+async function withCliLaunch(pluginConfig, launchOptions, callback) {
+  let loading, launch, api, disposal, startupFailure;
+  const detail = error => ({ code: error.code || 'IRIS_CLI_FAILED', message: error.message || String(error),
+    ...(error instanceof AggregateError ? { errors: error.errors.map(detail) } : {}) });
+  const lifetime = { dispose() {
+    if (!disposal) disposal = (async () => {
+      if (loading) await Promise.allSettled([loading]); // main retains the original startup error.
+      const failures = [];
+      try { await api?.dispose(); } catch (error) { failures.push({ stage: 'core-stop', error }); }
+      try { await launch?.dispose(); } catch (error) { failures.push({ stage: 'plugin-stop', error }); }
+      if (failures.length) {
+        const error = Object.assign(new AggregateError(failures.map(item => item.error), 'Core 服务或插件释放失败；已尝试两阶段收尾'), { code: 'IRIS_CLI_SERVICE_CLEANUP_FAILED' });
+        error.diagnostic = { code: error.code, stage: 'shutdown', message: error.message, ...(pluginConfig ? { file: pluginConfig } : {}),
+          errors: failures.map(item => ({ stage: item.stage, ...detail(item.error) })) };
+        if (cliAbortController.signal.aborted) console.error(JSON.stringify(error.diagnostic));
+        throw error;
+      }
+    })();
+    return disposal;
+  } };
+  const unregister = registerRuntime(lifetime);
+  try {
+    loading = pluginConfig ? loadPluginLaunch(pluginConfig, launchOptions).then(value => (launch = value)) : Promise.resolve();
+    await loading; cliAbortController.signal.throwIfAborted();
+    return await callback(launch, value => { api = value; });
+  } catch (error) { startupFailure = error; throw error; }
+  finally {
+    try { await lifetime.dispose(); }
+    catch (error) { if (startupFailure) error.diagnostic.startup = detail(startupFailure); throw error; }
+    finally { unregister(); }
+  }
+}
+
 async function main(args, providerRegistry) {
   const flags = (values, allowed) => Object.defineProperty(parseFlags(values, allowed), 'providerRegistry', { value: providerRegistry });
   if (!args.length || args.includes('--help') || args.includes('-h')) {
@@ -251,6 +304,18 @@ async function main(args, providerRegistry) {
   if (args[0] === 'providers' && args[1] === 'protocols') {
     flags(args.slice(2), []);
     console.log(JSON.stringify(providerRegistry.snapshot(), null, 2)); return 0;
+  }
+
+  if (args[0] === 'plugins') {
+    if (args[1] === 'list') {
+      flags(args.slice(2), []);
+      console.log(JSON.stringify({ contractVersion: 0, builtins: builtinLaunchPlugins(), automaticDiscovery: false })); return 0;
+    }
+    if (args[1] !== 'inspect') throw new CliUsageError('plugins 仅支持 list/inspect');
+    const options = flags(args.slice(2), ['plugin-config']);
+    return withCliLaunch(required(options['plugin-config'], 'plugin-config'), {}, async launch => {
+      console.log(JSON.stringify(launch.summary, null, 2)); return 0;
+    });
   }
 
   if (args[0] === 'skills') {
@@ -269,21 +334,33 @@ async function main(args, providerRegistry) {
   }
 
   if (args[0] === 'mcp') {
+    if (args[1] === 'presets') {
+      flags(args.slice(2), []);
+      const { MCP_CONNECTION_PRESETS } = await import('../lib/mcp-delivery.js');
+      console.log(JSON.stringify({ contractVersion: 0, presets: MCP_CONNECTION_PRESETS, installationDetected: false }, null, 2)); return 0;
+    }
     if (args[1] === 'capabilities') {
       flags(args.slice(2), []);
       const { BRIDGE_CAPABILITIES, BRIDGE_CONTROL_TOOLS } = await import('../lib/core-bridge-selection.js');
       console.log(JSON.stringify({ contractVersion: 0, capabilities: BRIDGE_CAPABILITIES, controlTools: BRIDGE_CONTROL_TOOLS,
-        implementedMedia: ['image-edit/v0', 'image-generate/v0'], selectionDoesNotGenerate: true }, null, 2)); return 0;
+        implementedMedia: BRIDGE_CAPABILITIES.map(group => group.recipe), selectionDoesNotGenerate: true }, null, 2)); return 0;
     }
-    if (!['serve', 'config'].includes(args[1])) throw new CliUsageError('mcp 支持 serve/config/capabilities');
-    const options = flags(args.slice(2), ['connection-file', 'scopes', 'capabilities', 'tools', ...(args[1] === 'config' ? ['transport', 'format', 'output'] : [])]);
+    if (!['serve', 'config', 'check'].includes(args[1])) throw new CliUsageError('mcp 支持 serve/config/check/capabilities/presets');
+    const options = flags(args.slice(2), ['connection-file', 'scopes', 'capabilities', 'tools', ...(args[1] === 'config' ? ['transport', 'format', 'preset', 'output'] : [])]);
     const list = value => value === 'none' ? [] : value.split(',');
     const selected = { ...(options.capabilities !== undefined ? { capabilities: list(options.capabilities) } : {}),
       ...(options.tools !== undefined ? { tools: list(options.tools) } : {}) };
+    if (args[1] === 'check') {
+      const { checkMcpConnection } = await import('../lib/mcp-check.js');
+      const result = await checkMcpConnection({ connectionFile: required(options['connection-file'], 'connection-file'),
+        ...(options.scopes !== undefined ? { scopes: options.scopes.split(',') } : {}), ...selected });
+      console.log(JSON.stringify(result, null, 2)); return result.ok ? 0 : 1;
+    }
     if (args[1] === 'config') {
       const { exportMcpConfiguration } = await import('../lib/mcp-config.js');
-      console.log(JSON.stringify(exportMcpConfiguration({ connectionFile: required(options['connection-file'], 'connection-file'), ...selected,
-        ...(options.scopes !== undefined ? { scopes: options.scopes.split(',') } : {}), transport: options.transport, format: options.format, output: options.output }), null, 2));
+      const result = exportMcpConfiguration({ connectionFile: required(options['connection-file'], 'connection-file'), ...selected,
+        ...(options.scopes !== undefined ? { scopes: options.scopes.split(',') } : {}), transport: options.transport, format: options.format, presetId: options.preset, output: options.output });
+      process.stdout.write(typeof result === 'string' ? result : JSON.stringify(result, null, 2) + '\n');
       return 0;
     }
     const { createMcpBridge } = await import('../lib/mcp-bridge.js');
@@ -315,16 +392,16 @@ async function main(args, providerRegistry) {
         console.log(JSON.stringify(result, null, 2)); return 0;
       }
       if (args[1] !== 'init') throw new CliUsageError('不支持的 execution 子命令');
-      const initArgs = args.slice(2), generationFlags = initArgs.filter(value => value === '--image-generation');
-      if (generationFlags.length > 1) throw new CliUsageError('参数重复：--image-generation');
-      const options = flags(initArgs.filter(value => value !== '--image-generation'), ['data-root']);
+      const initArgs = args.slice(2), generationFlags = initArgs.filter(value => value === '--image-generation'), audioFlags = initArgs.filter(value => value === '--audio');
+      if (generationFlags.length > 1 || audioFlags.length > 1 || generationFlags.length && audioFlags.length) throw new CliUsageError('初始化开关重复或冲突；audio已包含文生图');
+      const options = flags(initArgs.filter(value => !['--image-generation', '--audio'].includes(value)), ['data-root']);
       const suppliedRoot = required(options['data-root'], 'data-root');
       if (!path.isAbsolute(suppliedRoot)) throw new CliUsageError('data-root 必须是已初始化的空 Flow 根绝对路径');
       let dataRoot;
       try { dataRoot = fs.realpathSync(suppliedRoot); }
       catch (_) { throw new CliUsageError('请先在新的专用数据根执行 flow init'); }
       const result = await withApplication(dataRoot, application =>
-        application.execute('execution.init', generationFlags.length ? { imageGeneration: true } : {}, { signal: cliAbortController.signal }));
+        application.execute('execution.init', audioFlags.length ? { audio: true } : generationFlags.length ? { imageGeneration: true } : {}, { signal: cliAbortController.signal }));
       console.log(JSON.stringify(result, null, 2)); return 0;
     }
     if (!['list', 'inspect'].includes(args[1])) throw new CliUsageError('operation 只支持只读 list/inspect');
@@ -341,6 +418,47 @@ async function main(args, providerRegistry) {
 
   if (args[0] === 'api' || args[0] === 'web') {
     const serveWorkbench = args[0] === 'web';
+    if (serveWorkbench && args[1] === 'password') {
+      if (args[2] !== 'reset') throw new CliUsageError('web password 仅支持 reset');
+      const options = flags(args.slice(3), ['data-root', 'auth-store']);
+      const dataRoot = required(options['data-root'], 'data-root');
+      if (!path.isAbsolute(dataRoot)) throw new CliUsageError('data-root 必须是工作台数据根的绝对路径');
+      console.log(JSON.stringify(await manageWorkbenchPassword({ dataRoot, directory: options['auth-store'], reset: true, signal: cliAbortController.signal })));
+      return 0;
+    }
+    if (serveWorkbench && args[1] === 'login') {
+      const options = flags(args.slice(2), ['origin', 'token-file', 'data-root', 'auth-store']);
+      if (options['data-root'] !== undefined) {
+        if (options.origin !== undefined || options['token-file'] !== undefined) throw new CliUsageError('口令登录用 data-root，旧 Token 登录用 origin/token-file，不能混用');
+        if (!path.isAbsolute(options['data-root'])) throw new CliUsageError('data-root 必须是工作台数据根的绝对路径');
+        console.log(JSON.stringify(await manageWorkbenchPassword({ dataRoot: options['data-root'], directory: options['auth-store'], signal: cliAbortController.signal })));
+        return 0;
+      }
+      if (options['auth-store'] !== undefined) throw new CliUsageError('auth-store 需要同时明确 data-root');
+      const origin = required(options.origin, 'origin'), tokenFile = required(options['token-file'], 'token-file');
+      if (!/^http:\/\/127\.0\.0\.1:[1-9]\d{0,4}$/.test(origin) || Number(origin.split(':').at(-1)) > 65535) throw new CliUsageError('origin 必须是启动时输出的 http://127.0.0.1:端口');
+      if (!path.isAbsolute(tokenFile)) throw new CliUsageError('token-file 必须是当前启动文件的绝对路径');
+      let token;
+      const fd = fs.openSync(tokenFile, 'r');
+      try {
+        const info = fs.fstatSync(fd);
+        if (!info.isFile() || info.size > 256) throw new CliUsageError('请选择当前启动生成的小型 Token 文本文件');
+        token = fs.readFileSync(fd, 'utf8').trim();
+      } finally { fs.closeSync(fd); }
+      if (!/^[A-Za-z0-9_-]{43}$/.test(token)) throw new CliUsageError('Token 文件内容无效，请使用当前启动生成的文件');
+      const response = await fetch(origin + '/api/v0/workbench/login-link', { method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: '{}',
+        redirect: 'error', signal: AbortSignal.any([cliAbortController.signal, AbortSignal.timeout(15000)]) });
+      if (!response.ok) throw new CliUsageError(response.status === 401 ? 'Token 已失效，请使用当前服务启动时生成的 Token 文件'
+        : response.status === 404 || response.status === 405 ? '此服务不支持登录链接，请确认地址属于新版 web serve 工作台' : '无法获取登录链接，请检查本机工作台状态');
+      const result = await response.json();
+      if (result.contractVersion !== 0 || typeof result.loginUrl !== 'string' || !result.loginUrl.startsWith(origin + '/#login=')
+          || !/^[A-Za-z0-9_-]{43}$/.test(result.loginUrl.slice((origin + '/#login=').length)) || !Number.isFinite(Date.parse(result.loginExpiresAt))) {
+        throw new CliUsageError('工作台返回的登录链接无效');
+      }
+      console.log(JSON.stringify({ ...result, message: '打开 loginUrl 即可进入；链接 10 分钟内有效、仅用一次，刷新无需重新登录。' }));
+      return 0;
+    }
     if (!serveWorkbench && args[1] === 'init') {
       const options = flags(args.slice(2), ['data-root']);
       const suppliedRoot = required(options['data-root'], 'data-root');
@@ -358,37 +476,55 @@ async function main(args, providerRegistry) {
     const allowExecution = executionFlags.length === 1, allowLocalWrites = localWriteFlags.length === 1 || allowExecution;
     const allowSelection = selectionFlags.length === 1;
     const allowConnectionManagement = managementFlags.length === 1;
-    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management', '--allow-provider-management'].includes(value)), ['data-root', 'token-file', 'provider-config', 'port', 'connections-file', 'connection-store', 'panel']);
+    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management', '--allow-provider-management'].includes(value)), ['data-root', 'token-file', 'token-dir', 'auth-store', 'provider-config', 'port', 'connections-file', 'connection-store', 'panel', 'plugin-config']);
     const suppliedRoot = required(options['data-root'], 'data-root');
-    const tokenFile = required(options['token-file'], 'token-file');
-    if (!path.isAbsolute(suppliedRoot) || !path.isAbsolute(tokenFile)) throw new CliUsageError('data-root 与 token-file 必须是绝对路径');
+    const passwordMode = serveWorkbench && options['token-file'] === undefined && options['token-dir'] === undefined;
+    if (!passwordMode && Boolean(options['token-file']) === Boolean(options['token-dir'])) throw new CliUsageError('请选择且只选择 --token-file 或 --token-dir');
+    if (options['auth-store'] !== undefined && !passwordMode) throw new CliUsageError('auth-store 仅用于默认口令工作台；不能与 Token 参数或 api serve 混用');
+    if (!path.isAbsolute(suppliedRoot) || !passwordMode && !path.isAbsolute(options['token-file'] || options['token-dir'])) throw new CliUsageError('data-root 与 token-file/token-dir 必须是绝对路径');
+    let tokenFile = options['token-file'];
     if (options.port !== undefined && (!/^\d+$/.test(options.port) || Number(options.port) > 65535)) throw new CliUsageError('port 必须是 0–65535 的整数');
     // Pin the physical root for both the server and the outside-root credential check.
     let dataRoot;
     try { dataRoot = fs.realpathSync(suppliedRoot); }
     catch (_) { throw new CliUsageError('data-root 必须是已初始化且可读取的 Flow 根'); }
-    const api = createLocalReadApi({ dataRoot, providerConfigPath: options['provider-config'], allowLocalWrites, serveWorkbench,
-      allowExecution, allowSelection, allowMcp: mcpFlags.length === 1, connectionsFile: options['connections-file'], allowConnectionManagement, connectionStore: options['connection-store'], providerRegistry,
-      allowProviderManagement: providerFlags.length === 1, panelManifestPath: options.panel });
-    const unregister = registerRuntime(api);
-    try {
+    const authDirectory = passwordMode ? resolveWorkbenchAuthDirectory(dataRoot, options['auth-store']) : undefined;
+    if (options['token-dir']) checkLocalApiTokenDirectory(options['token-dir'], dataRoot);
+    return withCliLaunch(options['plugin-config'], { serveWorkbench, panelManifestPath: options.panel }, async (launch, ownApi) => {
+      const api = createLocalReadApi({ dataRoot, providerConfigPath: options['provider-config'], allowLocalWrites, serveWorkbench,
+        ...(passwordMode ? { workbenchAuth: { directory: authDirectory } } : {}),
+        allowExecution, allowSelection, allowMcp: mcpFlags.length === 1, connectionsFile: options['connections-file'], allowConnectionManagement, connectionStore: options['connection-store'], providerRegistry,
+        ...(launch ? { pluginRegistry: launch.registry, providerRegistry: launch.registry.providers, allowedOperations: launch.allowedOperations,
+          panelContributions: launch.panelContributions } : {}),
+        allowProviderManagement: providerFlags.length === 1, panelManifestPath: options.panel });
+      ownApi(api);
       const started = await api.start({ port: options.port === undefined ? 0 : Number(options.port) });
-      writeLocalApiTokenFile(tokenFile, started.accessToken, dataRoot);
-      console.log(JSON.stringify({ contractVersion: 0, readOnly: !allowLocalWrites && !allowSelection, origin: started.origin, tokenFile,
+      if (!passwordMode) {
+        if (options['token-dir']) tokenFile = writeLocalApiTokenDirectory(options['token-dir'], started.accessToken, dataRoot);
+        else writeLocalApiTokenFile(tokenFile, started.accessToken, dataRoot);
+      }
+      console.log(JSON.stringify({ contractVersion: 0, readOnly: !allowLocalWrites && !allowSelection, origin: started.origin,
+        ...(passwordMode ? { authentication: started.authentication, authStore: authDirectory } : { tokenFile }),
+        ...(launch ? { pluginLaunch: launch.summary } : {}),
+        ...(serveWorkbench ? { loginUrl: started.loginUrl, loginExpiresAt: started.loginExpiresAt } : {}),
         ...(allowConnectionManagement ? { connectionManagement: true } : {}),
         ...(providerFlags.length ? { providerManagement: true } : {}),
         ...(started.mcpEndpoint ? { mcpEndpoint: started.mcpEndpoint } : {}),
-        message: serveWorkbench ? (providerFlags.length ? 'Core 工作台与供应商管理已启动；打开 origin 并选择 Token 文件。配置保存不生成媒体。'
-          : allowConnectionManagement ? 'Core 工作台与连接管理已启动；打开 origin 并选择 Token 文件。配置连接不执行媒体。'
-          : allowLocalWrites || allowSelection ? 'Core 工作台已启动；打开 origin 并选择 Token 文件。媒体 API 按显式开关开放，当前页面提供作品浏览。'
-          : '只读工作台已启动；打开 origin 并选择 Token 文件连接。退出后 Token 失效。')
+        message: passwordMode ? (started.authentication.configured ? '工作台已启动，打开 origin 用访问口令登录；记住设备后可跨正常重启继续使用。'
+          : '首次使用请打开 loginUrl 设置访问口令；之后打开普通地址即可登录，无需 Token 文件。')
+          : serveWorkbench ? (providerFlags.length ? 'Core 工作台与供应商管理已启动；打开 loginUrl 即可进入。配置保存不生成媒体。'
+          : allowConnectionManagement ? 'Core 工作台与连接管理已启动；打开 loginUrl 即可进入。配置连接不执行媒体。'
+          : allowLocalWrites || allowSelection ? 'Core 工作台已启动；打开 loginUrl 即可进入。媒体 API 按显式开关开放。'
+          : launch?.allowedOperations !== undefined ? 'Core 工作台已启动；打开 loginUrl 即可进入。插件业务按启动选择开放，媒体 API 保持只读。'
+          : '只读工作台已启动；打开 loginUrl 即可进入。')
           : allowExecution ? '有限执行 API 已启动；显式继续才执行，停止只中止本地等待，重启不自动重提。'
           : allowLocalWrites ? '本地创建 API 已启动；只上传/创建，不执行生成。会话 Token 在指定私有文件中，退出后失效。'
           : allowSelection ? '本地选择 API 已启动；只更新已完成流程的选择，不执行生成。会话 Token 在指定私有文件中，退出后失效。'
+          : launch?.allowedOperations !== undefined ? '插件业务 API 已启动；按启动选择执行，媒体 API 保持只读。会话 Token 在指定私有文件中，退出后失效。'
           : '只读本地 API 已启动；会话 Token 在指定私有文件中，退出后失效。' }));
       await api.closed;
       return 0;
-    } finally { try { await api.dispose(); } finally { unregister(); } }
+    });
   }
 
   if (args[0] === 'flow') {
@@ -881,13 +1017,15 @@ try {
     }
   }
   try {
+    if (entries.length && args.includes('--plugin-config')) throw new CliUsageError('--plugin-config 与 --provider-extension 不能混用；Provider 插件应通过同一插件装配实例加载');
     if (args.length && !args.includes('--help') && !args.includes('-h')) cliProviderRegistry = await loadProviderRegistry(entries);
     process.exitCode = await main(args, cliProviderRegistry);
   } finally { await cliProviderRegistry?.dispose(); }
 } catch (error) {
   const code = error && error.code || 'IRIS_CLI_FAILED';
   const message = error && error.message || '命令执行失败';
-  console.error(code + ': ' + message);
+  if (error.diagnostic) console.error(JSON.stringify(error.diagnostic));
+  else console.error(code + ': ' + message);
   if (error instanceof CliUsageError) console.error('\n' + usage());
   process.exitCode = error instanceof CliUsageError ? 2 : 1;
 }

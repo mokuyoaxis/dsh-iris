@@ -1,12 +1,14 @@
 # Iris 架构与边界
 
-状态：本文描述 **Iris 0.2.7** 的架构。0.2.0 建立实例化 Core Runtime、Headless CLI 及共享 Task/Artifact 事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.5 恢复旧宿主支持，0.2.6 增加连接引用、可选功能自动池和目录同步。准确版本及历史发行范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。Node.js 最低 22.0.0；Core 内部 API 尚未冻结为公共 SDK。
+状态：本文说明 **Iris 0.3.0-alpha.1** 的共享Core及Web、MCP与插件装配，并保留0.2.7入口图作历史对照。0.2.0建立实例化Core Runtime、Headless CLI及共享Task/Artifact事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.5恢复旧宿主支持，0.2.6增加连接引用、可选功能自动池和目录同步。准确版本及历史范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。Node.js最低22.0.0；Core与插件契约仍为实验性。
 
 ## 当前形态
 
-未发布源码另提供独立 [Panel/主题](PANEL_EXTENSIONS.md)和 [C3 供应商设置](PROVIDER_SETTINGS.md)：页面可显式替换，配置管理复用应用层原子写入；默认媒体权限与 Core Task/Artifact 格式保持。它们不随已发布 0.2.7 提供，也不自动替换 DSH 内嵌 UI。
+当前源码的 [Core 工作台](LOCAL_WEB.md)已连接真实持久执行、停止、作品选择和供应商管理；[通用 MCP](MCP.md)及[显式插件贡献](PLUGINS.md)复用同一服务与授权边界。图片生成/编辑、语音/转写和插件业务按用户所选范围启用。下方示意图表示 0.2.7 已发布入口，完整当前覆盖见 [README](../README.md#当前入口覆盖)。
 
-Iris 仍以一个 npm 包交付，但已有两个执行入口：DSH 插件负责 Agent 工具、会话附件、浏览器、Web UI 和后台观察；Headless CLI 在没有 DSH/Cordis 的进程中显式接收数据根与私有 Provider 配置。两者共用 Core Runtime、Provider Task Runner、Task/Artifact Store 和本地 Command，不能在同一数据根上同时充当写者。
+0.3 alpha源码另提供独立 [Panel/主题](PANEL_EXTENSIONS.md)和 [C3 供应商设置](PROVIDER_SETTINGS.md)：页面可显式替换，配置管理复用应用层原子写入；默认媒体权限与 Core Task/Artifact 格式保持。它们不随已发布 0.2.7 提供，也不自动替换 DSH 内嵌 UI。
+
+Iris仍以一个npm包交付。DSH插件负责原生Agent工具、附件、浏览器和内嵌UI；Headless CLI与独立Core服务（Web/MCP）在没有DSH/Cordis的进程中接收明确数据根和私有Provider配置。各入口共用Core Runtime、Provider Task Runner、Task/Artifact Store和本地Command，不能在同一根同时充当写者；MCP桥连接已有Core服务，不另建业务写者。
 
 ```text
 DSH Host / Cordis                         Headless CLI
@@ -37,7 +39,7 @@ DSH Host / Cordis                         Headless CLI
 
 `lib/index.js` 是 DSH 插件装配入口，`lib/dsh-host-adapter.js` 是原始 DSH/Cordis 对象进入 Iris 的服务端边界；`lib/dsh-core-adapter.js` 负责 DSH 的 Core 实例装配、Provider 连接解析和 Host DTO 投影。`bin/dsh-iris.js` 不启动 DSH，也不推断 profile。`lib/api.js` 与 `lib/client.js` 是 Host 投影，不是真相来源。
 
-0.2.7 增加 `lib/application-runtime.js`，首批 CLI 图片命令和固定改图流程通过它装配 Core；[DSH 实例](DSH_RUNTIME.md)也已接入同一队列机制。写队列、操作取消和关闭归属于应用实例；每次写操作独立取得、释放 Core 租约，DSH 的 Core 观察器由插件实例持有并等待卸载。[固定流程](IMAGE_FLOW.md)使用专用根中的版本化 Run、稳定 Task/比较作品身份及引用保护，私有输入保存提示词，Task 仅保存可选流程绑定。[本地 API](LOCAL_API.md)已提供默认只读与主动启用的 [本地创建](LOCAL_CREATION.md)，执行/取消、通用 Recipe 和真实独立 Web 仍待完成。详见 [应用运行时契约](CORE_RUNTIME_CONTRACT.md#应用运行时装配)。上图表示已发布入口的共同核心。
+0.2.7 增加 `lib/application-runtime.js`，首批 CLI 图片命令和固定改图流程通过它装配 Core；[DSH 实例](DSH_RUNTIME.md)也已接入同一队列机制。写队列、操作取消和关闭归属于应用实例；每次写操作独立取得、释放 Core 租约，DSH 的 Core 观察器由插件实例持有并等待卸载。[固定流程](IMAGE_FLOW.md)使用专用根中的版本化 Run、稳定 Task/比较作品身份及引用保护，私有输入保存提示词，Task 仅保存可选流程绑定。[本地 API](LOCAL_API.md)已提供默认只读与主动启用的 [本地创建](LOCAL_CREATION.md)，在 0.2.7 中，执行/取消和真实独立 Web 尚未提供，现已接入上文的0.3 alpha源码；通用 Recipe 仍待实现。详见 [应用运行时契约](CORE_RUNTIME_CONTRACT.md#应用运行时装配)。上图表示已发布入口的共同核心。
 
 0.2.1的 S2V 使用 Core Task/Attempt，HTML 使用 `media.html` 与显式 Browser Port；视觉和提示词预览通过共享 Model Ports 执行。纯视觉不创建 Task/Artifact，摘要主动转写仍使用 Core 任务。聊天改图属于媒体生成链，按来源 Artifact ID 创建新 Task 和关联产物。
 
@@ -65,7 +67,11 @@ DSH Host / Cordis                         Headless CLI
 
 完整规则见 [Core Runtime v0](CORE_RUNTIME_CONTRACT.md)、[Artifact Manifest v0](ARTIFACT_MANIFEST.md)、[Provider Adapter v0](PROVIDER_ADAPTER_CONTRACT.md) 与 [DSH → Core 渐进迁移](DSH_CORE_MIGRATION.md)。这些仍是内部契约，不是第三方 SDK 兼容承诺。
 
-面向 0.3 的未发布源码增加[Provider 扩展首版](PROVIDER_EXTENSIONS.md)：实例拥有协议描述、工厂、活动调用和异步释放；CLI/Core 服务显式传入注册实例，六类内置协议（含 ComfyUI）与外部协议共用候选/健康/恢复。实验性包入口仅开放媒体协议所需接口，尚未提供 DSH 外部模块加载设置、通用 Recipe 或完整 SDK。ComfyUI Task binding 另纳入模板摘要，见 [文生图与工作流入口](IMAGE_GENERATION.md)；原五类协议的 binding 与既有记录保持。
+面向 0.3 的0.3 alpha源码增加[Provider 扩展首版](PROVIDER_EXTENSIONS.md)：实例拥有协议描述、工厂、活动调用和异步释放；CLI/Core 服务显式传入注册实例，六类内置协议（含 ComfyUI）与外部协议共用候选/健康/恢复。实验性包入口仅开放媒体协议所需接口，尚未提供 DSH 外部模块加载设置、通用 Recipe 或完整 SDK。ComfyUI Task binding 另纳入模板摘要，见 [文生图与工作流入口](IMAGE_GENERATION.md)；原五类协议的 binding 与既有记录保持。
+
+同属0.3 alpha源码的 [Core 插件贡献 v0](PLUGINS.md)统一五类贡献的身份、兼容与生命周期。新插件 Provider 的 Task/Attempt 在提交前记录准确依赖，旧绑定保持。默认 Panel 可显式组合页面/设置/预览，共享主题、认证客户端和会话；公开装配保持媒体只读，设置沿用 Core Provider 管理，整套替换仍可用。另由 `allowedOperations` 明确选择持久业务，复用同一单根 runner/FIFO/租约及有版本 `plugin.execute` 记录；Core绑定输入/来源、预留输出身份并管理实际作品存储。[多图对照板](CONTACT_SHEET.md)只引用公开 SDK 和现有 Sharp，已贯穿 Web、用户选择、通用 MCP 与原记录恢复。无稳定 SDK、市场或旧数据迁移。
+
+Core能力目录派生MCP/DSH、Web选项/会话和Skill，投影五类贡献的真实边界。注册/发现不授权，旧工具名单不扩张。MCP用通用目录/执行工具投影连接明确保存的准确业务依赖，Core在接受和后续命令处检查有效权限；断开代理不停止Core。重启只记录interrupted，插件缺失或版本变化不重放，原作品/记录仍可读取。实例生命周期由装配者持有，先关服务再关注册器。
 
 0.2.2 的 Core writer 在创建目录前发布完整 owner 意图，释放和显式恢复通过整体退役保留证据；普通启动不抢占。非图片 staging 复用文件复制接收与分块哈希，图片格式验证和 inline 解码仍可能使用完整 Buffer，不声称端到端流式传输。
 

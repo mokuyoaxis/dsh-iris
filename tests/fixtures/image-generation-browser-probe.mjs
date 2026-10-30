@@ -18,8 +18,9 @@ export async function verifyImageGenerationBrowser({ out, cdp, evaluate, click, 
   async function login(keepHash = false) {
     const file = tokenFile + '-' + ++token; writeLocalApiTokenFile(file, session.accessToken, root);
     if (keepHash) await cdp('Page.reload'); else await cdp('Page.navigate', { url: session.origin + '/' });
-    await wait(() => evaluate("Boolean(document.documentElement.dataset.theme&&!document.querySelector('#connection').hidden)"), 'generation login');
-    await chooseToken(file);
+    await wait(() => evaluate("Boolean(document.documentElement.dataset.theme)"), 'generation login');
+    const retained = await evaluate(`sessionStorage.getItem('iris.workbench.session.v0')===${JSON.stringify(session.accessToken)}`);
+    if (!retained) { await wait(() => evaluate("!document.querySelector('#connection').hidden"), 'generation new service login'); await chooseToken(file); }
     await wait(() => evaluate("!document.querySelector('#workspace').hidden&&document.querySelector('#model-summary').textContent!=='读取中'"), 'generation workspace');
   }
   async function input(prompt = '画一朵淡紫色鸢尾花。', model = FLOW_MODEL) {
@@ -27,6 +28,11 @@ export async function verifyImageGenerationBrowser({ out, cdp, evaluate, click, 
     await wait(() => evaluate("!document.querySelector('#start-edit').disabled"), 'generation draft ready');
   }
   async function status(text) { await wait(() => evaluate(`document.querySelector('#status-title').textContent===${JSON.stringify(text)}&&document.querySelector('#viewer').getAttribute('aria-busy')==='false'`), 'generation status ' + text); }
+  async function appearance(theme) {
+    await click('#appearance-open');
+    await evaluate(`(()=>{const n=document.querySelector('#appearance-theme');n.value=${JSON.stringify(theme)};n.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+    await click('#appearance-close');
+  }
   try {
     await app.execute('flow.init', {}); await app.execute('execution.init', { imageGeneration: true });
     fs.writeFileSync(config, JSON.stringify({ providers: [{ id: 'flow-fixture', name: 'Controlled fixture', auth: 'none', baseUrl: 'http://127.0.0.1:1',
@@ -50,22 +56,10 @@ export async function verifyImageGenerationBrowser({ out, cdp, evaluate, click, 
     result.checks.push('refresh reconnects the selected generation without writes or another submit');
     await dimensions(390); await measure('generation-mobile'); await capture('generation-mobile');
     await dimensions(390);
-    result.themeBeforeClick = await evaluate("document.documentElement.dataset.theme"); save();
-    await evaluate("window.irisThemeEvents=[];for(const type of ['mousedown','mouseup','click'])document.addEventListener(type,e=>irisThemeEvents.push({type:e.type,target:e.target.id,parent:e.target.parentElement?.id,theme:document.documentElement.dataset.theme,detail:e.detail,x:e.clientX,y:e.clientY,scroll:scrollY,rect:document.querySelector('#theme').getBoundingClientRect().toJSON(),time:performance.now()}),true)");
-    await click('#theme');
-    try { await wait(() => evaluate(`document.documentElement.dataset.theme!==${JSON.stringify(result.themeBeforeClick)}`), 'native theme click applied'); }
-    catch (error) {
-      result.themeEvents = await evaluate('irisThemeEvents');
-      result.themeClickState = await evaluate("({theme:document.documentElement.dataset.theme,active:document.activeElement?.id,scale:visualViewport.scale,offset:visualViewport.offsetTop,scroll:scrollY,rect:document.querySelector('#theme').getBoundingClientRect().toJSON()})");
-      result.themeListeners = (await cdp('Runtime.evaluate', { expression: "getEventListeners(document.querySelector('#theme')).click?.length", includeCommandLineAPI: true, returnByValue: true })).result.value;
-      result.programmaticTheme = await evaluate("document.querySelector('#theme').click();document.documentElement.dataset.theme"); save(); throw error;
-    }
-    result.themeEvents = await evaluate('irisThemeEvents'); save();
-    await check('theme button toggles the current appearance', `document.documentElement.dataset.theme!==${JSON.stringify(result.themeBeforeClick)}`);
-    if (await evaluate("document.documentElement.dataset.theme!=='dark'")) await click('#theme');
-    result.darkTheme = await evaluate("({theme:document.documentElement.dataset.theme,panel:getComputedStyle(document.querySelector('#viewer')).backgroundColor,variable:getComputedStyle(document.documentElement).getPropertyValue('--panel'),label:document.querySelector('#theme').textContent})"); save();
+    await appearance('dark');
+    await check('the single appearance entry switches the generation page theme', "document.documentElement.dataset.theme==='dark'&&!document.querySelector('#theme')");
     await check('generation dark theme applies actual dark panel colors', "document.documentElement.dataset.theme==='dark'&&getComputedStyle(document.querySelector('#viewer')).backgroundColor==='rgb(38, 34, 46)'");
-    await capture('generation-mobile-dark'); await click('#theme'); await dimensions(320); await measure('generation-320'); await dimensions(1366, 900);
+    await capture('generation-mobile-dark'); await appearance('light'); await dimensions(320); await measure('generation-320'); await dimensions(1366, 900);
     await click('#reuse-selected');
     await wait(() => evaluate("!document.querySelector('#draft-preview').hidden"), 'generated artwork as an edit source');
     await check('generated selection can start a new editable draft without executing', "document.querySelector('[data-creation-mode=edit]').getAttribute('aria-pressed')==='true'&&!document.querySelector('#source-input').hidden&&document.querySelector('#edit-prompt').value===''");
@@ -80,7 +74,7 @@ export async function verifyImageGenerationBrowser({ out, cdp, evaluate, click, 
     await click('#media-tab'); await wait(() => evaluate("document.querySelectorAll('.gallery-card').length===2"), 'generation gallery');
     await check('unstarted generation has an honest empty cover', "document.querySelector('#gallery-grid').textContent.includes('尚未生成')");
     await capture('generation-gallery');
-    await click('#connections-tab'); await wait(() => evaluate("!document.querySelector('#connection-fields').disabled"), 'generation connection catalog');
+    await click('#connections-tab'); await wait(() => evaluate("!document.querySelector('#connection-new').disabled"), 'generation connection catalog'); await click('#connection-new');
     const connectionWrites = posts().length;
     await click('#connection-image-options input[value=image-generate]');
     await check('connection center selects generation independently from editing', "document.querySelector('#connection-image-options input[value=image-generate]').checked&&document.querySelector('#connection-tools input[value=iris_core_create_generation]').checked");
@@ -103,11 +97,12 @@ export async function verifyImageGenerationBrowser({ out, cdp, evaluate, click, 
     await new Promise(resolve => comfyServer.listen(0, '127.0.0.1', resolve));
     const comfyUrl = 'http://127.0.0.1:' + comfyServer.address().port;
     session = await restart(root, config, undefined); await login();
-    await click('#providers-tab'); await wait(() => evaluate("!document.querySelector('#provider-fields').disabled"), 'ComfyUI provider form');
+    await click('#providers-tab'); await wait(() => evaluate("!document.querySelector('#provider-new').disabled"), 'ComfyUI provider form');
     await click('#provider-new');
     await evaluate("document.querySelector('#provider-preset').value='comfyui';document.querySelector('#provider-preset').dispatchEvent(new Event('change',{bubbles:true}))");
     await check('ComfyUI preset selects the native protocol, no auth, and a local service entry', "document.querySelector('#provider-auth').value==='none'&&document.querySelector('#provider-protocol').value==='comfyui'&&!document.querySelector('#comfyui-tools').hidden&&document.querySelector('#comfyui-open').href==='http://127.0.0.1:8188/'");
     await evaluate(`document.querySelector('#provider-url').value=${JSON.stringify(comfyUrl)};document.querySelector('#provider-url').dispatchEvent(new Event('input',{bubbles:true}))`);
+    await click('[data-provider-view="workflow"]');
     const graph = { '5': { class_type: 'EmptyLatentImage', inputs: { width: 512, height: 512, batch_size: 1 } },
       '6': { class_type: 'CLIPTextEncode', inputs: { text: 'Prompt template' } }, '9': { class_type: 'SaveImage', inputs: { filename_prefix: 'Iris' } } };
     const workflowFile = path.join(out, 'my-workflow.json'); fs.writeFileSync(workflowFile, JSON.stringify(graph), { mode: 0o600 });

@@ -24,7 +24,7 @@ try {
   const selected = run('mcp', 'config', '--connection-file', pair.clientFile, '--capabilities', 'none', '--tools', 'iris_core_connections', '--format', 'entry');
   assert.equal(selected.status, 0, selected.stderr); assert(JSON.parse(selected.stdout).args.includes('none'));
   const discovered = run('mcp', 'capabilities'); assert.equal(discovered.status, 0);
-  assert.deepEqual(JSON.parse(discovered.stdout).implementedMedia, ['image-edit/v0']);
+  assert.deepEqual(JSON.parse(discovered.stdout).implementedMedia, ['image-edit/v0', 'image-generate/v0', 'speech/v0', 'transcribe/v0']);
   assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile, tools: ['iris_core_continue'] }), { code: 'IRIS_CONNECTION_CAPABILITY_DENIED' });
   assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile, capabilities: ['video'] }), { code: 'IRIS_CONNECTION_INPUT_INVALID' });
   assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile, transport: 'http' }), { code: 'IRIS_CONNECTION_INPUT_INVALID' });
@@ -39,6 +39,10 @@ try {
   assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile, transport: 'http', output: file }), { code: 'EEXIST' });
   assert.deepEqual(fs.readFileSync(file), bytes);
   assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile, transport: 'http', output: path.join(root, 'outside.json') }), { code: 'IRIS_CONNECTION_INPUT_INVALID' });
+  const missingParent = path.join(path.dirname(pair.clientFile), 'missing', 'mcp.json');
+  assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile, transport: 'http', output: missingParent }),
+    error => error.code === 'IRIS_CONNECTION_INPUT_INVALID' && !error.message.includes(token));
+  assert.equal(fs.existsSync(path.dirname(missingParent)), false, '无效导出路径不能创建目录');
   assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile, transport: 'http', scopes: ['read'], output: path.join(path.dirname(pair.clientFile), 'other.json') }), { code: 'IRIS_CONNECTION_INPUT_INVALID' });
   assert.deepEqual(fs.readFileSync(pair.clientFile), before);
   const native = createConnectionPair({ dataRoot, directory: path.join(root, 'native'), origin: 'http://127.0.0.1:3182', label: 'DSH', harnessKind: 'dsh' });

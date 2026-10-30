@@ -21,7 +21,13 @@ const ids = await runtime.run('execute', ({ dataRoot }) => {
 });
 await runtime.dispose();
 const cli = (args, status = 0) => {
+  const started = performance.now(), startedWall = Date.now();
   const result = spawnSync(process.execPath, ['bin/dsh-iris.js', ...args, '--data-root', dataRoot], { encoding: 'utf8', timeout: 10000 });
+  if (result.error || result.signal) console.error('MAINTENANCE_CLI_PROCESS ' + JSON.stringify({
+    command: args.slice(0, 2).join(' '), timeoutMs: 10000, elapsedMs: performance.now() - started,
+    wallElapsedMs: Date.now() - startedWall, code: result.error?.code, signal: result.signal,
+    stdoutBytes: Buffer.byteLength(result.stdout || ''), stderrBytes: Buffer.byteLength(result.stderr || '') }));
+  assert.ifError(result.error);
   assert.equal(result.status, status, result.stderr); return result.stdout ? JSON.parse(result.stdout) : null;
 };
 const selection = { artifact_ids: [ids.source.id, ids.derived.id], task_ids: [ids.terminal] };
