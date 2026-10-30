@@ -22,12 +22,16 @@ if (cooperativeSignals) fs.writeFileSync(signalPreload, `process.on('message', m
 process.channel.unref();
 `);
 const signalArgs = cooperativeSignals ? ['--import', pathToFileURL(signalPreload).href] : [];
-function launch(args) {
-  const child = spawn(process.execPath, [...signalArgs, cli, ...args], { stdio: ['ignore', 'pipe', 'pipe', ...(cooperativeSignals ? ['ipc'] : [])], env: { ...process.env,
+function launch(args, service = false) {
+  const useIpc = service && cooperativeSignals, label = args.slice(0, 2).join(' ');
+  const child = spawn(process.execPath, [...(useIpc ? signalArgs : []), cli, ...args], { stdio: ['ignore', 'pipe', 'pipe', ...(useIpc ? ['ipc'] : [])], env: { ...process.env,
     IRIS_HOME: irisHome, DSH_HOME: path.join(work, 'dsh-home'), IRIS_IMPORT_WORKBENCH_CONFIG: '' } });
-  const result = { child, stdout: '', stderr: '', exited: false }; children.push(result);
+  console.log('PASSWORD_CLI spawn ' + label + ' pid=' + child.pid + ' ipc=' + useIpc);
+  const result = { child, useIpc, label, stdout: '', stderr: '', exited: false }; children.push(result);
   child.stdout.on('data', value => { result.stdout += value; }); child.stderr.on('data', value => { result.stderr += value; });
-  result.closed = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', (code, signal) => { result.exited = true; resolve({ code, signal }); }); });
+  result.closed = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', (code, signal) => {
+    result.exited = true; console.log('PASSWORD_CLI close ' + label + ' pid=' + child.pid + ' result=' + (code ?? signal)); resolve({ code, signal });
+  }); });
   return result;
 }
 async function command(args, expected = 0) {
@@ -35,9 +39,12 @@ async function command(args, expected = 0) {
   assert.equal(exit.code, expected, result.stderr); return result;
 }
 async function start(args) {
-  const result = launch(args);
+  const result = launch(args, true);
   for (let i = 0; i < 400; i++) {
-    if (result.stdout.includes('\n')) return { process: result, ...JSON.parse(result.stdout.split('\n')[0]) };
+    if (result.stdout.includes('\n')) {
+      console.log('PASSWORD_CLI ready pid=' + result.child.pid);
+      return { process: result, ...JSON.parse(result.stdout.split('\n')[0]) };
+    }
     if (result.exited) assert.fail(result.stderr);
     await delay(50);
   }
@@ -45,7 +52,8 @@ async function start(args) {
 }
 async function stop(server) {
   if (!server.process.exited) {
-    if (cooperativeSignals) server.process.child.send('iris-test-sigterm');
+    console.log('PASSWORD_CLI stop pid=' + server.process.child.pid);
+    if (server.process.useIpc) server.process.child.send('iris-test-sigterm');
     else server.process.child.kill('SIGTERM');
   }
   const exit = await server.process.closed;
@@ -55,10 +63,12 @@ const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const tree = () => Object.fromEntries(fs.readdirSync(dataRoot, { recursive: true }).filter(name => fs.lstatSync(path.join(dataRoot, name)).isFile())
   .map(name => [name, crypto.createHash('sha256').update(fs.readFileSync(path.join(dataRoot, name))).digest('hex')]));
 async function request(server, action, value, token, expected = 200) {
+  console.log('PASSWORD_CLI request ' + action);
   const response = await fetch(server.origin + '/api/v0/' + action, { method: value ? 'POST' : 'GET', headers: {
     ...(value ? { 'Content-Type': 'application/json', Origin: server.origin } : {}), ...(token ? { Authorization: 'Bearer ' + token } : {})
   }, ...(value ? { body: JSON.stringify(value) } : {}) });
-  const result = await response.json(); assert.equal(response.status, expected, JSON.stringify(result)); return result;
+  const result = await response.json(); assert.equal(response.status, expected, JSON.stringify(result));
+  console.log('PASSWORD_CLI response ' + action + ' status=' + response.status); return result;
 }
 try {
   await command(['flow', 'init', '--data-root', dataRoot]);

@@ -32,10 +32,11 @@ if (cooperativeSignals) fs.writeFileSync(signalPreload, `process.on('message', m
 process.channel.unref();
 `);
 const signalArgs = cooperativeSignals ? ['--import', pathToFileURL(signalPreload).href] : [];
-function launch(args) {
-  const child = spawn(process.execPath, [...signalArgs, cli, ...args], { stdio: ['ignore', 'pipe', 'pipe', ...(cooperativeSignals ? ['ipc'] : [])],
+function launch(args, service = false) {
+  const useIpc = service && cooperativeSignals;
+  const child = spawn(process.execPath, [...(useIpc ? signalArgs : []), cli, ...args], { stdio: ['ignore', 'pipe', 'pipe', ...(useIpc ? ['ipc'] : [])],
     env: { ...process.env, DSH_HOME: work, IRIS_IMPORT_WORKBENCH_CONFIG: '', IRIS_CORE_CONNECTION_FILE: '' } });
-  const entry = { child, stdout: '', stderr: '', exited: false }; children.push(entry);
+  const entry = { child, useIpc, stdout: '', stderr: '', exited: false }; children.push(entry);
   child.stdout.on('data', bytes => { entry.stdout += bytes; }); child.stderr.on('data', bytes => { entry.stderr += bytes; });
   entry.closed = new Promise((resolve, reject) => {
     child.once('error', reject); child.once('close', (code, signal) => { entry.exited = true; resolve({ code, signal }); });
@@ -61,7 +62,7 @@ async function ready(entry) {
 }
 async function stop(entry) {
   if (!entry.exited) {
-    if (cooperativeSignals) entry.child.send('iris-test-sigterm');
+    if (entry.useIpc) entry.child.send('iris-test-sigterm');
     else entry.child.kill('SIGTERM');
   }
   const result = await entry.closed;
@@ -70,7 +71,7 @@ async function stop(entry) {
 }
 let session, token;
 async function start(args) {
-  const entry = launch(args); session = await ready(entry); token = fs.readFileSync(session.tokenFile, 'utf8').trim();
+  const entry = launch(args, true); session = await ready(entry); token = fs.readFileSync(session.tokenFile, 'utf8').trim();
   assert(!entry.stdout.includes(token)); assert(!entry.stderr.includes(token));
   return entry;
 }
@@ -203,7 +204,7 @@ ${slow ? 'await new Promise(resolve => setTimeout(resolve, 500));' : ''} return 
   const retry = await start(['api', 'serve', '--data-root', dataRoot, '--token-dir', directory, '--plugin-config', configFile]); await stop(retry);
   lifecyclePlugin({ slow: true });
   const before = fs.readFileSync(lifecycle, 'utf8').length;
-  const canceled = launch(['api', 'serve', '--data-root', dataRoot, '--token-dir', directory, '--plugin-config', configFile]);
+  const canceled = launch(['api', 'serve', '--data-root', dataRoot, '--token-dir', directory, '--plugin-config', configFile], true);
   for (let i = 0; i < 400 && fs.readFileSync(lifecycle, 'utf8').length === before; i++) await delay(10);
   assert(fs.readFileSync(lifecycle, 'utf8').length > before, 'activation started before SIGTERM');
   await stop(canceled); assert.equal(canceled.stdout, '');
