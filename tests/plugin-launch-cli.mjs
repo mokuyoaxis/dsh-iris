@@ -35,6 +35,11 @@ async function command(args, expected = 0) {
   const entry = launch(args), result = await entry.closed;
   assert.equal(result.code, expected, entry.stderr); return entry;
 }
+function cliDiagnostic(stderr) {
+  const records = stderr.split(/\r?\n/).filter(line => line.startsWith('{'));
+  assert.equal(records.length, 1, 'expected one structured CLI diagnostic among runtime stderr messages');
+  return JSON.parse(records[0]);
+}
 async function ready(entry) {
   for (let i = 0; i < 400; i++) {
     if (entry.stdout.includes('\n')) return JSON.parse(entry.stdout.split('\n')[0]);
@@ -194,9 +199,14 @@ ${slow ? 'await new Promise(resolve => setTimeout(resolve, 500));' : ''} return 
   await stop(cleanup); assert.match(cleanup.stderr, /IRIS_CLI_SERVICE_CLEANUP_FAILED/);
   assert.match(cleanup.stderr, /controlled cleanup failure/);
   const combined = await command(['api', 'serve', '--data-root', dataRoot, '--token-file', existing, '--plugin-config', configFile], 1);
-  const combinedError = JSON.parse(combined.stderr);
+  const combinedError = cliDiagnostic(combined.stderr);
   assert.equal(combinedError.stage, 'shutdown'); assert.equal(combinedError.startup.code, 'IRIS_API_TOKEN_FILE_UNAVAILABLE');
   assert.equal(combinedError.errors[0].stage, 'plugin-stop'); assert.match(combined.stderr, /controlled cleanup failure/);
+  const warning = '(node:123) ExperimentalWarning: Importing JSON modules is an experimental feature\n';
+  assert.deepEqual(cliDiagnostic(warning + combined.stderr + warning), combinedError, 'runtime warnings before or after the real diagnostic cannot replace its startup/cleanup facts');
+  assert.throws(() => cliDiagnostic(warning));
+  assert.throws(() => cliDiagnostic('{malformed}\n'));
+  assert.throws(() => cliDiagnostic('{}\n{}\n'));
   saveConfig({ schemaVersion: 0, entries: [], operations: [] });
   const recovered = await start(['api', 'serve', '--data-root', dataRoot, '--token-dir', directory, '--plugin-config', configFile]); await stop(recovered);
   checks.push('busy-root/port/constructor/token failures and SIGTERM during activation release registry/leases; combined startup/cleanup errors retain both causes after Core releases its lease');
@@ -209,7 +219,7 @@ ${slow ? 'await new Promise(resolve => setTimeout(resolve, 500));' : ''} return 
   const noApiPanel = await command(['api', 'serve', '--data-root', dataRoot, '--token-dir', directory, '--plugin-config', configFile], 1);
   assert.match(noApiPanel.stderr, /IRIS_PLUGIN_LAUNCH_INVALID/);
   const malformed = await command(['plugins', 'inspect', '--plugin-config', path.join(work, 'missing.json')], 1);
-  const diagnostic = JSON.parse(malformed.stderr); assert.equal(diagnostic.stage, 'plugin-config'); assert.equal(diagnostic.code, 'ENOENT');
+  const diagnostic = cliDiagnostic(malformed.stderr); assert.equal(diagnostic.stage, 'plugin-config'); assert.equal(diagnostic.code, 'ENOENT');
   checks.push('conflicting legacy extension/token flags and API Panel choice fail explicitly; structured startup errors locate the config and stage');
   console.log(JSON.stringify({ ok: true, checks, work }, null, 2));
 } finally {

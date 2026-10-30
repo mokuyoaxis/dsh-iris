@@ -21,7 +21,7 @@ async function setup(name, options) {
 try {
   const rejected = await setup('accept');
   fs.linkSync = (from, to) => {
-    if (String(to).includes('/operations/')) throw Object.assign(new Error('injected accept failure'), { code: 'EIO' });
+    if (String(to).includes(path.sep + 'operations' + path.sep)) throw Object.assign(new Error('injected accept failure'), { code: 'EIO' });
     return link(from, to);
   };
   await assert.rejects(rejected.runner.submit(rejected.input), { code: 'EIO' }); fs.linkSync = link;
@@ -33,7 +33,7 @@ try {
 
   const terminal = await setup('terminal');
   fs.renameSync = (from, to) => {
-    if (String(to).includes('/operations/') && JSON.parse(fs.readFileSync(from, 'utf8')).state === 'succeeded') {
+    if (String(to).includes(path.sep + 'operations' + path.sep) && JSON.parse(fs.readFileSync(from, 'utf8')).state === 'succeeded') {
       throw Object.assign(new Error('injected terminal failure'), { code: 'EIO' });
     }
     return rename(from, to);
@@ -50,7 +50,7 @@ try {
 
   const release = await setup('release');
   fs.unlinkSync = file => {
-    if (String(file).endsWith('runner/.iris-runtime-writer-v0.owner.json')) throw Object.assign(new Error('injected release failure'), { code: 'EACCES' });
+    if (String(file).endsWith(path.join('runner', '.iris-runtime-writer-v0.owner.json'))) throw Object.assign(new Error('injected release failure'), { code: 'EACCES' });
     return unlink(file);
   };
   await assert.rejects(release.runner.dispose(), { code: 'IRIS_CORE_LEASE_INVALID' }); fs.unlinkSync = unlink; failed.add(release.runner);

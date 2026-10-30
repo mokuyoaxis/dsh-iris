@@ -39,7 +39,7 @@ try {
   const cachedFixture = audioFlowFixture(), cached = await setup('delivery', cachedFixture);
   let intercepted = false;
   fs.renameSync = (from, to) => {
-    if (String(to).includes('/artifact-store/v0/records/') && String(to).endsWith('.json')) { intercepted = true; throw Object.assign(new Error('controlled artifact publication failure'), { code: 'EIO' }); }
+    if (String(to).includes(path.sep + path.join('artifact-store', 'v0', 'records') + path.sep) && String(to).endsWith('.json')) { intercepted = true; throw Object.assign(new Error('controlled artifact publication failure'), { code: 'EIO' }); }
     return rename(from, to);
   };
   const failed = await cached.app.execute('flow.continue', { run_id: cached.intent.flow.run.id }); fs.renameSync = rename;
