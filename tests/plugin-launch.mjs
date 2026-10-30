@@ -79,6 +79,8 @@ const directory = path.join(root, 'sessions'), initial = 'A'.repeat(43), next = 
 assert.equal(checkLocalApiTokenDirectory(root, dataRoot), root, 'a private parent is outside the data root too');
 assert.equal(checkLocalApiTokenDirectory(directory, dataRoot), directory);
 assert.equal(fs.existsSync(directory), false, 'validation does not create a directory');
+assert.throws(() => checkLocalApiTokenDirectory(path.join(dataRoot, 'native-sessions'), fs.realpathSync.native(dataRoot)), { code: 'IRIS_API_TOKEN_DIRECTORY_INVALID' });
+assert(!fs.existsSync(path.join(dataRoot, 'native-sessions')));
 const first = writeLocalApiTokenDirectory(directory, initial, dataRoot), second = writeLocalApiTokenDirectory(directory, next, dataRoot);
 assert.notEqual(first, second); assert.equal(fs.readFileSync(first, 'utf8').trim(), initial);
 assert.equal(fs.readFileSync(second, 'utf8').trim(), next);

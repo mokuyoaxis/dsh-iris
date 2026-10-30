@@ -55,6 +55,9 @@ try {
   assert.throws(() => foreign.start(), { code: 'IRIS_WEB_AUTH_CONFIG_INVALID' }); await foreign.dispose();
   const inside = createWorkbenchAuth({ directory: path.join(dataRoot, 'auth'), dataRoot });
   assert.throws(() => inside.start(), { code: 'IRIS_WEB_AUTH_CONFIG_INVALID' }); await inside.dispose();
+  const physicalInside = createWorkbenchAuth({ directory: path.join(dataRoot, 'native-auth'), dataRoot: fs.realpathSync.native(dataRoot) });
+  assert.throws(() => physicalInside.start(), { code: 'IRIS_WEB_AUTH_CONFIG_INVALID' }); await physicalInside.dispose();
+  assert(!fs.existsSync(path.join(dataRoot, 'native-auth')), 'aliases cannot move authentication into the physical Core root');
   const publicDirectory = path.join(root, 'public'); fs.mkdirSync(publicDirectory, { mode: 0o755 });
   if (process.platform !== 'win32') {
     const unsafe = createWorkbenchAuth({ directory: publicDirectory, dataRoot });

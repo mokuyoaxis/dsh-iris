@@ -21,6 +21,8 @@ try {
   const options = { dataRoot, origin: 'http://127.0.0.1:3182', harnessKind: 'generic', label: 'Reader' };
   assert.throws(() => createConnectionPair({ ...options, directory: path.join(dataRoot, 'forbidden') }), { code: 'IRIS_CONNECTION_INPUT_INVALID' });
   assert(!fs.existsSync(path.join(dataRoot, 'forbidden')));
+  assert.throws(() => createConnectionPair({ ...options, dataRoot: fs.realpathSync.native(dataRoot), directory: path.join(dataRoot, 'native-forbidden') }), { code: 'IRIS_CONNECTION_INPUT_INVALID' });
+  assert(!fs.existsSync(path.join(dataRoot, 'native-forbidden')));
   const pair = createConnectionPair({ ...options, directory: path.join(root, 'pair') });
   const before = fs.readFileSync(pair.clientFile);
   assert.throws(() => createConnectionPair({ ...options, directory: path.join(root, 'pair') }), { code: 'EEXIST' });

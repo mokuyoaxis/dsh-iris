@@ -31,6 +31,9 @@ try {
   const forbidden = make({ directory: path.join(dataRoot, 'managed') });
   await assert.rejects(forbidden.start(), { code: 'IRIS_CONNECTION_INPUT_INVALID' });
   assert(!fs.existsSync(path.join(dataRoot, 'managed')));
+  const physicalForbidden = make({ dataRoot: fs.realpathSync.native(dataRoot), directory: path.join(dataRoot, 'native-managed') });
+  await assert.rejects(physicalForbidden.start(), { code: 'IRIS_CONNECTION_INPUT_INVALID' });
+  assert(!fs.existsSync(path.join(dataRoot, 'native-managed')));
   const input = { key: crypto.randomUUID(), label: 'Free harness / workspace', scopes: ['read'], capabilities: ['image-edit'] };
   const result = store.create(input); assert.equal(result.connectionId, input.key); assert.equal(result.idempotentReplay, false);
   const file = path.join(directory, 'profiles', input.key + '.json'), original = fs.readFileSync(file);

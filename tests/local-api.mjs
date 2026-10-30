@@ -155,6 +155,8 @@ try {
   assert.throws(() => writeLocalApiTokenFile(privateToken, 'replacement', main.dataRoot), { code: 'IRIS_API_TOKEN_FILE_UNAVAILABLE' });
   assert.deepEqual(fs.readFileSync(privateToken), tokenBytes);
   assert.throws(() => writeLocalApiTokenFile(path.join(main.dataRoot, 'token'), session.accessToken, main.dataRoot), { code: 'IRIS_API_TOKEN_FILE_INVALID' });
+  assert.throws(() => writeLocalApiTokenFile(path.join(main.dataRoot, 'native-token'), session.accessToken, fs.realpathSync.native(main.dataRoot)), { code: 'IRIS_API_TOKEN_FILE_INVALID' });
+  assert(!fs.existsSync(path.join(main.dataRoot, 'native-token')));
 
   const other = await flow('other', { mode: 'unknown' });
   await other.app.execute('flow.continue', other.input);
