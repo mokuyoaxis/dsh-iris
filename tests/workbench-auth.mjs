@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { createWorkbenchAuth, resolveWorkbenchAuthDirectory } from '../lib/workbench-auth.js';
+import { createWorkbenchAuth, resolveWorkbenchAuthDirectory, workbenchRootKey } from '../lib/workbench-auth.js';
 import { useTempDshHome } from './test-env.js';
 
 const { root } = useTempDshHome('iris-workbench-auth'), dataRoot = path.join(root, 'core'), directory = path.join(root, 'auth');
 fs.mkdirSync(dataRoot); const checks = [], secret = 'Example-password-123';
+assert.equal(workbenchRootKey(dataRoot), workbenchRootKey(fs.realpathSync.native(dataRoot)),
+  'CLI paths and the Core physical root select the same authentication identity, including Windows short-path aliases');
 let auth = createWorkbenchAuth({ directory, dataRoot });
 const originalNow = Date.now;
 try {

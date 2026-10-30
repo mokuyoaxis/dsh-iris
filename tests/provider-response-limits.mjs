@@ -25,9 +25,26 @@ try {
     await assert.rejects(readProviderText(await fetch(base + resource), { maxBytes: 512 }), { code: 'IRIS_PROVIDER_RESPONSE_TOO_LARGE' });
     fs.writeFileSync(file, 'original', { mode: 0o600 });
     await assert.rejects(downloadTo(base + resource, file, { maxBytes: 512 }), { code: 'IRIS_PROVIDER_RESPONSE_TOO_LARGE' });
-    assert.equal(fs.readFileSync(file, 'utf8'), 'original'); assert(!fs.readdirSync(root).some(name => name.includes('.download-')));
+    assert.equal(fs.readFileSync(file, 'utf8'), 'original'); assert(!fs.readdirSync(root).some(name => name.includes('.download-')), resource + ' retained a partial download');
   }
   checks.push('declared, chunked and decompressed oversize bodies are rejected without replacing the destination or retaining partial files');
+  const createWriteStream = fs.createWriteStream;
+  let observedOutput, closed;
+  fs.createWriteStream = (destination, options) => {
+    observedOutput = createWriteStream(destination, { ...options, fs: { ...fs,
+      open(...args) { setTimeout(() => fs.open(...args), 25); },
+      close(fd, callback) { fs.close(fd, error => setTimeout(() => callback(error), 25)); }
+    } });
+    closed = new Promise(resolve => observedOutput.once('close', resolve));
+    return observedOutput;
+  };
+  try {
+    await assert.rejects(downloadTo(base + '/declared', file, { maxBytes: 512 }), { code: 'IRIS_PROVIDER_RESPONSE_TOO_LARGE' });
+    assert.equal(observedOutput.closed, true, 'a rejected download waits for its file handle to close');
+    assert.equal(fs.readFileSync(file, 'utf8'), 'original');
+    assert(!fs.readdirSync(root).some(name => name.includes('.download-')));
+  } finally { fs.createWriteStream = createWriteStream; await closed; }
+  checks.push('delayed file open and close finish before rejection and partial-file cleanup');
   assert.equal(await readProviderText(await fetch(base), { maxBytes: 128 }), '你好，Iris');
   await downloadTo(base, file, { maxBytes: 128 }); assert.equal(fs.readFileSync(file, 'utf8'), '你好，Iris');
   await assert.rejects(downloadTo(base + '/error', file), error => error.category === 'provider' && error.httpStatus === 503);
