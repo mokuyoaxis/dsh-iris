@@ -4,14 +4,14 @@ This guide is for **0.3.0-beta.1 or the current source tree**. Stable npm **0.2.
 
 ## Start a new workspace · 新建工作区
 
-Use Node.js ≥22. To install the prerelease in your project:
+Use Node.js ≥22.1.0. To install the prerelease in your project:
 
 ```bash
 npm install @mokuyoaxis/dsh-iris@0.3.0-beta.1
 npx dsh-iris --help
 ```
 
-The commands below use a source checkout: install its locked dependencies with `npm ci`, then run from the repository root. For the installed alpha package, replace `node bin/dsh-iris.js` with `npx dsh-iris`. Use `@alpha` instead of the exact version only when you intend to follow prereleases.
+The commands below use a source checkout: install its locked dependencies with `npm ci`, then run from the repository root. For the installed beta package, replace `node bin/dsh-iris.js` with `npx dsh-iris`. Use `@beta` instead of the exact version only when you intend to follow beta releases.
 
 Choose a **new private directory under your home**, on a filesystem that supports hard links. On Termux/PRoot, keep it in the Linux home rather than Android shared storage. These commands create a new workspace; they do not migrate an old DSH or Flow root. If the paths already contain data, choose another location.
 

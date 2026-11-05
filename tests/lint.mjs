@@ -1145,8 +1145,8 @@ stage('documents');
       failures.push('README.md 必须链接仓库级 ' + skill + ' Skill');
     }
   }
-  if (!pkg.engines || pkg.engines.node !== '>=22.0.0') {
-    failures.push('package.json 必须声明当前候选最低 Node >=22.0.0');
+  if (!pkg.engines || pkg.engines.node !== '>=22.1.0') {
+    failures.push('package.json 必须声明当前候选最低 Node >=22.1.0');
   }
   if (pkg.engines?.dsh !== DSH_SUPPORT_RANGE || pkg.dsh?.engines?.dsh !== DSH_SUPPORT_RANGE) {
     failures.push('package.json 顶层/嵌套 DSH engines 必须与已验证宿主范围一致');

@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: [22.0.0, 22]
+        node: [22.1.0, 22]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -30,11 +30,11 @@ jobs:
       # The Windows cmd wrapper checks that path and falls back to bundled npm.
       - run: ${{ runner.os == 'Windows' && 'npm.cmd' || 'npm' }} ci
       - name: Compare Windows shutdown instrumentation
-        if: runner.os == 'Windows' && matrix.node == '22.0.0'
+        if: runner.os == 'Windows' && matrix.node == '22.1.0'
         run: node scripts/verify-test-hook-isolation.mjs
       - run: ${{ runner.os == 'Windows' && 'npm.cmd' || 'npm' }} test
       - name: Repeat minimum Node shutdown regression
-        if: matrix.node == '22.0.0'
+        if: matrix.node == '22.1.0'
         run: node scripts/verify-test-shutdown.mjs
       - run: ${{ runner.os == 'Windows' && 'npm.cmd' || 'npm' }} pack --dry-run
 
@@ -68,11 +68,12 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: iris-package-verification
+          name: iris-package-verification-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/iris-package/pack.json
             ${{ runner.temp }}/iris-package/*.tgz
             ${{ runner.temp }}/iris-package/verification/report.json
             ${{ runner.temp }}/iris-package/verification/*.log
             ${{ runner.temp }}/iris-package/verification/*/report.json
+            ${{ runner.temp }}/iris-package/verification/*/browser.log
           if-no-files-found: warn

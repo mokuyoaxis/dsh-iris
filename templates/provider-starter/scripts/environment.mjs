@@ -14,6 +14,15 @@ export const credentialEnv = 'IRIS_B4_STARTER_FIXTURE_KEY';
 export const syntheticKey = 'synthetic-b4-starter-key';
 export async function createEnvironment({ proxyUrl } = {}) {
   const work = await mkdtemp(path.join(os.tmpdir(), 'iris-provider-starter-')); await chmod(work, 0o700);
+  // Windows kill(SIGTERM) forces termination; exercise the public CLI's normal
+  // shutdown handler through the same isolated IPC preload used by Core tests.
+  const cooperativeSignals = process.platform === 'win32' || process.env.IRIS_TEST_CLI_SIGNAL_MODE === 'ipc';
+  const signalPreload = path.join(work, 'signal-preload.mjs');
+  if (cooperativeSignals) await writeFile(signalPreload, `process.on('message', message => {
+  if (message === 'iris-test-sigterm' && !process.emit('SIGTERM')) throw new Error('CLI SIGTERM handler is not installed');
+});
+process.channel.unref();
+`, { mode: 0o600 });
   const fixture = await createFixture();
   const prepared = await setup({ directory: path.join(work, 'demo'), endpoint: fixture.origin, credentialEnv });
   let networkConfigPath;
@@ -36,7 +45,7 @@ export async function createEnvironment({ proxyUrl } = {}) {
   const scheduler = path.join(work, 'scheduler.json');
   const event = (phase, detail = {}) => appendFile(path.join(work, 'events.jsonl'), JSON.stringify({ phase, at: new Date().toISOString(), ...detail }) + '\n', { mode: 0o600 });
   await writeFile(scheduler, JSON.stringify({ schemaVersion: 1, httpConcurrency: 2, requestsPerSecond: 100, remoteLimit: 4 }), { mode: 0o600 });
-  let child, exited, exit, started, sequence = 0;
+  let child, exited, exit, started, sequence = 0, serviceStderr = () => '';
   async function start({ present = true, version, key = syntheticKey } = {}) {
     await event('starting', { present, ...(version ? { version } : {}) });
     let entry = prepared.entry;
@@ -47,11 +56,12 @@ export async function createEnvironment({ proxyUrl } = {}) {
     }
     await writeFile(prepared.configPath, JSON.stringify({ schemaVersion: 0, entries: present ? [entry] : [] }) + '\n', { mode: 0o600 });
     const tokenFile = path.join(work, 'owner-' + (++sequence)); let stdout = '', stderr = ''; exited = false;
-    child = spawn(process.execPath, [coreCli, 'web', 'serve', '--data-root', prepared.dataRoot,
+    serviceStderr = () => stderr;
+    child = spawn(process.execPath, [...(cooperativeSignals ? ['--import', pathToFileURL(signalPreload).href] : []), coreCli, 'web', 'serve', '--data-root', prepared.dataRoot,
       '--plugin-config', prepared.configPath, '--provider-config', prepared.providerConfigPath, '--allow-execution', '--allow-provider-management',
       '--connection-store', prepared.connectionStore, '--allow-connection-management', '--allow-mcp',
       '--scheduler-config', scheduler, '--token-file', tokenFile, ...(networkConfigPath ? ['--network-config', networkConfigPath] : [])], {
-      stdio: ['ignore', 'pipe', 'pipe'], env: { ...cleanEnvironment(), [credentialEnv]: key }
+      stdio: ['ignore', 'pipe', 'pipe', ...(cooperativeSignals ? ['ipc'] : [])], env: { ...cleanEnvironment(), [credentialEnv]: key }
     });
     child.stdout.on('data', bytes => { stdout += bytes; }); child.stderr.on('data', bytes => { stderr += bytes; });
     exit = new Promise(resolve => child.once('close', (code, signal) => { exited = true; resolve({ code, signal }); }));
@@ -65,10 +75,13 @@ export async function createEnvironment({ proxyUrl } = {}) {
   }
   async function stop() {
     if (child) await event('stopping', { pid: child.pid });
-    if (child && !exited) child.kill('SIGTERM');
+    if (child && !exited) {
+      if (cooperativeSignals) child.send('iris-test-sigterm');
+      else child.kill('SIGTERM');
+    }
     if (child) {
       const result = await Promise.race([exit, delay(10000, undefined, { ref: false }).then(() => { throw new Error('Core CLI did not close within 10 seconds'); })]);
-      assert(process.platform === 'win32' ? result.signal === 'SIGTERM' : result.code === 143, JSON.stringify(result));
+      assert.equal(result.code, 143, JSON.stringify({ ...result, stderr: serviceStderr(), work }));
       await event('stopped', result);
     }
     child = undefined;

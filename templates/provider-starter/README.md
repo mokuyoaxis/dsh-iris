@@ -14,7 +14,7 @@ node scripts/protocol-smoke.mjs
 npm test
 ```
 
-These tests use synthetic credentials and loopback HTTP services only. They initialize new private temporary roots, run the actual installed Core CLI and formal HTTP MCP, and preserve their evidence directories. No provider account, paid call or harness configuration is involved. Archive acceptance separately checks the same template as its own npm tarball. The template has no runtime dependency beyond its Core peer and Node 22+.
+These tests use synthetic credentials and loopback HTTP services only. They initialize new private temporary roots, run the actual installed Core CLI and formal HTTP MCP, and preserve their evidence directories. No provider account, paid call or harness configuration is involved. Archive acceptance separately checks the same template as its own npm tarball. The template has no runtime dependency beyond its Core peer and Node 22.1.0+.
 
 `private: true` prevents accidentally publishing this example. Before publishing your own plugin, choose your package/plugin/contribution IDs, review its implementation and compatibility, update its independent versions, then deliberately remove that flag. The local `npm pack --ignore-scripts` acceptance does not publish anything.
 

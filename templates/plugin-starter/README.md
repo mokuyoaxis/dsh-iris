@@ -6,7 +6,7 @@ This project has its own package name, plugin ID, plugin version, page and PNG r
 
 ## Start · 开始使用
 
-Requires Node.js 22+ and Core `0.3.0-alpha.1` or a later compatible 0.3 build. Stable Iris `0.2.7` has no plugin SDK. The template is distributed with Core beta.1; the older alpha.1 package does **not** contain this directory.
+Requires Node.js 22+ and Core `0.3.0-alpha.1` or a later compatible 0.3 build. Core beta.1 requires Node.js **22.1.0+**. Stable Iris `0.2.7` has no plugin SDK. The template is distributed with Core beta.1; the older alpha.1 package does **not** contain this directory.
 
 Copy `templates/plugin-starter` from a current Iris checkout into a **new** directory outside that checkout. From the installed beta.1 package, copy `node_modules/@mokuyoaxis/dsh-iris/templates/plugin-starter` instead. The copied project can use the public SDK already present in alpha.1:
 

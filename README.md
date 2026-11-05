@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@mokuyoaxis/dsh-iris"><img alt="npm version" src="https://img.shields.io/npm/v/%40mokuyoaxis%2Fdsh-iris.svg?style=flat-square"></a>
-  <a href="https://nodejs.org/"><img alt="Node.js 22 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
+  <a href="https://nodejs.org/"><img alt="Node.js 22.1.0 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D22.1.0-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
   <a href="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
@@ -90,7 +90,7 @@ npx dsh-iris web serve \
   --allow-connection-management --allow-mcp --port 3182
 ```
 
-在源码目录使用 `npm ci` 安装锁定依赖，并把 `npx dsh-iris` 换成 `node bin/dsh-iris.js`。跟随预发布通道可安装 `@mokuyoaxis/dsh-iris@alpha`；需要可复现配置时保留准确版本。
+在源码目录使用 `npm ci` 安装锁定依赖，并把 `npx dsh-iris` 换成 `node bin/dsh-iris.js`。跟随 beta 通道可安装 `@mokuyoaxis/dsh-iris@beta`；需要可复现配置时保留准确版本。
 
 首次打开输出的 **`loginUrl` 设置访问口令**，以后用普通地址。默认记住设备，刷新及正常重启后可继续；退出后输入原口令即可。手机无需读取 Termux 私有文件。
 

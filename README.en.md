@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@mokuyoaxis/dsh-iris"><img alt="npm version" src="https://img.shields.io/npm/v/%40mokuyoaxis%2Fdsh-iris.svg?style=flat-square"></a>
-  <a href="https://nodejs.org/"><img alt="Node.js 22 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
+  <a href="https://nodejs.org/"><img alt="Node.js 22.1.0 or newer" src="https://img.shields.io/badge/Node.js-%3E%3D22.1.0-339933.svg?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white"></a>
   <a href="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mokuyoaxis/dsh-iris/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
@@ -90,7 +90,7 @@ npx dsh-iris web serve \
   --allow-connection-management --allow-mcp --port 3182
 ```
 
-For a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. Use `@mokuyoaxis/dsh-iris@alpha` to follow prereleases, or keep the exact version for a reproducible setup.
+For a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. Use `@mokuyoaxis/dsh-iris@beta` to follow betas, or keep the exact version for a reproducible setup.
 
 Open the printed **`loginUrl` once to set an access password**, then use the ordinary address. Remembered devices survive refreshes and normal restarts; sign back in with the same password after logout. Mobile browsers do not need access to Termux files.
 

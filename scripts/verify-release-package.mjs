@@ -32,7 +32,11 @@ async function check(name, values, cwd, timeoutMs) {
     ...(timedOut ? { timerLatenessMs: Math.max(0, elapsedMs - timeoutMs) } : {}) };
   report.checks.push(record); save(); console.log(JSON.stringify(record));
   const succeeded = result.status === 0 && !result.signal && !result.error && !timedOut;
-  if (!succeeded) console.error(fs.readFileSync(path.join(out, name + '.log'), 'utf8'));
+  if (!succeeded) {
+    console.error(fs.readFileSync(path.join(out, name + '.log'), 'utf8'));
+    const browserLog = path.join(out, name, 'browser.log');
+    if (fs.existsSync(browserLog)) console.error(fs.readFileSync(browserLog, 'utf8'));
+  }
   assert(succeeded,
     name + ' failed; inspect ' + path.join(out, name + '.log'));
 }

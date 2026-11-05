@@ -2,6 +2,16 @@
 
 Iris与DSH的版本号独立。安装前运行 `dsh --version`，并核对要安装的Iris版本；发布状态见 [README](../README.md)。
 
+## Iris 0.3.0-beta.1
+
+beta.1沿用下方12个准确DSH宿主版本，新增出口、调度、凭据与Core文生视频等功能不扩大宿主声明。独立Core Web/MCP无需安装DSH；两类入口覆盖见[发行说明](releases/0.3.0-beta.1.md)。安装beta时明确指定：
+
+```bash
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.1
+```
+
+beta.1要求Node.js ≥22.1.0，包声明、Doctor与最低CI使用同一版本。下方alpha及0.2.x说明保留各自历史范围，不代表beta重新完成了全部宿主组合的真实装载验证。
+
 ## Iris 0.3.0-alpha.1
 
 本次alpha沿用下方12个准确宿主版本声明，独立Core Web/MCP不要求安装DSH。需要DSH新增的ComfyUI入口时明确安装预发布：
@@ -40,7 +50,7 @@ dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-alpha.1
 
 0.2.4的历史范围保持两项准确版本。0.2.5按实际接口能力选择桥接，不再按“0.2”版本号启用默认视觉路由；已验证的旧宿主也能精确绑定默认模型、确认图片输入能力并正确处理失败终态。
 
-扩大插件支持不要求现有用户升级DSH。当前Iris Core、CLI和插件要求Node.js ≥ 22.0.0；DSH若要求更高，以宿主为准。保留旧DSH时也需要满足这个Node要求。
+扩大插件支持不要求现有用户升级DSH。Iris 0.2.x及alpha.1的Core、CLI和插件要求Node.js ≥ 22.0.0；DSH若要求更高，以宿主为准。保留旧DSH时也需要满足这个Node要求。
 
 ## 安装与升级
 
