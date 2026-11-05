@@ -231,7 +231,7 @@ try {
     const targetPath = path.join(root, 'download.bin');
     assert.equal((await dash.operations.download({ artifact: polled.artifacts[0], targetPath, capability: 'image' })).bytes, bytes.length);
     assert.deepEqual(fs.readFileSync(targetPath), bytes);
-    assert.equal(fs.statSync(targetPath).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal(fs.statSync(targetPath).mode & 0o777, 0o600);
     const prepared = prepareProviderInput(dash, { model: 'fixture-upload', bytes, filename: 'fixture.wav' });
     await within(uploadPolicy.promise); const closing = dashNetwork.dispose();
     assert.equal(dashNetwork.snapshot().activeOperations, 1); assert.equal(providerCloses, 0);
@@ -301,7 +301,7 @@ try {
     globalThis.fetch = nativeFetch;
     await Promise.all([...assemblyClients.values()].map(client => client.dispose()));
   }
-  assert.equal(fs.statSync(configPath).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(configPath).mode & 0o777, 0o600);
   assert([...assemblyClients.values()].every(client => client.snapshot().state === 'closed'));
 
   // The other synchronous built-ins also bind discovery and generation to their explicit client.

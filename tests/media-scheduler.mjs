@@ -11,11 +11,14 @@ const policy = { schemaVersion: 1, httpConcurrency: 2, requestsPerSecond: 3, rem
 assert.throws(() => checkedSchedulingPolicy({ ...policy, httpConcurrency: 5 }), { code: 'IRIS_SCHEDULER_CONFIG_INVALID' });
 assert.throws(() => checkedSchedulingPolicy({ ...policy, unknown: true }), { code: 'IRIS_SCHEDULER_CONFIG_INVALID' });
 assert.throws(() => checkedSchedulingPolicy({ schemaVersion: 2 }), { code: 'IRIS_SCHEDULER_CONFIG_INVALID' });
+let canceledResponseClosed = false;
 const starts = [], server = http.createServer((req, res) => {
   starts.push({ path: req.url, at: performance.now() });
   if (req.url === '/redirect') { res.writeHead(302, { location: '/final' }); res.end(); return; }
   if (req.url === '/429') { res.writeHead(429, { 'retry-after': '1' }); res.end('cooldown'); return; }
   res.writeHead(200, { 'content-type': 'text/plain' }); res.write('hello');
+  // Keep this body open: normal completion must not make cancellation pass.
+  if (req.url === '/cancel') { res.once('close', () => { canceledResponseClosed = true; }); return; }
   const timer = setTimeout(() => res.end(' world'), req.url === '/slow' ? 250 : 25);
   res.once('close', () => clearTimeout(timer));
 });
@@ -62,8 +65,11 @@ try {
     })));
     assert.equal(peak, 4, 'actual HTTP exercises the supported global maximum');
     assert.equal(four.snapshot().httpActive, 0);
-    await network.run(async fetch => { const response = await fetch(url + '/slow'); await response.body.cancel(); });
-    await delay(20); assert.equal(four.snapshot().httpActive, 0, 'body cancellation releases the HTTP permit');
+    await network.run(async fetch => { const response = await fetch(url + '/cancel'); await response.body.cancel(); });
+    const cancelDeadline = performance.now() + policy.queueTimeoutMs;
+    while ((!canceledResponseClosed || four.snapshot().httpActive) && performance.now() < cancelDeadline) await delay(2);
+    assert(canceledResponseClosed, 'body cancellation closes the deliberately unfinished server response');
+    assert.equal(four.snapshot().httpActive, 0, 'body cancellation releases the HTTP permit');
   } finally { await fourManager.dispose(); four.dispose(); }
   console.log('Media scheduler: strict policy, real HTTP body concurrency, redirects, rolling dispatch RPS and 429 cooldown OK');
 } finally {
