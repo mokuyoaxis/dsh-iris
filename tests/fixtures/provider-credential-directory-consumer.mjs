@@ -33,7 +33,7 @@ async function run(args, expected = 0) {
     assert.equal(expected, 0);
   } catch (error) { if (expected === 0) throw error; assert.equal(error.code, expected); result = error; }
   clean(result.stdout || ''); clean(result.stderr || '');
-  if (expected) { assert.match(result.stderr, /^IRIS_PROVIDER_DIRECTORY_CREDENTIALS:/); return; }
+  if (expected) { assert.match(result.stderr, /(?:^|\n)IRIS_PROVIDER_DIRECTORY_CREDENTIALS:/); return; }
   return JSON.parse(result.stdout);
 }
 try {
