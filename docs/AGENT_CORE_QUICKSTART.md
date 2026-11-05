@@ -1,13 +1,13 @@
 # Agent Quickstart · Core 与 MCP 接入指导
 
-For **0.3.0-alpha.1 Core Web/MCP**, use the [Core quickstart](CORE_QUICKSTART.md). Stable npm **0.2.7 has CLI/DSH support, without this Web/MCP entry**; use [the stable Agent guide](AGENT_QUICKSTART.md) for it. Install the exact alpha or explicitly choose the alpha channel.
+For **0.3.0-beta.1 Core Web/MCP**, use the [Core quickstart](CORE_QUICKSTART.md). Stable npm **0.2.7 has CLI/DSH support, without this Web/MCP entry**; use [the stable Agent guide](AGENT_QUICKSTART.md) for it. Install the exact beta or explicitly choose the beta channel.
 
 Give this instruction to an Agent helping with setup:
 
 ```text
 Help me use Iris (@mokuyoaxis/dsh-iris). First read README and check the actual
 installed package or source revision, Node version and available CLI commands.
-Distinguish stable 0.2.7 from the 0.3.0-alpha.1 Core workbench/MCP implementation.
+Distinguish stable 0.2.7 from the 0.3.0-beta.1 Core workbench/MCP implementation.
 Installing latest does not opt into alpha; use the exact prerelease or alpha tag.
 Do not install a different package, upgrade the host or migrate a data root silently.
 

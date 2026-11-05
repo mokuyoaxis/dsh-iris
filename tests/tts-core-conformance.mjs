@@ -58,7 +58,7 @@ try {
     inspectCoreArtifact(root, submitted.task.artifactIds[0]));
   const bytes = await runtime.run('inspect', ({ dataRoot: root }) =>
     readCoreArtifactBytes(root, artifact.id));
-  assert(artifact.kind === 'generated-audio' && artifact.mediaType === 'audio/mpeg'
+  assert(artifact.kind === 'generated-audio' && artifact.mediaType === 'audio/wav'
       && artifact.metadata?.capability === 'tts' && artifact.metadata?.taskId === submitted.taskId
       && bytes.bytes.equals(FAKE_WAV)
       && artifact.digest.value === crypto.createHash('sha256').update(FAKE_WAV).digest('hex'),

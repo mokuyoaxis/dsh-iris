@@ -2,7 +2,7 @@
 
 Iris 0.2.3 支持从缓存恢复完整同步媒体结果。本地交付失败后，可沿原任务重新交付；Task/Artifact 格式和公开 HTTP 路径保持，不需要迁移旧数据。
 
-未发布的 [固定图片流程](IMAGE_FLOW.md)也将其绑定任务的成功 poll 结果先写入原交付缓存，再按预留 Artifact ID 交付；相应中断只接回原结果，不重新 submit。未绑定 Flow 的异步 Task 沿用原路径，本节其余内容描述 0.2.3 起的同步恢复边界。
+[固定图片流程](IMAGE_FLOW.md)也将其绑定任务的成功 poll 结果先写入原交付缓存，再按预留 Artifact ID 交付；相应中断只接回原结果，不重新 submit。未绑定 Flow 的异步 Task 沿用原路径，本节其余内容描述 0.2.3 起的同步恢复边界。
 
 ## 使用行为
 
@@ -27,6 +27,10 @@ dsh-iris task redeliver task_0123456789abcdef01234567 \
 `delivery-cache/v0/<task_id>/result.json` 是完整同步结果的提交证据，绑定原 Task、Attempt、Provider、模型及可选 binding，预留每件作品的稳定 Artifact ID。内联 base64 先解码为普通私有文件，结果文件最后原子发布；URL 仅保存于私有缓存。Task 只增加可选的 `deliveryCache: true`，不保存 URL 或媒体正文。
 
 URL 下载只有正常完成、实际文件大小与 Adapter 返回值一致并通过媒体类型检查后，才提交包含 size/SHA-256 的 payload 引用。未提交文件不冒充完整缓存；已提交字节在每次恢复时重新校验。缓存已提交但 Task 完成事实尚未落盘时，显式 Task 恢复可从同一 Attempt 的缓存补回成功事实，然后将中断交付置为 failed，等待用户显式重新交付。
+
+beta.1修复统一按 Task 能力检查交付大小：图片64 MiB、TTS/音乐128 MiB、转写8 MiB、通用视频1 GiB。内联Base64在解码和写payload前按实际解码长度检查；恢复旧缓存和接收Adapter文件时，在哈希或图片整读前检查实际文件大小，不按上游声称的MIME放宽限额。这些是单件作品限额，固定视频Flow的32 MiB边界另见[视频流程](VIDEO_FLOWS.md)。
+
+超限仍保留 `accepted / succeeded / deliveryState=failed` 的生成事实及原Attempt，不转为生成失败或重提候选。若超限导致完整缓存未能发布，同步结果不能据此离线补交付；已有远端ID的任务保留原ID，后续显式取回仍受相同限额。未提交或旧的超限缓存保留现场，不自动清理。
 
 Artifact 写入采用缓存预留的 ID。已有完整对象、Manifest 或提交 Record 必须与恢复的内容和中性元数据一致；异常证据保留并拒绝覆盖。第一件作品成功而第二件失败、或作品全部提交而 Task ready 落盘失败时，恢复复用已提交作品，不创建重复 ID。reader、Doctor、查看任务和刷新作品均不触发恢复。
 

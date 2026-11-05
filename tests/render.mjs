@@ -13,6 +13,7 @@ import http from 'node:http';
 import path from 'node:path';
 import sharp from 'sharp';
 import { useTempDshHome } from './test-env.js';
+import { deliverRender } from './fixtures/render-route-fixture.mjs';
 
 useTempDshHome('iris-render-home');
 
@@ -83,6 +84,7 @@ const stubBrowser = {
   async openUrl(session, req, signal) {
     assert(!('signal' in req), '导航取消信号不放在请求对象内');
     calls.push(['openUrl', session, req.url, req.newTab, signal]);
+    deliverRender(req.url);
   },
   async screenshot(session, req, signal) {
     assert(!('savePath' in req), '不要求浏览器写入 Iris 私有目录');

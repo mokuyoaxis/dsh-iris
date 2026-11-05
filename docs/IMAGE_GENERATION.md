@@ -1,4 +1,4 @@
-# Core 文生图与 ComfyUI（0.3 alpha）
+# Core 文生图与 ComfyUI（0.3 beta）
 
 当前源码支持固定 `image-generate/v0`：无需原图，使用明确的 `provider::model` 和提示词生成一张图片。它与改图共用 Run、Operation、Task、作品、原 Key 恢复和有限执行；生成结果无需像素比较，明确选择后可下载或用作下一次改图的原图。**npm 0.2.7 不包含本页的新流程、页面或 MCP 入口。**
 

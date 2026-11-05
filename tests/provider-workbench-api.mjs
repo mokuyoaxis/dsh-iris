@@ -9,6 +9,7 @@ import { createConnectionPair, readConnectionGrants } from '../lib/core-connecti
 import { loadProviderCatalog, imageCandidatesFromCatalog } from '../lib/provider-catalog.js';
 import { FLOW_RESULT } from './fixtures/image-flow-fixture.mjs';
 import { useTempDshHome } from './test-env.js';
+import { createCorePluginRegistry, definePlugin, ProviderContractError, normalizeMediaEndpoint } from '@mokuyoaxis/dsh-iris/plugins';
 import { providerDependencies } from '../lib/provider-diagnostics.js';
 import { createCoreTask, beginCoreAttempt, recordCoreAttemptResult, recordCoreWatchError, recordCorePollResult, failCoreDelivery, requestCoreCancel } from '../lib/core-tasks.js';
 
@@ -107,5 +108,22 @@ try {
   assert.deepEqual((await request(BASE + 'diagnostics')).monitors, []);
   checks.push('confirmed removal prunes only affected manual references with private backups, preserves original history/artifacts and does not persist monitoring');
   assert.equal(calls.filter(call => call.method === 'POST').length, 1);
+  const registry = await createCorePluginRegistry({ plugins: [definePlugin({ manifest: { contractVersion: 0, id: 'example.invalid-root', version: '1.0.0',
+    compatibility: { min: '0.3.0-alpha.1', maxExclusive: '0.4.0' }, contributions: { providers: [
+      { id: 'images', version: '1.0.0', title: 'Invalid root fixture', capabilities: ['image-gen'] }
+    ] } }, activate: () => ({ providers: { images: { normalizeEndpoint: normalizeMediaEndpoint, createAdapter() {
+      throw new ProviderContractError('Invalid root: ' + key, { stage: 'validate', category: 'invalid_request', acceptance: 'not_accepted' });
+    } } } }) })] });
+  try {
+    const invalidFile = path.join(root, 'invalid-root.json');
+    fs.writeFileSync(invalidFile, JSON.stringify({ providers: [{ id: 'bad', baseUrl: 'http://127.0.0.1:1/compatible-mode/v1',
+      apiKey: key, mediaProtocol: 'example.invalid-root.images', models: [] }] }), { mode: 0o600 });
+    api = createLocalReadApi({ dataRoot, providerConfigPath: invalidFile, serveWorkbench: true, allowProviderManagement: true, providerRegistry: registry.providers });
+    services.push(api); session = await api.start();
+    const before = calls.length, invalid = await mutate('discover', { providerId: 'bad' }, 400);
+    assert.equal(invalid.error.code, 'IRIS_CONFIG_INPUT_INVALID'); assert.match(invalid.error.message, /API 根地址/); assert.equal(calls.length, before);
+    checks.push('known Provider factory validation is a safe, locatable 400 before HTTP, never an internal 500 or a reflected credential');
+    await api.dispose();
+  } finally { await registry.dispose(); }
   console.log(JSON.stringify({ ok: true, checks, actualPaidCalls: 0, work: root }));
 } finally { await Promise.allSettled(services.map(service => service.dispose())); await app.dispose(); await new Promise(resolve => { upstream.close(resolve); upstream.closeAllConnections(); }); }

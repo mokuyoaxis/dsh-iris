@@ -155,4 +155,15 @@ answers = ['修改颜色', ' ']; assert(editor.props.buildBody() === null, '空�
 answers = ['新图指令']; prompts.length = 0;
 const normalBody = sandbox.window.__retry({ row: rowWith({ phase: 'terminal', outcome: 'failed' }) }).props.buildBody();
 assert(normalBody.prompt === '新图指令' && prompts.length === 1 && !normalBody.source_artifact_id, '普通生成重试不要求原图');
+const videoEditor = sandbox.window.__retry({ row: rowWith({ capability: 'video', phase: 'terminal', outcome: 'failed' }) });
+assert(videoEditor.props.idleLabel === '重新创建文生视频', '视频按钮不暗示复用旧首帧/音频');
+answers = [' t2v ', '明确新文生视频']; prompts.length = 0;
+const videoBody = videoEditor.props.buildBody();
+assert(videoBody.video_mode === 't2v' && videoBody.prompt === '明确新文生视频' && videoBody.confirmBilling === true,
+  '视频必须先明确文生模式，再重新输入提示词', videoBody);
+assert(prompts[0].message.includes('首帧') && prompts[0].message.includes('CLI'), '模式确认必须说明图生/数字人重新提供媒体的入口');
+for (const mode of [null, '', 'i2v', 's2v']) {
+  answers = [mode, '不得送出']; prompts.length = 0;
+  assert(videoEditor.props.buildBody() === null && prompts.length === 1, '未明确选择t2v时不继续收集提示词或发送重试');
+}
 console.log('ALL OK —— D4 retry 客户端：计费确认、指令与改图来源重新输入/取消、关系展示和门真值表');

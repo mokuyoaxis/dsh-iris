@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { useTempDshHome } from './test-env.js';
+import { createCoreRuntime } from '../lib/core-runtime.js';
+import { createCoreTask, beginCoreAttempt, inspectCoreTask, recordCoreNetworkRoute, claimFlowTask, assertFlowTaskMatches } from '../lib/core-tasks.js';
+import { createProviderTaskRunner } from '../lib/provider-task-runner.js';
+import { initializeFlowRoot, prepareFlowCreation, validateFlowCreation, commitFlowCreation, readFlowRun } from '../lib/flow-store.js';
+import { createFakeLifecycleProvider } from './fixtures/fake-lifecycle-provider.mjs';
+
+const { root } = useTempDshHome('iris-network-evidence');
+const dataRoot = path.join(root, 'tasks'), flowRoot = path.join(root, 'flows');
+const requirement = { schemaVersion: 1, configId: crypto.randomUUID(), catalogId: crypto.randomUUID() };
+const baseFact = { ...requirement, configGeneration: 1, configRevision: 'a'.repeat(64), providerId: 'p', operation: 'submit', route: 'proxy', poolId: 'allowed', nodeId: 'first' };
+const runtimes = [];
+const runtime = () => { const r = createCoreRuntime({ dataRoot, mode: 'writer' }); r.start(); runtimes.push(r); return r; };
+let posted = 0, queried = 0;
+const fake = createFakeLifecycleProvider({ id: 'p', submitSteps: [(_input, context) => {
+  posted++;
+  const stored = inspectCoreTask(dataRoot, context.taskId);
+  assert.equal(stored.semanticsVersion, 3); assert.deepEqual(stored.networkRequirement, requirement);
+  assert.deepEqual(stored.attempts[0].networkRequirement, requirement);
+  recordCoreNetworkRoute(dataRoot, context.taskId, { ...baseFact, attemptId: context.attempt.id });
+  return { kind: 'accepted', remoteTaskId: 'original-remote' };
+}], pollSteps: [(_input, context) => {
+  queried++; recordCoreNetworkRoute(dataRoot, context.taskId, { ...baseFact, operation: 'poll', configGeneration: 2, configRevision: 'b'.repeat(64), nodeId: 'second' });
+  return { kind: 'succeeded', artifacts: [{ kind: 'remote-url', url: 'https://fixture.invalid/image.png' }] };
+}] });
+const adapter = Object.freeze({ ...fake.adapter, networkRequirement: requirement });
+try {
+  const firstRuntime = runtime(), runner = createProviderTaskRunner(firstRuntime);
+  const submitted = await runner.submit({ capability: 'image', providerInput: { prompt: 'fixture' }, candidates: [{ adapter, model: 'p::image' }] });
+  assert.equal(submitted.task.semanticsVersion, 3); assert.equal(submitted.task.networkRoutes.length, 1);
+  const id = submitted.task.id;
+  const snapshot = fs.readFileSync(path.join(dataRoot, 'task-store/v0/tasks', id + '.json'));
+  await assert.rejects(runner.observe(id, fake.adapter), { code: 'IRIS_NETWORK_REQUIREMENT_MISMATCH' });
+  await assert.rejects(runner.observe(id, { ...adapter, networkRequirement: { ...requirement, catalogId: crypto.randomUUID() } }), { code: 'IRIS_NETWORK_REQUIREMENT_MISMATCH' });
+  assert.deepEqual(fs.readFileSync(path.join(dataRoot, 'task-store/v0/tasks', id + '.json')), snapshot);
+  await firstRuntime.dispose();
+  const recovered = await createProviderTaskRunner(runtime()).recover(id, adapter);
+  assert.equal(recovered.deliveryState, 'ready'); assert.equal(posted, 1); assert.equal(queried, 1);
+  assert.deepEqual(recovered.networkRoutes.map(route => route.nodeId), ['first', 'second']);
+  const pollFact = { ...baseFact, operation: 'poll', configGeneration: 2, configRevision: 'b'.repeat(64), nodeId: 'second' };
+  recordCoreNetworkRoute(dataRoot, id, pollFact);
+  assert.equal(inspectCoreTask(dataRoot, id).networkRoutes[1].requestCount, 2);
+  assert.throws(() => recordCoreNetworkRoute(dataRoot, id, { ...baseFact, proxyUrl: 'https://secret.invalid' }), { code: 'IRIS_NETWORK_ROUTE_INVALID' });
+  assert.throws(() => recordCoreNetworkRoute(dataRoot, id, { ...baseFact, configId: crypto.randomUUID() }), { code: 'IRIS_NETWORK_REQUIREMENT_MISMATCH' });
+  const legacy = createCoreTask(dataRoot, { capability: 'image' });
+  assert.equal(legacy.semanticsVersion, 2);
+  assert.throws(() => beginCoreAttempt(dataRoot, legacy.id, { providerId: 'p', model: 'p::image', networkRequirement: requirement }), { code: 'IRIS_NETWORK_REQUIREMENT_MISMATCH' });
+  assert.throws(() => recordCoreNetworkRoute(dataRoot, legacy.id, baseFact), { code: 'IRIS_NETWORK_REQUIREMENT_MISMATCH' });
+  assert.equal(inspectCoreTask(dataRoot, legacy.id).semanticsVersion, 2);
+
+  fs.mkdirSync(flowRoot); initializeFlowRoot(flowRoot);
+  const sourceId = 'artifact_' + '1'.repeat(24);
+  const fields = { source: { artifactId: sourceId, sha256: 'c'.repeat(64) }, input: { source_artifact_id: sourceId, prompt: 'fixture edit', model_ref: 'p::image', n: 1 }, providerBinding: 'sha256:' + 'd'.repeat(64) };
+  const protectedIntent = prepareFlowCreation({ ...fields, networkRequirement: requirement });
+  const legacyIntent = { ...protectedIntent }; delete legacyIntent.networkRequirement;
+  const protectedRun = validateFlowCreation(protectedIntent), legacyRun = validateFlowCreation(legacyIntent);
+  assert.notEqual(protectedRun.inputDigest, legacyRun.inputDigest);
+  commitFlowCreation(flowRoot, protectedIntent);
+  assert.deepEqual(readFlowRun(flowRoot, protectedRun.id).networkRequirement, requirement);
+  const claimed = claimFlowTask(flowRoot, protectedRun.id);
+  assert.equal(claimed.semanticsVersion, 3); assert.deepEqual(claimed.networkRequirement, requirement);
+  assertFlowTaskMatches(claimed, protectedRun);
+  assert.throws(() => assertFlowTaskMatches({ ...claimed, networkRequirement: undefined }, protectedRun), { code: 'IRIS_FLOW_TASK_CONFLICT' });
+  const file = path.join(flowRoot, 'flow-store/v0/runs', protectedRun.id + '.json');
+  const bytes = fs.readFileSync(file), downgraded = JSON.parse(bytes); delete downgraded.networkRequirement;
+  fs.writeFileSync(file, JSON.stringify(downgraded));
+  assert.throws(() => readFlowRun(flowRoot, protectedRun.id), { code: 'IRIS_FLOW_RECORD_INVALID' });
+  fs.writeFileSync(file, bytes);
+  console.log('PASS network Task first-write version, immutable requirements, original recovery without resubmit, dispatch aggregation and Flow intent/digest/claim gates');
+} finally { for (const r of runtimes) await r.dispose(); }

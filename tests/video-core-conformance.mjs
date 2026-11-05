@@ -34,7 +34,7 @@ const base = fs.mkdtempSync(path.join(os.tmpdir(), 'iris-video-conformance-'));
 try {
   /* 交付 Profile 冻结锁定 */
   assert(DELIVERY_PROFILES.video.kind === 'generated-video'
-      && JSON.stringify(DELIVERY_PROFILES.video.mediaTypes) === JSON.stringify(['video/mp4'])
+      && JSON.stringify(DELIVERY_PROFILES.video.mediaTypes) === JSON.stringify(['video/mp4', 'video/webm'])
       && DELIVERY_PROFILES.video.defaultMediaType === 'video/mp4'
       && DELIVERY_PROFILES.image.kind === 'generated-image'
       && JSON.stringify(DELIVERY_PROFILES.image.mediaTypes) === JSON.stringify(['image/png', 'image/jpeg', 'image/webp']),

@@ -16,6 +16,7 @@ import { verifyImageGenerationBrowser } from '../tests/fixtures/image-generation
 import { verifyCoreComfyBrowser } from '../tests/fixtures/core-comfyui-browser-probe.mjs';
 import { verifyPanelFeedbackBrowser } from '../tests/fixtures/panel-feedback-browser-probe.mjs';
 import { verifyWebLoginBrowser } from '../tests/fixtures/web-login-browser-probe.mjs';
+import { verifyVideoBrowser } from '../tests/fixtures/video-browser-probe.mjs';
 import { verifyAudioBrowser } from '../tests/fixtures/audio-browser-probe.mjs';
 import { verifyOverviewBrowser } from '../tests/fixtures/workbench-overview-browser-probe.mjs';
 import { verifyCapabilityCatalogBrowser } from '../tests/fixtures/capability-catalog-browser-probe.mjs';
@@ -24,21 +25,42 @@ import { verifyPluginPanelBrowser } from '../tests/fixtures/plugin-panel-browser
 import { verifyPluginBusinessBrowser } from '../tests/fixtures/plugin-business-browser-probe.mjs';
 import { verifyWorkbenchPasswordBrowser } from '../tests/fixtures/workbench-password-browser-probe.mjs';
 import { verifyProviderWorkbenchBrowser } from '../tests/fixtures/provider-workbench-browser-probe.mjs';
+import { verifyProviderCredentialsBrowser } from '../tests/fixtures/provider-credentials-browser-probe.mjs';
+import { verifyPluginStatusBrowser } from '../tests/fixtures/plugin-status-browser-probe.mjs';
+import { verifyPluginStarterBrowser } from '../tests/fixtures/plugin-starter-browser-probe.mjs';
+import { verifyNetworkBrowser } from '../tests/fixtures/network-browser-probe.mjs';
+import { verifySchedulingBrowser } from '../tests/fixtures/scheduling-browser-probe.mjs';
 
 const args = process.argv.slice(2);
-assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection', '--recovery', '--creation', '--mode-closure', '--panel-c3', '--image-generation', '--comfyui', '--panel-feedback', '--login', '--password-login', '--provider-workbench', '--audio', '--overview', '--capability-catalog', '--mcp-onboarding', '--plugin-panel', '--plugin-business'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
-  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3|--image-generation|--comfyui|--panel-feedback|--login|--password-login|--provider-workbench|--audio|--overview|--capability-catalog|--mcp-onboarding|--plugin-panel|--plugin-business]');
+const schedulingWorkbench = args.includes('--scheduling');
+if (schedulingWorkbench) {
+  assert(args.slice(4).every(flag => ['--no-sandbox', '--scheduling'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
+    '--scheduling runs only its focused scenarios');
+  args.splice(args.indexOf('--scheduling'), 1);
+}
+const networkWorkbench = args.includes('--network');
+assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection', '--recovery', '--creation', '--mode-closure', '--panel-c3', '--image-generation', '--comfyui', '--panel-feedback', '--login', '--password-login', '--provider-workbench', '--video', '--audio', '--overview', '--capability-catalog', '--mcp-onboarding', '--plugin-panel', '--plugin-business', '--plugin-status', '--plugin-starter', '--provider-credentials', '--network'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
+  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3|--image-generation|--comfyui|--panel-feedback|--login|--password-login|--provider-workbench|--video|--audio|--overview|--capability-catalog|--mcp-onboarding|--plugin-panel|--plugin-business|--plugin-status|--plugin-starter|--provider-credentials]');
 const webLogin = args.includes('--login');
 const passwordLogin = args.includes('--password-login');
 const providerWorkbench = args.includes('--provider-workbench');
+const providerCredentials = args.includes('--provider-credentials');
+assert(!networkWorkbench || args.slice(4).every(flag => ['--no-sandbox', '--network'].includes(flag)), '--network runs only its focused scenarios');
+assert(!providerCredentials || args.slice(4).every(flag => ['--no-sandbox', '--provider-credentials'].includes(flag)), '--provider-credentials runs only its focused scenarios');
 assert(!providerWorkbench || args.slice(4).every(flag => ['--no-sandbox', '--provider-workbench'].includes(flag)), '--provider-workbench runs only its focused scenarios');
 assert(!passwordLogin || args.slice(4).every(flag => ['--no-sandbox', '--password-login'].includes(flag)), '--password-login runs only its focused scenarios');
+const video = args.includes('--video');
+assert(!video || args.slice(4).every(flag => ['--no-sandbox', '--video'].includes(flag)), '--video runs only its focused scenarios');
 const audio = args.includes('--audio');
 const overview = args.includes('--overview');
 const capabilityCatalog = args.includes('--capability-catalog');
 const mcpOnboarding = args.includes('--mcp-onboarding');
 const pluginPanel = args.includes('--plugin-panel');
 const pluginBusiness = args.includes('--plugin-business');
+const pluginStatus = args.includes('--plugin-status');
+const pluginStarter = args.includes('--plugin-starter');
+assert(!pluginStarter || args.slice(4).every(flag => ['--no-sandbox', '--plugin-starter'].includes(flag)), '--plugin-starter runs only its focused scenarios');
+assert(!pluginStatus || args.slice(4).every(flag => ['--no-sandbox', '--plugin-status'].includes(flag)), '--plugin-status runs only its focused scenarios');
 assert(!pluginBusiness || args.slice(4).every(flag => ['--no-sandbox', '--plugin-business'].includes(flag)), '--plugin-business runs only its focused scenarios');
 assert(!pluginPanel || args.slice(4).every(flag => ['--no-sandbox', '--plugin-panel'].includes(flag)), '--plugin-panel runs only its focused scenarios');
 assert(!mcpOnboarding || args.slice(4).every(flag => ['--no-sandbox', '--mcp-onboarding'].includes(flag)), '--mcp-onboarding runs only its focused scenarios');
@@ -63,7 +85,8 @@ const management = args.includes('--connection-management');
 fs.mkdirSync(out, { mode: 0o700 });
 const report = { status: 'running', checks: [], browserErrors: [], requests: [], layout: {}, screenshots: [],
   actualPaidCalls: 0, realApiImplemented: true, dailyDshBooted: false, noSandbox: args.includes('--no-sandbox'),
-  connectionManagement: management, selectionEnabled: args.includes('--allow-selection'), requestRootVersion: args.includes('--execution-root') || management || args.includes('--recovery') || modeClosure || panelC3 || panelFeedback || capabilityCatalog || mcpOnboarding || pluginPanel || providerWorkbench ? 1 : null };
+  connectionManagement: management, selectionEnabled: args.includes('--allow-selection'), requestRootVersion: args.includes('--execution-root') || management || args.includes('--recovery') || modeClosure || panelC3 || panelFeedback || capabilityCatalog || mcpOnboarding || pluginPanel || pluginStatus || providerWorkbench || providerCredentials || networkWorkbench ? 1 : null };
+if (schedulingWorkbench) report.requestRootVersion = 1;
 const save = () => fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 function tree(root) {
@@ -186,7 +209,7 @@ try {
     if (value.id) {
       const request = pending.get(value.id); if (!request) return;
       pending.delete(value.id); clearTimeout(request.timer);
-      if (value.error) request.reject(new Error(value.error.message)); else request.resolve(value.result);
+      if (value.error) request.reject(new Error(request.method + ': ' + value.error.message)); else request.resolve(value.result);
     }
     if (value.method === 'Runtime.exceptionThrown') report.browserErrors.push(value.params.exceptionDetails.exception?.description || value.params.exceptionDetails.text);
     if (value.method === 'Log.entryAdded' && /Content Security Policy|Refused to/.test(value.params.entry.text)) report.browserErrors.push(value.params.entry.text);
@@ -217,6 +240,27 @@ try {
         assert.equal(response.status, 200); return (await response.json()).setupUrl;
       } });
     assert.deepEqual(report.browserErrors, [], 'password workbench has no browser exceptions or CSP violations');
+  } else if (schedulingWorkbench) {
+    await verifySchedulingBrowser({ out, cdp, evaluate, click, wait, report, save, dimensions, measure, capture,
+      restart: async options => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ serveWorkbench: true, ...options }); session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'scheduling workbench has no browser exceptions or CSP violations');
+  } else if (networkWorkbench) {
+    await verifyNetworkBrowser({ out, cdp, evaluate, click, wait, report, save, dimensions, measure, capture,
+      restart: async options => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot, serveWorkbench: true, ...options }); session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'network workbench has no browser exceptions or CSP violations');
+  } else if (providerCredentials) {
+    await verifyProviderCredentialsBrowser({ out, cdp, evaluate, click, wait, report, save, dimensions, measure, capture,
+      restart: async providerConfigPath => {
+        await api.dispose(); api = createLocalReadApi({ dataRoot, serveWorkbench: true, providerConfigPath, allowProviderManagement: true });
+        session = await api.start(); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'Credential workbench has no browser exceptions or CSP violations');
   } else if (providerWorkbench) {
     await verifyProviderWorkbenchBrowser({ out, dataRoot, tokenFile, session, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture,
       restart: async providerConfigPath => {
@@ -225,6 +269,17 @@ try {
         session = await api.start(); return session;
       } });
     assert.deepEqual(report.browserErrors, [], 'provider workbench has no browser exceptions or CSP violations');
+  } else if (pluginStatus) {
+    await verifyPluginStatusBrowser({ out, dataRoot, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture, pausedResponses, tree,
+      restart: async options => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot, serveWorkbench: true, ...options });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'plugin status has no browser exceptions or CSP violations');
+  } else if (pluginStarter) {
+    await verifyPluginStarterBrowser({ out, cdp, evaluate, click, wait, report, save, dimensions, measure, capture });
+    assert.deepEqual(report.browserErrors, [], 'Independent starter has no browser exceptions or CSP violations');
   } else if (pluginBusiness) {
     await verifyPluginBusinessBrowser({ cdp, evaluate, click, wait, report, save, dimensions, measure, capture });
     assert.deepEqual(report.browserErrors, [], 'Business Panel has no browser exceptions or CSP violations');
@@ -238,7 +293,7 @@ try {
       } });
     assert.deepEqual(report.browserErrors, [], 'Plugin Panel has no browser exceptions or CSP violations');
   } else if (mcpOnboarding) {
-    await verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture, downloads,
+    await verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture, downloads, pausedResponses, tree,
       restart: async allowMcp => {
         const port = Number(new URL(session.origin).port); await api.dispose();
         api = createLocalReadApi({ dataRoot, serveWorkbench: true, allowMcp,
@@ -263,6 +318,15 @@ try {
         session = await api.start({ port }); return session;
       } });
     assert.deepEqual(report.browserErrors, [], 'overview has no browser exceptions or CSP violations');
+  } else if (video) {
+    await verifyVideoBrowser({ out, tokenFile, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture, downloads, pausedResponses,
+      restart: async (root, providerConfigPath, executionPorts, modes = {}) => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, providerConfigPath, allowExecution: true,
+          allowSelection: true, executionPorts, ...modes });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'video has no browser exceptions or CSP violations');
   } else if (audio) {
     await verifyAudioBrowser({ out, tokenFile, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads, pausedResponses,
       restart: async (root, providerConfigPath, executionPorts, modes = {}) => {
@@ -560,5 +624,8 @@ try {
     ...(report.mcpOnboarding ? { onboardingChecks: report.mcpOnboarding.checks.length } : {}),
     ...(report.pluginPanel ? { pluginPanelChecks: report.pluginPanel.checks.length } : {}),
     ...(report.pluginBusiness ? { pluginBusinessChecks: report.pluginBusiness.checks.length } : {}),
+    ...(report.pluginStarter ? { pluginStarterChecks: report.pluginStarter.checks.length } : {}),
+    ...(report.providerCredentials ? { credentialChecks: report.providerCredentials.checks.length } : {}),
+    ...(report.pluginStatus ? { pluginStatusChecks: report.pluginStatus.checks.length } : {}),
     ...(report.failure ? { failure: report.failure } : {}) }, null, 2));
 }

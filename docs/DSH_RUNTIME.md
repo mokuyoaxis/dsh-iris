@@ -1,6 +1,6 @@
 # DSH 实例运行时（0.2.7）
 
-0.3 alpha源码另可显式连接 [Core 服务](CORE_SERVICE.md)，添加共享 Flow 工具并复用原生附件；本文继续说明 0.2.7 的嵌入式媒体装配。可选连接不把整个旧媒体栈迁成远程调用，不改变下述历史数据根。
+0.3 beta另可显式连接 [Core 服务](CORE_SERVICE.md)，添加共享 Flow 工具并复用原生附件；本文继续说明 0.2.7 的嵌入式媒体装配。可选连接不把整个旧媒体栈迁成远程调用，不改变下述历史数据根。
 
 面向 0.3 的内部装配已将 DSH 的 Core 写队列、Provider 连接解析引用和 Core 任务观察器归入插件实例。工具名、工作台路由、模型选择与计费规则保持；数据仍位于 `$DSH_HOME/iris/v1/core-v0`，不迁移既有 Task、Artifact、Run 或配置。
 
@@ -31,7 +31,7 @@ legacy watcher 与 SSE 仍共享原有模块资源；原生装配只用“最近
 
 ## 当前边界与验证入口
 
-本轮实例化的是 DSH 的 Core 装配及上述操作。legacy `config.js`、`tasks.js`、`artifacts.js`、上传与 SSE 存储/资源仍保留原机制，不承诺同进程多个 profile 的完整隔离；其他 CLI 入口也未全部统一。固定 Flow 尚未接入 DSH 工作台；未发布的 Operation、执行/停止与真实独立 Web 见 [Core 工作台](LOCAL_WEB.md)。DSH 新增的 [ComfyUI 专区](IMAGE_GENERATION.md#dsh-工作台入口03-alpha)继续使用原 Task 装配，不要求迁移 Flow 根。公开 SDK、包名、认证与数据格式均未因此改变。
+本轮实例化的是 DSH 的 Core 装配及上述操作。legacy `config.js`、`tasks.js`、`artifacts.js`、上传与 SSE 存储/资源仍保留原机制，不承诺同进程多个 profile 的完整隔离；其他 CLI 入口也未全部统一。固定 Flow 尚未接入 DSH 工作台；0.3 beta的Operation、执行/停止与真实独立 Web 见 [Core 工作台](LOCAL_WEB.md)。DSH 新增的 [ComfyUI 专区](IMAGE_GENERATION.md#dsh-工作台入口03-alpha)继续使用原 Task 装配，不要求迁移 Flow 根。公开 SDK、包名、认证与数据格式均未因此改变。
 
 - `npm test`：保留既有媒体与工作台断言，增加实例队列、关闭/租约失败及观察器竞态测试。
 - `node --expose-internals scripts/verify-dsh-host.mjs --dsh-root <绝对路径>`：隔离宿主服务验收包含异步卸载与重新装载；部分 SDK 需要额外指定 `--client-sdk-root`。

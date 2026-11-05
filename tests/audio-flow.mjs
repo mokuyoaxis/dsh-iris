@@ -81,6 +81,23 @@ try {
   assert.equal(failure.task.attempts[0].acceptance, 'not_accepted'); assert.equal(failedFixture.calls.submit.length, 0);
   await failed.app.execute('flow.continue', { run_id: run.flow.run.id });
   assert.equal(failedFixture.preparation.length, 1, 'failed preparation does not silently retry');
+  const mislabeledFixture = audioFlowFixture({ speechMediaType: 'audio/mpeg' }), mislabeled = await create('mislabeled-wav', mislabeledFixture);
+  const mislabeledRun = await mislabeled.app.execute('creation.speech', { key: id(), value: input });
+  const wav = await mislabeled.app.execute('flow.continue', { run_id: mislabeledRun.flow.run.id });
+  const wavArtifact = readCoreArtifactBytes(mislabeled.dataRoot, wav.run.output.artifactId);
+  assert.equal(wavArtifact.artifact.mediaType, 'audio/wav', 'actual WAV bytes override an adapter MP3 label');
+  assert.deepEqual(wavArtifact.bytes, AUDIO_WAV);
+  const chained = await mislabeled.app.execute('creation.transcribe', { key: id(), value: { modelRef: TRANSCRIBE_MODEL, sourceArtifactId: wavArtifact.artifact.id } });
+  await mislabeled.app.execute('flow.continue', { run_id: chained.flow.run.id });
+  const chainedResult = await mislabeled.app.execute('flow.continue', { run_id: chained.flow.run.id });
+  assert.equal(chainedResult.status, 'ready'); assert.deepEqual(mislabeledFixture.preparation[0].bytes, AUDIO_WAV);
+  const invalidAudioFixture = audioFlowFixture({ speechMediaType: 'audio/mpeg', speechBytes: Buffer.from('not an audio response') });
+  const invalidAudio = await create('invalid-audio', invalidAudioFixture);
+  const invalidRun = await invalidAudio.app.execute('creation.speech', { key: id(), value: input });
+  const invalidDelivery = await invalidAudio.app.execute('flow.continue', { run_id: invalidRun.flow.run.id });
+  assert.equal(invalidDelivery.task.acceptance, 'accepted'); assert.equal(invalidDelivery.task.deliveryState, 'failed');
+  await invalidAudio.app.execute('flow.continue', { run_id: invalidRun.flow.run.id });
+  assert.equal(invalidAudioFixture.calls.submit.length, 1, 'invalid delivery never resubmits synthesis');
   const cliRoot = path.join(root, 'actual-cli'), cli = args => spawnSync(process.execPath, ['bin/dsh-iris.js', ...args], {
     encoding: 'utf8', timeout: 30000, env: { ...process.env, IRIS_IMPORT_WORKBENCH_CONFIG: '' } });
   const initialized = cli(['flow', 'init', '--data-root', cliRoot]); assert.equal(initialized.status, 0, initialized.stderr);

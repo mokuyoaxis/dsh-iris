@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import sharp from 'sharp';
 import { useTempDshHome } from './test-env.js';
 import { BrowserHtmlRenderer, renderRoot, RenderError } from '../lib/render.js';
+import { deliverRender } from './fixtures/render-route-fixture.mjs';
 
 useTempDshHome('iris-render-contract');
 const png = await sharp({ create: { width: 8, height: 6, channels: 3, background: '#123456' } }).png().toBuffer();
@@ -11,7 +12,7 @@ function fixture(overrides = {}, waitMs = 0) {
   const calls = [];
   const browser = {
     async open() { calls.push('open'); return 'isolated-session'; },
-    async openUrl() { calls.push('openUrl'); },
+    async openUrl(_session, request) { calls.push('openUrl'); deliverRender(request.url); },
     async screenshot() { calls.push('screenshot'); return { dataUrl }; },
     async close(session) { assert.equal(session, 'isolated-session'); calls.push('close'); },
     ...overrides

@@ -3,8 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { writeLocalApiTokenFile } from '../../lib/local-api.js';
+import { checkMcpConnection } from '../../lib/mcp-check.js';
+import { httpMcpClient } from './mcp-http-client.mjs';
 
-export async function verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture, downloads, restart }) {
+export async function verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture, downloads, pausedResponses, tree, restart }) {
   const result = report.mcpOnboarding = { status: 'running', checks: [], actualPaidCalls: 0 };
   const check = async (name, expression) => { assert.equal(await evaluate(expression), true, name); result.checks.push(name); save(); };
   const field = (selector, value) => evaluate(`(()=>{const n=document.querySelector(${JSON.stringify(selector)});n.value=${JSON.stringify(value)};n.dispatchEvent(new Event('change',{bubbles:true}));})()`);
@@ -12,8 +14,9 @@ export async function verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate,
   async function login() {
     const file = path.join(out, 'onboarding-token-' + ++logins); writeLocalApiTokenFile(file, session.accessToken, dataRoot);
     await evaluate("sessionStorage.removeItem('iris.workbench.session.v0')");
-    await cdp('Page.navigate', { url: 'about:blank' }); await cdp('Page.navigate', { url: session.origin + '/' });
-    await wait(() => evaluate("Boolean(document.documentElement.dataset.theme)"), 'onboarding login mount');
+    await cdp('Page.navigate', { url: 'about:blank' }); const navigation = await cdp('Page.navigate', { url: session.origin + '/' });
+    await wait(async () => (await cdp('Page.getFrameTree')).frameTree.frame.loaderId === navigation.loaderId
+      && evaluate("Boolean(document.documentElement.dataset.theme)&&document.readyState!=='loading'"), 'current onboarding login document');
     await chooseToken(file); await wait(() => evaluate("document.querySelector('#connection').hidden&&!document.querySelector('#connection-new').disabled"), 'onboarding owner');
     await click('#connections-tab');
   }
@@ -21,6 +24,8 @@ export async function verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate,
   await evaluate("document.querySelector('#connection-name').value='Preset browser fixture';document.querySelector('#connection-name').dispatchEvent(new Event('input',{bubbles:true}))");
   await click('#connection-save');
   await wait(() => evaluate("!document.querySelector('#connection-export').hidden&&!document.querySelector('#connection-export-button').disabled"), 'onboarding saved connection');
+  const originalCore = tree(dataRoot);
+  await check('the editor presents a continuous path with actual permissions and an explicit grant summary', "[...document.querySelectorAll('[data-connection-view]')].map(n=>n.textContent).join(' ').includes('1 · 选择与授权 2 · 获取配置 3 · 核对接入')&&document.querySelector('#connection-grant-summary').textContent.includes('读取记录')");
   await check('all eight explicitly chosen client presets and the generic manual path are available', "document.querySelectorAll('#connection-template option[value^=\"preset:\"]').length===8&&document.querySelector('#connection-template').value===''");
   await field('#connection-template', 'preset:codex-stdio');
   await check('Codex preset selects native TOML with merge instructions while preserving authorization', "document.querySelector('#connection-format').value==='codex-toml'&&document.querySelector('#connection-format').disabled&&document.querySelector('#connection-template-note').textContent.includes('config.toml')&&document.querySelector('#connection-template-note').textContent.includes('保留其他段')");
@@ -45,8 +50,79 @@ export async function verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate,
   await field('#connection-template', ''); await field('#connection-format', 'entry'); await click('#connection-export-button');
   await wait(() => evaluate("!document.querySelector('#connection-export-result').hidden"), 'generic entry export');
   await check('the generic entry path remains independently selectable', "Array.isArray(JSON.parse(document.querySelector('#connection-configuration').value).args)&&!document.querySelector('#connection-format').disabled");
+  const clientFile = await evaluate("(()=>{const e=JSON.parse(document.querySelector('#connection-configuration').value);return e.args[e.args.indexOf('--connection-file')+1]})()");
   const profiles = path.join(out, 'onboarding-connections', 'profiles'), profile = JSON.parse(fs.readFileSync(path.join(profiles, fs.readdirSync(profiles).find(name => name.endsWith('.json')))));
   assert.deepEqual(profile.scopes, ['read']); assert.deepEqual(profile.capabilities, ['image-edit']); assert.equal(profile.revision, 1);
+  await field('#connection-location', 'other');
+  await check('another-machine choice explains loopback limits and blocks direct export without widening permissions', "document.querySelector('#connection-export-button').disabled&&document.querySelector('#connection-location-note').textContent.includes('另一台机器')&&document.querySelector('#connection-configuration').value===''");
+  await click('[data-connection-view="verification"]'); await click('#connection-check');
+  await wait(() => evaluate("!document.querySelector('#connection-check').disabled&&document.querySelector('#connection-check-issues').textContent.includes('另一台机器')"), 'cross-host limitation');
+  await check('cross-host configuration check is limited rather than falsely connected', "document.querySelector('#connection-check-state').dataset.state==='limited'&&document.querySelector('#connection-client-state').dataset.state==='waiting'");
+  await click('[data-connection-view="delivery"]'); await field('#connection-location', 'same');
+  await click('#connection-verify-next');
+  const readStart = report.requests.length;
+  await click('#connection-check');
+  await wait(() => evaluate("document.querySelector('#connection-check-state').dataset.state==='passed'&&!document.querySelector('#connection-check').disabled"), 'read-only setup check');
+  await check('export receipt, Iris configuration check and absent client remain three separate facts', "document.querySelector('#connection-export-state').textContent==='当前配置已生成'&&document.querySelector('#connection-check-state').textContent==='Iris 端配置检查通过'&&document.querySelector('#connection-client-state').dataset.state==='waiting'&&document.querySelectorAll('#connection-check-tools>li').length===8");
+  assert(report.requests.slice(readStart).filter(item => item.url.includes('/api/')).every(item => item.method === 'GET'));
+  assert.equal(JSON.parse(fs.readFileSync(path.join(profiles, profile.connectionId + '.json'))).lastContact, null);
+  const raw = await fetch(session.origin + '/api/v0/connection-management/connections', { headers: { Authorization: 'Bearer ' + session.accessToken } });
+  assert.deepEqual((await raw.json()).connections[0].instances, []);
+  result.checks.push('Iris-only browser check creates zero handshake instances or client declarations and uses GET only'); save();
+  await cdp('Fetch.enable', { patterns: [{ urlPattern: session.origin + '/api/v0/connection-management/catalog', requestStage: 'Request' }] });
+  await click('#connection-check'); await wait(() => pausedResponses.length > 0, 'controlled setup read failure');
+  await cdp('Fetch.fulfillRequest', { requestId: pausedResponses.shift(), responseCode: 503, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
+    body: Buffer.from(JSON.stringify({ error: { code: 'IRIS_API_BUSY', message: 'Controlled read unavailable' } })).toString('base64') }); await cdp('Fetch.disable');
+  await wait(() => evaluate("!document.querySelector('#connection-check').disabled&&document.querySelector('#connections-feedback').textContent.includes('只读检查未完成')"), 'setup read error shown');
+  await check('failed read clears the old success without suggesting an unknown write outcome', "document.querySelector('#connection-check-state').dataset.state==='pending'&&document.querySelector('#connections-feedback').textContent.includes('IRIS_API_BUSY')&&!document.querySelector('#connections-feedback').textContent.includes('尚未确认操作结果')");
+  assert.equal((await checkMcpConnection({ connectionFile: clientFile })).ok, true);
+  await click('#connection-check'); await wait(() => evaluate("!document.querySelector('#connection-check').disabled"), 'after CLI check');
+  await check('CLI temporary handshake never becomes an Agent connection success', "document.querySelector('#connection-client-state').dataset.state==='waiting'");
+  const remote = httpMcpClient(session.origin, profile.accessToken, { version: '2026-07-28', name: 'Setup <img src=x onerror=alert(1)>' });
+  await remote.initialize(); await remote.call('iris_core_connections', {});
+  await wait(async () => {
+    const response = await fetch(session.origin + '/api/v0/connection-management/connections', { headers: { Authorization: 'Bearer ' + session.accessToken } });
+    return (await response.json()).connections.some(record => record.lastContact?.clientInfo.name === 'Setup <img src=x onerror=alert(1)>');
+  }, 'actual client declaration checkpoint');
+  await click('#connection-check');
+  await wait(() => evaluate("document.querySelector('#connection-client-state').dataset.state==='observed'&&!document.querySelector('#connection-check').disabled"), 'actual MCP declaration');
+  await check('actual MCP client declaration and scope-filtered tools appear as escaped data without an online claim', "document.querySelector('#connection-client-evidence').textContent.includes('Setup <img src=x onerror=alert(1)>')&&!document.querySelector('#connection-client-evidence img')&&document.querySelector('#connection-client-evidence').textContent.includes('协商允许 8 个工具')&&!document.querySelector('#connection-client-evidence').textContent.includes('iris_core_continue')");
+  await check('refreshed client evidence, header badge and advanced facts agree; negotiated tool details stay folded', "document.querySelector('#connection-state').textContent==='使用过'&&document.querySelector('#connection-facts').textContent.includes('Setup <img src=x onerror=alert(1)>')&&[...document.querySelectorAll('#connection-client-evidence details')].every(n=>!n.open)");
+  await click('#connection-check-tool-details>summary');
+  await measure('onboarding-check-wide'); await capture('onboarding-check-wide');
+  await dimensions(390, 844); await measure('onboarding-check-390'); await capture('onboarding-check-390');
+  await dimensions(320, 740); await measure('onboarding-check-320'); await capture('onboarding-check-320'); await dimensions(1366, 900);
+  await click('#appearance-open'); await evaluate("(()=>{const n=document.querySelector('#appearance-theme');n.value='dark';n.dispatchEvent(new Event('input',{bubbles:true}));})()"); await click('#appearance-close');
+  await check('setup evidence shares the dark workbench theme', "document.documentElement.dataset.theme==='dark'&&getComputedStyle(document.querySelector('#connection-editor')).backgroundColor!=='rgb(255, 255, 255)'");
+  await capture('onboarding-check-dark');
+  await click('[data-connection-view="delivery"]');
+  await cdp('Fetch.enable', { patterns: [{ urlPattern: session.origin + '/api/v0/connection-management/connections/' + profile.connectionId + '/export', requestStage: 'Response' }] });
+  await click('#connection-export-button'); await wait(() => pausedResponses.length > 0, 'late export response');
+  const exporting = pausedResponses.shift(); await click('#studio-tab');
+  await cdp('Fetch.continueResponse', { requestId: exporting }); await cdp('Fetch.disable');
+  await wait(() => evaluate("!document.querySelector('#connection-export-button').disabled"), 'late export settled');
+  await check('a delayed export cannot restore a credential preview or replace the status after leaving', "document.body.dataset.page==='studio'&&document.querySelector('#connection-export-result').hidden&&document.querySelector('#connection-configuration').value===''&&!document.querySelector('#connections-feedback').textContent.includes('配置已准备')");
+  await click('#connections-tab'); await click('#connection-export-button');
+  await wait(() => evaluate("!document.querySelector('#connection-export-result').hidden"), 'clipboard race preview');
+  await evaluate("Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:()=>new Promise(resolve=>window.__onboardingCopy=resolve)}})");
+  await click('#connection-copy'); await click('#studio-tab'); await evaluate('window.__onboardingCopy()');
+  await check('a delayed clipboard completion does not report success in a different view', "document.body.dataset.page==='studio'&&!document.querySelector('#connections-feedback').textContent.includes('配置已复制')&&document.querySelector('#connection-configuration').value===''");
+  await click('#connections-tab');
+  await click('[data-connection-view="settings"]');
+  await evaluate("document.querySelector('#connection-name').value='Unsaved grant';document.querySelector('#connection-name').dispatchEvent(new Event('input',{bubbles:true}))");
+  await click('[data-connection-view="delivery"]');
+  await check('unsaved edits block exporting the old grant as the new one', "document.querySelector('#connection-export-button').disabled&&!document.querySelector('#connection-unsaved-note').hidden");
+  await click('[data-connection-view="verification"]');
+  await check('unsaved edits block a new setup check and invalidate current export/check labels', "document.querySelector('#connection-check').disabled&&document.querySelector('#connection-check-state').dataset.state==='pending'&&document.querySelector('#connection-export-state').textContent.includes('未记录')");
+  await click('#connection-back'); await click('#connection-leave-discard'); await click('.connection-item');
+  await click('[data-connection-view="verification"]');
+  await cdp('Fetch.enable', { patterns: [{ urlPattern: session.origin + '/api/v0/connection-management/catalog', requestStage: 'Request' }] });
+  await click('#connection-check'); await wait(() => pausedResponses.length > 0, 'pending setup check');
+  const held = pausedResponses.shift(); await click('#studio-tab');
+  try { await cdp('Fetch.continueRequest', { requestId: held }); } catch (error) { assert.match(error.message, /Invalid [Ii]nterception[Ii]d/); } await cdp('Fetch.disable');
+  await check('leaving cancels a read-only check without leaving the shared editor busy', "document.body.dataset.page==='studio'&&!document.querySelector('#connection-back').disabled&&document.querySelector('#connection-check-state').dataset.state==='pending'");
+  await click('#connections-tab'); await click('[data-connection-view="delivery"]');
+  assert.deepEqual(tree(dataRoot), originalCore);
   const revoked = await fetch(session.origin + '/api/v0/connection-management/connections/' + profile.connectionId + '/revoke', {
     method: 'POST', headers: { Authorization: 'Bearer ' + session.accessToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ expectedRevision: 1 }) });
   assert.equal(revoked.status, 200); await revoked.arrayBuffer(); await click('#connection-export-button');
@@ -54,5 +130,13 @@ export async function verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate,
   await check('a rejected stale export retains its request ID once and leaves no credential preview', "(document.querySelector('#connections-feedback').textContent.match(/关联 ID：/g)||[]).length===1&&document.querySelector('#connection-configuration').value===''");
   session = await restart(false); await login();
   await check('HTTP presets are unavailable when this service has not enabled HTTP MCP', "[...document.querySelectorAll('#connection-template option[value^=\"preset:\"]')].filter(n=>n.value.endsWith('-http')).every(n=>n.disabled)&&document.querySelector('#connection-transport option[value=http]').disabled");
+  await click('.connection-item'); await click('[data-connection-view="verification"]');
+  await click('#connection-check'); await wait(() => evaluate("!document.querySelector('#connection-check').disabled&&document.querySelector('#connection-check-state').dataset.state==='limited'"), 'revoked setup record');
+  await check('revoked connection shows zero allowed tools consistently with its denied access', "document.querySelector('#connection-client-state').dataset.state==='revoked'&&document.querySelector('#connection-check-issues').textContent.includes('已撤销')&&!document.querySelector('#connection-check-tools').childElementCount");
+  await cdp('Fetch.enable', { patterns: [{ urlPattern: session.origin + '/api/v0/connection-management/catalog', requestStage: 'Request' }] });
+  await click('#connection-check'); await wait(() => pausedResponses.length > 0, 'logout pending setup read');
+  const logout = pausedResponses.shift(); await click('#disconnect');
+  try { await cdp('Fetch.continueRequest', { requestId: logout }); } catch (error) { assert.match(error.message, /Invalid [Ii]nterception[Ii]d/); } await cdp('Fetch.disable');
+  await check('logout clears receipts, declared clients and original configuration while a read is pending', "!document.body.classList.contains('connected')&&!document.querySelector('#connection-client-evidence').childElementCount&&!document.querySelector('#connection-check-tools').childElementCount&&document.querySelector('#connection-configuration').value===''");
   result.status = 'passed'; save();
 }

@@ -17,16 +17,16 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
 
-Iris connects media services and keeps creative work, tasks and outputs together. Agents can generate, edit, inspect and reuse media through a standalone CLI, a native DSH plugin, or the 0.3 alpha Core workbench and generic MCP. Core owns execution and storage; users choose what each client can access.
+Iris connects media services and keeps creative work, tasks and outputs together. Agents can generate, edit, inspect and reuse media through a standalone CLI, a native DSH plugin, or the 0.3 beta Core workbench and generic MCP. Core owns execution and storage; users choose what each client can access.
 
-**Release channels: `0.3.0-alpha.1` is the first 0.3 prerelease, available through npm `alpha`; stable `latest` remains `0.2.7`.** The standalone Web workbench, production MCP, ComfyUI and Core plugins require the alpha package. Stable 0.2.7 does not include these new entry points. Alpha contracts can change; see the [release notes](docs/releases/0.3.0-alpha.1.md) for scope.
+**Release channels: `0.3.0-beta.1` uses npm `beta`; stable `latest` remains `0.2.7`.** Building on alpha.1's standalone Web, generic MCP, ComfyUI and Core plugins, this release adds explicit network pools, bounded scheduling, text-to-video, environment credential references and independent plugin starters. See the [beta scope](docs/BETA_SCOPE.md) and [release notes](docs/releases/0.3.0-beta.1.md).
 
 | What you need | Entry | Availability |
 |---|---|---|
 | Media tools and prompt refinement inside DSH | [DSH plugin](#dsh-plugin-027) | Published 0.2.7 |
 | Media generation, task inspection and export in a terminal | [Standalone CLI](#standalone-cli-027) | Published 0.2.7; no DSH required |
-| A dedicated UI for models, creation and works | [Core quickstart](docs/CORE_QUICKSTART.md) | 0.3.0-alpha.1 / current source |
-| Other Agents sharing the same media workspace | [MCP](docs/MCP.md) · [Agent guide](docs/AGENT_CORE_QUICKSTART.md) | 0.3.0-alpha.1 / current source |
+| A dedicated UI for models, creation and works | [Core quickstart](docs/CORE_QUICKSTART.md) | 0.3.0-beta.1 |
+| Other Agents sharing the same media workspace | [MCP](docs/MCP.md) · [Agent guide](docs/AGENT_CORE_QUICKSTART.md) | 0.3.0-beta.1 |
 
 ## Workbench preview
 
@@ -50,13 +50,18 @@ A white interface with subtle iris colors, light/dark themes, local backgrounds 
 - **User-selected Agent access:** MCP grants select media, operation scopes and tools. stdio and Streamable HTTP share Core, with generic configuration and explicit client templates.
 - **Optional plugins:** Providers, business operations, pages, settings forms and artifact previews can be contributed by plugins. Core validates and assembles them; users grant access. The bundled contact sheet demonstrates a complete persistent business.
 
+Developers can start with the [independent plugin projects](docs/PLUGIN_DEVELOPMENT.md) included in beta.1. The business/page/PNG template uses the public SDK; the [Wan Provider template](templates/provider-starter/README.md) uses factory context v1 and reuses Core credentials, networking, scheduling and durable tasks. Plugins retain their own identities, contribution versions and explicit grants.
+
+Existing roots are not migrated automatically. Video requires a new v4 root, and network bindings have a separate format gate. Platform tests, controlled services and real-account evidence are distinct; they do not certify every provider, GPU or client.
+
 ### Current entry-point coverage
 
-| Capability | DSH / standalone CLI (alpha) | Core Web / MCP (alpha) |
+| Capability | DSH / standalone CLI (beta) | Core Web / MCP (beta) |
 |---|---|---|
 | Image generation, import and editing | Available | Available; text-to-image requires a new generation-capable root |
-| Speech and transcription | Available | Available in a new v3 root |
-| Video, music and vision | Available, depending on service and local dependencies | Configurable uses; creation entries still pending |
+| Speech and transcription | Available | Available in new v3/v4 roots |
+| Text-to-video | Available | [Available in new v4 roots](docs/VIDEO_FLOWS.md) |
+| Image-to-video, S2V, music and vision | Available, depending on service and local dependencies | Configurable uses; creation entries still pending |
 | ComfyUI workflows and exposed parameters | Added in alpha; absent from stable 0.2.7 | Implemented; live GPU inference remains unverified |
 | Contact-sheet plugin | Outside 0.2.7 | Available when explicitly enabled |
 
@@ -64,12 +69,12 @@ A white interface with subtle iris colors, light/dark themes, local backgrounds 
 
 ## Quickstart
 
-### Core workbench (0.3 alpha)
+### Core workbench (0.3 beta)
 
 Pin the prerelease in your own project, then choose a **new private location**. Existing workspaces are not migrated:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-alpha.1
+npm install @mokuyoaxis/dsh-iris@0.3.0-beta.1
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
@@ -106,7 +111,7 @@ dsh web
 
 Under Settings → Iris Workbench, reference an existing DSH API-key connection or add a service. Choose its protocol, approve model uses and select pool policies. Native DSH mode uses host routes, attachments and lifecycle without a separate Core Web service; it provides 17 Agent tools and the 🫧 prompt-refinement entry.
 
-These commands retain the stable version. To use additions such as the alpha ComfyUI UI, explicitly install `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-alpha.1`. The exact supported host versions do not expand.
+These commands retain the stable version. To use additions such as the beta ComfyUI UI, explicitly install `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.1`. The exact supported host versions do not expand.
 
 After configuration, a minimal request is:
 
@@ -133,10 +138,12 @@ Keep the full scoped package name **`@mokuyoaxis/dsh-iris`** when installing or 
 ## Configuration and data
 
 - Iris does not scan other projects or clients by default. DSH can [reference host API-key connections](docs/DSH_PROVIDER_CONNECTIONS.md); the Core workbench manages its media services. A chat subscription or OAuth login is not media API authentication.
+- Beta.1 optionally supports [environment credential references](docs/PROVIDER_CREDENTIALS.md): configuration stores a variable name and Core resolves its value at runtime. Inline keys remain supported.
 - Existing lists and missing/empty assignments are not silently enabled on upgrade. New directory models need explicit use approval; an empty manual pool stays empty. See [function pools](docs/FUNCTION_MODEL_POOLS.md).
 - `IRIS_IMPORT_WORKBENCH_CONFIG` explicitly selects an old ai-paint configuration for [one-time import](user_guide.md#从旧工作台显式导入). It does not modify or continuously synchronize the source, or migrate a Core data root.
 - DSH data lives under `$DSH_HOME/iris/v1/`, with media Core data in `core-v0`. Standalone CLI/Web use the selected root. The new workbench does not automatically import works from other roots.
 - Each root has one writer and an instance execution queue; read-only inspection may coexist. The gallery is not a backup. There is no automatic disk quota or garbage collection; deletion, recovery and dependencies require explicit operations.
+- Beta.1 offers explicit [bounded media scheduling](docs/MEDIA_SCHEDULING.md) for the Core service: one writer, separate HTTP concurrency, dispatch rate and outstanding remote-task limits. The default stays serial; ambiguous submissions are never replayed automatically.
 - Credentials live in private storage: typically `0600` files and `0700` directories on POSIX. Windows still relies on accounts and ACLs. Keep secrets and authenticated URLs out of public configuration and captures. Workspace passwords, MCP credentials and provider keys are managed separately.
 
 Node.js ≥22 and a loadable `sharp` installation are required. Video extraction needs `ffmpeg`/`ffprobe`. HTML capture needs the chosen browser backend; DSH host services and standalone Chromium have different requirements. On Termux/PRoot, keep data on a private Linux filesystem supporting permissions and hard links.
@@ -170,7 +177,7 @@ Historical device captures from an Android browser connected to DSH in Termux/PR
 | Workbench and connections | [Login](docs/WORKBENCH_LOGIN.md) · [Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Skills](docs/CORE_SKILLS.md) |
 | Models and flows | [Providers, pools and spectrum](docs/PROVIDER_SETTINGS.md) · [Images / ComfyUI](docs/IMAGE_GENERATION.md) · [Speech / transcription](docs/AUDIO_FLOWS.md) · [Task semantics](docs/TASK_SEMANTICS.md) |
 | Extensions | [Plugin contract](docs/PLUGINS.md) · [Startup](docs/PLUGIN_STARTUP.md) · [Panel](docs/PANEL_EXTENSIONS.md) · [Contact sheet](docs/CONTACT_SHEET.md) |
-| Releases and direction | [0.3 alpha release notes](docs/releases/0.3.0-alpha.1.md) · [0.2.7 stable](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
+| Releases and direction | [0.3 beta release notes](docs/releases/0.3.0-beta.1.md) · [0.2.7 stable](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
 
 The DSH package retains [`iris-use`](.dsh/skills/iris-use/SKILL.md), [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) and [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md). Core and connection Skills do not replace them.
 

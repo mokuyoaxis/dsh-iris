@@ -50,7 +50,7 @@ kimi --skills-dir /absolute/path/to/iris/skills
 
 宿主读取 Skill 后仍需可执行的 `dsh-iris`，或已确认源码根中的 `node bin/dsh-iris.js`。向 Agent 提供本次明确的 Core 数据根；生成/编辑另提供私有 Provider 配置路径。先使用 `--help` 与只读配置摘要核对入口，具体命令见 [CLI 参考](../skills/iris-core/references/cli.md)。不要把密钥写进提示词或复制进 Skill。
 
-## ComfyUI 参考与 API 搭配（0.3 alpha）
+## ComfyUI 参考与 API 搭配（0.3 beta）
 
 现有 `iris-core` 按需读取 [ComfyUI 参考](../skills/iris-core/references/comfyui.md)，说明工作流选择、公开参数、LoRA的模型/CLIP双权重和原任务恢复。正文仍为英文、标题附中文；本扩展从0.3.0-alpha.1提供，稳定0.2.7不包含。安装器随整个目录复制参考；已有安装须显式更新，不自动修改日常harness。
 
@@ -64,7 +64,7 @@ ComfyUI 请求先集中确认尚缺少的图像目标、工作流、LoRA 与参�
 - DSH 原有三项 Skill、工具、附件与工作台流程保持，不把新 Skill 自动注册为第四项 DSH Skill；DSH 使用方式见 [README](../README.md#dsh-插件027)。
 - 本版新增独立的 Core 指导，不迁移或改写旧 DSH Skill。后续若合并公共参考，应先证明 DSH 流程和资源解析保持。
 - Core Artifact ID 属于指定根，宿主附件、路径与 URL 不可互换；交付时由实际宿主呈现导出文件。
-- 0.3 alpha源码的正式 MCP 入口见 [Core 服务](CORE_SERVICE.md)，需独立配置授权连接。`iris-core` 的可执行说明仍是 CLI；下方连接专属 Skill 仅指导 MCP。Skill 安装不自动注册 MCP，不能据此声称日常 harness 已接入或真实 Agent 已验收。
+- 0.3 beta的正式 MCP 入口见 [Core 服务](CORE_SERVICE.md)，需独立配置授权连接。`iris-core` 的可执行说明仍是 CLI；下方连接专属 Skill 仅指导 MCP。Skill 安装不自动注册 MCP，不能据此声称日常 harness 已接入或真实 Agent 已验收。
 - 面向 Core 的独立工作台继续按既有路线推进；本 Skill 不描述尚不存在的 UI 操作。Skill 指导 Agent，业务受理、写者租约与重试约束继续由执行层负责。
 
 验收区分 Skill 文件/引用可读取、CLI 示例可执行、实际 Agent 是否按指导完成任务。离线供应商夹具只验证命令和状态处理，不证明真实模型的规划、生图质量或计费表现。

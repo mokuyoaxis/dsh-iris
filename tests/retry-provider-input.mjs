@@ -30,7 +30,7 @@ try {
     },
     {
       capability: 'video', model: 'wan2.6-i2v',
-      input: { prompt: 'move', img_data_url: 'data:image/png;base64,YWJj', duration: '5' },
+      input: { video_mode: 'i2v', prompt: 'move', img_data_url: 'data:image/png;base64,YWJj', duration: '5' },
       expected: { prompt: 'move', img_url: 'data:image/png;base64,YWJj' }
     }
   ]) {

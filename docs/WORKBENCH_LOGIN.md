@@ -1,6 +1,6 @@
-# 工作台访问口令（0.3 alpha）
+# 工作台访问口令（0.3 beta）
 
-普通 `web serve` 使用一个访问口令，不要求账号、邮箱或读取 Token 文件。**稳定 npm 0.2.7 没有 `web serve`；下文针对0.3.0-alpha.1。** 源码树可把 `dsh-iris` 替换为 `node bin/dsh-iris.js`。
+普通 `web serve` 使用一个访问口令，不要求账号、邮箱或读取 Token 文件。**稳定 npm 0.2.7 没有 `web serve`；下文针对0.3.0-beta.1。** 源码树可把 `dsh-iris` 替换为 `node bin/dsh-iris.js`。
 
 ## 首次设置与日常使用
 

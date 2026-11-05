@@ -25,7 +25,9 @@ const files = directory => Object.fromEntries(fs.readdirSync(directory, { recurs
 try {
   const empty = createCoreCapabilityCatalog();
   assert.equal(empty.snapshot().groups.length, 2); assert.equal(empty.snapshot({ audioEnabled: true }).groups.length, 4);
-  assert.equal(CORE_BRIDGE_TOOLS.length, 21); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 19);
+  assert.equal(CORE_BRIDGE_TOOLS.length, 24); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 19);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).groups.length, 5);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).tools.length, 22);
   assert.equal(empty.snapshot().pluginTools.length, 2);
   assert(!selectedBridgeTools([]).includes('iris_core_plugin_call'), 'discovery does not select the new business tools');
   assert.deepEqual(empty.snapshot().plugins, []); assert.deepEqual(empty.selectOperations(), []);
@@ -38,7 +40,7 @@ try {
   }
   assert.throws(() => empty.snapshot({ audioEnabled: true }).groups[0].tools.push('forged'), TypeError);
   let combinations = 0;
-  for (let groupMask = 0; groupMask < 16; groupMask++) for (let scopeMask = 0; scopeMask < 8; scopeMask++) {
+  for (let groupMask = 0; groupMask < 1 << BRIDGE_CAPABILITIES.length; groupMask++) for (let scopeMask = 0; scopeMask < 8; scopeMask++) {
     const capabilities = BRIDGE_CAPABILITIES.filter((_, i) => groupMask & 1 << i).map(item => item.id);
     const grantedScopes = ['read', ...scopes.slice(1).filter((_, i) => scopeMask & 1 << i)];
     for (const selection of [selectedBridgeTools(capabilities), []]) {
@@ -50,12 +52,13 @@ try {
         for (const tool of actual) assert(text.includes('- `' + tool.name + '`: ' + declarations.get(tool.name).guidance));
         assert.equal([...text.matchAll(/^- `iris_core_/gm)].length, actual.length);
       }
-      for (const audio of [false, true]) for (const execution of [false, true]) {
+      for (const audio of [false, true]) for (const video of [false, true]) for (const execution of [false, true]) {
         const operations = projectCoreSessionOperations({ scopes: grantedScopes, tools: actual.map(tool => tool.name),
-          audio, imageGeneration: false, execution, creationLookup: true, selection: true });
+          audio, video, imageGeneration: false, execution, creationLookup: true, selection: true });
         assert(!operations.includes('generations.create'));
         assert(!operations.includes('creation.lookup')); assert(!operations.includes('runs.select'), 'owner-only aliases have no bridge tool');
         if (!audio) assert(!operations.some(id => /audio|speech|transcri/.test(id)));
+        if (!video) assert(!operations.some(id => /video/.test(id)));
         if (!execution) assert(!operations.some(id => id.startsWith('operations.') || id === 'runs.continue'));
         if (!grantedScopes.includes('create')) assert(!operations.some(id => id.endsWith('.create')));
         if (!grantedScopes.includes('execute')) assert(!operations.includes('runs.continue'));

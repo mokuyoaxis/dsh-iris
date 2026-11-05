@@ -1,6 +1,8 @@
-# Core 插件贡献 v0（0.3 alpha，实验性）
+# Core 插件贡献 v0（0.3 beta，实验性）
 
-0.3.0-alpha.1 提供实验性 `@mokuyoaxis/dsh-iris/plugins` 入口及类型声明。**稳定 npm 0.2.7 没有这个入口**；示例用于alpha包或当前源码，尚未承诺稳定 SDK。兼容检查读取实际包版本，alpha标识也参与SemVer先后比较。
+0.3.0-beta.1 保留从alpha.1开始提供的 `@mokuyoaxis/dsh-iris/plugins` 入口及类型声明。**稳定 npm 0.2.7 没有这个入口**；示例用于beta包或当前源码；最小面见[beta约定](BETA_SCOPE.md)，完整SDK尚未冻结。兼容检查读取实际包版本，预发布标识也参与SemVer先后比较。
+
+想从一个可运行的独立项目开始，可看[插件开发与包外验收](PLUGIN_DEVELOPMENT.md)及[可复制模板](../templates/plugin-starter/README.md)。模板随beta.1分发，使用已公开的SDK，含真实对照板业务、页面、PNG 预览器和隔离自检，不安装或自动授权 harness。
 
 ## 贡献与装配
 
@@ -52,7 +54,7 @@ export default definePlugin({
 });
 ```
 
-`min` 从首次提供此SDK的0.3.0-alpha.1开始，稳定0.2.7不支持插件入口。Core兼容区间使用闭/开边界，npm peer范围另按npm SemVer规则处理；面向本alpha的插件可明确声明 `>=0.3.0-alpha.1 <0.4.0`，不能假定仅有稳定版下界的范围会接受预发布。
+`min` 从首次提供此SDK的0.3.0-alpha.1开始，稳定0.2.7不支持插件入口。Core兼容区间使用闭/开边界，npm peer范围另按npm SemVer规则处理；支持0.3预发布的插件可明确声明 `>=0.3.0-alpha.1 <0.4.0`，不能假定仅有稳定版下界的范围会接受预发布。
 
 宿主显式加载已安装且可信的 JS/MJS 入口；示例使用已经存在的 Core 数据根，只读调用不会创建它：
 
@@ -92,7 +94,7 @@ const selected = catalog.selectOperations(['example.library.count']);
 // 仅校验装配者明确提供的本地选择；不调用、不持久授权、不开放 Web/MCP。
 ```
 
-`audioEnabled` 仅决定目录显示哪些内置分组，不能开启工作区或绕过真实根版本检查。目录快照深度只读；省略 `registry` 时仅列内置选项和空插件贡献。`selectOperations()` 默认空，未知或重复业务拒绝；注册器关闭后贡献标为 unavailable，不能继续选择。程序化 Host 也通过此目录校验 `allowedOperations`，真实调用继续检查原贡献依赖、输入和 Core 队列权限。
+`audioEnabled` 和beta.1的 `videoEnabled` 仅决定目录显示哪些内置分组，不能开启工作区或绕过真实根版本检查。目录快照深度只读；省略 `registry` 时仅列内置选项和空插件贡献。`selectOperations()` 默认空，未知或重复业务拒绝；注册器关闭后贡献标为 unavailable，不能继续选择。程序化 Host 也通过此目录校验 `allowedOperations`，真实调用继续检查原贡献依赖、输入和 Core 队列权限。
 
 贡献的 `access` 是装配边界，**不是用户已经授权或服务已实测**：Provider 的 `via-media-flow` 仍需模型配置和流程授权。业务默认尚未暴露；服务明确选择 `allowedOperations` 后，Web/MCP 状态才成为 `via-operation/requires-selection`，连接还需选择准确依赖。Web 贡献默认 descriptor-only / not-mounted；选入后为 available-in-panel，不表示已加载或实测。发现接口不提供脚本路径；选中模块的固定 URL 只在 owner 工作台会话中交付。
 
@@ -125,6 +127,8 @@ const selected = catalog.selectOperations(['example.library.count']);
 
 清单项为 `{id,version,title,capabilities,configuration?}`。能力与配置字段沿用原 Provider 约束。`activate` 返回同名 `providers` 映射，每项实现 `normalizeEndpoint/createAdapter`，可选 `supportsModel/supportsImageEdit`；具体调用继续遵守 [Provider Adapter](PROVIDER_ADAPTER_CONTRACT.md)。
 
+beta.1 增加 `PROVIDER_FACTORY_CONTEXT_VERSION = 1`。统一工厂同步接收 `createAdapter(provider, context)`：Core 解析凭据到浅冻结的连接副本，`context` 只含 `{contractVersion:1, network:{fetch}, modelId?}`。完整方法的正文/多跳与关闭由 Core 管理；网络端口只在方法调用期间有效，不能在工厂或迟到后台任务中使用，也不能自行释放。公开导出相同的 `ProviderContractError` 和请求/结果类型；旧窄扩展签名保留。完整边界见[最小契约清单](PROVIDER_PLUGIN_CONTRACT.md)和[可分发 Provider 模板](../templates/provider-starter/README.md)，不依赖内部构造器。
+
 协议 ID 由 Core 设为完整贡献 ID。Adapter 的配置身份仍为用户的 Provider ID；Core 覆盖并验证协议/依赖元数据，插件不能通过描述更改配置身份。`registry.providers` 是已有注册器形状，可显式传给使用 `providerRegistry` 的服务；该方式只接入 Provider 部分，不挂载页面或新增工具。Provider 下载沿用 Core 分配的暂存目标，不自行管理作品索引。
 
 ## 持久依赖与恢复
@@ -152,7 +156,7 @@ const selected = catalog.selectOperations(['example.library.count']);
 
 模块导出 `mount(context)`，可返回清理函数或其 Promise。上下文含 `container/signal/dependency/session/theme/api`，渲染器另有 `artifact:{id,mediaType,label?}`。三处使用同一冻结的会话快照，不提供 Token 字段；`theme.current()/subscribe()` 读取实际明暗和密度，CSS 继承鸢尾及工作台变量。挂载容器位于 Shadow DOM，避免样式意外覆盖工作台。
 
-`api` 复用认证客户端，提供 `runs/run/models/audioModels/artifact`，不接任意 URL/路径。只有设置模块且开启 owner 供应商管理才有 `api.providers.read()/save()`，沿用 revision/凭据动作。持久业务开启时另有 `api.pluginOperations.catalog/history/execute/inspect/lookup/stop`；execute 需要稳定 `key` 和准确 `operationId/dependency/input`，返回持久回执。Core 逐请求核对权限；未知结果查原 UUID，不自动重做。没有任意配置存储或通用命令转发。
+`api` 复用认证客户端，提供 `runs/run/models/audioModels/artifact`（beta.1另有 `videoModels`、`session.video` 与 MP4/WebM 的 `artifact` 读取），不接任意 URL/路径。只有设置模块且开启 owner 供应商管理才有 `api.providers.read()/save()`，沿用 revision/凭据动作。持久业务开启时另有 `api.pluginOperations.catalog/history/execute/inspect/lookup/stop`；execute 需要稳定 `key` 和准确 `operationId/dependency/input`，返回持久回执。Core 逐请求核对权限；未知结果查原 UUID，不自动重做。没有任意配置存储或通用命令转发。
 
 挂载器在会话选中 Web 贡献或开启持久业务时加载；旧服务两者均无时不请求新增资源。导航页按需加载；设置默认折叠；预览需展开并选择匹配 MIME 的渲染器，原生预览仍可用。切页、收起或退出会中止信号、撤销对应 API、移除容器/主题监听并清理；迟到挂载仍会释放。插件负责自己的 Blob URL/监听/定时器和未保存草稿。错误显示贡献 ID、阶段及可用关联 ID；重新打开可显式重试，不自动换插件。
 

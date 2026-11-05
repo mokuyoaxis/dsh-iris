@@ -1,13 +1,13 @@
 # Core Workbench Quickstart · 从零启动工作台
 
-This guide is for **0.3.0-alpha.1 or the current source tree**. Stable npm **0.2.7 does not include `web serve` or production MCP**. For stable DSH/CLI usage, see the [DSH guide](../user_guide.md) or [standalone CLI](HEADLESS_CLI.md). Alpha contracts may change; existing roots are not migrated automatically.
+This guide is for **0.3.0-beta.1 or the current source tree**. Stable npm **0.2.7 does not include `web serve` or production MCP**. For stable DSH/CLI usage, see the [DSH guide](../user_guide.md) or [standalone CLI](HEADLESS_CLI.md). The beta scope freezes a minimal contract; broader SDK contracts may change; existing roots are not migrated automatically.
 
 ## Start a new workspace · 新建工作区
 
 Use Node.js ≥22. To install the prerelease in your project:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-alpha.1
+npm install @mokuyoaxis/dsh-iris@0.3.0-beta.1
 npx dsh-iris --help
 ```
 
@@ -70,7 +70,7 @@ Opening pages and refreshing the spectrum do not generate media. Reading a model
 
 For ComfyUI, use an existing service and an explicitly imported **API-format workflow** with mapped prompt/output nodes. Check declared parameters and available LoRA choices, then save and choose that workflow. Iris does not install ComfyUI, invent a graph or discover GPU models by guessing. See [ComfyUI workflows](IMAGE_GENERATION.md#comfyui-入口).
 
-The current Web/MCP media entries cover image generation/editing, speech and transcription. Video, music and vision retain their existing [CLI](HEADLESS_CLI.md) / DSH entries; configuring their uses here does not add a Web creation form.
+Beta.1 Web/MCP media entries cover image generation/editing, speech, transcription and [text-to-video](VIDEO_FLOWS.md): choose a separate new root and use `execution init --video` instead of `--audio` when initializing it. This creates v4, retains image/audio flows and adds optional video entry points; existing roots are not migrated. Older alpha.1 packages do not support this switch. Image-to-video, S2V, music and vision retain their existing [CLI](HEADLESS_CLI.md) / DSH entries.
 
 ## Connect an Agent · 连接客户端
 
@@ -100,6 +100,8 @@ If acceptance or the result is unknown, inspect it; do not submit again automati
 ```
 
 For an Agent handling setup, use the [Agent quickstart](AGENT_CORE_QUICKSTART.md). Transport details, templates and errors are in [MCP](MCP.md).
+
+Beta.1 provides **选择与授权 → 获取配置 → 核对接入**. Confirm where the Agent runs: the current loopback address and local stdio paths cannot be copied directly to another machine. Its **Iris 端配置检查** reads service/authorization facts without creating a bridge or testing media. Export, this check and an actual client's optional declaration are separate evidence; missing optional client metadata is not proof of a failed call. See [the onboarding flow](MCP.md#工作台连续接入当前源码).
 
 ## Optional plugins and recovery · 可选插件与恢复
 

@@ -9,6 +9,7 @@ import { webBase } from '../lib/media.js';
 import { hostDoctor } from '../lib/doctor.js';
 import { guarded } from '../lib/guard.js';
 import { useTempDshHome } from './test-env.js';
+import { deliverRender } from './fixtures/render-route-fixture.mjs';
 
 useTempDshHome('iris-render-address');
 const savedOverride = process.env.DSH_WEB_BASE;
@@ -97,6 +98,7 @@ try {
   process.env.DSH_WEB_BASE = 'https://proxy.example/nested/';
   const direct = new BrowserHtmlRenderer({ browser: { ...browser, async openUrl(_session, request) {
     assert.match(request.url, /^https:\/\/proxy\.example\/nested\/iris\/render\//);
+    deliverRender(request.url);
   } }, waitMs: 0 });
   await direct.render({ html: '<p>prefix</p>' });
 } finally {

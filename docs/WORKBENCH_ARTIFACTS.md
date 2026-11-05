@@ -36,6 +36,12 @@ Core静态PNG/JPEG/WebP图片卡提供“改图”。填写修改指令，可选
 
 目录查询复用已提交的 Manifest 与派生 Index，只读取元数据和文件大小，不反复读取视频等媒体的完整字节、不重建索引或取得 Core writer 租约。打开媒体、看图/OCR、CLI inspect/list/export 保留原有完整内容哈希核验；目录里显示的哈希不表示本次浏览已经重新核验了全部文件内容。
 
+beta.1把可兼容读取的早期Core提交记录单列为 `legacyCoreSkipped`，不计入损坏/缺失的 `droppedCore`。这些作品仍可按原ID检查或导出；需要编入当前目录时，由用户显式运行 `artifact rebuild --data-root /absolute/core`，该写操作可能升级早期记录。浏览和刷新不自动迁移，也不为分类重新哈希媒体；结构、大小或索引信息不符仍按不可读取处理。
+
+DSH Core快照也复用这条元数据路径：兼容早期条目单列`legacySkipped`，坏条目单列`dropped`，正常作品继续显示。新作品提交对早期条目复用已校验索引中的摘要与大小，不读取历史媒体；缺少或不匹配的摘要要求显式重建，不补造内容证据。重建和库存刷新在写入前标记索引待刷新，失败后普通列表明确报错，成功发布新索引才清除标记；原作品记录和按ID读取保持。
+
+beta.1中，DSH作品媒体GET先分块核验内容，再流式发送；HEAD同样验证哈希但不读取完整文件到内存。客户端断开或实例关闭会排空并关闭媒体流，原作品不变；不增加Range支持。图库索引未完成刷新时会明确报错并由Doctor提示，不以缺项的旧列表冒充完整目录；保留现场后可显式执行 `artifact rebuild`。
+
 OCR 动作 JSON 附 `status/totalChunks/successfulChunks/failedChunks/skippedChunks`，便于界面表达完整度。识别正文不自动保存为 Core Artifact。
 
 ## 选择、详情与批量下载

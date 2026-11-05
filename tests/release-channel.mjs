@@ -50,7 +50,7 @@ fs.writeFileSync(file,JSON.stringify(state));if(value)console.log(value);process
 `);
   const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
   const shim = `npm() { ${quote(process.execPath)} ${quote(fake)} npm "$@"; }\ngh() { ${quote(process.execPath)} ${quote(fake)} gh "$@"; }\n`;
-  for (const version of ['0.3.0-alpha.1', '0.2.8']) {
+  for (const version of ['0.3.0-alpha.1', '0.3.0-beta.1', '0.2.8']) {
     const cwd = path.join(work, version); fs.mkdirSync(cwd);
     fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ name: current.name, version }));
     const file = path.join(cwd, 'registry.json'), metadata = releaseMetadata(version, 'v' + version);
@@ -63,10 +63,10 @@ fs.writeFileSync(file,JSON.stringify(state));if(value)console.log(value);process
     assert.ifError(run.error); assert.equal(run.status, 0, run.stderr);
     const state = JSON.parse(fs.readFileSync(file));
     assert.equal(state.tags[metadata.npmTag], version);
-    assert.equal(state.tags.latest, metadata.prerelease ? '0.2.7' : version, 'alpha cannot move the stable npm tag');
+    assert.equal(state.tags.latest, metadata.prerelease ? '0.2.7' : version, 'prereleases cannot move the stable npm tag');
     const release = state.calls.find(call => call.command === 'gh' && call.args[1] === 'create'); assert(release);
     assert.equal(release.args.includes('--prerelease'), metadata.prerelease);
     assert.equal(release.args.includes('--latest=false'), metadata.prerelease);
   }
-  console.log('PASS release workflow: alpha preserves npm latest and creates a GitHub prerelease; stable uses latest; actual shell verified without remote calls');
+  console.log('PASS release workflow: alpha/beta preserve npm latest and create GitHub prereleases; stable uses latest; actual shell verified without remote calls');
 } else console.log('PASS release metadata; Ubuntu Bash workflow integration skipped on this platform');

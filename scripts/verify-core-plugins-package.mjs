@@ -63,10 +63,11 @@ try {
   check('candidate exports runtime/types; independent plugin package resolves only the public SDK; private evidence and fixture files are absent from the archive');
 
   if (typescript) {
-    fs.copyFileSync(path.join(repo, 'tests/fixtures/core-plugin-types.mts'), path.join(consumer, 'types.mts'));
+    const typeFixtures = ['core-plugin-types.mts', 'provider-context-types.mts', 'workbench-password-types.mts', 'dsh-client-types.mts'];
+    for (const name of typeFixtures) fs.copyFileSync(path.join(repo, 'tests/fixtures', name), path.join(consumer, name));
     const typeConfig = path.join(consumer, 'tsconfig.json');
     fs.writeFileSync(typeConfig, JSON.stringify({ compilerOptions: { noEmit: true, strict: true, target: 'ES2022', module: 'NodeNext',
-      moduleResolution: 'NodeNext', lib: ['ES2022', 'DOM'], types: [], skipLibCheck: false }, files: ['./types.mts'] }));
+      moduleResolution: 'NodeNext', lib: ['ES2022', 'DOM'], types: [], skipLibCheck: false }, files: typeFixtures }));
     const typed = await run(process.execPath, [typescript, '--project', typeConfig], consumer);
     fs.writeFileSync(path.join(out, 'types.json'), JSON.stringify(typed, null, 2) + '\n');
     assert.equal(typed.status, 0, typed.stdout || typed.stderr);

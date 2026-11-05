@@ -12,8 +12,8 @@ export const AUDIO_WAV = (() => {
   for (let i = 0; i < samples; i++) bytes.writeInt16LE(Math.round(Math.sin(i * Math.PI * 2 * 440 / 8000) * 8000), 44 + i * 2);
   return bytes;
 })();
-export function audioFlowFixture({ unknown = false, beforeSubmit, failPreparation = false } = {}) {
-  const speech = { kind: 'completed', value: { kind: 'audio' }, artifacts: [{ kind: 'inline-base64', data: AUDIO_WAV.toString('base64'), mediaType: 'audio/wav' }] };
+export function audioFlowFixture({ unknown = false, beforeSubmit, failPreparation = false, speechMediaType = 'audio/wav', speechBytes = AUDIO_WAV } = {}) {
+  const speech = { kind: 'completed', value: { kind: 'audio' }, artifacts: [{ kind: 'inline-base64', data: speechBytes.toString('base64'), mediaType: speechMediaType }] };
   const fake = createFakeLifecycleProvider({ id: 'audio-fixture', capabilities: ['tts', 'transcribe'],
     submitSteps: Array.from({ length: 30 }, () => async (input, context) => {
       await beforeSubmit?.(input, context);

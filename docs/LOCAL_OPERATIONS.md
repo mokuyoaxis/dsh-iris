@@ -1,4 +1,4 @@
-# Operation 存储与版本门禁（0.3 alpha）
+# Operation 存储与版本门禁（0.3 beta）
 
 持久 Operation 记录一次明确有限调用的意图、原身份和状态。原 `flow.continue` 继续媒体 Run，新增 `plugin.execute` 执行明确选中的真实业务；共用单根 runner、队列、租约、HTTP 202/原 Key 接回和本地停止。默认 API 仍只读；主动开启方式见 [Core 执行服务](CORE_SERVICE.md)及[多图对照板](CONTACT_SHEET.md)。原 CLI 图片流程保持。
 
@@ -10,7 +10,7 @@ Operation 表示一次有限调用，Run 表示创作流程，Task/Attempt 表�
 
 ## 显式初始化与查询
 
-以下命令针对0.3 alpha源码；已公开 npm 0.2.7 没有此入口。需要 Node.js ≥22 和项目现有依赖：
+以下命令针对0.3 beta；已公开 npm 0.2.7 没有此入口。需要 Node.js ≥22 和项目现有依赖：
 
 ```bash
 node bin/dsh-iris.js flow init --data-root /absolute/path/to/new-flow-root

@@ -37,7 +37,7 @@ API、SSE 和 Doctor 只返回凭据存在性或掩码提示。Provider 错误�
 ## 文件、上传与媒体访问
 
 - 浏览器上传使用大小上限、随机文件名、`.part` 临时文件和完成后的原子改名；中断时清理临时文件，过期副本按 TTL 回收。
-- 输出文件名由 Iris 生成或通过 `basename` 收口，API 不返回宿主绝对路径。
+- 正常输出使用Iris生成的受控文件名，状态和作品列表不返回数据根路径。DSH上传接口按设计返回临时文件绝对路径，显式 `attachment_export` 也返回本地导出路径；这些本机调用结果不等于所有API都禁止绝对路径。独立Core API的媒体输入继续使用原字节或Artifact ID，不接受任意服务器路径。
 - legacy 任务与独立作品的媒体链接使用随机 128-bit 能力令牌。令牌应视为临时访问凭据，不应发布到公网。
 - Core 媒体路由 `/iris/api/core/artifact/<artifact_id>/media` **没有独立 token**。它使用随机 96-bit Artifact ID 作为不可猜测的持有者标识，并叠加默认回环/显式 trusted Host、浏览器 `Origin`/`Sec-Fetch-Site` 拒绝跨站、`Cross-Origin-Resource-Policy: same-origin`、`Referrer-Policy: no-referrer` 与每次 SHA-256 校验。任何能访问受信 Host 且持有 Artifact ID 的客户端都能读取对应媒体；`IRIS_TRUSTED_HOSTS` 不是身份认证。不要把 Core Artifact ID 或媒体 URL 发布到不受信任位置。
 - 清理任务元数据默认不删除作品；legacy 独立作品索引不保存 Prompt、Provider、Model 或任务关系；Core Manifest 保存中性元数据、SHA-256 和来源/派生关系，不保存凭据或私有下载 URL。

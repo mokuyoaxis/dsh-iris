@@ -1,6 +1,10 @@
-# Core 供应商、模型池与健康检测（0.3 alpha）
+# Core 供应商、模型池与健康检测（0.3 beta）
 
-此页描述0.3.0-alpha.1的配置界面，**稳定 npm 0.2.7 不包含该入口**。它管理 Iris 媒体供应商；harness 接入权限仍在连接中心管理，各家聊天模型登录与 OAuth 不由此页接管。
+此页描述0.3.0-beta.1的配置界面，**稳定 npm 0.2.7 不包含该入口**。它管理 Iris 媒体供应商；harness 接入权限仍在连接中心管理，各家聊天模型登录与 OAuth 不由此页接管。
+
+beta.1 另有可选的[环境凭据引用](PROVIDER_CREDENTIALS.md)：保存变量名、在 Core 进程中解析值，原有内联 Key 和 DSH 连接引用保持。
+
+beta.1另有[网络出口页](NETWORK_WORKBENCH.md)。独立开启网络管理后，供应商卡片与功能池显示配置出口，已保存连接可跳转设置；模型池继续决定调用哪个候选，出口绑定独立保存。空/停用池明确阻止新请求，旧供应商目录需要另存启用，不自动迁移。网络GET检测不代替下面的目录、认证或媒体验证。
 
 ## 开启管理
 
@@ -25,14 +29,14 @@ node bin/dsh-iris.js web serve --data-root /absolute/existing-flow-root \
 “模型服务”分为供应商、功能模型池、健康检测三个入口。供应商先显示名称、地址、模型数和配置状态的概览卡片，按六色鸢尾使用极浅点缀；“已配置”不代表实测通过。点击服务卡片或“添加服务”进入编辑，连接、模型与用途、ComfyUI工作流分组显示。顶部返回与底部取消使用同一草稿确认，未保存修改可保留或明确放弃；保存结果未确认时，先重新读取核对。隐藏分组中的必填连接字段无效时，会显示该分组并定位字段。
 
 1. 从“模型服务”或创作区“管理模型”进入，选择卡片或“添加服务”。选预设/自定义，填写名称、Base URL 和认证；高级连接设置默认折叠。稳定 ID 自动生成，不作为日常重命名入口。
-2. 现有 Key 只显示存在状态，不回显。明确选择保留、填写/替换或清除；服务实际不要求认证时可选“无需认证”，保留的旧 Key 不发送。
+2. 现有 Key 只显示存在状态，不回显。明确选择保留、填写/替换或清除；当前源码也可选择环境变量引用并查看就绪状态。服务实际不要求认证时可选“无需认证”，保留的旧 Key 不发送。
 3. 可以先仅保存连接，再主动读取目录；目录只使用已保存连接。也可直接手填模型 ID。
 4. 勾选图片/视频/语音/音乐/转写/视觉用途再保存。新勾选用途时，原本停用的对应功能会改为自动选择，摘要明确列出。已有自动/手动设置不因打开页面而改变。
 5. 返回列表，进入“功能模型池”独立选择自动、手动排序或停用。手动勾选模型后可上移/下移，按显示顺序保存；取消可放弃未保存的池设置。自动和手动均沿用运行时的协议、连接、限流与模型可用性过滤，按顺序优先选择，不是跨请求轮询。手动空池不回落到自动。
 
 目录结果暂存在页面，搜索/加入草稿不写配置、不批准用途。目录元数据与实际协议支持不同；标注用途后运行时仍验证协议、限流和可用性。模型级图片/音乐协议在折叠项中选择：图片可沿用供应商默认，音乐必须明确选择，空值不回落到供应商默认。`gemini-web-music` 的显示名称统一为“Chat Completions（内嵌音频）”，不限定供应商或模型名称，详见[音乐接口](MUSIC.md)。
 
-当前 Core Web/MCP 支持图片生成/编辑及新 v3 根上的语音合成/转写；视频、音乐、视觉可在此页配置用途，但尚未进入这些新创作入口，继续使用已有 DSH/CLI 能力。配置用途、接口支持和创作入口覆盖是不同事实。
+beta.1 的 Core Web/MCP 支持图片生成/编辑、v3/v4 根的语音合成/转写，以及新v4根的[文生视频](VIDEO_FLOWS.md)；音乐/视觉可配置用途，创作继续使用已有DSH/CLI入口。配置用途、接口支持和创作入口覆盖是不同事实。
 
 ComfyUI 预设提供已有服务地址和默认折叠的 API 图/Iris v0/v1 模板导入。每份工作流作为一个明确的图片模型，绑定正向提示词、输出和可选尺寸节点；可勾选已有标量、命名参数并预览表单。导入不执行，同名替换明确确认，加入草稿并保存后才能从创作页选择。目录检查只验证服务并列出已配置工作流，不把远端 checkpoint 自动当成可调用工作流。流程与限制见 [ComfyUI 入口](IMAGE_GENERATION.md#comfyui-入口)。
 
@@ -42,7 +46,9 @@ ComfyUI 切回“自定义兼容服务”会恢复本次编辑中先前的 API �
 
 Core 参数表单与 `POST /api/v0/provider-management/workflow-check` 已接通：owner 提交 `{expectedRevision,modelRef,workflowParameters?}`，或使用 `{expectedRevision,providerId,comfyWorkflow,workflowParameters?}` 检查未保存模板。草稿只能使用已保存、启用的 ComfyUI 连接，不接受临时地址或凭据；只查询节点定义，返回静态问题和可用选项，不写配置、不创建 Task、不入队。需同一供应商管理开关，仍受 Host/Origin、revision 与请求大小限制；静态通过不代表推理通过。DSH 的独立入口见 [DSH 工作台](IMAGE_GENERATION.md#dsh-工作台入口03-alpha)。详见 [参数模板与检查](IMAGE_GENERATION.md#comfyui-参数模板与只读检查后端)。
 
-连接/模型保存与独立模型池保存均复用原锁、revision 摘要、0600 备份与原子写入。未改动供应商、模型与额外字段保留。原模型可清空用途，新模型可撤销添加。配置及备份仍含 Key，应保存在当前用户控制的私有位置。
+连接/模型保存与独立模型池保存均复用原锁、revision 摘要、0600 备份与原子写入。未改动供应商、模型与额外字段保留。原模型可清空用途，新模型可撤销添加。内联配置及其备份仍含 Key；环境引用只保存名称，但切换前的旧备份可能仍含内联 Key，应保存在当前用户控制的私有位置。
+
+环境引用的 owner 投影另返回 `apiKeyEnv` 名称和 `credentialStatus:"ready"|"missing"|"invalid"`；`hasCredential` 表示当前值是否就绪，不回显值，`auth:none` 的可用性独立判断。
 
 设置 `revision` 是不透明的编辑版本：账号、凭据、模型、分配或其他配置变化仍冲突，单纯的健康时间与目录缓存更新不作编辑冲突。保存基于最新配置合并，并在锁内复核原文件字节，保留已有的健康证据；不能用该 revision 替代文件摘要或跳过写入锁。
 
@@ -80,6 +86,6 @@ Core 参数表单与 `POST /api/v0/provider-management/workflow-check` 已接通
 | POST `/api/v0/provider-management/discover` | `{expectedRevision, providerId}`，返回最多 256 模型、`persisted:false` 与截断标记，不写配置 |
 | POST `/api/v0/provider-management/workflow-check` | 明确模型或已保存连接上的模板草稿，返回静态检查及参数候选；不写配置或入队 |
 
-`provider` 只接受 `id/name/baseUrl/mediaBaseUrl/mediaProtocol/enabled/auth/models`；单次最多 256 模型，每项接受 `id/capabilities/imageProtocol/musicProtocol` 及可选 `comfyWorkflow`。工作流支持 `{version:0,graph,promptNode,outputNode,sizeNode?}`，也支持增加明确 `parameters` 的 v1 模板；Core 导入控件可创建两者，完整 v1 的声明随设置保存。普通保存省略工作流时保留原图，读取只返回摘要和参数描述，不回显 `graph`。未提交的原模型保留。`credential` 为 `{action:"keep"}`、`{action:"clear"}` 或 `{action:"replace",value:"new-key"}`，拒绝额外秘密字段。`assignments` 只含本次修改的能力，值为原有 `{mode:"auto"|"manual"|"disabled",models:[...],hostVision?:boolean}`，不创建第二套格式。
+`provider` 只接受 `id/name/baseUrl/mediaBaseUrl/mediaProtocol/enabled/auth/models`；单次最多 256 模型，每项接受 `id/capabilities/imageProtocol/musicProtocol` 及可选 `comfyWorkflow`。工作流支持 `{version:0,graph,promptNode,outputNode,sizeNode?}`，也支持增加明确 `parameters` 的 v1 模板；Core 导入控件可创建两者，完整 v1 的声明随设置保存。普通保存省略工作流时保留原图，读取只返回摘要和参数描述，不回显 `graph`。未提交的原模型保留。`credential` 为 `{action:"keep"}`、`{action:"clear"}`、`{action:"replace",value:"new-key"}`，当前源码另支持 `{action:"env",name:"IRIS_MEDIA_KEY"}`；各动作只接受对应字段。`assignments` 只含本次修改的能力，值为原有 `{mode:"auto"|"manual"|"disabled",models:[...],hostVision?:boolean}`，不创建第二套格式。
 
-未开启 405、连接越权 403、revision 冲突/锁占用 409、非法设置 400、正文过大 413。已加载的 [Provider 扩展](PROVIDER_EXTENSIONS.md)通过实例描述进入页面；页面不能安装或加载代码。环境凭据引用、DSH 来源桥（C3c）仍未实施。
+未开启 405、连接越权 403、revision 冲突/锁占用 409、非法设置 400、正文过大 413。已加载的 [Provider 扩展](PROVIDER_EXTENSIONS.md)通过实例描述进入页面；页面不能安装或加载代码。当前源码的环境凭据未就绪会在显式目录/连接检查时返回409及 `IRIS_PROVIDER_CREDENTIAL_UNAVAILABLE`；其他外部凭据来源桥继续后续。

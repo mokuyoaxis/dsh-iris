@@ -8,6 +8,8 @@ Iris 0.2.6 增加 [三种功能池策略](FUNCTION_MODEL_POOLS.md)；下文“�
 
 Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、会话、浏览器和模型能力映射为 Iris 端口。Command 接收 Iris 输入、`AbortSignal` 和所声明的 Host Port，**不得接收原始 `ctx`**。Task、Provider、文件持久化和成本语义不属于宿主。
 
+DSH的`/client`是浏览器ModuleLoader注册入口，运行时不提供Node默认导出。beta.1声明通过`import type { DshClientPlugin } from '@mokuyoaxis/dsh-iris/client'`描述宿主获得的工厂形状；该类型可由strict NodeNext消费，不会把浏览器bundle伪装成可在Node直接加载的插件对象。Core插件作者继续使用`/plugins`公共SDK。
+
 契约版本固定为 `0`。它仍是内部接口；只有经过 DSH 与 Local Host 两个真实消费者验证后，才考虑成为公开 SDK。
 
 ## 端口清单
@@ -19,7 +21,7 @@ Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、�
 | `clientSlots` | Web Client `ctx.slots` | 注册设置、输入区、dock 与 overlay 座位 | 服务端任务和 CLI 不受影响 |
 | `skills` | `ctx.skills` | 注册随包 Skill，声明用户/模型调用策略 | 工具仍可直接调用；Doctor 给出降级原因 |
 | `attachments` | `ctx.get('attachments')` | 保存/读取图片字节，返回 Iris 自有引用 DTO | DSH 图片投影或会话图片读取不可用 |
-| `sessions` | `ctx.get('sessionQuery')` / Client sessions | 列出当前会话的受支持附件和最小模型选择信息 | 只使用 Iris 自有产物或显式上传 |
+| `sessions` | `ctx.get('sessionQuery')` | 读取会话并列出/定位受支持的图片附件 | 只使用 Iris 自有产物或显式上传 |
 | `browser` | `ctx.get('browser')` | 将受限 HTML 渲染为图片；不向 Command 暴露 DSH page/session 对象 | HTML 截图不可用 |
 | `textModel` | DSH LLM/default-model 服务 | 文本生成及精确模型元数据；当前宿主视觉也由此绑定默认选择 | 宿主文本/视觉不可用，自持 Provider 按各功能名单执行 |
 | `providerConnections`（0.2.6） | DSH LLM 目录、settings 与 credentials 服务 | 列出无密钥的连接元数据；仅在服务端操作期间解析所引用连接 | 连接引用不可用，手动供应商不受影响 |
@@ -38,12 +40,12 @@ Host Adapter 只负责把一个宿主的工具、路由、客户端、附件、�
 | `look`、`locate`、`ocr` | 无 | `textModel` + `attachments` | 只按视觉名单尝试自持或显式宿主资源，无可用项时失败 |
 | `crop`、`diff`、`video_frames` | 无 | 无 | 确定性本地动作 |
 | `media_summarize` | 无 | `textModel` + `attachments` | 帧提取是本地动作，理解阶段只使用视觉名单 |
-| `html` | `browser` | 无 | Command 只调用语义级 `renderHtml` |
+| `html` | `browser` | 无 | Command只调用语义级`renderHtml`；DSH实现还须确认本次HTML经Iris路由GET完成，独立Chromium不依赖宿主路由 |
 | `relook` | 条件必需 `attachments` + `sessions` | 无 | Iris 自有附件可直接解析；会话附件必须走宿主端口 |
 | `attachments_list`、`attachment_export` | 条件必需 `attachments` + `sessions` | 无 | Iris 自有产物不依赖宿主；会话来源不得读取宿主私有文件 |
 | Task 查询、观察、交付、提醒和知情重试 | 无 | 无 | 事实、费用确认和新旧 Task 关系归 Iris 所有 |
 | Provider/模型/能力配置 | 无 | 无 | 普通发现与配置不依赖宿主；手动实测只调用指定Provider，不按生产名单或回退宿主 |
-| Prompt Optimize | `textModel` | `sessions` | 客户端可显式传模型；否则从宿主获取当前/默认选择 |
+| Prompt Optimize | `textModel` | 无 | 客户端可显式传模型；否则经`textModel.currentSelection()`解析当前/默认选择，不依赖`sessions` |
 | DSH 工具结果投影 | `tools` | `attachments` | 注册与结果转为 DSH attachment 属于 DSH Adapter，不进入 Command |
 | Workbench/API/媒体路由 | `routes` | `clientSlots` | HTTP/UI 只是投影，不是真相来源 |
 | 随包 Skill | `skills` | 无 | Skill 不得绕过 Command、Task 或费用边界 |

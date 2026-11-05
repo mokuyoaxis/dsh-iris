@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { createApplicationRuntime } from '../lib/application-runtime.js';
+import { createLocalReadApi } from '../lib/local-api.js';
+import { createMediaScheduler } from '../lib/media-scheduler.js';
+import { createCoreTask, beginCoreAttempt, recordCoreAttemptResult } from '../lib/core-tasks.js';
+import { useTempDshHome } from './test-env.js';
+
+const { root } = useTempDshHome('iris-scheduling-corrupt-task'), dataRoot = path.join(root, 'core');
+const init = createApplicationRuntime({ dataRoot });
+await init.execute('flow.init', {}); await init.dispose();
+const outstanding = createCoreTask(dataRoot, { capability: 'image' });
+const attempt = beginCoreAttempt(dataRoot, outstanding.id, { providerId: 'a', model: 'a::fixture' });
+recordCoreAttemptResult(dataRoot, outstanding.id, { ...attempt, acceptance: 'accepted', resultKind: 'accepted', remoteTaskId: 'existing-remote' });
+const other = createCoreTask(dataRoot, { capability: 'image' });
+const file = path.join(dataRoot, 'task-store/v0/tasks', other.id + '.json'), valid = fs.readFileSync(file);
+const remoteFile = path.join(dataRoot, 'task-store/v0/tasks', outstanding.id + '.json'), remoteBefore = fs.readFileSync(remoteFile);
+const scheduler = createMediaScheduler({ schemaVersion: 1, remoteLimit: 1, queueTimeoutMs: 3000 });
+const app = createApplicationRuntime({ dataRoot, scheduler });
+let api;
+try {
+  assert.equal(scheduler.snapshot(dataRoot).remoteOutstanding, 1);
+  let entered;
+  const parked = new Promise(resolve => { entered = resolve; });
+  const context = { providerId: 'a', modelRef: 'a::fixture' }, signal = new AbortController().signal;
+  const waiting = scheduler.beforeSubmit({ signal, networkWait(action) { const value = action(); entered(); return value; } }, dataRoot, context);
+  const rejected = assert.rejects(waiting, { code: 'IRIS_TASK_INVALID' });
+  await parked;
+  fs.writeFileSync(file, '{broken');
+  // A real writer release notifies the waiting admission; its read error is not a writer failure.
+  assert.equal(await app.run('writer', runtime => runtime.run('execute', () => 'writer released')), 'writer released');
+  await rejected;
+  const snapshot = scheduler.snapshot(dataRoot);
+  assert.equal(snapshot.remoteOutstanding, null); assert.equal(snapshot.remoteError, 'IRIS_TASK_INVALID');
+  await assert.rejects(scheduler.beforeSubmit({ signal }, dataRoot, context), { code: 'IRIS_TASK_INVALID' });
+  api = createLocalReadApi({ dataRoot, scheduler });
+  const session = await api.start();
+  const response = await fetch(session.origin + '/api/v0/session', { headers: { Authorization: 'Bearer ' + session.accessToken } });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.scheduling.remoteOutstanding, null); assert.equal(body.scheduling.remoteError, 'IRIS_TASK_INVALID');
+  assert.equal(fs.readFileSync(file, 'utf8'), '{broken', 'observation never repairs or skips the bad authoritative record');
+  assert.deepEqual(fs.readFileSync(remoteFile), remoteBefore);
+  fs.writeFileSync(file, valid);
+  assert.equal(scheduler.snapshot(dataRoot).remoteOutstanding, 1, 'after explicit repair, the actual outstanding task is still counted');
+  const empty = path.join(root, 'empty');
+  await scheduler.beforeSubmit({ signal }, empty, context);
+  assert.equal(scheduler.snapshot(empty).remoteOutstanding, 0);
+  console.log('PASS corrupt Task: owner HTTP remains readable with unknown count, writer release wakes blocked admission safely, new submissions stay strict, original remote Task and bytes survive');
+} finally { await api?.dispose(); await app.dispose(); scheduler.dispose(); }

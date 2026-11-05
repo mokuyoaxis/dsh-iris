@@ -3,6 +3,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { Writable } from 'node:stream';
 import { useTempDshHome } from './test-env.js';
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -16,11 +17,14 @@ const assert = (condition, message, extra) => {
 };
 
 function response() {
-  return {
-    headersSent: false, destroyed: false, writableEnded: false, status: 0, headers: {}, body: undefined,
-    writeHead(status, headers = {}) { this.status = status; this.headers = headers; this.headersSent = true; },
-    end(body) { this.body = body; this.writableEnded = true; }
-  };
+  const chunks = [];
+  const output = new Writable({
+    write(chunk, _encoding, callback) { chunks.push(Buffer.from(chunk)); callback(); },
+    final(callback) { this.body = chunks.length ? Buffer.concat(chunks) : undefined; callback(); }
+  });
+  return Object.assign(output, { headersSent: false, status: 0, headers: {}, body: undefined,
+    writeHead(status, headers = {}) { this.status = status; this.headers = headers; this.headersSent = true; }
+  });
 }
 
 try {

@@ -1,0 +1,103 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { createNetworkProxyFixture } from './network-proxy-fixture.mjs';
+import { wrapProviderCatalog, encodeProviderConfig } from '../../lib/provider-config-format.js';
+
+export async function verifyNetworkBrowser({ out, cdp, evaluate, click, wait, report, save, dimensions, measure, capture, restart }) {
+  const fixture = await createNetworkProxyFixture(out), providerConfigPath = path.join(out, 'network-providers.json'), networkConfigPath = path.join(out, 'network-settings.json');
+  const result = report.network = { status: 'running', checks: [], paidCalls: 0 };
+  const source = { providers: [{ id: 'p', name: '我的媒体连接', mediaProtocol: 'openai-images', baseUrl: fixture.httpOrigin + '/v1', auth: 'none',
+    models: [{ id: 'image', capabilities: ['image-gen'] }] }], assignments: { 'image-gen': { mode: 'auto', models: [] } } };
+  fs.writeFileSync(providerConfigPath, JSON.stringify(source), { mode: 0o600 }); const original = fs.readFileSync(providerConfigPath);
+  const raw = () => JSON.parse(fs.readFileSync(networkConfigPath));
+  const field = (id, value) => evaluate(`(()=>{const n=document.getElementById(${JSON.stringify(id)});n.value=${JSON.stringify(value)};n.dispatchEvent(new Event('input',{bubbles:true}));n.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  const check = async (name, expression) => { assert.equal(await evaluate(expression), true, name); result.checks.push(name); save(); };
+  const saved = () => wait(() => evaluate("document.querySelector('#network-feedback').textContent.startsWith('已保存')&&document.querySelector('#network-editor').hidden&&!document.querySelector('#network-new').disabled"), 'network save completed');
+  async function login(session) { await cdp('Page.navigate', { url: session.loginUrl }); await wait(() => evaluate("document.querySelector('#connection').hidden&&!document.querySelector('#network-tab').hidden"), 'network owner login'); await click('#network-tab'); await wait(() => evaluate("document.querySelector('#network-feedback').hidden"), 'network settings read'); }
+  async function section(name) { await click('[data-network-section="' + name + '"]'); }
+  try {
+    const proxy = await fixture.createProxy({ tag: 'browser' });
+    let session = await restart({ providerConfigPath, networkConfigPath, allowNetworkManagement: true, allowProviderManagement: true }); await login(session);
+    await check('missing file offers explicit initialization; legacy catalog explains enrollment without enabling a binding', "!document.querySelector('#network-init').hidden&&document.querySelector('#network-setup').textContent.includes('另存')");
+    assert(!fs.existsSync(networkConfigPath)); assert.equal(fixture.requests.length, 0);
+    await click('#network-init'); await saved(); assert.equal(raw().schemaVersion, 2); assert.deepEqual(fs.readFileSync(providerConfigPath), original);
+    await check('legacy provider binding remains disabled after resource initialization', "document.querySelector('#network-list button').disabled");
+    result.checks.push('initialization preserves the original provider file and creates no upstream requests'); save();
+
+    const routed = path.join(out, 'network-routed-providers.json');
+    fs.writeFileSync(routed, JSON.stringify(encodeProviderConfig(wrapProviderCatalog(source, { schemaVersion: 1, configId: raw().configId, catalogId: crypto.randomUUID() }))), { mode: 0o600 });
+    session = await restart({ providerConfigPath: routed, networkConfigPath, allowNetworkManagement: true, allowProviderManagement: true }); await login(session);
+    await section('nodes'); await click('#network-new');
+    await field('network-node-id', 'discarded'); await field('network-node-host', '127.0.0.1'); await click('#network-cancel');
+    await check('canceling a dirty node uses an inline confirmation and retains the draft', "!document.querySelector('#network-leave-confirm').hidden&&document.querySelector('#network-node-id').value==='discarded'");
+    await click('#network-leave-no'); assert.equal(raw().nodes.length, 0); await click('#network-cancel'); await click('#network-leave-yes');
+    await click('#network-new');
+    for (const [id, value] of [['network-node-id', 'local-proxy'], ['network-node-label', '本机代理'], ['network-node-host', '127.0.0.1'], ['network-node-port', String(proxy.port)]]) await field(id, value);
+    await click('#network-save'); await saved(); assert.equal(raw().nodes.length, 1);
+    await click('#network-list [data-network-id="local-proxy"] button'); await field('network-node-label', '旧草稿');
+    const external = raw(); external.generation++; external.nodes[0].label = '本机代理 · 外部修改'; fs.writeFileSync(networkConfigPath, JSON.stringify(external));
+    await click('#network-save'); await wait(() => evaluate("document.querySelector('#network-feedback').textContent.includes('网络配置已变化')"), 'stale network draft refused');
+    assert.equal(raw().nodes[0].label, '本机代理 · 外部修改');
+    await check('stale edits preserve their original revision and cannot overwrite an external configuration change', "!document.querySelector('#network-editor').hidden&&document.querySelector('#network-node-label').value==='旧草稿'");
+    await click('#network-cancel'); await click('#network-leave-yes'); await click('#network-refresh');
+    await wait(() => evaluate("document.querySelector('#network-list').textContent.includes('外部修改')"), 'external resource revision loaded');
+    await section('pools'); await click('#network-new');
+    await field('network-pool-id', 'local-pool'); await field('network-pool-label', '我的出口池'); await field('network-candidate-choice', 'local-proxy'); await click('#network-candidate-add');
+    await field('network-candidate-choice', '@direct'); await click('#network-candidate-add');
+    await click('#network-candidates .network-candidate:first-child button:nth-of-type(2)');
+    await check('pool candidates can be reordered explicitly without silently adding or removing direct access', "document.querySelector('#network-candidates').textContent.indexOf('明确直连')<document.querySelector('#network-candidates').textContent.indexOf('本机代理')");
+    await click('#network-candidates .network-candidate:first-child button:nth-of-type(2)');
+    await click('#network-save'); await saved(); assert.deepEqual(raw().pools[0].candidates, [{ kind: 'node', nodeId: 'local-proxy' }, { kind: 'direct' }]);
+    await section('bindings'); await click('#network-list [data-network-id="p"] button'); await field('network-binding-pool', 'local-pool'); await click('#network-save'); await saved();
+    assert.equal(raw().bindings.length, 1); assert.equal(fixture.requests.length, 0);
+    await check('supplier cards distinguish configured routes from actual task evidence', "document.querySelector('#network-list').textContent.includes('我的出口池')&&document.querySelector('#network-list').textContent.includes('配置路线')");
+    await capture('network-bindings-wide');
+    await click('#providers-tab'); await wait(() => evaluate("document.querySelector('#providers-list').textContent.includes('配置出口')"), 'provider route annotation');
+    await check('model service cards reuse the same route summary', "document.querySelector('#providers-list').textContent.includes('我的出口池')");
+    await click('#providers-list .provider-item'); await field('provider-key-action', 'replace'); await field('provider-key', 'browser-temporary-discard-key');
+    await click('#provider-network-link'); await wait(() => evaluate("!document.querySelector('#provider-close-confirm').hidden"), 'discard before jumping to network editor');
+    await click('#provider-close-discard'); await wait(() => evaluate("!document.querySelector('#network-panel').hidden&&!document.querySelector('#network-editor').hidden"), 'provider exit shortcut');
+    await check('the saved-provider shortcut honors draft confirmation and clears the discarded temporary key', "document.querySelector('#provider-key').value===''&&document.querySelector('#network-binding-provider').textContent==='我的媒体连接'");
+    assert(!fs.readFileSync(routed, 'utf8').includes('browser-temporary-discard-key'));
+    await click('#network-back'); await click('#providers-tab');
+    await wait(() => evaluate("!document.querySelector('[data-provider-section=\"pools\"]').disabled"), 'provider refresh after returning from network shortcut');
+    await click('[data-provider-section="pools"]');
+    await check('feature model pools show configured exits without claiming an actual route', "document.querySelector('#provider-assignments').textContent.includes('候选配置出口')&&document.querySelector('#provider-assignments').textContent.includes('任务记录')");
+    await click('#network-tab'); await section('doctor'); await wait(() => evaluate("document.querySelector('#network-environment').textContent.includes('未知')"), 'static Core doctor');
+    assert.equal(fixture.requests.length, 0); assert.equal(proxy.connects.length, 0);
+    await check('Doctor defaults to static process facts and collapsed explanations, with no external call', "document.querySelector('#network-doctor').textContent.includes('当前 Core')&&![...document.querySelectorAll('#network-doctor details')].some(n=>n.open)");
+    await field('network-probe-target', 'ip'); await field('network-probe-url', fixture.httpOrigin + '/doctor/ip');
+    await click('#network-probe-start'); await wait(() => evaluate("!document.querySelector('#network-probe-result').hidden&&document.querySelector('#network-probe-result').textContent.includes('203.0.113.8')"), 'explicit proxy IP observation');
+    assert.equal(fixture.requests.length, 1); assert.equal(fixture.requests[0].headers.authorization, undefined); assert(proxy.connects.length > 0);
+    await check('active GET reports the actual pool/node and a limited IP observation', "document.querySelector('#network-probe-result').textContent.includes('local-pool / 节点 local-proxy')&&document.querySelector('#network-probe-result').textContent.includes('此时刻')");
+    await dimensions(390, 844); await measure('network-doctor-390'); await capture('network-doctor-mobile');
+    await dimensions(320, 740); await measure('network-doctor-320');
+    await dimensions(1366, 900); await measure('network-doctor-wide'); await capture('network-doctor-wide');
+    await click('#appearance-open'); await field('appearance-theme', 'dark'); await click('#appearance-close'); await measure('network-doctor-dark'); await capture('network-doctor-dark');
+    await field('network-probe-target', 'custom'); await field('network-probe-url', fixture.httpOrigin + '/hold/browser-doctor'); await click('#network-probe-start');
+    await fixture.waitForRequests(row => row.path === '/hold/browser-doctor'); await click('#network-probe-cancel');
+    await wait(() => evaluate("document.querySelector('#network-feedback').textContent.includes('已取消')"), 'probe cancellation'); fixture.release('/hold/browser-doctor');
+    await section('pools'); await click('#network-list [data-network-id="local-pool"] button');
+    for (let i = 0; i < 2; i++) await click('#network-candidates .network-candidate:first-child button:last-child');
+    await click('#network-save'); await saved(); assert.equal(raw().pools[0].candidates.length, 0);
+    await section('bindings'); await check('a bound empty pool is shown as blocked, never relabeled as inheritance', "document.querySelector('#network-list').textContent.includes('已阻止')&&!document.querySelector('#network-list .network-route').textContent.includes('继承环境')");
+    await section('doctor'); await field('network-probe-target', 'ip'); await field('network-probe-url', fixture.httpOrigin + '/doctor/ip'); await click('#network-probe-start');
+    await wait(() => evaluate("!document.querySelector('#network-probe-result').hidden&&document.querySelector('#network-probe-result').textContent.includes('未通过')"), 'bound empty pool probe refused');
+    assert.equal(fixture.requests.length, 2);
+    await check('blocked-route diagnostics explain the pool failure without sending an inherited GET', "document.querySelector('#network-probe-result').textContent.includes('尚未派发')&&document.querySelector('#network-probe-result').textContent.includes('未隐式直连')");
+    await section('bindings'); await click('#network-list [data-network-id="p"] button'); await field('network-binding-pool', ''); await click('#network-save'); await saved();
+    assert.equal(raw().bindings.length, 0);
+    await check('explicit unbind restores inheritance and keeps task history outside resource edits', "document.querySelector('#network-list').textContent.includes('继承环境')");
+    await cdp('Page.reload'); await wait(() => evaluate("document.querySelector('#connection').hidden&&!document.querySelector('#network-tab').hidden"), 'network session refresh');
+    await click('#network-tab'); await wait(() => evaluate("document.querySelector('#network-list').textContent.includes('继承环境')"), 'saved route restored');
+    assert.equal(fixture.requests.length, 2, 'refresh is not an automatic external probe');
+    await click('#disconnect');
+    await check('logout clears route/probe/environment state and hides the owner-only page', "document.querySelector('#network-tab').hidden&&document.querySelector('#network-list').children.length===0&&document.querySelector('#network-environment').children.length===0&&document.querySelector('#network-probe-provider').children.length===0");
+    session = await restart({ providerConfigPath: routed, networkConfigPath, allowProviderManagement: true });
+    await cdp('Page.navigate', { url: session.loginUrl }); await wait(() => evaluate("document.querySelector('#connection').hidden&&!document.querySelector('#providers-tab').hidden"), 'owner session without network management');
+    await check('the network management page stays hidden without its explicit service opt-in', "document.querySelector('#network-tab').hidden&&document.querySelector('#network-panel').hidden");
+    assert.deepEqual(fs.readFileSync(providerConfigPath), original); result.status = 'passed'; save();
+  } finally { await fixture.close(); }
+}

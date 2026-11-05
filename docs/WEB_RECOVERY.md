@@ -1,4 +1,4 @@
-# 工作台请求核对与刷新恢复（0.3 alpha）
+# 工作台请求核对与刷新恢复（0.3 beta）
 
 本页描述源码中的 W1b 恢复及 W1c 页面接入。npm 0.2.7 不含这些新增接口与浏览器客户端；[真实工作台](LOCAL_WEB.md)已接入明确创作、选择和本地停止，“操作核对”默认折叠，自动恢复始终只读。
 
@@ -15,7 +15,7 @@ GET /api/v0/creation-requests?kind=flow-create&key=<original-lowercase-UUIDv4>
 {contractVersion:0, kind, state:"prepared"|"succeeded", result}
 ```
 
-创建类型另包括 `generation-create`；新 v3 音频工作区增加 `audio-import`、`speech-create`、`transcription-create`，返回同样的有限身份，不返回音频或朗读正文。音频恢复与大小边界见[音频流程](AUDIO_FLOWS.md)。
+创建类型另包括 `generation-create`；新 v3 音频工作区增加 `audio-import`、`speech-create`、`transcription-create`，返回同样的有限身份，不返回音频或朗读正文。音频恢复与大小边界见[音频流程](AUDIO_FLOWS.md)。beta.1的 v4 根另有 `video-create`，同样只保存原 UUID/Run 身份，不存 Prompt；查询或找回已创建意图不自动首次生成，见[视频流程](VIDEO_FLOWS.md)。
 
 `result` 为 `{artifactId}`、`{runId}` 或 `null`。查询会核对原意图与已有结果；prepared 尚无目标时返回 null，已有目标核验通过后才返回引用。它不补写完成回执、不重建目标、不观察 Task 或调用 Provider。已推进或选择的 Run 不退回初始状态。没有原请求为 404；原结果不可用或证据损坏为 409，并保留原记录。
 

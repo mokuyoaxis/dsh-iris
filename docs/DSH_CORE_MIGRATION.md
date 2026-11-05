@@ -71,6 +71,8 @@ TTS 是同步完成型，与视频的长轮询不同：一次 submit 内 complet
 
 转写是上传型异步，Profile 独立：音频在 Host/CLI 边界上传到首选候选 Provider 的临时存储（`oss://` 签名地址只进 providerInput，**绝不落 Core 记录**），经受理边界提交后走 Core 长轮询（默认 2.5s/拍），远端成功后正文物化为 `text/plain` 的 `transcript` Artifact（adapter 在 poll 成功时把正文转为 inline-base64，不依赖签名 URL 生命周期）。CLI `run transcribe` 支持 `audio_url`（公网/oss:// 直达）或 `audio_path`（本地文件经同一上传通道）；Agent 工具与工作台转写动作切 Core，完成时结果直接附转写正文。**零 legacy 双写**，旧转写任务继续 legacy 只读兼容。取消沿用 not_supported 如实语义；retry 输入为 `audio_url`（Core 不持久化音频地址，必须由调用方重新提供）。已知边界：临时音频 URL 属于首选候选的账号，failover 到不同账号时该候选会如实失败。真实 Provider 转写 canary 待验收。
 
+以上为该迁移阶段的历史路径。beta.1已将独立 CLI 的本地音频上传移入原 Attempt：先取得写权，再按每个实际候选账号重新上传，不复用首选账号的临时 URL；两段上传支持取消并停止候选链。未改变原 Task 格式、DSH 工具输入或固定音频 Flow 的来源规则，见[CLI 转写说明](HEADLESS_CLI.md)。
+
 ## 本地媒体原语
 
 Core Command Service 已纳入两项确定性、零 Provider 的本地能力：`media.diff` 用 Sharp 生成指标与 `pixel-diff` 热力图 Artifact；`media.frames` 用本机 ffmpeg/ffprobe 返回视频元数据并生成 `video-frame` Artifact。两者均可读取宿主绝对路径；读取既有 Core Artifact 时分别写入 `derived-from` 或 `frame-of` 关系，Manifest 不保存宿主或临时路径。Headless CLI 的 `media diff` / `media frames` 直接消费同一 Command Service，不读取 Provider 配置、不发起网络请求。
@@ -92,6 +94,10 @@ M1 已包含纯契约、调用控制与 Fake Port。0.2.1 完成提示词 M2：D
 ## CLI 与图片编辑
 
 S2V 数字人已迁移到共享 Core Task/Attempt/Artifact，DSH 与 CLI 在每个候选的 Attempt 内上传首帧和音频，受理未知停止切换，观察阶段不重新上传或提交。HTML 工具/action 共用 `media.html` Command；独立 CLI 显式提供 Chromium Browser Port，DSH 仍使用宿主浏览器，均保存 `html-screenshot` Artifact。
+
+beta.1中，DSH截图必须确认本次随机页面已由Iris的渲染路由GET返回，才接受浏览器PNG；404、其他服务的200页面或仅HEAD不算确认。使用浏览器原导航及认证，不增加独立探测请求；仍只使用公开open/openUrl/screenshot/close。确认的是HTML交付，布局完成仍依赖原等待和浏览器行为，不声称从PNG证明DOM正确。
+
+DSH输入区进度与泡泡角标复用同一份Core活动快照，显示运行、观察暂停和待处理，不把暂停写成运行百分比；与legacy任务同时出现时保留各自事实。快照沿用已有最多2000条记录扫描并标明截断，不依赖最近任务页大小；隐藏、已读异常、已取消历史和重试成功静默均按现有处置过滤。状态SSE及原刷新事件驱动同一订阅，无新增定时器，最后一个座位卸载后清除缓存和监听。
 
 图片生成支持模型级 DashScope/Images/聊天/Responses 协议。聊天编辑以 `source_artifact_id` 读取 Core 静态图片，各候选按自己的输入预算准备副本，新 Task 保存来源 ID，新 Artifact 记录 `derived-from`；来源参与删除/清理引用保护，原图不变。来源预检失败不创建 Task，未知受理不自动重提。
 

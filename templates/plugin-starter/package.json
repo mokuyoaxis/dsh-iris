@@ -1,0 +1,18 @@
+{
+  "name": "iris-plugin-starter-board",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An independent Iris contact-sheet plugin using only the public SDK.",
+  "type": "module",
+  "exports": "./index.mjs",
+  "files": ["index.mjs", "web", "assets", "scripts", "README.md", "LICENSE"],
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "test": "node scripts/smoke.mjs"
+  },
+  "peerDependencies": {
+    "@mokuyoaxis/dsh-iris": ">=0.3.0-alpha.1 <0.4.0"
+  },
+  "engines": { "node": ">=22.0.0" },
+  "license": "MIT"
+}

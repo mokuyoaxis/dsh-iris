@@ -21,11 +21,15 @@ artifact-store/v0/
 
 Index 更新失败不会撤销已经提交的 Artifact，避免调用方因本地缓存错误重新生成或重复付费。显式 `artifact rebuild` 会从提交记录和旁车 Manifest 重建 Index。
 
+beta.1修复在提交 record 前写入私有 `index.dirty` 标记，成功发布完整 Index 后移除。索引发布失败或进程在两者之间中断时，列表明确返回 `IRIS_ARTIFACT_INDEX_INVALID`，Doctor 报告索引异常；按 ID 读取原作品仍可用。下一次成功刷新或显式重建可消除标记，不需要迁移既有记录，也不自动删除媒体。
+
 ## 内容完整性
 
 Manifest 使用小写十六进制 SHA-256，并同时记录字节数。`inspect`、`export`、`list` 和重建都会核验对象；即使文件大小不变，内容被替换也返回 `IRIS_ARTIFACT_DIGEST_MISMATCH`。
 
 哈希通过固定大小分块读取，不把完整视频再次载入内存。Manifest、错误和 CLI 结果不保存输入路径、旧作品文件名、DSH URL 或供应商下载 URL。
+
+beta.1中，新作品只核验自身内容和实际使用的关系目标；随后刷新 Index 时检查所有历史提交记录、Manifest 和普通文件大小，不重复重哈希历史媒体。历史结构/大小异常会阻止发布新索引，不静默跳过坏记录。已有摘要的正常提交仍需遍历元数据并原子重写 Index，尚非增量数据库；没有摘要的早期 v0 记录仍须计算真实哈希，可通过显式重建升级。媒体读取、CLI `inspect/list/export` 和显式重建继续验证完整内容哈希，目录刷新本身不证明历史媒体本次已重新验过内容。
 
 ## 关系边
 

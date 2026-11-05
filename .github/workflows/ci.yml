@@ -37,3 +37,42 @@ jobs:
         if: matrix.node == '22.0.0'
         run: node scripts/verify-test-shutdown.mjs
       - run: ${{ runner.os == 'Windows' && 'npm.cmd' || 'npm' }} pack --dry-run
+
+  package:
+    name: Package consumers, types and browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Prepare isolated verification tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/iris-tools" --no-save --ignore-scripts typescript@5.9.3
+          CHROMIUM="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROMIUM"
+          echo "IRIS_VERIFY_CHROMIUM=$(readlink -f "$CHROMIUM")" >> "$GITHUB_ENV"
+      - name: Check actual package
+        run: |
+          mkdir -p "$RUNNER_TEMP/iris-package"
+          npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP/iris-package" > "$RUNNER_TEMP/iris-package/pack.json"
+          TARBALL="$(node -p "require(process.env.RUNNER_TEMP + '/iris-package/pack.json')[0].filename")"
+          node scripts/verify-release-package.mjs \
+            --package "$RUNNER_TEMP/iris-package/$TARBALL" \
+            --output "$RUNNER_TEMP/iris-package/verification" \
+            --typescript "$RUNNER_TEMP/iris-tools/node_modules/typescript/lib/tsc.js" \
+            --browser-executable "$IRIS_VERIFY_CHROMIUM"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iris-package-verification
+          path: |
+            ${{ runner.temp }}/iris-package/pack.json
+            ${{ runner.temp }}/iris-package/*.tgz
+            ${{ runner.temp }}/iris-package/verification/report.json
+            ${{ runner.temp }}/iris-package/verification/*.log
+            ${{ runner.temp }}/iris-package/verification/*/report.json
+          if-no-files-found: warn

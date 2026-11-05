@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { useTempDshHome } from './test-env.js';
+import { writableApiResponse as apiResponse } from './fixtures/writable-api-response.mjs';
 import { FAKE_MP4 } from './fixtures/fake-lifecycle-provider.mjs';
 
 const { root, cleanup } = useTempDshHome('iris-dsh-video-core');
@@ -94,14 +95,6 @@ global.fetch = async (input, init = {}) => {
   }
   throw new Error('Unexpected fixture request: ' + url);
 };
-
-function apiResponse() {
-  return {
-    headersSent: false, destroyed: false, writableEnded: false, status: 0, headers: {}, body: undefined,
-    writeHead(status, headers = {}) { this.status = status; this.headers = headers; this.headersSent = true; },
-    end(body) { this.body = body; this.writableEnded = true; }
-  };
-}
 
 async function waitForReady(taskId, timeoutMs = 4000) {
   const deadline = Date.now() + timeoutMs;

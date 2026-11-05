@@ -2,9 +2,9 @@
 
 ## Core 工作台开发预览 / Core workbench development preview
 
-2026-10-29 重拍，使用当前未发布源码、独立演示数据根及 Chrome for Testing 153.0.8010.12（Linux ARM64）。全新浏览器 profile 只使用内置明亮/暗色主题；流程与作品是此前从零使用演练已完成记录的独立副本，没有读取用户背景、真实供应商凭据或日常浏览器会话。
+2026-10-29 重拍，使用alpha.1发布前的源码、独立演示数据根及 Chrome for Testing 153.0.8010.12（Linux ARM64）。全新浏览器 profile 只使用内置明亮/暗色主题；流程与作品是此前从零使用演练已完成记录的独立副本，没有读取用户背景、真实供应商凭据或日常浏览器会话。
 
-Recaptured on 2026-10-29 from the current unreleased source in Chrome for Testing 153.0.8010.12 on Linux ARM64. A fresh browser profile uses only the built-in light/dark themes. The separate demo data root contains copies of completed records from the earlier first-use walkthrough. No personal background, real provider credentials or daily browser session is used.
+Recaptured on 2026-10-29 from the pre-alpha.1 source in Chrome for Testing 153.0.8010.12 on Linux ARM64. A fresh browser profile uses only the built-in light/dark themes. The separate demo data root contains copies of completed records from the earlier first-use walkthrough. No personal background, real provider credentials or daily browser session is used.
 
 | 创作与下载 / Studio and download | 完整六类总览 / All six capabilities |
 |---|---|

@@ -42,8 +42,8 @@ export async function verifyOverviewBrowser({ out, dataRoot, chosenRunId, tokenF
     await click('#overview-tab');
     await check('six DSH-style media groups are distinct from folded local tools', "document.querySelectorAll('[data-overview-capability]').length===6&&!document.querySelector('#overview-tools').open&&!document.querySelector('#overview-notes').open&&document.querySelector('#overview-tools .disclosure').textContent==='展开'");
     await check('read-only service offers no generation action or owner management shortcut', "!document.querySelector('[data-overview-create]')&&!document.querySelector('[data-overview-configure]')&&document.querySelector('#overview-stats').textContent.includes('仅浏览')");
-    await check('absent management metadata remains unknown; old roots do not report missing audio configuration', `${card('video')}.textContent.includes('当前会话未提供配置详情')&&${card('tts')}.textContent.includes('当前工作区未提供音频候选')&&${card('video')}.textContent.includes('当前会话未提供记录')`);
-    await check('unimplemented Web/MCP media has no pretend creation button', `['video','music','vision'].every(id=>!document.querySelector('[data-overview-capability="'+id+'"] [data-overview-create]'))`);
+    await check('old roots name missing video/audio support separately and keep unavailable history unknown', `${card('video')}.textContent.includes('当前工作区未提供视频候选')&&!${card('video')}.textContent.includes('音频候选')&&${card('tts')}.textContent.includes('当前工作区未提供音频候选')&&${card('video')}.textContent.includes('当前会话未提供记录')`);
+    await check('unsupported or unimplemented media offers no pretend creation button', `['video','music','vision'].every(id=>!document.querySelector('[data-overview-capability="'+id+'"] [data-overview-create]'))`);
     await click('#overview-tools>summary');
     await wait(() => evaluate("document.querySelector('#overview-tools .disclosure').textContent==='收起'"), 'local tools disclosure');
     await check('local tools name actual dependencies and the prompt optimizer DSH boundary', "document.querySelector('#overview-tools').textContent.includes('ffmpeg')&&document.querySelector('#overview-tools').textContent.includes('Chromium')&&document.querySelector('#overview-tools').textContent.includes('DSH 泡泡')");
@@ -62,7 +62,7 @@ export async function verifyOverviewBrowser({ out, dataRoot, chosenRunId, tokenF
     await check('overview bookmark restores directly and uses the authenticated session', "location.hash==='#overview'&&document.querySelector('#overview-tab').getAttribute('aria-current')==='page'&&document.querySelector('#page-label').textContent==='总览'");
     await check('current candidate counts come from image/audio catalogues, not six declared uses', "document.querySelector('#overview-stats').textContent.includes('3 个')&&document.querySelector('#overview-stats').textContent.includes('0 个')&&document.querySelectorAll('[data-overview-create]:not(:disabled)').length===4");
     await check('saved model uses, selection policy and historical evidence remain separate facts', `${card('image')}.textContent.includes('1 个已标注 · 自动选择')&&${card('image')}.textContent.includes('1 通过 · 0 未通过')&&${card('tts')}.textContent.includes('0 通过 · 1 未通过')&&${card('transcribe')}.textContent.includes('尚无实测记录')`);
-    await check('unsupported media stays clearly labeled even when configured', `['video','music','vision'].every(id=>document.querySelector('[data-overview-capability="'+id+'"] .overview-entry').textContent==='CLI / DSH')&&${card('music')}.textContent.includes('1 个已标注')`);
+    await check('v3 video names its root gate while music/vision name their existing CLI/DSH boundary', `${card('video')}.querySelector('.overview-entry').textContent==='需视频工作区'&&${card('video')}.textContent.includes('此工作区未接入视频流程')&&['music','vision'].every(id=>document.querySelector('[data-overview-capability="'+id+'"] .overview-entry').textContent==='CLI / DSH')&&${card('music')}.textContent.includes('1 个已标注')`);
     await capture('overview-desktop'); await measure('overview-desktop');
     await click('[data-overview-capability="image"] summary');
     await click('#overview-refresh'); await wait(() => evaluate("!document.querySelector('#overview-refresh').disabled"), 'configured refresh');
@@ -117,6 +117,24 @@ export async function verifyOverviewBrowser({ out, dataRoot, chosenRunId, tokenF
     await check('v3 read-only service shows audio support without offering creation or management', `!document.querySelector('[data-overview-create]')&&!document.querySelector('[data-overview-configure]')&&${card('tts')}.querySelector('.overview-entry').textContent==='面板已接入'&&${card('tts')}.textContent.includes('当前会话未提供记录')`);
     await cdp('Page.reload'); await wait(() => evaluate("!document.querySelector('#overview-panel').hidden&&document.querySelector('#page-label').textContent==='总览'"), 'overview reload');
     await check('overview refresh retains login and does not submit or auto-test', "document.body.classList.contains('connected')&&location.hash==='#overview'&&document.querySelector('#overview-tools').open===false");
+    assert.equal(report.requests.filter(item => item.method === 'POST').length, 2);
+
+    const videoRoot = path.join(out, 'overview-video-core'), videoApp = createApplicationRuntime({ dataRoot: videoRoot });
+    try { await videoApp.execute('flow.init', {}); await videoApp.execute('execution.init', { video: true }); }
+    finally { await videoApp.dispose(); }
+    session = await restart(videoRoot, config, { allowExecution: true, allowSelection: true, allowProviderManagement: true, executionPorts: fixture });
+    const videoBefore = tree(videoRoot);
+    await login();
+    await check('v4 root exposes the actual video entry and candidate without an audio warning', `${card('video')}.querySelector('.overview-entry').textContent==='面板已接入'&&!document.querySelector('[data-overview-create="video"]').disabled&&${card('video')}.textContent.includes('1 个当前候选')&&!${card('video')}.textContent.includes('音频流程')`);
+    await click('[data-overview-create="video"]');
+    await check('video overview opens the real draft form without starting a Task', "document.querySelector('[data-creation-mode=\"video\"]').getAttribute('aria-pressed')==='true'&&document.querySelector('#input-summary').textContent==='从一段动态描述开始'&&!location.hash");
+    await click('#overview-tab'); await capture('overview-v4-video');
+    assert.deepEqual(tree(videoRoot), videoBefore); assert.equal(fixture.calls.submit.length, 0);
+    session = await restart(videoRoot, config, { allowProviderManagement: false });
+    const readOnlyVideoBefore = tree(videoRoot);
+    await login();
+    await check('v4 read-only root reports video support without creation or management controls', `${card('video')}.querySelector('.overview-entry').textContent==='面板已接入'&&!document.querySelector('[data-overview-create]')&&!document.querySelector('[data-overview-configure]')`);
+    assert.deepEqual(tree(videoRoot), readOnlyVideoBefore);
     assert.equal(report.requests.filter(item => item.method === 'POST').length, 2);
     result.status = 'passed'; save();
   } finally { await app.dispose(); }

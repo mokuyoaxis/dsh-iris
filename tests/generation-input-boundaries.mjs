@@ -84,15 +84,17 @@ try {
           model: provider.id + '::' + scenario.model
         }]
       });
+      const retryInput = { ...scenario.input, ...(scenario.capability === 'video' ? { video_mode: 'i2v' } : {}) };
       await commands.execute('task.retry', {
-        task_id: old.taskId, provider_input: scenario.input, confirm_billing: true
+        task_id: old.taskId, provider_input: retryInput, confirm_billing: true
       });
       assert.deepEqual(requests.at(-1), expected, scenario.capability + ' retry 与正常提交必须使用相同参数');
       const beforeCount = listCoreTasks(dshCoreDataRoot()).total;
       const beforeCalls = requests.length;
       for (const invalidInput of [
-        { ...scenario.input, surprise: true },
-        { ...scenario.input, model_ref: '' }
+        { ...retryInput, surprise: true },
+        { ...retryInput, model_ref: '' },
+        ...(scenario.capability === 'video' ? [scenario.input] : [])
       ]) {
         await assert.rejects(commands.execute('task.retry', {
           task_id: old.taskId, provider_input: invalidInput, confirm_billing: true
@@ -104,12 +106,13 @@ try {
   }
   for (const [capability, input, clearedField] of [
     ['image', { prompt: 'flower' }, 'size'],
-    ['video', { prompt: 'move' }, 'size'],
+    ['video', { prompt: 'move', img_data_url: 'data:image/png;base64,YWJj' }, 'size'],
     ['tts', { text: 'hello' }, 'voice']
   ]) {
     const result = cli(capability, input);
     assert.equal(result.status, 0, result.stderr);
-    await runAction({}, capability, { ...input, [clearedField]: '' });
+    const { img_data_url: frameData, ...actionInput } = input;
+    await runAction({}, capability, { ...actionInput, ...(frameData ? { first_frame_path: framePath } : {}), [clearedField]: '' });
     await stopProviderTaskWatchesForDsh();
     assert.deepEqual(requests.at(-1), state().lastRequest,
       '工作台清空可选字段后应沿用缺省值：' + clearedField);

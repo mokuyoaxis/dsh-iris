@@ -1,10 +1,10 @@
-# Provider 扩展首版（0.3 alpha）
+# Provider 扩展首版（0.3 beta）
 
-源码支持实例级媒体协议注册及显式加载可信扩展。**公开 npm 0.2.7 尚不包含此入口**；下列命令用于当前源码或由其生成的候选包。`@mokuyoaxis/dsh-iris/provider-extensions` 是实验性 v0 窄入口，不是完整 Core SDK，也未承诺长期兼容。
+0.3.0-alpha.1 已提供实例级媒体协议注册及显式加载可信扩展，稳定版 0.2.7 尚不包含此入口。`@mokuyoaxis/dsh-iris/provider-extensions` 是实验性 v0 窄入口，不是完整 Core SDK，也未承诺长期兼容。下列命令适用于beta.1；旧alpha.1只支持原有窄入口，新增工厂上下文、网络与环境引用需beta.1。
 
 六类内置协议（含 [ComfyUI API 工作流](IMAGE_GENERATION.md)）和外部协议消费同样的描述及 Adapter 契约；独立 CLI/API 使用自己的注册实例。当前 DSH 嵌入入口没有新增外部模块加载设置，原有工具、Skills 和存储规则保持。
 
-源码另提供 [Core 插件贡献 v0](PLUGINS.md)：Provider、业务操作、Web 页面/作品渲染器共用身份、兼容、生命周期和依赖描述。新入口为程序化 `plugins` SDK；本页的工厂及 CLI 参数继续保留。新插件 Provider 的 Task/Attempt 记录准确依赖并纳入 binding，旧扩展的无插件绑定保持；Web 挂载与动态 MCP 装配尚未接入。
+alpha.1 另提供 [Core 插件贡献 v0](PLUGINS.md)：Provider、业务操作、Web 页面/设置及作品渲染器共用身份、兼容、生命周期和依赖描述。新入口为程序化 `plugins` SDK 和[显式启动配置](PLUGIN_STARTUP.md)；本页的工厂及 CLI 参数继续保留。插件 Provider 的 Task/Attempt 记录准确依赖并纳入 binding，旧扩展的无插件绑定保持；Web 按明确选择挂载，MCP 从实际目录和用户授权装配，不因加载插件自动扩权。
 
 ## 显式使用
 
@@ -28,6 +28,10 @@ node bin/dsh-iris.js web serve \
 `providers protocols` 返回扩展身份/版本、协议、能力和配置字段描述；不包含具体连接值或密钥，不构造 Adapter 或调用模型。**导入的模块及工厂本身仍是可执行代码**，由用户选择可信来源。服务按明确路径加载，不扫描目录、安装包或自动更新扩展。
 
 扩展注册不授予模型用途或 MCP 权限。用户仍需在显式 Provider 文件中填写连接和模型、确认功能分配。既有协议的新供应商通常只需配置，无需额外代码。服务模式下，harness 通过已有授权调用这个 Core，不需获得上游媒体 Key，也不需各自加载同一媒体插件。
+
+beta.1 可在公共配置层使用[环境凭据引用](PROVIDER_CREDENTIALS.md)，已发布 alpha.1 尚不支持。Core 给既有 `createAdapter(provider)` 的运行副本解析普通 `apiKey`，不改变工厂签名或把值写回配置/描述；`apiKeyEnv` 不作为新的协议自定义字段。
+
+beta.1 还增加[实例级出站网络](PROVIDER_NETWORK.md)和显式[出口池/绑定](NETWORK_ROUTING.md)。新统一 Provider 插件使用版本化的[工厂上下文 v1](PROVIDER_PLUGIN_CONTRACT.md)，只借用 Core 的 fetch 端口；本页旧窄扩展的签名和 options 用法保留。内部客户端构造器不通过公开 exports 导出。第三方插件须主动使用提供的端口，Core 不宣称强制拦截可信代码的任意联网。
 
 ## 模块契约
 
@@ -75,4 +79,4 @@ Core 会对错误与健康证据中的连接 Key 再做精确脱敏，`auth:none
 
 源树的 `tests/provider-extensions.mjs` 覆盖实例隔离、协议描述、旧哈希、冲突/版本、在途释放与失败。`scripts/verify-provider-extensions-package.mjs` 将候选包解到仓库外，复制独立测试插件包，只经上述公开入口接入真实 CLI/API/Core；受控 HTTP Provider 验证原 Task 恢复、原图编辑、Key 接回和图片字节。
 
-验证脚本明确复用已有依赖，不代表重新安装全部依赖或真实供应商付费验收；测试插件和验收脚本不进入 npm 包。0.3 alpha源码另有 [C3 管理 API/页面](PROVIDER_SETTINGS.md)和独立 [Panel/主题](PANEL_EXTENSIONS.md)；外部凭据桥、任意 Recipe/工具注册与完整插件市场仍是后续工作。
+验证脚本明确复用已有依赖，不代表重新安装全部依赖或真实供应商付费验收；测试插件和验收脚本不进入 npm 包。0.3 beta另有 [C3 管理 API/页面](PROVIDER_SETTINGS.md)和独立 [Panel/主题](PANEL_EXTENSIONS.md)；当前源码支持上述显式环境引用，其他凭据来源桥、任意 Recipe/工具注册与完整插件市场仍是后续工作。

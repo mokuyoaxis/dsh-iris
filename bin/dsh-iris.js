@@ -18,28 +18,46 @@ import { executeVisionCommand, normalizeVisionInput } from '../lib/headless-visi
 import { videoTaskCandidates } from '../lib/video-input.js';
 import { createChromiumBrowser } from '../lib/chromium-browser.js';
 import { executeConfigCommand, recordCatalogRateLimit, recordCatalogAvailability, refreshCatalogDirectories } from '../lib/provider-config-service.js';
+import { executeNetworkConfigCommand } from '../lib/network-config-service.js';
 import { probeVisionModel } from '../lib/vision-model-routing.js';
 import { RED_TEST_IMAGE } from '../lib/vision.js';
 import { parseModelRef, modelRef as qualifiedModelRef } from '../lib/models.js';
 import { coreTaskWaitFinished } from '../lib/task-wait.js';
 import { createLocalReadApi, writeLocalApiTokenFile } from '../lib/local-api.js';
 import { manageCoreSkill } from '../lib/skill-installation.js';
-import { createTrackedProviderAdapter } from '../lib/configured-image-runtime.js';
+import { createTrackedProviderAdapter, configuredImagePorts } from '../lib/configured-image-runtime.js';
 import { inspectExecutionLease, recoverExecutionLease } from '../lib/operation-runner.js';
 import { createConnectionPair } from '../lib/core-connections.js';
 import { builtinLaunchPlugins, loadPluginLaunch } from '../lib/plugin-launch.js';
 import { checkLocalApiTokenDirectory, writeLocalApiTokenDirectory } from '../lib/local-api-token-directory.js';
 import { resolveWorkbenchAuthDirectory } from '../lib/workbench-auth.js';
 import { manageWorkbenchPassword } from '../lib/workbench-auth-cli.js';
+import crypto from 'node:crypto';
+import { atomicCreatePrivate } from '../lib/private-storage.js';
+import { providerNetworkRequirement, networkPolicyError } from '../lib/network-policy.js';
+import { createProviderNetworkManager } from '../lib/network-routing.js';
+import { encodeProviderConfig, wrapProviderCatalog } from '../lib/provider-config-format.js';
+import { readNetworkConfig } from '../lib/network-config-service.js';
+import { readSchedulingPolicy } from '../lib/scheduling-policy.js';
+import { createMediaScheduler } from '../lib/media-scheduler.js';
+
+let cliNetworkConfigPath, cliNetworkManager, cliScheduler;
+function cliResolveNetwork({ provider, ...context }) {
+  const requirement = context.networkRequirement || providerNetworkRequirement(provider);
+  if (requirement === undefined && !cliScheduler) return undefined;
+  cliNetworkManager ||= createProviderNetworkManager({ networkConfigPath: cliNetworkConfigPath, scheduler: cliScheduler });
+  return cliNetworkManager.resolveProviderNetwork({ ...context, networkRequirement: requirement });
+}
 
 function trackedProviderAdapter(provider, options, task) {
-  return createTrackedProviderAdapter(provider, options['provider-config'], task, options.providerRegistry);
+  return createTrackedProviderAdapter(provider, options['provider-config'], task, options.providerRegistry, {
+    network: cliResolveNetwork({ provider, providerId: provider.id, taskId: task?.id }) });
 }
 
 async function generationCatalog(options, capability, modelRef, signal = cliAbortController.signal) {
   const file = required(options['provider-config'], 'provider-config');
   const catalog = loadProviderCatalog(file);
-  if (!modelRef) await refreshCatalogDirectories(file, catalog, capability, { signal, registry: options.providerRegistry });
+  if (!modelRef) await refreshCatalogDirectories(file, catalog, capability, { signal, registry: options.providerRegistry, resolveProviderNetwork: cliResolveNetwork });
   return catalog;
 }
 
@@ -68,13 +86,13 @@ function usage() {
     '    install/uninstall accept --dry-run. Copy only iris-core; preserve local changes and archive managed updates/removals outside the scan directory. status is read-only and does not verify host discovery.',
     '  dsh-iris doctor [--data-root <absolute-path>] [--json]',
     '  dsh-iris api init --data-root <empty-existing-flow-root>',
-    '  dsh-iris execution init --data-root <empty-existing-flow-root> [--image-generation|--audio]',
-    '    Initialize a NEW v1 request container, v2 with --image-generation, or v3 with --audio (images + speech/transcription). Existing roots are never migrated.',
+    '  dsh-iris execution init --data-root <empty-existing-flow-root> [--image-generation|--audio|--video]',
+    '    Initialize a NEW v1 request container, v2 with --image-generation, v3 with --audio, or v4 with --video (images + audio + text-to-video). Existing roots are never migrated.',
     '  dsh-iris execution inspect --data-root <v1-flow-root>',
     '  dsh-iris execution recover-lease --data-root <v1-flow-root> --confirm-stale-pid <pid>',
-    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate|none>] [--tools <comma-separated-names|none>]',
     '  dsh-iris api serve ... --allow-execution --provider-config <absolute-path> [--connections-file <private-grants-file>]',
-    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate|none>] [--tools <comma-separated-names|none>]',
     '    Official SDK stdio bridge to an already running Core service. Read-only by default; stdout contains MCP messages only.',
     '  dsh-iris mcp capabilities',
     '  dsh-iris mcp presets',
@@ -84,6 +102,8 @@ function usage() {
     '  dsh-iris api serve ... --connections-file <private-grants-file> --allow-mcp',
     '  dsh-iris web serve ... --connection-store <private-directory-outside-core> --allow-connection-management [--allow-mcp] [--allow-execution --provider-config <absolute-path>]',
     '  dsh-iris web serve ... --provider-config <private-config> --allow-provider-management [--panel <trusted-panel-manifest.json>]',
+    '  dsh-iris api|web serve ... --network-config <private-config> --allow-network-management',
+    '  dsh-iris api|web serve ... --scheduler-config <absolute-private-json> enables bounded media scheduling (HTTP concurrency <=4, rolling RPS and remote outstanding limits).',
     '    Explicit standard Streamable HTTP endpoint at /mcp; default remains disabled. Uses the existing Core service and user-selected connection tools.',
     '  dsh-iris operation list --data-root <execution-root> [--run-id <run-id>] [--limit <1..30>] [--cursor <operation-id>]',
     '  dsh-iris operation inspect <operation-id> --data-root <execution-root>',
@@ -103,6 +123,14 @@ function usage() {
     '  dsh-iris providers list --provider-config <absolute-path>',
     '  dsh-iris capabilities list --provider-config <absolute-path>',
     '  dsh-iris config <init|show|check> --provider-config <absolute-path>',
+    '  dsh-iris network <init|show|check> --network-config <absolute-private-path>',
+    '  dsh-iris network routing <init|copy> --network-config <new-private-path> [--input <json with source>]',
+    '  dsh-iris network catalog create --network-config <v2-path> --provider-config <source-path> --output <new-private-path>',
+    '  dsh-iris network bindings <list|set|remove> --network-config <v2-path> [--provider-config <wrapped-path> --input <json>]',
+    '    Media/flow/tasks/web accept --network-config with wrapped Provider catalogs. Explicit policy failures never silently inherit or replay generation.',
+    '  dsh-iris network <nodes|pools> list --network-config <absolute-private-path>',
+    '  dsh-iris network <nodes|pools> <add|set|remove> --network-config <absolute-private-path> --input <json>',
+    '    Owner-only resources use environment credential references and revision-checked mutations. Resources alone do not change routes; wrapped catalogs and explicit --network-config enable bound policies.',
     '  dsh-iris providers <add|set> --provider-config <absolute-path> --input <provider-json>',
     '  dsh-iris providers remove <provider-id> --provider-config <absolute-path>',
     '  dsh-iris models list --provider-config <absolute-path>',
@@ -150,7 +178,7 @@ function usage() {
     '  dsh-iris core transactions --data-root <absolute-path>',
     '  dsh-iris core restore <transaction-id> --data-root <absolute-path>',
     '',
-    'Commands never start DSH. run image and the task observe/redeliver/cancel/retry verbs contact a provider only when explicitly requested; credentials come from a private file. observe polls once, redeliver only re-downloads, and cancel is recorded as canceled only when the provider explicitly confirms; none of them ever submits an existing task again. task retry creates a NEW task that may incur duplicate generation billing and requires --confirm-billing; the prompt must be supplied again because Task records never persist prompts. Flow inputs do retain the prompt privately. flow continue may perform the first submission or observe/redeliver the original task, but never resubmits a task with an Attempt.'
+    'Commands never start DSH. run image and the task observe/redeliver/cancel/retry verbs contact a provider only when explicitly requested; provider configuration comes from a private file; explicit environment key references are resolved in this process. observe polls once, redeliver only re-downloads, and cancel is recorded as canceled only when the provider explicitly confirms; none of them ever submits an existing task again. task retry creates a NEW task that may incur duplicate generation billing and requires --confirm-billing; the prompt must be supplied again because Task records never persist prompts. Flow inputs do retain the prompt privately. flow continue may perform the first submission or observe/redeliver the original task, but never resubmits a task with an Attempt.'
   ].join('\n');
 }
 
@@ -223,7 +251,8 @@ function registerRuntime(runtime) {
 async function disposeActiveRuntimes() {
   await Promise.allSettled([...activeRuntimes].map((runtime) => runtime.dispose().catch(() => {})));
   activeRuntimes.clear();
-  await cliProviderRegistry?.dispose();
+  try { await cliProviderRegistry?.dispose(); }
+  finally { try { await cliNetworkManager?.dispose(); } finally { cliScheduler?.dispose(); } }
 }
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
@@ -253,8 +282,8 @@ async function withRuntime(mode, dataRoot, callback, ports = {}) {
   return withRawRuntime(mode, dataRoot, (runtime) => callback(createCommandService(runtime, ports)));
 }
 
-async function withApplication(dataRoot, callback, resolveImageCandidates, resolveTaskAdapter) {
-  const application = createApplicationRuntime({ dataRoot: required(dataRoot, 'data-root'), resolveImageCandidates, resolveTaskAdapter });
+async function withApplication(dataRoot, callback, ports = {}) {
+  const application = createApplicationRuntime({ dataRoot: required(dataRoot, 'data-root'), ...ports });
   const unregister = registerRuntime(application);
   try { return await callback(application); }
   finally { try { await application.dispose(); } finally { unregister(); } }
@@ -392,16 +421,16 @@ async function main(args, providerRegistry) {
         console.log(JSON.stringify(result, null, 2)); return 0;
       }
       if (args[1] !== 'init') throw new CliUsageError('不支持的 execution 子命令');
-      const initArgs = args.slice(2), generationFlags = initArgs.filter(value => value === '--image-generation'), audioFlags = initArgs.filter(value => value === '--audio');
-      if (generationFlags.length > 1 || audioFlags.length > 1 || generationFlags.length && audioFlags.length) throw new CliUsageError('初始化开关重复或冲突；audio已包含文生图');
-      const options = flags(initArgs.filter(value => !['--image-generation', '--audio'].includes(value)), ['data-root']);
+      const initArgs = args.slice(2), generationFlags = initArgs.filter(value => value === '--image-generation'), audioFlags = initArgs.filter(value => value === '--audio'), videoFlags = initArgs.filter(value => value === '--video');
+      if (generationFlags.length + audioFlags.length + videoFlags.length > 1) throw new CliUsageError('初始化开关重复或冲突；video包含音频和图片，audio包含图片');
+      const options = flags(initArgs.filter(value => !['--image-generation', '--audio', '--video'].includes(value)), ['data-root']);
       const suppliedRoot = required(options['data-root'], 'data-root');
       if (!path.isAbsolute(suppliedRoot)) throw new CliUsageError('data-root 必须是已初始化的空 Flow 根绝对路径');
       let dataRoot;
       try { dataRoot = fs.realpathSync(suppliedRoot); }
       catch (_) { throw new CliUsageError('请先在新的专用数据根执行 flow init'); }
       const result = await withApplication(dataRoot, application =>
-        application.execute('execution.init', audioFlags.length ? { audio: true } : generationFlags.length ? { imageGeneration: true } : {}, { signal: cliAbortController.signal }));
+        application.execute('execution.init', videoFlags.length ? { video: true } : audioFlags.length ? { audio: true } : generationFlags.length ? { imageGeneration: true } : {}, { signal: cliAbortController.signal }));
       console.log(JSON.stringify(result, null, 2)); return 0;
     }
     if (!['list', 'inspect'].includes(args[1])) throw new CliUsageError('operation 只支持只读 list/inspect');
@@ -471,12 +500,12 @@ async function main(args, providerRegistry) {
       return 0;
     }
     if (args[1] !== 'serve') throw new CliUsageError(`不支持的 ${args[0]} 子命令`);
-    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes'), executionFlags = rest.filter(value => value === '--allow-execution'), selectionFlags = rest.filter(value => value === '--allow-selection'), mcpFlags = rest.filter(value => value === '--allow-mcp'), managementFlags = rest.filter(value => value === '--allow-connection-management'), providerFlags = rest.filter(value => value === '--allow-provider-management');
-    if (localWriteFlags.length > 1 || executionFlags.length > 1 || selectionFlags.length > 1 || mcpFlags.length > 1 || managementFlags.length > 1 || providerFlags.length > 1) throw new CliUsageError('写入/执行/选择/MCP/管理参数重复');
+    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes'), executionFlags = rest.filter(value => value === '--allow-execution'), selectionFlags = rest.filter(value => value === '--allow-selection'), mcpFlags = rest.filter(value => value === '--allow-mcp'), managementFlags = rest.filter(value => value === '--allow-connection-management'), providerFlags = rest.filter(value => value === '--allow-provider-management'), networkFlags = rest.filter(value => value === '--allow-network-management');
+    if (localWriteFlags.length > 1 || executionFlags.length > 1 || selectionFlags.length > 1 || mcpFlags.length > 1 || managementFlags.length > 1 || providerFlags.length > 1 || networkFlags.length > 1) throw new CliUsageError('写入/执行/选择/MCP/管理参数重复');
     const allowExecution = executionFlags.length === 1, allowLocalWrites = localWriteFlags.length === 1 || allowExecution;
     const allowSelection = selectionFlags.length === 1;
     const allowConnectionManagement = managementFlags.length === 1;
-    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management', '--allow-provider-management'].includes(value)), ['data-root', 'token-file', 'token-dir', 'auth-store', 'provider-config', 'port', 'connections-file', 'connection-store', 'panel', 'plugin-config']);
+    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management', '--allow-provider-management', '--allow-network-management'].includes(value)), ['data-root', 'token-file', 'token-dir', 'auth-store', 'provider-config', 'port', 'connections-file', 'connection-store', 'panel', 'plugin-config']);
     const suppliedRoot = required(options['data-root'], 'data-root');
     const passwordMode = serveWorkbench && options['token-file'] === undefined && options['token-dir'] === undefined;
     if (!passwordMode && Boolean(options['token-file']) === Boolean(options['token-dir'])) throw new CliUsageError('请选择且只选择 --token-file 或 --token-dir');
@@ -492,11 +521,13 @@ async function main(args, providerRegistry) {
     if (options['token-dir']) checkLocalApiTokenDirectory(options['token-dir'], dataRoot);
     return withCliLaunch(options['plugin-config'], { serveWorkbench, panelManifestPath: options.panel }, async (launch, ownApi) => {
       const api = createLocalReadApi({ dataRoot, providerConfigPath: options['provider-config'], allowLocalWrites, serveWorkbench,
+        ...(cliNetworkConfigPath || cliScheduler ? { networkConfigPath: cliNetworkConfigPath,
+          networkManager: cliNetworkManager ||= createProviderNetworkManager({ networkConfigPath: cliNetworkConfigPath, scheduler: cliScheduler }), scheduler: cliScheduler } : {}),
         ...(passwordMode ? { workbenchAuth: { directory: authDirectory } } : {}),
         allowExecution, allowSelection, allowMcp: mcpFlags.length === 1, connectionsFile: options['connections-file'], allowConnectionManagement, connectionStore: options['connection-store'], providerRegistry,
         ...(launch ? { pluginRegistry: launch.registry, providerRegistry: launch.registry.providers, allowedOperations: launch.allowedOperations,
           panelContributions: launch.panelContributions } : {}),
-        allowProviderManagement: providerFlags.length === 1, panelManifestPath: options.panel });
+        allowProviderManagement: providerFlags.length === 1, allowNetworkManagement: networkFlags.length === 1, panelManifestPath: options.panel });
       ownApi(api);
       const started = await api.start({ port: options.port === undefined ? 0 : Number(options.port) });
       if (!passwordMode) {
@@ -509,6 +540,7 @@ async function main(args, providerRegistry) {
         ...(serveWorkbench ? { loginUrl: started.loginUrl, loginExpiresAt: started.loginExpiresAt } : {}),
         ...(allowConnectionManagement ? { connectionManagement: true } : {}),
         ...(providerFlags.length ? { providerManagement: true } : {}),
+        ...(networkFlags.length ? { networkManagement: true } : {}),
         ...(started.mcpEndpoint ? { mcpEndpoint: started.mcpEndpoint } : {}),
         message: passwordMode ? (started.authentication.configured ? '工作台已启动，打开 origin 用访问口令登录；记住设备后可跨正常重启继续使用。'
           : '首次使用请打开 loginUrl 设置访问口令；之后打开普通地址即可登录，无需 Token 文件。')
@@ -539,20 +571,12 @@ async function main(args, providerRegistry) {
     if (verb === 'select' && Object.keys(input).some(key => key !== 'artifact_id')) throw new CliUsageError('flow select 只接受 artifact_id');
     if (needsId) input.run_id = args[2];
     if (verb === 'export') input.output_path = required(options.output, 'output');
-    const resolveImageCandidates = options['provider-config'] ? async ({ modelRef, signal }) => {
-      const catalog = await generationCatalog(options, 'image-gen', modelRef, signal);
-      return imageCandidatesFromCatalog(catalog, modelRef, providerRegistry).map(route => ({ adapter: trackedProviderAdapter(route.provider, options),
-        model: route.modelRef, supportsImageEdit: supportsImageEdit(route.provider.mediaProtocol, route.model, providerRegistry),
-        selectionReason: route.selectionReason, providerBinding: providerTaskBinding(route.provider, providerRegistry) }));
-    } : undefined;
-    const resolveTaskAdapter = options['provider-config'] ? task => {
-      const catalog = loadProviderCatalog(options['provider-config']);
-      return trackedProviderAdapter(providerForTaskFromCatalog(catalog, task, providerRegistry), options, task);
-    } : undefined;
+    const ports = options['provider-config'] ? configuredImagePorts(options['provider-config'], providerRegistry,
+      { resolveProviderNetwork: cliResolveNetwork }) : {};
     let result;
     try {
       result = await withApplication(options['data-root'], application =>
-        application.execute('flow.' + verb, input, { signal: cliAbortController.signal }), resolveImageCandidates, resolveTaskAdapter);
+        application.execute('flow.' + verb, input, { signal: cliAbortController.signal }), ports);
     } catch (error) {
       if (error instanceof GenerationInputError) throw new CliUsageError(error.message);
       throw error;
@@ -602,6 +626,50 @@ async function main(args, providerRegistry) {
     return 0;
   }
 
+  if (args[0] === 'network') {
+    const group = args[1];
+    const collection = ['nodes', 'pools', 'bindings', 'routing', 'catalog'].includes(group);
+    const verb = collection ? args[2] : group;
+    const verbs = group === 'routing' ? ['init', 'copy'] : group === 'catalog' ? ['create'] : group === 'bindings' ? ['list', 'set', 'remove'] : collection ? ['list', 'add', 'set', 'remove'] : ['init', 'show', 'check'];
+    if (!verbs.includes(verb)) {
+      throw new CliUsageError('未知网络资源命令');
+    }
+    const mutation = collection && verb !== 'list' && !(group === 'routing' && verb === 'init') && group !== 'catalog';
+    let options;
+    try { options = flags(args.slice(collection ? 3 : 2), ['network-config', ...(mutation ? ['input'] : []),
+      ...(['catalog', 'bindings'].includes(group) ? ['provider-config'] : []), ...(group === 'catalog' ? ['output'] : [])]); }
+    catch (error) {
+      if (!(error instanceof CliUsageError)) throw error;
+      throw new CliUsageError('网络参数无效：请使用 --network-config；写入内容通过 --input、--input-file 或 --input - 提供。代理地址请在节点 JSON 中分别填写 host/port，认证使用环境变量引用');
+    }
+    const file = required(options['network-config'], 'network-config');
+    if (group === 'catalog') {
+      const network = readNetworkConfig(file).config;
+      if (network.schemaVersion !== 2) throw networkPolicyError('IRIS_NETWORK_CONFIG_VERSION', '网络目录需使用显式新建或另存的 v2 网络文件');
+      const source = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
+      const requirement = { schemaVersion: 1, configId: network.configId, catalogId: crypto.randomUUID() };
+      const output = required(options.output, 'output');
+      if (!path.isAbsolute(output)) throw new CliUsageError('output 必须是新私有文件的绝对路径');
+      atomicCreatePrivate(output, JSON.stringify(encodeProviderConfig(wrapProviderCatalog(source, requirement)), null, 2) + '\n');
+      console.log(JSON.stringify({ created: true, networkRequirement: requirement }));
+      return 0;
+    }
+    let input = mutation ? jsonInput(options.input) : {};
+    if (group === 'bindings' && verb === 'remove' && !options['provider-config']) {
+      if (Object.keys(input).some(key => !['expectedRevision', 'catalogId', 'providerId', 'confirm'].includes(key))) throw new CliUsageError('解除遗留绑定需要明确目录身份、供应商、修订与确认');
+    } else if (group === 'bindings' && verb !== 'list') {
+      const catalog = loadProviderCatalog(required(options['provider-config'], 'provider-config'));
+      const requirement = providerNetworkRequirement(catalog), network = readNetworkConfig(file).config;
+      if (!requirement || requirement.configId !== network.configId) throw networkPolicyError('IRIS_NETWORK_CONFIG_MISMATCH', '绑定需要匹配的新版供应商目录与网络文件');
+      const allowed = verb === 'set' ? ['expectedRevision', 'providerId', 'poolId'] : ['expectedRevision', 'providerId', 'confirm'];
+      if (Object.keys(input).some(key => !allowed.includes(key)) || catalog.providers.filter(provider => provider.id === input.providerId).length !== 1) throw new CliUsageError('绑定输入需要该目录中明确且唯一的供应商身份');
+      input = { ...input, catalogId: requirement.catalogId };
+    }
+    const result = executeNetworkConfigCommand(file, collection ? group + '.' + verb : verb, input, { signal: cliAbortController.signal });
+    console.log(JSON.stringify(result, null, 2));
+    return result.valid === false ? 1 : 0;
+  }
+
   if (['config', 'providers', 'models', 'assignments'].includes(args[0])) {
     const [group, verb] = args;
     const verbs = { config: ['init', 'show', 'check'], providers: ['add', 'set', 'remove'], models: ['list', 'add', 'remove', 'caps', 'protocol', 'music-protocol', 'vision-input', 'discover', 'test', 'workflow-check'], assignments: ['list', 'set', 'clear'] };
@@ -621,7 +689,7 @@ async function main(args, providerRegistry) {
       }
     }
     const result = await executeConfigCommand(required(options['provider-config'], 'provider-config'), group === 'config' ? verb : group + '.' + verb, input, {
-      signal: cliAbortController.signal, registry: providerRegistry,
+      signal: cliAbortController.signal, registry: providerRegistry, resolveProviderNetwork: cliResolveNetwork,
       probe: async ({ provider, modelId, capability, signal }) => {
         if (capability === 'music-gen') return { skipped: true, ok: false, reason: 'Music 不发起小样本探测；请使用 run music 提交创作要求' };
         if (capability === 'vision') return probeVisionModel(provider, modelId, { bytes: Buffer.from(RED_TEST_IMAGE.split(',')[1], 'base64'), mediaType: 'image/png' }, { signal });
@@ -635,7 +703,8 @@ async function main(args, providerRegistry) {
         return withRawRuntime('writer', options['data-root'], async runtime => {
           const mediaCapability = capability === 'image-gen' ? 'image' : capability === 'video-gen' ? 'video' : capability;
           if (mediaCapability === 'image') provider = providerForImageModel(provider, modelId, providerRegistry);
-          const adapter = createConfiguredProviderAdapter(provider, { allowRateLimited: true, modelId, registry: providerRegistry });
+          const adapter = createConfiguredProviderAdapter(provider, { allowRateLimited: true, modelId, registry: providerRegistry,
+            network: cliResolveNetwork({ provider, providerId: provider.id }) });
           let providerInput = mediaCapability === 'image'
             ? { prompt: 'red circle', n: 1, ...(['openai-chat-images', 'openai-responses-images', 'comfyui'].includes(adapter.protocol) ? {} : {
               size: adapter.protocol === 'openai-images' ? '256x256' : '512*512'
@@ -648,8 +717,14 @@ async function main(args, providerRegistry) {
             providerInput = normalized.providerInput;
             if (mediaCapability === 'video') candidates = videoTaskCandidates(candidates, normalized);
             else if (normalized.audioPath) {
-              const prepared = await prepareProviderInput(adapter, { model: modelId, filePath: normalized.audioPath, signal });
-              providerInput = generationInput('transcribe', { audio_url: prepared.url }).providerInput;
+              if (adapter.networkRequirement) candidates = candidates.map(candidate => ({ ...candidate, prepareInput: async ({ signal, taskId, attemptId, networkBudget, recordNetworkRoute }) => {
+                const prepared = await prepareProviderInput(adapter, { model: modelId, filePath: normalized.audioPath, signal }, { taskId, attemptId, networkBudget, recordNetworkRoute });
+                return { audioUrl: prepared.url };
+              } }));
+              else {
+                const prepared = await prepareProviderInput(adapter, { model: modelId, filePath: normalized.audioPath, signal });
+                providerInput = generationInput('transcribe', { audio_url: prepared.url }).providerInput;
+              }
             }
           }
           const submitted = await createProviderTaskRunner(runtime).submit({ capability: mediaCapability,
@@ -751,7 +826,7 @@ async function main(args, providerRegistry) {
     let result;
     try {
       result = await withApplication(options['data-root'], application =>
-        application.generateImage(input, { signal: cliAbortController.signal }), resolveImageCandidates);
+        application.generateImage(input, { signal: cliAbortController.signal }), { resolveImageCandidates });
     } catch (error) {
       if (error instanceof GenerationInputError) throw new CliUsageError(error.message);
       throw error;
@@ -820,29 +895,33 @@ async function main(args, providerRegistry) {
   }
 
   // 转写输入冻结（E3 Profile）：上传型异步——audio_url（公网/oss://）或
-  // audio_path（本地文件，经首选候选 Provider 的临时存储上传，签名 URL 不落 Core）。
+  // audio_path（本地文件，在写者与原 Attempt 建立后按实际候选上传，签名 URL 不落 Core）。
   if (args[0] === 'run' && args[1] === 'transcribe') {
     const options = flags(args.slice(2), ['data-root', 'provider-config', 'input']);
     const normalized = generationInput('transcribe', jsonInput(options.input), { allowAudioPath: true });
     const catalog = await generationCatalog(options, 'transcribe', normalized.modelRef);
     const routes = transcribeCandidatesFromCatalog(catalog, normalized.modelRef, providerRegistry);
-    let providerInput = normalized.providerInput;
-    if (normalized.audioPath) {
-      if (!fs.existsSync(normalized.audioPath)) throw new CliUsageError('音频文件不存在');
-      const prepared = await prepareProviderInput(trackedProviderAdapter(routes[0].provider, options), {
-        model: routes[0].model, filePath: normalized.audioPath
-      });
-      providerInput = generationInput('transcribe', { audio_url: prepared.url }).providerInput;
-    }
+    if (normalized.audioPath && !fs.existsSync(normalized.audioPath)) throw new CliUsageError('音频文件不存在');
     await withRawRuntime('writer', options['data-root'], async (runtime) => {
-      const candidates = routes.map((route) => ({
-        adapter: trackedProviderAdapter(route.provider, options), model: route.modelRef,
+      const candidates = routes.map(route => {
+        const adapter = trackedProviderAdapter(route.provider, options);
+        return { adapter, model: route.modelRef,
         selectionReason: route.selectionReason,
-        providerBinding: providerTaskBinding(route.provider, providerRegistry)
-      }));
+        providerBinding: providerTaskBinding(route.provider, providerRegistry),
+        ...(normalized.audioPath ? { prepareInput: async ({ signal, taskId, attemptId, networkBudget, recordNetworkRoute, modelRef, providerId }) => {
+          const prepared = await prepareProviderInput(adapter, { model: route.model, filePath: normalized.audioPath, signal },
+            { taskId, attemptId, networkBudget, recordNetworkRoute, modelRef, providerId });
+          return { audioUrl: prepared.url };
+        } } : {}) };
+      });
+      if (normalized.audioPath && candidates.every(candidate => typeof candidate.adapter.prepareInput !== 'function')) {
+        throw Object.assign(new Error('所选协议未实现临时音频上传；请使用支持上传的转写协议或重新提供 audio_url'), {
+          code: 'IRIS_PROVIDER_INPUT_PREPARATION_UNSUPPORTED'
+        });
+      }
       const result = await createProviderTaskRunner(runtime).submit({
         capability: 'transcribe', candidates,
-        providerInput
+        providerInput: normalized.providerInput
       });
       console.log(JSON.stringify(result, null, 2));
     });
@@ -1016,13 +1095,26 @@ try {
       entries.push(entry);
     }
   }
+  if (args[0] !== 'network') for (let index = 0; index < args.length; index++) {
+    if (args[index] !== '--network-config') continue;
+    if (cliNetworkConfigPath !== undefined || !args[index + 1] || !path.isAbsolute(args[index + 1])) throw new CliUsageError('network-config 需要唯一、明确的绝对路径');
+    cliNetworkConfigPath = args[index + 1]; args.splice(index, 2); index--;
+  }
+  let schedulerFile;
+  for (let index = 0; index < args.length; index++) {
+    if (args[index] !== '--scheduler-config') continue;
+    if (!['api', 'web'].includes(args[0]) || args[1] !== 'serve') throw new CliUsageError('scheduler-config 首片仅用于 api/web serve；单次 CLI 和 DSH 独立路径保持原行为');
+    if (schedulerFile !== undefined || !args[index + 1]) throw new CliUsageError('scheduler-config 需要唯一、明确的绝对路径');
+    schedulerFile = args[index + 1]; args.splice(index, 2); index--;
+  }
+  if (schedulerFile !== undefined) cliScheduler = createMediaScheduler(readSchedulingPolicy(schedulerFile));
   try {
     if (entries.length && args.includes('--plugin-config')) throw new CliUsageError('--plugin-config 与 --provider-extension 不能混用；Provider 插件应通过同一插件装配实例加载');
     if (args.length && !args.includes('--help') && !args.includes('-h')) cliProviderRegistry = await loadProviderRegistry(entries);
     process.exitCode = await main(args, cliProviderRegistry);
-  } finally { await cliProviderRegistry?.dispose(); }
+  } finally { try { await cliProviderRegistry?.dispose(); } finally { try { await cliNetworkManager?.dispose(); } finally { cliScheduler?.dispose(); } } }
 } catch (error) {
-  const code = error && error.code || 'IRIS_CLI_FAILED';
+  const code = error && error.code || (error?.providerCode === 'IRIS_PROVIDER_DIRECTORY_CREDENTIALS' ? error.providerCode : 'IRIS_CLI_FAILED');
   const message = error && error.message || '命令执行失败';
   if (error.diagnostic) console.error(JSON.stringify(error.diagnostic));
   else console.error(code + ': ' + message);

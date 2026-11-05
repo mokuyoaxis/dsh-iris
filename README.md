@@ -17,16 +17,16 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
 
-Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成、修改、查看和继续使用媒体。它提供独立 CLI、DSH 原生插件，以及 0.3 alpha 的 Web 工作台与通用 MCP：供应商、任务和产物由 Core 管理，客户端按用户选择获得能力。
+Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成、修改、查看和继续使用媒体。它提供独立 CLI、DSH 原生插件，以及 0.3 beta 的 Web 工作台与通用 MCP：供应商、任务和产物由 Core 管理，客户端按用户选择获得能力。
 
-**版本通道：`0.3.0-alpha.1` 是 0.3 首个预发布，通过 npm `alpha` 通道获取；稳定 `latest` 保留 `0.2.7`。** 独立 Web、正式 MCP、ComfyUI 和 Core 插件需要 alpha 包；稳定 0.2.7 不包含这些新增入口。alpha 契约仍可能调整，完整范围见[发布说明](docs/releases/0.3.0-alpha.1.md)。
+**版本通道：`0.3.0-beta.1` 通过 npm `beta` 通道获取；稳定 `latest` 保留 `0.2.7`。** 本次在 alpha.1 的独立 Web、通用 MCP、ComfyUI 和 Core 插件之上，新增网络出口池、有界调度、文生视频、环境凭据引用及独立插件模板。最小契约与主要流程按 [beta 范围](docs/BETA_SCOPE.md)收口，完整变化见[发布说明](docs/releases/0.3.0-beta.1.md)。
 
 | 你想做什么 | 使用入口 | 范围 |
 |---|---|---|
 | 在 DSH 对话中使用媒体工具与提示词优化 | [DSH 插件](#dsh-插件027) | 已发布 0.2.7 |
 | 在终端生成媒体、查任务、导出作品 | [独立 CLI](#独立-cli027) | 已发布 0.2.7，无需 DSH |
-| 在独立页面配置模型、创作和管理作品 | [Core 工作台快速开始](docs/CORE_QUICKSTART.md) | 0.3.0-alpha.1 / 当前源码 |
-| 让其他 Agent 使用同一个媒体工作区 | [MCP 接入](docs/MCP.md) · [Agent 指导](docs/AGENT_CORE_QUICKSTART.md) | 0.3.0-alpha.1 / 当前源码 |
+| 在独立页面配置模型、创作和管理作品 | [Core 工作台快速开始](docs/CORE_QUICKSTART.md) | 0.3.0-beta.1 |
+| 让其他 Agent 使用同一个媒体工作区 | [MCP 接入](docs/MCP.md) · [Agent 指导](docs/AGENT_CORE_QUICKSTART.md) | 0.3.0-beta.1 |
 
 ## 工作台预览
 
@@ -50,13 +50,18 @@ Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成�
 - **Agent 自选能力**：MCP 连接按媒体、操作权限和工具选择；stdio 与 Streamable HTTP 共用 Core，支持通用入口及显式客户端模板。
 - **可选插件**：Provider、新业务操作、页面、设置表单和作品预览可由插件贡献，Core 校验和装配，用户决定授权。随包多图对照板展示一次完整的持久业务。
 
+开发者可从随 beta.1 分发的[独立插件模板](docs/PLUGIN_DEVELOPMENT.md)开始：业务/页面/PNG 预览模板复用公开 SDK；[万相 Provider 模板](templates/provider-starter/README.md)使用工厂上下文 v1，复用 Core 凭据、网络、调度及持久任务。插件身份、贡献版本和授权均独立管理。
+
+旧数据根不自动迁移；新增视频需要显式创建 v4 根，网络绑定也有独立版本门禁。平台测试、受控服务和真实账号验证分别说明，不据此承诺所有供应商、GPU 或客户端均已验收。
+
 ### 当前入口覆盖
 
-| 能力 | DSH / 独立 CLI（alpha） | Core Web / MCP（alpha） |
+| 能力 | DSH / 独立 CLI（beta） | Core Web / MCP（beta） |
 |---|---|---|
 | 图片生成、导入与编辑 | 可用 | 可用；新根支持文生图 |
-| 语音合成、音频转写 | 可用 | 新 v3 根可用 |
-| 视频、音乐、视觉理解 | 可用，取决于服务与本地依赖 | 模型服务可配置；创作入口待接入 |
+| 语音合成、音频转写 | 可用 | 新 v3/v4 根可用 |
+| 文生视频 | 可用 | [新 v4 根可用](docs/VIDEO_FLOWS.md) |
+| 图生视频、S2V、音乐、视觉理解 | 可用，取决于服务与本地依赖 | 模型服务可配置；创作入口待接入 |
 | ComfyUI 工作流与开放参数 | alpha 新增；稳定 0.2.7 不含 | 已实现；真实 GPU 推理待验收 |
 | 多图对照板插件 | 不属于 0.2.7 | 显式启用后可用 |
 
@@ -64,12 +69,12 @@ Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成�
 
 ## 快速开始
 
-### Core 工作台（0.3 alpha）
+### Core 工作台（0.3 beta）
 
 在自己的项目中固定安装预发布包，再选择**新的私有位置**。现有工作区不自动迁移：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-alpha.1
+npm install @mokuyoaxis/dsh-iris@0.3.0-beta.1
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
@@ -106,7 +111,7 @@ dsh web
 
 在“设置 → Iris 工作台”引用 DSH 已有 API Key 连接或添加服务，选择协议、确认模型用途与功能池。原生 DSH 模式使用宿主路由、附件和生命周期，不要求另起 Core Web 服务；提供 17 个 Agent 工具和对话框 🫧 提示词优化。
 
-以上命令保留稳定版。需要 alpha 新增的 ComfyUI 等功能时，明确改用 `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-alpha.1`；宿主准确版本范围不扩大。
+以上命令保留稳定版。需要 beta 的 ComfyUI 等功能时，明确改用 `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.1`；宿主准确版本范围不扩大。
 
 配置后的最小指令：
 
@@ -133,10 +138,12 @@ npx dsh-iris --help
 ## 配置与数据
 
 - Iris 不默认扫描其他项目或客户端。DSH 可[引用宿主 API Key 连接](docs/DSH_PROVIDER_CONNECTIONS.md)，Core 工作台管理自己的媒体服务；聊天订阅/OAuth 不等于媒体 API 认证。
+- beta.1 可选[环境凭据引用](docs/PROVIDER_CREDENTIALS.md)，只保存变量名、由 Core 进程解析值；原内联 Key 继续可用。
 - 旧名单、缺失/空分配不会因升级静默启用。新增目录模型须确认用途；手动空池不回落到自动。详见[功能模型池](docs/FUNCTION_MODEL_POOLS.md)。
 - 旧 ai-paint 配置可用 `IRIS_IMPORT_WORKBENCH_CONFIG` 显式指定来源，操作见[一次性导入](user_guide.md#从旧工作台显式导入)；它不修改来源或持续同步，也不迁移 Core 数据根。
 - DSH 数据位于 `$DSH_HOME/iris/v1/`，媒体 Core 根为其中的 `core-v0`；独立 CLI/Web 使用明确选择的根。新工作台不会自动汇入其他根的作品。
 - 同一数据根只有一个写者，实例内按队列执行；只读检查可共存。作品库不是备份，没有自动磁盘配额或 GC。删除、恢复与旧任务依赖需按对应命令明确操作。
+- beta.1 可在 Core 服务显式启用[有界媒体调度](docs/MEDIA_SCHEDULING.md)：保持单写者，分别限制 HTTP 并发、发送速率和远端未结束任务；缺省仍串行，未知受理不重提。
 - 密钥与认证文件保存在私有目录，POSIX 文件通常为 `0600`、目录为 `0700`；Windows 仍依赖账户与 ACL。公开配置/截图不应含认证链接或密钥。工作台口令、MCP 连接密钥和供应商 Key 分别管理。
 
 Node.js ≥22 和可加载的 `sharp` 是基础要求。视频抽帧需 `ffmpeg`/`ffprobe`；HTML 截图需所选浏览器后端，DSH 宿主服务与独立 Chromium 的要求不同。Termux/PRoot 的数据应放在支持所需权限与 hard link 的私有 Linux 文件系统。
@@ -170,7 +177,7 @@ Node.js ≥22 和可加载的 `sharp` 是基础要求。视频抽帧需 `ffmpeg`
 | 工作台与接入 | [登录](docs/WORKBENCH_LOGIN.md) · [Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Skills](docs/CORE_SKILLS.md) |
 | 模型与流程 | [供应商/模型池/光谱](docs/PROVIDER_SETTINGS.md) · [图片与 ComfyUI](docs/IMAGE_GENERATION.md) · [语音/转写](docs/AUDIO_FLOWS.md) · [任务语义](docs/TASK_SEMANTICS.md) |
 | 扩展 | [插件契约](docs/PLUGINS.md) · [启动选择](docs/PLUGIN_STARTUP.md) · [Panel](docs/PANEL_EXTENSIONS.md) · [多图对照板](docs/CONTACT_SHEET.md) |
-| 版本与方向 | [0.3 alpha 发布说明](docs/releases/0.3.0-alpha.1.md) · [0.2.7 稳定版](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构](docs/ARCHITECTURE.md) |
+| 版本与方向 | [0.3 beta 发布说明](docs/releases/0.3.0-beta.1.md) · [0.2.7 稳定版](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构](docs/ARCHITECTURE.md) |
 
 DSH 随包保留 [`iris-use`](.dsh/skills/iris-use/SKILL.md)、[`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) 和 [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md)。独立 Core 与连接 Skill 不替换它们。
 

@@ -138,13 +138,16 @@ try {
   }
   const adapterContract = fs.readFileSync(new URL('../docs/PROVIDER_ADAPTER_CONTRACT.md', import.meta.url), 'utf8');
   const submissionContract = fs.readFileSync(new URL('../docs/PROVIDER_SUBMISSION_CONTRACT.md', import.meta.url), 'utf8');
-  assert(adapterContract.includes('上传属于 Host/CLI 输入准备')
-      && adapterContract.includes('失败会直接返回且不创建 Core Task')
+  assert(adapterContract.includes('这组字段属于返回调用方的安全错误分类')
+      && adapterContract.includes('不等于已持久化的 Core Attempt stage')
+      && adapterContract.includes('独立 CLI `run transcribe` 的 `audio_path` 统一放入原 Attempt')
       && !adapterContract.includes('是否将上传失败纳入 Core 事实仍待决策'),
-  'Adapter 契约必须冻结上传准备边界，同时移除过期的待决策措辞');
+  'Adapter 契约必须区分上传错误分类与 CLI 持久准备，同时移除过期的待决策措辞');
   assert(submissionContract.includes('零 submit、零 Core Task')
+      && submissionContract.includes('上段转写先上传的描述保留旧发布版本的阶段事实')
+      && submissionContract.includes('上传纳入原 Task/Attempt')
       && !submissionContract.includes('视频和转写分别持久化'),
-  '提交契约不得再虚构 Core 转写持久化 upload stage');
+  '提交契约必须区分旧上传边界和当前 CLI 的原 Attempt 上传');
 } finally {
   await stopProviderTaskWatchesForDsh();
   tasks.stopWatchAll();

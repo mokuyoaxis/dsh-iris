@@ -1,4 +1,4 @@
-# 多图对照板：真实插件业务（0.3 alpha）
+# 多图对照板：真实插件业务（0.3 beta）
 
 0.3.0-alpha.1随附可选插件 `@mokuyoaxis/dsh-iris/contact-sheet`。**稳定 npm 0.2.7 无此入口。** 它将现有 Core 图片离线排成一个新 PNG Artifact，不调用模型或供应商。安装不会启用或授权插件：Node 业务、Web 页和 MCP 连接分别显式选择。
 

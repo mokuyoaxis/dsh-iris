@@ -134,7 +134,7 @@ try {
   await marker.dispose();
   const retried = parseSuccess(cli(['task', 'retry', second.taskId,
     '--data-root', dataRoot, '--provider-config', configFile,
-    '--input', JSON.stringify({ prompt: 'cli video retry' }), '--confirm-billing']), '视频 retry');
+    '--input', JSON.stringify({ video_mode: 't2v', prompt: 'cli video retry' }), '--confirm-billing']), '视频 retry');
   assert(retried.command === 'task.retry' && retried.retriedFrom === second.taskId
       && retried.taskId !== second.taskId
       && retried.task.capability === 'video' && retried.task.retriedFrom === second.taskId

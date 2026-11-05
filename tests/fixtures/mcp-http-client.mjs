@@ -10,7 +10,7 @@ export function httpMcpClient(origin, token, { version = '2025-11-25', name = 'i
     const response = await fetch(origin + '/mcp', { method: 'POST', headers: {
       Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream',
       'MCP-Protocol-Version': version, ...(version === '2026-07-28' ? { 'Mcp-Method': method,
-        ...(method === 'tools/call' ? { 'Mcp-Name': params.name } : {}) } : {})
+        ...(method === 'tools/call' ? { 'Mcp-Name': params.name } : method === 'resources/read' ? { 'Mcp-Name': params.uri } : {}) } : {})
     }, body: JSON.stringify({ jsonrpc: '2.0', ...(notification ? {} : { id }), method, params }), signal: AbortSignal.timeout(20000) });
     const text = await response.text();
     if (notification && response.status === 202) return;

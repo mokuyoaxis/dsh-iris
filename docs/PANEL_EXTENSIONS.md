@@ -1,4 +1,4 @@
-# Panel 与外观（0.3 alpha，实验性）
+# Panel 与外观（0.3 beta，实验性）
 
 Core 的 API、CLI、MCP 不依赖页面。`web serve` 默认装配随包的 `iris.default-panel`，也可在启动时明确选择可信 Panel。它与 [Provider 扩展](PROVIDER_EXTENSIONS.md)使用不同契约。**npm 0.2.7 尚不包含这些入口**，契约版本为 `0`，尚未冻结为 SDK。
 

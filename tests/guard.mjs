@@ -4,6 +4,7 @@
  * 核心断言：默认仅回环；远程 Host 需显式信任；浏览器读写均拒绝明确跨站来源。
  */
 import { checkRequest, guarded } from '../lib/guard.js';
+import { doesNotThrow } from 'node:assert/strict';
 
 const assert = (cond, msg, extra) => {
   if (!cond) { console.log('FAIL:', msg, extra === undefined ? '' : (' | ' + JSON.stringify(extra))); process.exit(1); }
@@ -58,7 +59,7 @@ const r200 = fakeRes();
 wrapped({ method: 'GET', headers: { host: 'localhost:3080' } }, r200);
 assert(called === 1 && r200.status === 0, '⑤c 无浏览器来源头的受信 Host 读请求透传 handler');
 const dead = { headersSent: true, writeHead() { throw new Error('boom'); }, end() {} };
-wrapped({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://evil' } }, dead);
-assert(true, '⑤d 已发送头的连接静默跳过');
+doesNotThrow(() => wrapped({ method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://evil' } }, dead),
+  '⑤d 已发送头的连接不得再次写响应头');
 
 console.log('ALL OK —— 请求守卫 5 组断言全部通过：默认回环 / 显式 trusted hosts / 浏览器跨站读写 / 端口敏感 / 包装器');

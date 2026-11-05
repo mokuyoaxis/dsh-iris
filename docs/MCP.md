@@ -1,10 +1,10 @@
-# 通用 MCP 接入与能力选择（0.3 alpha）
+# 通用 MCP 接入与能力选择（0.3 beta）
 
 新用户先看[从零启动与页面接入](CORE_QUICKSTART.md#connect-an-agent--连接客户端)；交给安装/使用 Agent 的可复制说明见 [Agent Core 指导](AGENT_CORE_QUICKSTART.md)。本页详述传输、模板与授权契约。
 
-同一套 Iris MCP 工具可通过 stdio 或 Streamable HTTP 接入支持对应传输和协议的客户端。无需为每个产品编写 Adapter，客户端名称也不用于授予能力。**本页入口从0.3.0-alpha.1提供，稳定 npm 0.2.7 不包含**；安装准确alpha版本或使用当前源码，契约仍为实验性。
+同一套 Iris MCP 工具可通过 stdio 或 Streamable HTTP 接入支持对应传输和协议的客户端。无需为每个产品编写 Adapter，客户端名称也不用于授予能力。**通用 MCP 入口从0.3.0-alpha.1提供，稳定 npm 0.2.7 不包含**；安装准确beta版本或使用当前源码；最小面见[beta约定](BETA_SCOPE.md)。
 
-业务数据、Operation、执行队列和 Provider 均归同一个 [Core 服务](CORE_SERVICE.md)。MCP 负责协议和工具交付，使用官方 SDK 2.3.1；不启动第二个业务写者，也不把调用转成 Shell 命令。当前媒体范围为固定 `image-edit/v0`、[文生图 `image-generate/v0`](IMAGE_GENERATION.md)，以及新 v3 根上的 [speech/v0 和 transcribe/v0](AUDIO_FLOWS.md)。文生图需要 v2/v3 根，音频需要显式 `execution init --audio` 新根，原根不迁移。
+业务数据、Operation、执行队列和 Provider 均归同一个 [Core 服务](CORE_SERVICE.md)。MCP 负责协议和工具交付，使用官方 SDK 2.3.1；不启动第二个业务写者，也不把调用转成 Shell 命令。当前媒体范围为固定 `image-edit/v0`、[文生图 `image-generate/v0`](IMAGE_GENERATION.md)，以及新 v3 根上的 [speech/v0 和 transcribe/v0](AUDIO_FLOWS.md)。文生图需要 v2/v3 根，音频需要显式 `execution init --audio` 新根，原根不迁移。**beta.1**另支持新 v4 根上的[固定文生视频](VIDEO_FLOWS.md)，通过 `execution init --video` 显式创建；v4 保留图片/音频能力，已发布 alpha.1 不支持该开关。
 
 工具输入、功能归属、权限和指导来自同一 [Core 能力目录](PLUGINS.md#core-能力目录与授权)。MCP 导出服务、功能选择、scope、已保存 tools 的交集；Skill 从同源声明解释工具。安装/发现插件不授权；页面/渲染器也不默认挂载。显式开启的插件业务现已接入持久 Operation，经用户保存的准确 `pluginOperations` 依赖选择调用，旧连接不扩权。
 
@@ -23,6 +23,21 @@
 文生图创建可带 `workflowParameters`，仅使用所选 ComfyUI 模板明确开放的参数 ID 和标量值。先通过 `iris_core_models` 读取描述；参数随 Run 保存并纳入原请求 Key，不能传任意图补丁。节点/模型的只读检查属于 owner 配置接口，未新增 MCP 管理工具或扩张已有连接权限；Core 工作台已接通导入预览、参数表单和结果参数查看，DSH 的独立工作台入口见 [DSH ComfyUI](IMAGE_GENERATION.md#dsh-工作台入口03-alpha)。
 
 ## 首次接入与客户端预设
+
+### 工作台连续接入（当前源码）
+
+以下接入核对页从 **0.3.0-beta.1** 提供；原有模板、CLI与授权契约保持。
+
+1. 在“客户端 → 新建连接 → 选择与授权”选择实际媒体功能或准确插件业务，核对摘要后保存。只读授权可以浏览；不要为通过检查而自动扩大权限。
+2. 在“获取配置”确认 **Agent 是否与 Core 同机**，再选择模板或通用格式。这里的机器指运行 Agent 的主机，不是打开网页的浏览器设备。当前 stdio 路径和 HTTP 回环地址不能直接交给另一台机器；未保存的功能/权限修改会阻止导出，已有客户端仍按原授权访问。
+3. 生成并合并配置到客户端，保留已有条目，再打开“核对接入”。“配置已生成”仅表示本次登录内存中对当前修订/格式的生成记录；复制或浏览器下载不证明客户端已经导入。刷新后没有本页记录，也不说明用户从未导出。
+4. 点击“检查 Iris 端与接入记录”，只读取当前 owner 会话、实际目录和保存授权，展示配置受限原因及 Core 当前允许的工具。它不建立桥接实例、不测试 stdio/HTTP 客户端传输，也不验证每项媒体功能、模型或 GPU。HTTP 未开、异机方案、准确插件依赖和零工具等问题分别解释，不自动授权。
+
+“Iris 端配置检查通过”与“收到客户端握手与声明”分开呈现。客户端名称/版本是可选、自报元数据；只有桥接握手、CLI 自检或配置下载不会被标为 Agent 已接入。未收到声明不等于业务调用失败；可在客户端明确调用一个已授权只读工具后重新核对。协商工具按实际 scopes 过滤，明细默认折叠；历史/断开不伪装持续在线，声明也不证明客户端发现或展示了全部工具。
+
+检查和导出的本页状态不会新增持久格式。切页取消只读检查，退出清除配置预览、导出/检查记录和客户端声明展示；收回权限或撤销后仍由 Core 在真实调用时执行原有门禁。
+
+### CLI 检查与预设（alpha.1 已有）
 
 Core由用户明确启动并保持运行；stdio桥由客户端启动和关闭，HTTP客户端连接已开启的 `/mcp`。桥退出只结束自己的连接，不停止Core或已受理的媒体操作。连接页记录最近使用与握手事实，不把它称为客户端持续在线。
 
@@ -79,7 +94,7 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
 
 ## 选择能力和工具
 
-功能分组与操作权限分开。当前可选媒体分组为 `image-edit`、`image-generate`、`tts`、`transcribe`，根版本进一步限制实际可用分组；查看工具总目录：
+功能分组与操作权限分开。当前可选媒体分组为 `image-edit`、`image-generate`、`tts`、`transcribe`；beta.1另有 `video-generate`，根版本进一步限制实际可用分组；查看工具总目录：
 
 ```bash
 node bin/dsh-iris.js mcp capabilities
@@ -87,8 +102,9 @@ node bin/dsh-iris.js mcp capabilities
 
 - `--capabilities image-edit`：图片导入、流程、模型查询、单次继续、原操作查询、本地停止和原图读取。
 - `--capabilities image-generate`：独立文生图创建、流程/模型查询、单次继续、原操作查询、本地停止和结果读取；可用 `image-edit,image-generate` 同时选择。原默认仍仅 image-edit。
-- `--capabilities tts`：实际语音候选、文字/可选音色创建、原音频内容及共享 Run/Operation 工具；仅在 v3 根开启。
-- `--capabilities transcribe`：实际转写候选、原音频导入/来源ID创建、音频与文字读取及共享 Run/Operation 工具；仅在 v3 根开启。可用 `tts,transcribe` 同时选择。
+- `--capabilities tts`：实际语音候选、文字/可选音色创建、原音频内容及共享 Run/Operation 工具；仅在 v3 根（beta.1也支持 v4）开启。
+- `--capabilities transcribe`：实际转写候选、原音频导入/来源ID创建、音频与文字读取及共享 Run/Operation 工具；仅在 v3 根（beta.1也支持 v4）开启。可用 `tts,transcribe` 同时选择。
+- `--capabilities video-generate`（beta.1）：新 v4 根的实际文生视频候选、保存意图、原视频资源引用及共享 Run/Operation 工具。视频返回 `resource_link`，用标准 `resources/read` 读取 MP4/WebM（≤32 MiB），每次读取检查当前授权；客户端播放支持需另行确认。
 - `--capabilities none`：关闭媒体流程工具，保留两项连接管理工具。
 - `--tools iris_core_models,iris_core_image`：在分组范围内进一步选择具体工具；`--tools none` 注册零工具。明确工具名单不会暗中补齐连接工具。
 - `--scopes read`：只读；`create` 允许上传/建 Run，`execute` 允许明确继续，`stop` 允许本地停止。必须包含 read；首次继续可能产生模型费用。
@@ -135,6 +151,10 @@ stdout 只返回输出位置等元数据；文件以 0600 排他创建，不覆�
 
 HTTP 使用官方 `createMcpHandler`，提供 2026-07-28 请求元数据模式及 2025-11-25 的无状态兼容路径；旧协议 GET/DELETE 的可选会话操作返回 405。Host/Origin 和 Bearer 在 SDK 前校验，仅回环监听。静态文件仍仅启动时读取；连接中心的显式 owner 操作可即时变更授权。该入口没有公网发布、OAuth 登录或自动端口发现。
 
+**beta.1的负载预算**：同一 Core 的所有 HTTP MCP 连接共享4条活动消息额度，从读取正文前占用，直到响应排空、失败或断开后释放。兼容路径的批量请求按消息条数占用，单批最多4条，超过返回400及 `IRIS_MCP_HTTP_BATCH_TOO_LARGE`；剩余额度不足返回429、`Retry-After: 1` 及 `IRIS_MCP_HTTP_BUSY`，不会在入口排队。正文仍限9 MiB，原有图片/音频/视频大小限制保持；这是活动请求预算，不是进程内存配额，也不限制远端持久任务数量。
+
+入口有界读取正文，超限后丢弃剩余上传；解析结果通过官方 SDK 的 `parsedBody` 接口交付，协议校验仍由 SDK 完成。慢上传或未排空的媒体响应占用额度；连接取消只结束本地等待，已受理 Operation 继续按原 Key 查询。客户端收到429后可稍后显式重试；写操作继续保留原 Key，不自动换 Key 或重新生成。此额度仅用于 HTTP MCP，stdio、工作台控制接口和[媒体调度](MEDIA_SCHEDULING.md)分别管理各自资源。
+
 当前每项 HTTP 授权在 Core 中对应一个逻辑桥实例。共享同一凭据的多个程序不被猜测为不同产品或真实在线进程；需要分别查看/授权时使用独立连接。该数据空间仍是同一用户共享作品，不是连接之间的数据租户隔离。
 
 实际客户端的标准名称/版本以“客户端声明”显示，桥版本另外记录，不作为认证依据。新增工具权限后，stdio 需要重新启动加载工具表；收回权限或撤销后，旧进程也无法绕过 Core。连接中心仅在明确导出时返回 HTTP 密钥；CLI 的 HTTP 导出继续要求新建私有文件，不打印认证值。
@@ -149,12 +169,13 @@ HTTP 使用官方 `createMcpHandler`，提供 2026-07-28 请求元数据模式�
 |---|---|---|
 | 静态图片导入、原图读取 | 已有 | image-edit 分组支持 |
 | 固定图片编辑 Flow、Run/原 Task 查询、比较图引用 | 已有 | image-edit 分组支持 |
-| 单次继续、原 Key 接回、本地停止 | 已有 | 图片/音频分组支持，按原 Run 能力检查 |
+| 单次继续、原 Key 接回、本地停止 | 已有 | 图片/音频分组支持；源码另支持视频，按原 Run 能力检查 |
 | 明确选择作品、导出到本机路径 | 已有 | 尚未接入，继续使用 CLI |
 | 独立文生图 | 已有 | image-generate 分组支持；新 v2/v3 执行根，明确模型与单张输出 |
 | TTS、原音频读取 | 已有 | tts 分组，新 v3 根，标准 audio 内容块，实际播放器取决于客户端 |
 | 音频导入、转写与文字读取 | 已有 | transcribe 分组，新 v3 根，持久来源与原任务恢复 |
-| 视频/S2V、Music | 已有 | 尚未接入 |
+| 文生视频 | 已有 | beta.1的 video-generate 分组，新 v4 根，标准资源引用与读取；已发布 alpha.1 未接入 |
+| 图生视频/S2V、Music | 已有 | 尚未接入 |
 | 视觉、OCR、定位、摘要 | 已有 | 尚未接入 |
 | 裁剪、像素差异、抽帧、HTML 截图 | 已有 | 尚未接入 |
 | 全媒体任务/作品管理及可恢复维护 | 已有 | 仅有固定流程所需的有限读取，其余尚未接入 |
@@ -186,6 +207,6 @@ stdio stdout保持MCP协议专用。EOF、明确关闭或启动取消会关闭�
 
 这些结果不代表每个品牌客户端或 Agent 的自主使用都已验收。DSH 的可选原生桥与三项 Skills 保持；Skill 发现/安装仍按 [Core Skills](CORE_SKILLS.md)单独处理。真实 Web 按显式开关提供连接管理与媒体操作，默认只读。
 
-连接中心还支持[纯数据模板和连接专属 Skill](LOCAL_WEB.md#显式开启连接中心)：模板只选择现有传输与 JSON 格式，Skill 按当前有效工具生成，下载后用 `skills install --bundle` 显式安装。配置、工具权限和使用说明各自独立；Skill 不提供身份凭据，不自动注册 MCP 或扩展连接权限。这些入口均为0.3 alpha源码能力。
+连接中心还支持[纯数据模板和连接专属 Skill](LOCAL_WEB.md#显式开启连接中心)：模板只选择现有传输与 JSON 格式，Skill 按当前有效工具生成，下载后用 `skills install --bundle` 显式安装。配置、工具权限和使用说明各自独立；Skill 不提供身份凭据，不自动注册 MCP 或扩展连接权限。这些入口均为0.3 beta能力。
 
 文生图连接的 Skill 对 ComfyUI 先确认缺少的工作流、LoRA 与参数要求，再使用实际目录中的 `modelRef` 和 `comfyWorkflow.parameters`。目录工具、执行工具或改图工具未开放时，说明会相应限定调用和搭配，不提供越权的替代路径。当前可将 ComfyUI 输出作为同根作品交给支持改图的 API，反向图片输入尚未接入；详见 [ComfyUI Skill 参考](../skills/iris-core/references/comfyui.md)。

@@ -1,6 +1,6 @@
 {
   "name": "@mokuyoaxis/dsh-iris",
-  "version": "0.3.0-alpha.1",
+  "version": "0.3.0-beta.1",
   "description": "A multimodal workspace for Agents: Core Web, MCP, CLI and native DSH tools with model pools, durable media tasks, ComfyUI and explicit plugins.",
   "type": "module",
   "main": "lib/index.js",
@@ -25,6 +25,8 @@
   },
   "files": [
     "plugins/contact-sheet",
+    "templates/plugin-starter",
+    "templates/provider-starter",
     "lib",
     "bin",
     "cordis.patch.yml",
@@ -114,6 +116,7 @@
   "dependencies": {
     "@modelcontextprotocol/server": "2.3.1",
     "sharp": "^0.35.5",
+    "undici": "7.30.1",
     "zod": "4.6.7"
   },
   "publishConfig": {

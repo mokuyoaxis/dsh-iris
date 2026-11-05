@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { useTempDshHome } from './test-env.js';
+import { FAKE_WAV } from './fixtures/fake-lifecycle-provider.mjs';
 
 useTempDshHome('iris-tts-task-v2');
 const assert = (condition, message, extra) => {
@@ -39,7 +40,7 @@ config.setAssignmentOrder('tts', [
   models.modelRef(second.id, 'qwen3-tts-flash')
 ]);
 
-const AUDIO = Buffer.from('fake-tts-audio-bytes');
+const AUDIO = FAKE_WAV;
 const taskStoreDir = () => path.join(dshCoreDataRoot(), 'task-store', 'v0', 'tasks');
 function coreRecords() {
   try {
@@ -93,7 +94,7 @@ try {
   const artifact = await runtime.run('inspect', ({ dataRoot }) => inspectCoreArtifact(dataRoot, task.artifactIds[0]));
   const bytes = await runtime.run('inspect', ({ dataRoot }) => readCoreArtifactBytes(dataRoot, artifact.id));
   await runtime.dispose();
-  assert(artifact.kind === 'generated-audio' && artifact.mediaType === 'audio/mpeg'
+  assert(artifact.kind === 'generated-audio' && artifact.mediaType === 'audio/wav'
       && artifact.metadata?.capability === 'tts' && bytes.bytes.equals(AUDIO),
     'TTS Artifact 必须是 generated-audio 且字节与响应一致', artifact);
   for (const record of coreRecords()) {

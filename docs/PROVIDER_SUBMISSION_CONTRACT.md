@@ -51,7 +51,7 @@ Provider `submit()` 必须返回以下四种结构之一：
 
 错误记录不得包含 `cause`、stack、请求体、响应正文、API Key、Authorization、POSIX/Windows 私有绝对路径或签名 URL。调用方可以在当前进程中保留原始异常用于调试，但不得把它当作 Task/Attempt JSON 或事件载荷。
 
-## 上游响应与交付限额（0.3 alpha）
+## 上游响应与交付限额（0.3 beta）
 
 内置 HTTP 媒体传输按实际响应累计字节，不仅依赖 Content-Length；chunked 或压缩解码后的正文同样计数。元数据/错误 JSON 最多 2 MiB，含内嵌媒体的成功 JSON 最多 128 MiB；产物限额为图片 64 MiB、音频 128 MiB、文本 8 MiB、视频 1 GiB。超限中止读取，下载临时文件在原收尾路径清理，不替换既有目标；超时和取消规则继续适用。这是单个响应/产物限额，不是作品库自动配额或 GC。
 
@@ -64,3 +64,5 @@ Provider `submit()` 必须返回以下四种结构之一：
 429 等可证明未创建任务的明确 4xx 拒绝可进入下一候选；408、409、425、499、5xx、网络异常、超时和成功响应缺少必要结果一律停止并记录 `acceptance=unknown`。同步生成已经成功后，下载或落盘失败记录为 `outcome=succeeded / deliveryState=failed`，不会重新生成。
 
 视频、转写与 TTS 使用同一受理边界，但提交前输入准备不自动成为 Core 事实。0.2.1 的 S2V 先持久化 Core Attempt，再按实际候选账号上传首帧和音频；上传失败保存安全错误，零生成 submit。Core 转写的 `audio_path` 在 Host/CLI 边界先上传，失败以脱敏的 `stage=upload / acceptance=not_accepted` 返回调用方，零 submit、零 Core Task。准备成功后才创建 Core Task/Attempt 并进入写前 submit；TTS 同步成功则先记 `completed/accepted` 再交付音频。工作台消费稳定的人类状态，并提供重新观察、重新交付、提醒已读/恢复和需确认费用的知情重试。v0.1.4 已将 discovery、submit、poll、cancel、download 与 error mapping 收口到统一 Adapter，并由零网络 conformance runner 覆盖现有 DashScope/OpenAI Images 路径。
+
+上段转写先上传的描述保留旧发布版本的阶段事实。beta.1已将独立 CLI `run transcribe --input '{"audio_path":"..."}'` 的上传纳入原 Task/Attempt，并按实际候选账号分别准备，取消停止候选链；根忙不上传、静态不支持不建 Task，实际上传失败保留原 Attempt。固定转写 Flow 同样在原 Attempt 内准备；通用上传端口本身仍不等于持久化。详见[上传边界](PROVIDER_ADAPTER_CONTRACT.md#可选输入准备与上传边界)。

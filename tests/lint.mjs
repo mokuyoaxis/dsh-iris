@@ -3,7 +3,7 @@
  * 运行：npm run lint   （= node tests/lint.mjs）
  *
  * 三层检查，零依赖：
- *   ① 语法：对 lib/ 与 tests/ 下所有 .js/.mjs 逐个 node --check；
+ *   ① 语法：对 lib/、plugins/、tests/ 及开发脚本/模板的 .js/.mjs 逐个 node --check；
  *   ② 结构防回归：守卫本阶段刚做的可靠性契约，防止未来改动悄悄退化：
  *      - api.js 不再泄露绝对路径（buildState 无 home: 字段）
  *      - media.js 具备 Accept-Ranges / createReadStream（Range 流式在）
@@ -43,6 +43,7 @@ function walk(dir) {
   trace('walk', { directory: path.relative(root, dir) });
   const out = [];
   for (const f of fs.readdirSync(dir)) {
+    if (f === 'node_modules') continue;
     const p = path.join(dir, f);
     const st = fs.statSync(p);
     if (st.isDirectory()) out.push(...walk(p));
@@ -53,7 +54,7 @@ function walk(dir) {
 
 /* ---------- ① 语法检查 ---------- */
 const files = [...walk(path.join(root, 'lib')), ...walk(path.join(root, 'bin')), ...walk(path.join(root, 'tests')), ...walk(path.join(root, 'scripts')),
-  ...walk(path.join(root, 'prototypes/workbench'))];
+  ...walk(path.join(root, 'prototypes/workbench')), ...walk(path.join(root, 'templates')), ...walk(path.join(root, 'plugins'))];
 stage('syntax', { files: files.length });
 for (const [index, file] of files.entries()) {
   const rel = path.relative(root, file);
@@ -338,8 +339,7 @@ if (!/requireHostPort\(host, 'attachments'/.test(dshCoreAdapter)
 
 /* B 阶段：Core Task 用户侧只读投影收口的结构守卫。 */
 const userProjection = read('lib/core-user-projection.js');
-if (!/from ['"]\.\/task-semantics\.js['"]/.test(userProjection)
-    && !/export function projectCoreTaskUserView/.test(userProjection)) {
+if (!/export function projectCoreTaskUserView/.test(userProjection)) {
   failures.push('lib/core-user-projection.js 缺少五类用户状态投影入口');
 }
 for (const phrase of ['observation_paused', 'delivery_failed', '远端可能仍在运行', 'core:']) {
@@ -625,7 +625,8 @@ if (!/userState/.test(clientSource) || !/useCoreUserTasks/.test(clientSource)) {
       || !/audio_url/.test(actionsSrc)) {
     failures.push('lib/actions.js 转写动作必须走 submitCoreTranscribe（legacy submitTranscriptionV2 已移除）');
   }
-  if (!/normalizeGenerationInput\(before\.capability, input\.provider_input(?:,|\))/.test(read('lib/command-service.js'))
+  if (!/normalizeGenerationInput\(before\.capability, suppliedInput,/.test(read('lib/command-service.js'))
+      || !/let suppliedInput = input\.provider_input/.test(read('lib/command-service.js'))
       || !/providerInput\.audioUrl = audioUrl/.test(read('lib/generation-input.js'))
       || !/providerInput\.imgDataUrl = imgDataUrl/.test(read('lib/generation-input.js'))) {
     failures.push('retry 必须经共享边界保留转写地址与视频首帧，不得直接透传外部字段');
@@ -813,7 +814,8 @@ if (tasksLib) {
 // 网络与路由健壮性（2026-09-03 健康检查）
 {
   const adaptersSrc = read('lib/adapters.js');
-  const fetches = (adaptersSrc.match(/await fetch\(/g) || []).length;
+  // The instance network boundary renamed raw fetch calls to the injected fetchPort.
+  const fetches = (adaptersSrc.match(/\b(?:fetch|fetchPort)\(/g) || []).length;
   const signals = (adaptersSrc.match(/signal:/g) || []).length;
   if (fetches === 0 || signals < fetches) {
     failures.push(`lib/adapters.js 每个 fetch 必须带超时 signal（fetch ${fetches} 处，signal ${signals} 处）——挂死连接会冻住盯守 tick`);

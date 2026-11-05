@@ -1,6 +1,6 @@
-# Core 服务与 harness 接入（0.3 alpha）
+# Core 服务与 harness 接入（0.3 beta）
 
-0.3.0-alpha.1提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**稳定 npm 0.2.7 不包含这些入口**；以下使用源码命令，安装alpha包后可将 `node bin/dsh-iris.js` 换为 `npx dsh-iris`。支持固定 `image-edit/v0`，显式新 v2 根另提供 [image-generate/v0 与 ComfyUI](IMAGE_GENERATION.md)，新 v3 根另提供 [speech/v0 与 transcribe/v0](AUDIO_FLOWS.md)，同时保留图片流程。[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用 CLI，页面下载原字节。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
+0.3.0-alpha.1提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**稳定 npm 0.2.7 不包含这些入口**；以下使用源码命令，安装beta包后可将 `node bin/dsh-iris.js` 换为 `npx dsh-iris`。支持固定 `image-edit/v0`，显式新 v2 根另提供 [image-generate/v0 与 ComfyUI](IMAGE_GENERATION.md)，新 v3 根另提供 [speech/v0 与 transcribe/v0](AUDIO_FLOWS.md)，同时保留图片流程。**beta.1**另有新 v4 根的[文生视频](VIDEO_FLOWS.md)，不迁移已有根。[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用 CLI，页面下载原字节。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
 
 ## 显式启动
 
@@ -20,9 +20,11 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
   --connections-file /absolute/new-mcp-pair/server-grants.json
 ```
 
-`--allow-execution` 同时开启零生成上传/创建与有限执行；不传时保持既有默认只读行为。服务需要已初始化的 v1/v2/v3 执行根和有效的显式配置。配置静态校验、启动和连接握手不调用模型。每次明确继续至多调用一次 `flow.continue`：首次提交或检查/补交付原 Task，不持续轮询，不重提已有 Attempt。
+`--allow-execution` 同时开启零生成上传/创建与有限执行；不传时保持既有默认只读行为。服务需要已初始化的 v1/v2/v3 执行根（beta.1视频流程另支持 v4）和有效的显式配置。配置静态校验、启动和连接握手不调用模型。每次明确继续至多调用一次 `flow.continue`：首次提交或检查/补交付原 Task，不持续轮询，不重提已有 Attempt。
 
-第二个执行 Host 无法取得同根 runner 租约；同根可另开只读页面。接收后服务自行收尾，关页或断开 harness 不撤销已接收操作。writer 正忙时明确拒绝新接收，调用方保留原 Key 后显式重试，不能假定已排队。
+第二个执行 Host 无法取得同根 runner 租约；同根可另开只读页面。接收后服务自行收尾，关页或断开 harness 不撤销已接收操作。默认串行模式在 writer 正忙时明确拒绝新接收，调用方保留原 Key 后显式重试，不能假定已排队。
+
+beta.1可显式增加 `--scheduler-config /absolute/private/scheduling.json`，启用[有界媒体调度](MEDIA_SCHEDULING.md)：单根仍只有一个写者，网络等待可重叠，HTTP并发/RPS/远端未结束任务分别限额。短接收与结束事务不等待整次网络请求，原任务查询/下载不被新提交额度阻挡。未配置仍保持上述默认语义，不自动迁移或重提。
 
 也可使用 [连接中心](LOCAL_WEB.md#显式开启连接中心)在同一服务中提供页面、持久授权和 MCP。必须同时指定 `--allow-connection-management --connection-store`；需要执行时再显式添加 `--allow-execution --provider-config`，不会自动开启生成。默认 `web serve` 继续只读。连接管理目录单独持有租约，业务写入仍由这一个 Core runner 管理。
 
@@ -77,6 +79,8 @@ MCP 调用取消或 EOF 只结束桥的本地请求；已经接收的 Operation 
 
 需要标准 HTTP MCP 时，在上面的 API 启动命令增加 `--allow-mcp`，使用 `origin/mcp` 和该连接的 Bearer 凭据；默认不开放。stdio/HTTP 共用能力/工具范围，HTTP 配置导出只写入新的私有文件，具体命令见 [通用 MCP](MCP.md)。
 
+beta.1对 HTTP MCP 使用实例共享的4条活动消息预算，覆盖正文读取和媒体响应排空；兼容批次逐条计数、最多4条，繁忙返回429。单正文仍为9 MiB，媒体限额与已受理任务保持；它和[远端媒体调度](MEDIA_SCHEDULING.md)独立，详见[MCP HTTP](MCP.md#http填写-url-和认证)。
+
 ## DSH 可选服务连接
 
 工作台可另显式增加 [供应商管理](PROVIDER_SETTINGS.md)与选择 [Panel](PANEL_EXTENSIONS.md)。这两者不扩大连接/MCP 权限：上游凭据留在 Core，普通 harness 不能读写供应商设置。
@@ -92,6 +96,6 @@ IRIS_CORE_SCOPES=read,create,execute,stop <your-existing-DSH-start-command>
 
 首版为**新增共享 Flow 工具的可选连接模式**：原 17 项媒体工具、三项 DSH Skills 和原生 UI 保持；另注册与 MCP 相同的授权 `iris_core_*` 工具。图片通过真实 DSH attachment 服务交付。默认不设置此文件时，不连接服务、不新增工具。Core Skills 的 [显式安装器](CORE_SKILLS.md)继续独立，MCP 握手不替代 Skill 发现。
 
-此 DSH 原生共享桥仍限图片组；新 v3 语音/转写使用通用 MCP 或 Core Web。选择音频组会明确拒绝原生桥启动，避免注册尚无附件投影的工具；不影响原17项媒体工具的语音/转写。
+此 DSH 原生共享桥仍限图片组；新 v3 语音/转写使用通用 MCP 或 Core Web。选择音频组（beta.1也包括视频组）会明确拒绝原生桥启动，避免注册尚无附件投影的工具；不影响原17项媒体工具的语音/转写。
 
 传统媒体工具继续使用原根；共享 Flow 仅使用连接所绑定的 Core 根。Core 离线时共享工具明确失败，不切回本地另生成。此模式尚未把整个旧媒体栈、浏览器/视觉/会话服务或 DSH UI 迁成远程 RPC。Core 连接中心现阶段创建通用 MCP 档案；DSH 原生服务授权仍由上述静态文件管理，不自动修改 DSH 设置。

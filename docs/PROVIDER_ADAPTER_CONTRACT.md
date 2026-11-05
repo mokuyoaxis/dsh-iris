@@ -6,6 +6,8 @@ Iris 0.2.3 提供 `music` Task能力与 Chat Completions 内嵌音频 Adapter（
 
 ## 目标与依赖方向
 
+beta.1已提供统一插件的[Provider 工厂上下文 v1 与公开类型](PROVIDER_PLUGIN_CONTRACT.md)，并随包分发[独立万相 Provider 模板](../templates/provider-starter/README.md)。本页保留内部生命周期说明；Adapter v0、工厂上下文 v1 和 Task 持久版本相互独立，完整 SDK 尚未冻结。
+
 ```text
 Action / Task watcher / recovery / model discovery
                        │ canonical operation/result
@@ -25,7 +27,7 @@ Action / Task watcher / recovery / model discovery
 
 ## 描述结构
 
-已发布版本的协议工厂由内部注册表选择；0.2.0 基线提供 `dashscope` 和 `openai-images`，0.2.1 另有 `openai-chat-images` 与 `openai-responses-images`。面向 0.3 的0.3 alpha源码另提供[实例级 Provider 扩展首版](PROVIDER_EXTENSIONS.md)，经实验性窄入口显式加载可信协议；这不代表完整 SDK 冻结。生图模型可通过可选 `imageProtocol` 覆盖账号默认；选择、实测与 Task binding 共用有效协议，详见 [模型级图片协议](CLI_MANAGEMENT.md#模型级图片协议)。未知的显式 `mediaProtocol` 保留原值，未注册时在联网前拒绝；错误只包含合法协议标识，不回显端点或凭据。
+已发布版本的协议工厂由内部注册表选择；0.2.0 基线提供 `dashscope` 和 `openai-images`，0.2.1 另有 `openai-chat-images` 与 `openai-responses-images`。面向 0.3 的0.3 beta另提供[实例级 Provider 扩展首版](PROVIDER_EXTENSIONS.md)，经实验性窄入口显式加载可信协议；这不代表完整 SDK 冻结。生图模型可通过可选 `imageProtocol` 覆盖账号默认；选择、实测与 Task binding 共用有效协议，详见 [模型级图片协议](CLI_MANAGEMENT.md#模型级图片协议)。未知的显式 `mediaProtocol` 保留原值，未注册时在联网前拒绝；错误只包含合法协议标识，不回显端点或凭据。
 
 未配置协议或选择 `auto` 时，官方端点可识别为对应协议；其他端点继续使用 OpenAI Images 兼容路径，并标记 `protocolInferred:true`。该标记表示尚待用户确认兼容性，不代表已经验证成功。显式选择协议会清除标记；旧记录中已保存的明确协议不追溯猜测其来源。CLI 与 DSH 共用选择逻辑，Task binding 绑定最终实际协议与端点。
 
@@ -65,6 +67,8 @@ Core Attempt 持久化 `providerId::modelId` 复合身份，具体 Provider Adap
 
 `accepted` 不是独立网络操作，而是异步 `submit` 的受理结果。它必须携带非空远端任务 ID；同步成功使用 `completed`，并提供 canonical `artifacts`。迁移期仍保留可直接读取但不随 JSON 序列化的旧 `value`，供 0.1.4 调用方使用。四态提交和自动 failover 规则继续以 [Provider 提交契约 v0](PROVIDER_SUBMISSION_CONTRACT.md) 为准。
 
+当前源码的内置图片、视频、语音、音乐、转写提交及直接视觉传输禁止自动跟随HTTP重定向；输入上传也不自动重发正文到第二个地址。已派发的计费提交遇到重定向时保留受理未知，不用末跳401/403推断首跳未受理，也不借此切换模型。可信Provider扩展应遵守同一费用边界；媒体下载保留其已有重定向语义。从源码运行`tests/provider-submit-redirects.mjs`可核对同源/跨源307、308、原Task/Attempt及下载对照；它不调用真实计费服务。
+
 ## poll、cancel 与交付事实
 
 `poll` 的终态不能互相折叠：
@@ -84,7 +88,9 @@ Core Attempt 持久化 `providerId::modelId` 复合身份，具体 Provider Adap
 
 Host 和 CLI 通过 `prepareProviderInput(adapter, { model, filePath, signal?, timeoutMs? })` 调用可选准备能力，不能自行绕过 Adapter 上传。DashScope 的 Adapter 闭包持有实际凭据与媒体端点并实现临时上传；OpenAI Images 明确不支持。未实现时在网络调用前抛 `IRIS_PROVIDER_INPUT_PREPARATION_UNSUPPORTED`。返回的 `{url}` 只供紧随其后的提交读取，属性不参与 JSON 序列化，不能进入 Task、日志或能力快照。
 
-上传错误经 Adapter 映射与脱敏，固定为 `stage=upload / acceptance=not_accepted`；这组字段属于返回调用方的安全错误分类，**不等于已持久化的 Core Attempt stage**。上传属于 Host/CLI 输入准备，只有随后真正调用 `submit` 才跨越可能计费的受理边界。S2V 已迁入 Core：先持久化 Attempt，再按实际候选账号上传首帧和音频，上传失败可写入该 Attempt，且不调用生成 submit；Core 转写的 `audio_path` 在创建 Task 前上传，失败会直接返回且不创建 Core Task，也不会调用 submit。这是 D-12 当前采用的路径 B；若未来要求把准备失败纳入 Core 事实，须另行评审路径 A，不能由错误字段反推已经落盘。
+上传错误经 Adapter 映射与脱敏，固定为 `stage=upload / acceptance=not_accepted`；这组字段属于返回调用方的安全错误分类，**不等于已持久化的 Core Attempt stage**。只有随后真正调用生成 `submit` 才跨越生成请求的受理边界。S2V 和固定转写 Flow 先持久化 Attempt，再按实际候选账号准备输入；上传失败可写入该 Attempt，且不调用生成 submit。
+
+beta.1也将独立 CLI `run transcribe` 的 `audio_path` 统一放入原 Attempt：先获得写者，再建 Task/Attempt，按每个候选自己的账号上传；仅明确未受理才继续后备候选，取消会中止上传并停止候选链。静态确认全部协议均未实现上传时，在网络和 Task 创建前返回稳定错误（数据根可能已初始化）；实际上传失败保留 Attempt，签名 URL 和本地路径不入任务记录。旧发布版本的该 CLI 分支仍是先上传后建 Task 的 D-12 路径 B；通用 `prepareProviderInput` 本身不承诺持久化，不能只按错误字段反推已经落盘。
 
 ## 错误与取消传播
 

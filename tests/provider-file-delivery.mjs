@@ -33,6 +33,10 @@ fs.copyFileSync = (source, ...args) => {
 
 function fixture(capability, mediaType, blocks = 16) {
   const calls = { submit: 0, poll: 0, download: 0 }, digests = [];
+  // Container headers keep this streaming/copy fixture honest; it does not test audio decoding.
+  const first = Buffer.from(chunk);
+  if (mediaType === 'audio/mpeg') Buffer.from([0x49, 0x44, 0x33, 3, 0, 0, 0, 0, 0, 0]).copy(first);
+  if (mediaType === 'audio/wav') { first.write('RIFF'); first.writeUInt32LE(blocks * chunk.length - 8, 4); first.write('WAVE', 8); }
   const artifacts = [{ kind: 'remote-url', url: 'https://fixture.invalid/private-media', mediaType }];
   const adapter = defineProviderAdapter({ id: 'file-' + capability, protocol: 'fixture', capabilities: [capability],
     operations: {
@@ -45,20 +49,20 @@ function fixture(capability, mediaType, blocks = 16) {
       async download({ targetPath }) {
         calls.download++; const hash = crypto.createHash('sha256');
         const fd = fs.openSync(targetPath, 'wx', 0o600);
-        try { for (let i = 0; i < blocks; i++) { fs.writeSync(fd, chunk); hash.update(chunk); } }
+        try { for (let i = 0; i < blocks; i++) { const bytes = i === 0 ? first : chunk; fs.writeSync(fd, bytes); hash.update(bytes); } }
         finally { fs.closeSync(fd); }
         digests.push(hash.digest('hex')); return { bytes: blocks * chunk.length };
       },
       mapError: providerErrorRecord
     }, unsupported: { discover: 'fixture', cancel: 'fixture' }
   });
-  return { adapter, calls, digests };
+  return { adapter, calls, digests, size: blocks * chunk.length };
 }
 function verify(dataRoot, task, item, capability, mediaType, expectedKind) {
   assert.equal(task.acceptance, 'accepted'); assert.equal(task.outcome, 'succeeded');
   assert.equal(task.deliveryState, 'ready'); assert.equal(task.artifactIds.length, 1);
   const artifact = inspectCoreArtifact(dataRoot, task.artifactIds[0]);
-  assert.equal(artifact.size, 16 * chunk.length); assert.equal(artifact.mediaType, mediaType);
+  assert.equal(artifact.size, item.size); assert.equal(artifact.mediaType, mediaType);
   assert.equal(artifact.kind, expectedKind); assert.equal(artifact.digest.value, item.digests.at(-1));
   assert.deepEqual(artifact.metadata, { taskId: task.id, capability });
   assert.deepEqual(artifact.relations, []);
@@ -77,13 +81,25 @@ try {
     const dataRoot = path.join(base, capability + '-' + mediaType.replace('/', '-'));
     const runtime = createCoreRuntime({ dataRoot, mode: 'writer' }); runtime.start();
     try {
-      const item = fixture(capability, mediaType), runner = createProviderTaskRunner(runtime);
+      const item = fixture(capability, mediaType, capability === 'transcribe' ? 8 : 16), runner = createProviderTaskRunner(runtime);
       const result = await runner.submit({ capability, candidates: [{ adapter: item.adapter, model: item.adapter.id + '::fixture' }],
         providerInput: { prompt: 'zero-network file delivery' } });
       const task = capability === 'tts' ? result.task : await runner.observe(result.taskId, item.adapter);
       verify(dataRoot, task, item, capability, mediaType, kind);
     } finally { await runtime.dispose(); }
   }
+  // A third-party adapter cannot bypass the transcript limit by returning a larger file.
+  const oversizedRoot = path.join(base, 'oversized-transcript');
+  const oversizedRuntime = createCoreRuntime({ dataRoot: oversizedRoot, mode: 'writer' }); oversizedRuntime.start();
+  try {
+    const item = fixture('transcribe', 'text/plain'), runner = createProviderTaskRunner(oversizedRuntime);
+    const submitted = await runner.submit({ capability: 'transcribe', candidates: [{ adapter: item.adapter, model: item.adapter.id + '::fixture' }] });
+    const rejected = await runner.observe(submitted.taskId, item.adapter);
+    assert.equal(rejected.outcome, 'succeeded'); assert.equal(rejected.deliveryState, 'failed');
+    assert.equal(rejected.lastError.providerCode, 'IRIS_PROVIDER_RESPONSE_TOO_LARGE');
+    assert.deepEqual(rejected.artifactIds, []); assert.deepEqual(item.calls, { submit: 1, poll: 1, download: 1 });
+    assert(!fs.existsSync(path.join(oversizedRoot, 'artifact-store')));
+  } finally { await oversizedRuntime.dispose(); }
   // 本地接收失败保留远端成功；显式重交付仅 poll/download，不再次 submit。
   const failedRoot = path.join(base, 'failed-video'), runtime = createCoreRuntime({ dataRoot: failedRoot, mode: 'writer' }); runtime.start();
   try {
@@ -101,7 +117,7 @@ try {
     assert.equal(item.calls.poll, 2); assert.equal(item.calls.download, 2);
   } finally { failCopy = false; await runtime.dispose(); }
   assert.equal(copies, 6); assert.equal(guardedReads, 0, '所有非图片交付不整文件读取 staging');
-  console.log('PASS 文件交付：16 MiB 视频/MP3/WAV/文本、哈希/元数据、复制失败与零重提恢复、staging 零整读');
+  console.log('PASS 文件交付：16 MiB 视频/MP3/WAV、8 MiB 文本及超限拒绝、哈希/元数据、复制失败与零重提恢复、staging 零整读');
 } finally {
   fs.readFileSync = read; fs.copyFileSync = copy;
   fs.rmSync(base, { recursive: true, force: true });

@@ -21,8 +21,10 @@ export async function verifyPluginPanelBrowser({ out, dataRoot, chosenRunId, cdp
   const preview = "document.querySelector('#plugin-preview-slot .plugin-surface')?.shadowRoot";
   async function login(session) {
     const token = path.join(out, 'plugin-owner-' + result.checks.length); writeLocalApiTokenFile(token, session.accessToken, dataRoot);
-    await cdp('Page.navigate', { url: 'about:blank' }); await cdp('Page.navigate', { url: session.origin + '/#' + chosenRunId });
-    await wait(() => evaluate("Boolean(document.documentElement.dataset.theme&&!document.querySelector('#connection').hidden)"), 'plugin login shell');
+    await cdp('Page.navigate', { url: 'about:blank' });
+    const navigation = await cdp('Page.navigate', { url: session.origin + '/#' + chosenRunId });
+    await wait(async () => (await cdp('Page.getFrameTree')).frameTree.frame.loaderId === navigation.loaderId
+      && evaluate("Boolean(document.documentElement.dataset.theme&&document.readyState!=='loading'&&!document.querySelector('#connection').hidden)"), 'current plugin login document');
     await chooseToken(token); await readyRun(chosenRunId);
   }
   try {
@@ -104,7 +106,7 @@ export async function verifyPluginPanelBrowser({ out, dataRoot, chosenRunId, cdp
     const requestsBefore = report.requests.length;
     session = await restart({}); await login(session);
     await check('a legacy session without Panel contributions logs in and reads its Run without requesting new script or style routes', "!window.__panelPlugin&&document.querySelector('#plugin-navigation').hidden&&!document.querySelector('#run-view').hidden");
-    assert(!report.requests.slice(requestsBefore).some(item => /\/(plugin-panel\.js|plugin-surface\.css)(?:[?#]|$)/.test(item.url)));
+    assert(!report.requests.slice(requestsBefore).some(item => /\/(plugin-panel\.js|plugin-status\.js|plugin-surface\.css)(?:[?#]|$)/.test(item.url)));
     result.status = 'passed'; save();
   } finally { await registry.dispose(); }
 }

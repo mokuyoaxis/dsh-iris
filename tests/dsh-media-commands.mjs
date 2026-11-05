@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { useTempDshHome } from './test-env.js';
+import { deliverRender } from './fixtures/render-route-fixture.mjs';
 import { ffmpegAvailable } from '../lib/media-probe.js';
 import { listCoreArtifacts, readCoreArtifactBytes } from '../lib/core-artifacts.js';
 import { createDshHostAdapter } from '../lib/dsh-host-adapter.js';
@@ -42,6 +43,7 @@ const services = {
       assert(signal instanceof AbortSignal);
       const htmlPath = path.join(config.irisHome(), 'render', new URL(request.url).pathname.split('/')[3], 'index.html');
       assert.match(fs.readFileSync(htmlPath, 'utf8'), /Core HTML/);
+      deliverRender(request.url);
       browserCalls.push('openUrl');
     },
     async screenshot(session, request, signal) {

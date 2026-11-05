@@ -164,7 +164,8 @@ try {
   assert(unsupported.status === 1 && unsupported.stderr.includes('IRIS_PROVIDER_INPUT_PREPARATION_UNSUPPORTED'),
     '未实现上传的协议必须返回稳定错误', unsupported.stderr);
   assert(JSON.stringify(state()) === beforeUnsupported, '不支持上传时不得调用 Provider');
-  assert(!fs.existsSync(path.join(base, 'unsupported-data')), '上传拒绝发生在 Core runtime 创建前');
+  assert(!fs.existsSync(path.join(base, 'unsupported-data/task-store')), '静态不支持上传时不创建 Task');
+  assert(!fs.existsSync(path.join(base, 'unsupported-data/.iris-runtime-writer-v0')), '静态拒绝后释放本次写者');
   console.log('ALL OK —— 转写 CLI：audio_url 直达 / audio_path 上传、长轮询、四门锁定、retry 关系');
 } finally {
   fs.rmSync(base, { recursive: true, force: true });

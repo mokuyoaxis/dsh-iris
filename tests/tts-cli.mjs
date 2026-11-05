@@ -82,7 +82,7 @@ try {
       && (state().tts || 0) === 1,
     'TTS 同步合成必须一次命令内交付并落盘非敏感 binding', { task: submitted.task, state: state() });
   const artifact = parseSuccess(cli(['artifact', 'inspect', submitted.task.artifactIds[0], '--data-root', dataRoot]), '读取音频 Artifact');
-  assert(artifact.artifact.mediaType === 'audio/mpeg' && artifact.artifact.kind === 'generated-audio'
+  assert(artifact.artifact.mediaType === 'audio/wav' && artifact.artifact.kind === 'generated-audio'
       && artifact.artifact.metadata?.capability === 'tts',
     '音频 Artifact 必须符合交付 Profile', artifact.artifact);
 

@@ -8,3 +8,6 @@ __pycache__/
 
 # 测试临时目录
 tmp/
+
+# 本机恢复脚本含会话标识，不属于项目源码或发行材料
+/scripts/recover-cache-replay.py

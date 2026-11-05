@@ -2,19 +2,21 @@
 
 0.2.7实现 **I4A 默认只读**与 **I4B 显式本地创建**：显式本机监听、Bearer/Host/Origin、受控流程/媒体，以及主动启用的上传/创建与持久身份接回，见 [只读 API](LOCAL_API.md)和 [本地创建](LOCAL_CREATION.md)。0.3.0-alpha.1另提供 [有限执行服务](CORE_SERVICE.md)、[连接握手](CORE_CONNECTIONS.md)与 [owner持久选择](LOCAL_SELECTION.md)。本契约尚未冻结为公开SDK；稳定0.2.7只包含上述I4A/I4B入口。
 
-已发布固定流程通过 [CLI](IMAGE_FLOW.md)执行，0.3 alpha源码另有上方 Core 服务；[独立 Web Demo](WEB_PROTOTYPE.md)只消费内存演示，保留到 0.3.0 阶段统一润色。Demo 尚未接入只读 API，也不作为完整服务或写操作已实现的依据。
+已发布固定流程通过 [CLI](IMAGE_FLOW.md)执行，0.3 beta另有上方 Core 服务；[独立 Web Demo](WEB_PROTOTYPE.md)只消费内存演示，保留到 0.3.0 阶段统一润色。Demo 尚未接入只读 API，也不作为完整服务或写操作已实现的依据。
 
-0.3 alpha源码另有 [Core 工作台](LOCAL_WEB.md)，通过显式 `web serve` 同源提供固定静态资源；登录页不包含私有数据，API/图片仍要求 Bearer。默认只读，创建、执行和选择分别显式开启，不要求连接管理；页面按能力接入改图、比较、选择、停止和下载。npm 0.2.7 尚不含，不改变下方已发布 I4A/I4B 的能力边界。
+0.3 beta另有 [Core 工作台](LOCAL_WEB.md)，通过显式 `web serve` 同源提供固定静态资源；登录页不包含私有数据，API/图片仍要求 Bearer。默认只读，创建、执行和选择分别显式开启，不要求连接管理；页面按能力接入改图、比较、选择、停止和下载。npm 0.2.7 尚不含，不改变下方已发布 I4A/I4B 的能力边界。
 
 源码另实现 [Operation 存储与版本门禁](LOCAL_OPERATIONS.md)，只在新专用根主动初始化；显式 `api serve --allow-execution` 装配 runner、持久接收/查询与本地停止，默认模式与刷新恢复仍只读。v1 根复用零生成创建，写者拒绝损坏记录；具体执行与握手以服务指南为准。
 
-0.3 alpha源码的 [Core 音频流程](AUDIO_FLOWS.md)另在新 v3 根增加 `/audio-models`、`/audio`、`/speeches`、`/transcriptions`、作品 `/audio` 和 `/text`，以及 Run 类别筛选。音频与图片共用原 runner/Task/Key；现有图片 `/content` 保持图片类型限制。播放/下载最多64 MiB音频或1 MiB文本，输入音频最多20 MiB且核对容器/MIME，不接收任意路径/URL。下方 I4A/I4B 表继续描述已发布图片切片，不能据此把音频入口用于旧根。
+0.3 beta的 [Core 音频流程](AUDIO_FLOWS.md)另在新 v3 根增加 `/audio-models`、`/audio`、`/speeches`、`/transcriptions`、作品 `/audio` 和 `/text`，以及 Run 类别筛选。音频与图片共用原 runner/Task/Key；现有图片 `/content` 保持图片类型限制。播放/下载最多64 MiB音频或1 MiB文本，输入音频最多20 MiB且核对容器/MIME，不接收任意路径/URL。下方 I4A/I4B 表继续描述已发布图片切片，不能据此把音频入口用于旧根。
+
+**beta.1**另在显式新v4根增加[固定文生视频](VIDEO_FLOWS.md)的 `/video-models`、`/videos` 与作品 `/video`，读取MP4/WebM最多32 MiB，先核对metadata再读取；与图片/音频共用原Operation与授权边界，旧根不自动升级。
 
 源码另有 owner 专用只读 `GET/HEAD /api/v0/capabilities`：返回 `contractVersion:0,state,scopeOptions,controlTools,groups,tools,media,plugins,contributions`，装配插件时附 Core 版本及准确贡献依赖。无模型密钥、数据根或可加载脚本路径；无凭据401，连接凭据403，未知查询参数400。此完整目录不表示当前用户授权或媒体健康。连接管理目录复用同一投影并另附 availableScopes/defaults 等服务选项；`session.operations` 由 Core 的 Web 映射和实际根版本、开关、授权交集生成。详情见 [插件目录](PLUGINS.md#core-能力目录与授权)，不改变已发布 I4A/I4B 的契约范围。
 
 ## 1. 实例与启动
 
-一个服务实例显式绑定一个已初始化的专用 Flow 根和一个 Application Runtime。Provider 配置来源可显式提供，省略时仍可查看已有流程/图片，启用本地写入后也可上传；模型列表返回未配置，不能创建新 Run。由用户主动启动，固定仅监听 `127.0.0.1`；首次不支持远程监听、代理转发或自动扫描 DSH 配置。CLI 的 `flow init` 仍负责初始化新根，浏览器不能指定根路径或初始化旧根。未发布 C3 另以独立开关提供 owner 供应商管理，只操作启动时固定的配置，见 [管理契约](PROVIDER_SETTINGS.md)。
+一个服务实例显式绑定一个已初始化的专用 Flow 根和一个 Application Runtime。Provider 配置来源可显式提供，省略时仍可查看已有流程/图片，启用本地写入后也可上传；模型列表返回未配置，不能创建新 Run。由用户主动启动，固定仅监听 `127.0.0.1`；首次不支持远程监听、代理转发或自动扫描 DSH 配置。CLI 的 `flow init` 仍负责初始化新根，浏览器不能指定根路径或初始化旧根。beta.1 C3 另以独立开关提供 owner 供应商管理，只操作启动时固定的配置，见 [管理契约](PROVIDER_SETTINGS.md)。
 
 API 使用 `/api/v0` 前缀，后续静态页面须与 API 同源。只有 HTTP 适配器负责验证外部输入、生成受控 DTO 和管理请求；不得把 `application.execute(name, input)`、现有 DSH `serveApi` 或 CLI 参数作为通用 HTTP 转发口。模型来自显式配置中允许改图的候选，Flow 继续绑定单一明确模型与 `n=1`。
 
@@ -46,29 +48,29 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 
 会话附 `pluginExecution/pluginOperations` 和允许的 plugins.catalog/plugins.execute 等别名。工作台有内建业务记录页，插件缺失仍可查原作品。启动将遗留在途记录标为 interrupted，不自动重做；业务 succeeded 仅表示处理器返回及Core命令完成。详见[真实业务](CONTACT_SHEET.md)。
 
-下列 GET/HEAD 已有实现，Operation 路由需未发布的显式执行模式；I4B 只含 images/runs 两个 POST，执行模式另含 continue/cancel，selection 需独立 `--allow-selection` 且仅限 owner。JSON 响应含 `contractVersion: 0`；列表最多 30 项，摘要不含 Prompt；创建 JSON 上限 64 KiB，执行/选择/连接 JSON 上限 8 KiB。未知/重复查询参数和带正文的只读请求拒绝。
+下列 GET/HEAD 已有实现，Operation 路由需beta.1的显式执行模式；I4B 只含 images/runs 两个 POST，执行模式另含 continue/cancel，selection 需独立 `--allow-selection` 且仅限 owner。JSON 响应含 `contractVersion: 0`；列表最多 30 项，摘要不含 Prompt；创建 JSON 上限 64 KiB，执行/选择/连接 JSON 上限 8 KiB。未知/重复查询参数和带正文的只读请求拒绝。
 
 | 方法与路径 | 输入 | 语义 |
 |---|---|---|
 | `GET /session` | 无 | 返回实例标识、契约版本、允许的操作与输入上限；owner 会话另有稳定 rootId（无请求区为 null），默认 Panel 显式选中扩展时附 panelContributions（身份、准确依赖、本站资源 URL）；连接凭据不获此清单，不返回根路径、Key 或端点 |
-| `GET /creation-requests`（未发布） | `kind=image-import/flow-create`、原 UUIDv4 `key` | 仅 owner；默认只读也可核对已有请求，返回 kind/state 与经核验的结果引用或 null，不补写或生成 |
+| `GET /creation-requests`（0.3 beta） | `kind=image-import/flow-create`、原 UUIDv4 `key` | 仅 owner；默认只读也可核对已有请求，返回 kind/state 与经核验的结果引用或 null，不补写或生成 |
 | `GET /models` | 无 | 返回当前可选的 `modelRef`、显示名和是否支持改图；不会探测 Provider、同步目录或修改用途 |
 | `POST /images`（I4B） | 原始 PNG/JPEG/WebP 字节、匹配的 Content-Type、Idempotency-Key | 本地提交后返回 201 和 Artifact 引用，同 Key 接回返回 200；不接受文件路径、URL、目录或 SVG |
-| `GET /runs` | `cursor`、`limit`，limit 1–30；0.3 alpha源码另有 `selection=all/selected/unselected` | 已有流程摘要，不含 Prompt；只读，不观察远端。先按选择筛选再计算 total/分页，另有 counts 全部/已选/未选计数 |
+| `GET /runs` | `cursor`、`limit`，limit 1–30；0.3 beta另有 `selection=all/selected/unselected` | 已有流程摘要，不含 Prompt；只读，不观察远端。先按选择筛选再计算 total/分页，另有 counts 全部/已选/未选计数 |
 | `POST /runs`（I4B） | `{sourceArtifactId, modelRef, prompt, size?}`、Idempotency-Key | 固定 `image-edit/v0` / `n=1`，只保存输入与身份，零生成请求；本地提交后 201，同 Key 接回 200 |
 | `GET /runs/:id` | 无 | 返回下述 FlowView；只读，不创建 Task、补交付或继续步骤 |
-| `POST /runs/:id/continue`（未发布执行模式） | `{expectedRevision}`、Idempotency-Key | 持久接收后 202，同 Key 200；一次首次提交/观察/补交付/比较，不重提已有 Attempt |
-| `POST /runs/:id/selection`（未发布选择模式） | `{artifactId, expectedRevision}` | 仅 owner；同 writer 核对版本并保存原图/结果选择，返回 200；过期版本 409，不触发生成或下载 |
+| `POST /runs/:id/continue`（0.3 beta执行模式） | `{expectedRevision}`、Idempotency-Key | 持久接收后 202，同 Key 200；一次首次提交/观察/补交付/比较，不重提已有 Attempt |
+| `POST /runs/:id/selection`（0.3 beta选择模式） | `{artifactId, expectedRevision}` | 仅 owner；同 writer 核对版本并保存原图/结果选择，返回 200；过期版本 409，不触发生成或下载 |
 | `GET /artifacts/:id/content` | 无 | 按已验证 Artifact ID 和清单读取该根内媒体字节，不接受 path/URL 参数；不写文件 |
 | `GET /runs/:id/download` | 无 | 返回已选择图片的原字节及受控附件名；未选择则冲突，不接受服务器输出路径 |
-| `GET /operations/:id`（未发布执行模式） | 无 | 查询持久状态，不能借此继续操作；原 Key 查询和 Run 列表见服务指南 |
-| `POST /operations/:id/cancel`（未发布执行模式） | 空 JSON | 原 ID 幂等停止本地排队/等待，终态落盘后 200；不代表远端已取消或已退款 |
+| `GET /operations/:id`（0.3 beta执行模式） | 无 | 查询持久状态，不能借此继续操作；原 Key 查询和 Run 列表见服务指南 |
+| `POST /operations/:id/cancel`（0.3 beta执行模式） | 空 JSON | 原 ID 幂等停止本地排队/等待，终态落盘后 200；不代表远端已取消或已退款 |
 
 上传累积读取限制使用现有 `MAX_IMPORT_IMAGE_BYTES = 20 MiB`，不能只相信 Content-Length；最终交给 `readImportImage({imageBytes}, signal)` 检查实际格式和静态图片要求。连接关闭、超量与解析失败不留下临时可服务文件，不把 filename 当服务器路径。并发上传上限 1，超过返回忙；用户显式重试复用原 Key。
 
-上传复用现有图片验证与 Artifact 预留 ID 提交；请求与作品在同一次 writer 内保存。当前图片读取/下载仍限 64 MiB，类型 PNG/JPEG/WebP，先检查清单大小再校验内容哈希，最多两个活动读取。大型媒体磁盘流式、Range 和音视频仍待后续。下载不调用服务器本地 `flow.export(output_path)`；浏览器是否保存成功不属于持久 Run 事实。
+上传复用现有图片验证与 Artifact 预留 ID 提交；请求与作品在同一次 writer 内保存。上述I4A/I4B图片读取/下载限64 MiB，类型PNG/JPEG/WebP，先检查清单大小再校验内容哈希，最多两个活动读取。当前独立API的媒体入口仍采用有限整读、不支持Range；新增音频与beta.1视频入口分别见上方说明。DSH媒体路由的流式发送与这个独立API分开实现。下载不调用服务器本地 `flow.export(output_path)`；浏览器是否保存成功不属于持久 Run 事实。
 
-未发布 HTTP 列表摘要保留 id/recipe/createdAt/modelRef/source，另投影 updatedAt、revision、output/selection 引用（无值为 null），不附 Prompt、Task、供应商绑定或路径；CLI/MCP 列表保持原语义。省略 selection 等于 all，未知/重复参数或不属于筛选结果的 cursor 返回400。图库封面使用 selection，否则 source。
+0.3 beta HTTP列表摘要保留 id/recipe/createdAt/modelRef/source，另投影 updatedAt、revision、output/selection 引用（无值为 null），不附 Prompt、Task、供应商绑定或路径；CLI/MCP 列表保持原语义。省略 selection 等于 all，未知/重复参数或不属于筛选结果的 cursor 返回400。图库封面使用 selection，否则 source。
 
 ## 4. FlowView 与操作反馈
 
@@ -104,7 +106,7 @@ ID 继续使用当前 `run_` / `task_` / `artifact_` 加 24 位小写十六进�
 
 I4B 的上传与创建同步完成本地提交，以 201/200 返回 Artifact/FlowView 和 `idempotentReplay`，不返回持久排队的 202，也不开放 Operation 查询或取消。相同 Key 保证原业务身份与效果；已有 Run 的返回状态可以随真实进度变化，不承诺重放完全相同的响应字节。
 
-未发布执行模式在原子接收后返回 `202 {contractVersion:0, operation, idempotentReplay:false}`；重放返回 200，状态为 `queued | running | succeeded | failed | canceled | interrupted`。GET 不驱动 Provider；每次显式继续至多一次观察。单根最多 8 条 queued/running，同 Run 最多一条；writer 忙时拒绝新接收，不声称已排队。停止直接中止控制器，随后在同 writer 下落盘并返回 200；不伪造远端 Task canceled。此模式不随 I4B 或只读 Web 自动开启。
+0.3 beta执行模式在原子接收后返回 `202 {contractVersion:0, operation, idempotentReplay:false}`；重放返回 200，状态为 `queued | running | succeeded | failed | canceled | interrupted`。GET 不驱动 Provider；每次显式继续至多一次观察。单根最多 8 条 queued/running，同 Run 最多一条；writer 忙时拒绝新接收，不声称已排队。停止直接中止控制器，随后在同 writer 下落盘并返回 200；不伪造远端 Task canceled。此模式不随 I4B 或只读 Web 自动开启。
 
 ## 5. 上传与持久创建幂等（I4B）
 
@@ -121,7 +123,7 @@ I2 保证相同 Run 使用原 Task；I4B 另保证同 Key 创建请求接回原 
 7. 新版 writer 和维护入口必须识别请求格式，未知/半初始化请求区拒绝写入。已发布旧程序没有这些新检查，不能靠一个标记保证其拒绝该根；此专用根只支持已验收的 request-aware writer，回退使用完整副本，不删除请求区伪装降级。已提交 Flow/图片仍可只读查看。
 8. 复用现有原子发布和重入能力，验证范围限进程异常退出/SIGKILL；不据此承诺断电、操作系统崩溃或共享存储下的跨文件事务。请求区本身不触发 Provider 目录刷新、探测、生成或任务观察。
 
-未发布 continue/Operation 使用独立 runner 与持久身份，显式启动只记录遗留中断，**不能自动重放 continue**。I4B 创建证据与执行验收分开；Web 的连接管理写入见 [连接契约](CORE_CONNECTIONS.md)。选择复用 Run 原子提交：当前版本的同目标选择不重写，旧版本即使目标相同也冲突；没有持久 Key/选择收据，响应丢失先 GET 核对，见 [持久选择](LOCAL_SELECTION.md)。源码已实现 [原创建 Key 查询、稳定根身份及浏览器恢复](WEB_RECOVERY.md)和真实创作按钮；刷新或找回创建成功均不自动首次执行。
+0.3 beta continue/Operation 使用独立 runner 与持久身份，显式启动只记录遗留中断，**不能自动重放 continue**。I4B 创建证据与执行验收分开；Web 的连接管理写入见 [连接契约](CORE_CONNECTIONS.md)。选择复用 Run 原子提交：当前版本的同目标选择不重写，旧版本即使目标相同也冲突；没有持久 Key/选择收据，响应丢失先 GET 核对，见 [持久选择](LOCAL_SELECTION.md)。源码已实现 [原创建 Key 查询、稳定根身份及浏览器恢复](WEB_RECOVERY.md)和真实创作按钮；刷新或找回创建成功均不自动首次执行。
 
 ## 6. 错误与验收
 

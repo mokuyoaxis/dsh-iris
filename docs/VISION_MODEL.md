@@ -48,4 +48,6 @@ DSH rc.2 会压缩宿主附件。看图、OCR 和定位允许这种宿主规范�
 
 [长图 OCR](OCR_MODEL.md)、[定位、拼图摘要与自述](COMPOSITE_VISION.md) 均已消费共享端口与整次预算；各自另验分块、bbox 解析、一张拼图一次生成及可选 Core 转写。legacy `vision.js` / Host `visionModel.analyze()` 兼容实现仍保留，现有业务入口不再调用。Model Port 的迁移切片本身不新增公开 SDK export 或生产依赖；0.2.1 提供 [视觉 CLI](VISION_CLI.md) 和可选 `visionInput`。复杂图像质量与 Android 浏览器仍需独立验证。
 
+beta.1另修复旧 `adapters.visionStream` 兼容入口：累计SSE正文最多2 MiB，声明长度与实际字节均检查；外部取消及超时在发送前、收到响应后、逐块及结束时保留失败，已收到文字也不返回部分成功。主业务仍使用上文具有严格终态校验的Model Port，不把旧入口的宽松解析等同于该契约。
+
 契约与迁移说明见 [Model Port](MODEL_PORT_CONTRACT.md) 和 [DSH → Core](DSH_CORE_MIGRATION.md)。

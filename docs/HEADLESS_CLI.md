@@ -20,6 +20,10 @@
 
 ## 配置查询与离线诊断
 
+beta.1另提供 `network init/show/check` 与 `network nodes|pools list/add/set/remove`，只管理独立、显式私有文件；不改变当前出站，也不创建 Core 根或调用模型。用法、修订与引用保护见[出口节点与池](NETWORK_RESOURCES.md)，alpha.1/0.2.7尚不包含此命令。
+
+[N2供应商绑定](NETWORK_ROUTING.md)另有v2文件、新目录包装与实例代理运行时，已完成受控HTTP/HTTPS代理、真实CLI/API及原任务跨进程恢复验证。[N3网络工作台](NETWORK_WORKBENCH.md)已接Web管理与Core进程内Doctor，需 `api/web serve --allow-network-management --network-config <private-file>`；均属beta.1，普通MCP不获得管理权限。
+
 ```bash
 dsh-iris providers list --provider-config /absolute/path/to/providers.json
 dsh-iris capabilities list --provider-config /absolute/path/to/providers.json
@@ -31,6 +35,8 @@ dsh-iris doctor --data-root /absolute/path/to/iris-data --json
 显式 `doctor --data-root` 是只读 Core 盘点：检查 Task/Artifact 结构、Index 一致性、孤立/未解析条目和写者租约；不创建缺失的根、不执行写入探针、不重建索引，也不释放租约。活跃写者可能使盘点在读取期间变化。省略 `--data-root` 时仍检查 DSH profile，保留原有写入探针，并纳入该 profile 的 `core-v0`。两种模式都返回 legacy/Core 计数对照，显式模式只统计指定根同层的 legacy 文件。退出码为 `0` 正常、`1` 警告、`2` 硬错误；诊断不会调用 Provider。
 
 ## 异常退出后的写者租约
+
+当前源码的 `api/web serve` 还可显式使用 `--scheduler-config <absolute-private-json>`，详情见[有界媒体调度](MEDIA_SCHEDULING.md)。这不是单次 CLI 或独立 DSH 路径的并发开关；未配置保持原行为。
 
 POSIX 上的 SIGINT/SIGTERM 可被 CLI 捕获并释放运行中的租约；Windows 请使用运行终端的 Ctrl+C 正常关闭。Windows 上 Node 的 `child.kill('SIGTERM')` 会强制结束进程，不能据此期待清理回调执行，见 [Node 信号说明](https://nodejs.org/docs/latest-v22.x/api/process.html#signal-events)。SIGKILL、OOM 或断电也可能留下租约。后续写操作返回 `IRIS_CORE_DATA_ROOT_BUSY` 时，先用 `doctor --data-root <absolute-path> --json` 只读查看 `core-writer-lease`。仅当报告中的 owner PID 为 `missing`，并且你已确认没有跨主机或其他仍在写入的进程，才可显式回显该 PID：
 
@@ -73,6 +79,8 @@ dsh-iris media frames \
 `media.frames` 返回视频元数据和一组 `video-frame` Artifact；输入也可用 `artifact_id` 指向已有视频 Artifact，此时每帧写入 `frame-of` 关系。帧数最多 20，格式仅支持 `jpeg` 或 `png`；系统没有 ffmpeg/ffprobe 或视频无效时命令稳定失败，不影响其他 CLI 能力。Manifest 和命令结果都不保存宿主输入路径。
 
 ## Provider 图片生成
+
+当前源码另支持显式[环境凭据引用](PROVIDER_CREDENTIALS.md)：配置保存 `apiKeyEnv` 名称，值来自当前 Core/CLI 进程；已发布 alpha.1/0.2.7 尚不支持，原 `apiKey` 配置保持。
 
 CLI 必须同时收到显式 Core 数据根和私有供应商配置文件，不推断 DSH、HOME 或 cwd：
 
@@ -122,7 +130,7 @@ dsh-iris run transcribe \
   --data-root /absolute/path/to/iris-data \
   --provider-config /absolute/path/to/providers.json \
   --input '{"audio_url":"https://example.com/public.wav"}'
-# 或本地文件（经首选候选 Provider 的临时存储上传）：
+# 或本地文件（经实际候选 Provider 的临时存储上传）：
 dsh-iris run transcribe \
   --data-root /absolute/path/to/iris-data \
   --provider-config /absolute/path/to/providers.json \
@@ -130,6 +138,8 @@ dsh-iris run transcribe \
 ```
 
 输入冻结为 `{audio_url | audio_path, model_ref?}`（二选一）：`audio_url` 必须是 `https://` 或 `oss://`；`audio_path` 在命令内先上传为临时 `oss://` 地址再提交——**签名/临时 URL 绝不写入 Core 记录**。受理后由显式 `task observe` 逐拍推进；远端成功后正文物化为 `text/plain` 的 `transcript` Artifact（`artifact inspect/export` 可直接读取/导出文本）。终态失败可用 `task retry --input '{"audio_url":"..."}' --confirm-billing` 显式重试为新任务。
+
+beta.1在取得写权并保存原 Task/Attempt 后才上传本地音频；根忙不上传。每个候选使用自身账号重新准备输入，两段上传都响应取消；实际上传失败写入原 Attempt，取消后不继续候选。命令返回 Task 结果时应检查 `acceptance/outcome/lastError`，进程退出0不单独表示生成成功；静态不支持上传仍返回 `IRIS_PROVIDER_INPUT_PREPARATION_UNSUPPORTED`，不建立 Task。
 
 ## 检查 Task 与 Artifact
 
@@ -161,6 +171,10 @@ dsh-iris task observe task_0123456789abcdef01234567 \
 新 Task 还保存提交协议与实际媒体端点的 SHA-256 binding，不保存端点本身。端点或协议改变时，`observe` 会拒绝把旧远端 Task ID 发送给新端点。此前没有 binding 的异步 Task 保持可读，但不会被猜测性恢复；可继续使用创建它的旧入口处理。
 
 同一份"显式单步观察、绝不重新提交"也已在 DSH 侧开放：工作台 API 提供 `POST /iris/api/core/task/:id/reobserve`，用户任务区的 Core 投影行和高级诊断卡提供「重新观察」按钮。三者经同一个 Command Service 命令（对外命令名 `task.reobserve`，实现与 `task.observe` 相同），共用原 Provider/binding 校验；每次调用至多一次 poll，对终态、未受理、无远端 ID 或 binding 漂移的任务在网络前拒绝。
+
+beta.1补齐两处恢复边界：Core/Flow 恢复和 DSH 启动接管遇到已明确 `not_accepted`、但最终失败尚未落盘的任务时，按原 Attempt 和安全错误收口为失败；不尝试下一候选、不重新生成。纯 reader 查询仍只读，不暗中恢复记录。
+
+DSH 启动恢复旧 `tasks.json` 时，先解析当次宿主连接引用，再按任务原协议和远端 ID 观察；连接暂不可用则保留原记录及原因，恢复连接后可在下次启动接管，仍受既有观察窗口限制。保持旧格式，不自动迁入 Core 根，也不自动翻转已被旧版本标为失败的记录。旧任务缺少 Core 的端点 binding 保护，不能据此保证历史端点变更后的身份校验。
 
 已成功但本地产物取回失败（deliveryState=failed）的 Task 可以显式重新取回，绝不重新生成：
 
@@ -197,7 +211,18 @@ dsh-iris task retry task_0123456789abcdef01234567 \
 
 缺 `--confirm-billing` 时在网络与创建之前拒绝。候选链按当前 assignments/池实况重新解析（不绑定旧 Provider/binding——旧配置可能正是失败原因），`--model-ref` 可显式指定。新 Task 有全新 id、attempts 与提交时实况 binding，并记录单向 `retriedFrom` 指向旧 Task；旧 Task 零变化。**Task 记录不持久化 Prompt**，所以生成指令必须由 `--input` 重新提供，绝不从旧任务恢复。DSH 侧同构开放：`POST /iris/api/core/task/:id/retry`（请求体必须 `confirmBilling:true`）与工作台「重试为新任务」按钮（重新输入指令 + 重复计费确认弹窗）。
 
-重试输入按旧 Task 的能力校验：图片为 `{prompt, size?, n?}`，视频为 `{prompt, size?, duration?, img_data_url?}`，TTS 为 `{text, voice?}`，转写为 `{audio_url}`。视频首帧和转写地址会转换为 Provider 所需字段；原任务中的媒体输入不会自动恢复。转写 retry 要求重新提供 HTTPS/OSS 地址，本地 `audio_path` 上传仍通过正常提交入口处理；模型覆盖使用外层 `--model-ref`，不放在 retry 的 `--input` 中。
+重试输入按旧 Task 的能力校验：图片为 `{prompt, size?, n?}`，TTS 为 `{text, voice?}`，转写为 `{audio_url}`。转写 retry 要求重新提供 HTTPS/OSS 地址，本地 `audio_path` 上传仍通过正常提交入口处理；模型覆盖使用外层 `--model-ref`，不放在 retry 的 `--input` 中。
+
+beta.1中的视频重试必须另外在 `--input` 中明确 `video_mode`（`t2v/i2v/s2v`）：t2v 重新填写提示词；i2v 还需 `img_data_url` 或绝对 `first_frame_path`；s2v 需绝对 `first_frame_path`、`audio_path`，可选 `resolution`。所选模式与媒体输入冲突、缺失时在解析候选和创建新 Task 前拒绝，不从旧模型名推测模式，不静默转为 t2v。此控制字段仅用于 `task retry`，不发送给供应商、不保存到旧 Task，也不用于 `run video` 或固定文生视频 Flow。DSH 简化按钮改为「重新创建文生视频」，须先明确输入 t2v；HTTP 请求须带 `video_mode:"t2v"`。图生/数字人视频通过完整视频工具或 CLI 重新提供来源，简化 HTTP 入口拒绝媒体字段，不读取服务器文件。
+
+```bash
+dsh-iris task retry task_0123456789abcdef01234567 \
+  --data-root /absolute/path/to/iris-data \
+  --provider-config /absolute/path/to/providers.json \
+  --model-ref providerId::i2v-model \
+  --input '{"video_mode":"i2v","prompt":"重新输入的视频指令","first_frame_path":"/absolute/path/to/frame.png"}' \
+  --confirm-billing
+```
 
 CLI、DSH 正常生成与 retry 共用输入规范：Prompt/文本修剪后为 1–20000 字符，图片 `n` 为 1–4 的整数（缺省 1），视频时长为 1–60 的数字，规范化后的显式 size/voice 为 1–64 字符。转写地址修剪后最多 20000 字符。数字字符串会转为数字；非法生成参数在提交前拒绝，不创建新的计费 Task。CLI 和 retry 还会拒绝未知输入字段；DSH 保留自己的宿主参数，由入口提取生成参数，工作台清空可选文本框仍使用默认值。
 

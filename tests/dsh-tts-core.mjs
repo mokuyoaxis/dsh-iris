@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { useTempDshHome } from './test-env.js';
+import { writableApiResponse as apiResponse } from './fixtures/writable-api-response.mjs';
 import { FAKE_WAV } from './fixtures/fake-lifecycle-provider.mjs';
 
 const { root, cleanup } = useTempDshHome('iris-dsh-tts-core');
@@ -68,14 +69,6 @@ global.fetch = async (input, init = {}) => {
   throw new Error('Unexpected fixture request: ' + url);
 };
 
-function apiResponse() {
-  return {
-    headersSent: false, destroyed: false, writableEnded: false, status: 0, headers: {}, body: undefined,
-    writeHead(status, headers = {}) { this.status = status; this.headers = headers; this.headersSent = true; },
-    end(body) { this.body = body; this.writableEnded = true; }
-  };
-}
-
 async function postCoreAction(action, taskId) {
   const res = apiResponse();
   serveApi({ method: 'POST', url: '/iris/api/core/task/' + taskId + '/' + action, on() { return this; } }, res);
@@ -113,7 +106,7 @@ try {
   const mediaRes = apiResponse();
   await serveApi({ method: 'GET', url: '/iris/api/core/artifact/' + artifactId + '/media' }, mediaRes);
   assert.equal(mediaRes.status, 200);
-  assert.equal(mediaRes.headers['Content-Type'], 'audio/mpeg');
+  assert.equal(mediaRes.headers['Content-Type'], 'audio/wav');
   assert.deepEqual(Buffer.from(mediaRes.body), FAKE_WAV, '同源路由必须返回音频字节');
 
   /* Skill 的 TTS → 文件接力：消费同一 Artifact，不猜路径，也不重新合成。 */

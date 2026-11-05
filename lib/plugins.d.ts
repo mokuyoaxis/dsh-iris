@@ -1,4 +1,23 @@
 /** Experimental v0. Trusted local code; no sandbox, discovery, installation or implicit grant. */
+import type { ProviderCapability, ProviderMethod, ProviderOperations, ProviderConnection, ProviderFactoryContext, ProviderErrorRecord } from './provider-context.js';
+export { PROVIDER_FACTORY_CONTEXT_VERSION } from './provider-context.js';
+export type { ProviderCapability, ProviderMethod, ProviderOperations, ProviderConnection, ProviderFactoryContext, ProviderNetwork,
+  ProviderErrorRecord, ProviderStage, ProviderAcceptance, ProviderErrorCategory, ProviderOperationContext, ProviderSubmitRequest,
+  ProviderSubmissionResult, ProviderRemoteRequest, ProviderPollResult, ProviderCancelResult, ProviderDownloadRequest,
+  ProviderDiscoveryRequest, ProviderDiscoveryResult, ProviderArtifact, ProviderImageInput } from './provider-context.js';
+export class ProviderContractError extends Error {
+  constructor(message: string, details?: Partial<ProviderErrorRecord>);
+  readonly stage: ProviderErrorRecord['stage'];
+  readonly category: ProviderErrorRecord['category'];
+  readonly acceptance: ProviderErrorRecord['acceptance'];
+  readonly retryable: boolean;
+  readonly safeMessage: string;
+  readonly httpStatus?: number;
+  readonly providerCode?: string;
+  /** Optional transient transport hint, read by Core health before error persistence. */
+  retryAfterMs?: number;
+  toJSON(): ProviderErrorRecord;
+}
 export type JsonValue = null | boolean | number | string | readonly JsonValue[] | { readonly [key: string]: JsonValue };
 export type PluginKind = 'providers' | 'operations' | 'pages' | 'renderers' | 'settings';
 export const PLUGIN_CONTRACT_VERSION: 0;
@@ -60,11 +79,9 @@ export interface PluginOperationContext {
   readonly core: { execute(command: PluginCoreCommand, input: Record<string, unknown>): Promise<unknown> };
 }
 export type PluginOperation = (input: Readonly<Record<string, JsonValue>>, context: PluginOperationContext) => JsonValue | Promise<JsonValue>;
-export type ProviderCapability = 'image' | 'video' | 'tts' | 'music' | 'transcribe';
-export type ProviderMethod = 'discover' | 'submit' | 'poll' | 'cancel' | 'download' | 'mapError';
 export interface ProviderAdapterInput {
   id: string; protocol: string; capabilities: ProviderCapability[]; contractVersion?: 0;
-  operations: Partial<Record<ProviderMethod, (...args: any[]) => unknown>>;
+  operations: ProviderOperations;
   unsupported?: Partial<Record<ProviderMethod, string>>;
   prepareInput?: (...args: any[]) => unknown;
   unsupportedPreparation?: string;
@@ -73,14 +90,14 @@ export interface ProviderAdapterInput {
 export type ProviderAdapter = Readonly<Omit<ProviderAdapterInput, 'contractVersion' | 'capabilities' | 'operations' | 'unsupported'> & {
   contractVersion: 0;
   capabilities: readonly ProviderCapability[];
-  operations: Readonly<Partial<Record<ProviderMethod, (...args: any[]) => unknown>>>;
+  operations: Readonly<ProviderOperations>;
   unsupported: Readonly<Partial<Record<ProviderMethod, { readonly reason: string }>>>;
 }>;
 export function defineProviderAdapter(input: ProviderAdapterInput): ProviderAdapter;
 export function normalizeMediaEndpoint(value: string): string;
 export interface ProviderImplementation {
   normalizeEndpoint(value: string): string;
-  createAdapter(provider: Record<string, any>, options?: Record<string, any>): ProviderAdapter;
+  createAdapter(provider: Readonly<ProviderConnection>, context: Readonly<ProviderFactoryContext>): ProviderAdapter;
   supportsModel?(input: { provider: Record<string, unknown>; modelId: string; capability: string; checkEndpoint?: boolean }): boolean;
   supportsImageEdit?(modelId: string): boolean;
 }
@@ -161,7 +178,7 @@ export interface CoreCapabilitySnapshot {
   };
 }
 export interface CoreCapabilityCatalog {
-  snapshot(options?: { audioEnabled?: boolean; panelContributions?: PluginPanelSelection; allowedOperations?: readonly string[] }): CoreCapabilitySnapshot;
+  snapshot(options?: { audioEnabled?: boolean; videoEnabled?: boolean; panelContributions?: PluginPanelSelection; allowedOperations?: readonly string[] }): CoreCapabilitySnapshot;
   /** Validate an explicit local selection. Does not invoke, persist a grant or enable MCP/Web. */
   selectOperations(ids?: readonly string[]): readonly (OperationContribution & CatalogContribution)[];
 }
@@ -219,6 +236,7 @@ export interface PluginWebSession {
   readonly operations: readonly string[];
   readonly readOnly: boolean;
   readonly audio: boolean;
+  readonly video: boolean;
   readonly providerManagement: boolean;
   readonly pluginExecution: boolean;
   readonly pluginOperations: readonly PluginDependency[];
@@ -256,6 +274,7 @@ export interface PluginWebApi {
   run(id: string, options?: PluginWebRequestOptions): Promise<JsonValue>;
   models(options?: PluginWebRequestOptions): Promise<JsonValue>;
   audioModels(options?: PluginWebRequestOptions): Promise<JsonValue>;
+  videoModels(options?: PluginWebRequestOptions): Promise<JsonValue>;
   artifact(artifact: PluginArtifact, options?: PluginWebRequestOptions): Promise<Blob>;
   /** Only settings mounts in an explicitly enabled owner Provider-management session. */
   readonly providers?: {

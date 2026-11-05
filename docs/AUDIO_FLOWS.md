@@ -1,4 +1,4 @@
-# Core 语音合成与音频转写（0.3 alpha）
+# Core 语音合成与音频转写（0.3 beta）
 
 0.3.0-alpha.1的 Web 与通用 MCP 接入 `speech/v0`、`transcribe/v0`，共用现有 Provider、Task/Attempt、持久 Run 和单根 Operation runner。**稳定 npm 0.2.7 不含这些新增入口。** 原独立 CLI/DSH 的语音和转写继续使用各自原入口；这里描述新的 Core 流程。
 
@@ -14,11 +14,25 @@ node bin/dsh-iris.js web serve --data-root /absolute/new-audio-core \
   --token-file /absolute/new-audio-owner-token --allow-execution
 ```
 
-`--audio` 建立 `creation-requests/v3`，同时支持原图片编辑/生成。不要与 `--image-generation` 混用，也不要在已有 v0/v1/v2 根上执行迁移；原根继续按原能力运行。省略两个开关的 `execution init` 仍建立 v1 图片编辑根，`--image-generation` 仍建立 v2。
+`--audio` 建立 `creation-requests/v3`，同时支持原图片编辑/生成。不要与 `--image-generation` 混用，也不要在已有 v0/v1/v2 根上执行迁移；原根继续按原能力运行。beta.1视频流程另提供 `--video` 新 v4 根，保留这些音频流程；已有 v3 不迁移，三个开关不混用。省略这些开关的 `execution init` 仍建立 v1 图片编辑根，`--image-generation` 仍建立 v2。
 
 打开输出的 `loginUrl`；刷新保留当前标签页登录，过期后可用 `web login` 获取新链接，见 [工作台登录](LOCAL_WEB.md#启动与连接)。播放和下载已有结果无需 Provider；新建 Run 需要显式配置，执行另需 `--allow-execution`。音频不需要 `--allow-selection`。
 
 配置沿用[模型服务](PROVIDER_SETTINGS.md)：为模型明确确认 TTS/转写用途和功能池，再从实际候选中选择。候选不是健康证明，打开页面不做实测。内置音频协议沿用现有 DashScope 实现；配置了 OpenAI 图片接口不等于接入 OpenAI TTS/ASR。这里没有新增语音协议、模型自动替换或音色发现接口。
+
+## CLI 保存与继续（beta.1修复）
+
+独立 `flow create/continue` 现装配与服务相同的图片、语音、转写和视频候选。先建立上述 v3/v4 根，并在功能池中允许所选模型：
+
+```bash
+node bin/dsh-iris.js flow create --data-root /absolute/new-audio-core \
+  --provider-config /absolute/existing-providers.json \
+  --input '{"recipe":"speech/v0","model_ref":"provider::tts-model","text":"鸢尾花","voice":"Cherry"}'
+node bin/dsh-iris.js flow continue run_0123456789abcdef01234567 \
+  --data-root /absolute/new-audio-core --provider-config /absolute/existing-providers.json
+```
+
+Run ID 使用创建命令的实际返回值。转写使用 `recipe:"transcribe/v0"`、明确 `model_ref` 及 `source_artifact_id`，来源应先由当前根的 Web/MCP 音频导入保存；这里不新增 CLI 音频导入命令。创建不合成或上传；首次继续才执行，后续继续只观察或交付原 Task，受理未知不重提。已完成且本地结果完整时，无需 Provider 配置再次读取结果。
 
 ## 页面使用
 
@@ -28,9 +42,11 @@ node bin/dsh-iris.js web serve --data-root /absolute/new-audio-core \
 
 生成音频/转写是单一结果，保存后即可下载，无需图片版本选择。下载保留原字节；实际落盘以浏览器下载记录为准。离开创作页暂停播放，退出或切换流程释放相应媒体。当前不提供流式合成、音色目录、录音、长音频切片、字幕时间轴或本地 TTS。
 
+beta.1交付新语音/音乐结果时，会读取有限文件头确认WAV或MP3容器，再保存真实MIME与后缀；不把供应商声明的MP3套在WAV字节上。不支持的音频响应保留已受理事实并报交付失败，不重新合成。此为容器识别，不是完整解码或格式迁移；已入库的旧作品不自动改写。
+
 ## 有限 HTTP 契约
 
-以下均以 `/api/v0` 开头，保留 Bearer、Host/Origin、无 CORS 和有限权限。新路由只在 v3 根开放；创建使用原 UUIDv4 `Idempotency-Key`，首次 201、同 Key 同输入 200、不同输入 409。
+以下均以 `/api/v0` 开头，保留 Bearer、Host/Origin、无 CORS 和有限权限。新路由只在 v3 根（beta.1也支持 v4）开放；创建使用原 UUIDv4 `Idempotency-Key`，首次 201、同 Key 同输入 200、不同输入 409。
 
 | 路由 | 输入与结果 |
 |---|---|
@@ -68,4 +84,4 @@ DSH 可选的原生共享 Flow 桥仍限图片，未接入 Core 音频附件投�
 
 原结果保存失败时，通过原 Run 明确接回；已有私有交付缓存时无需 Provider。浏览器恢复表只存有界身份，不存朗读文字、音色、音频或转写正文；查到创建成功不自动首次执行。查询类型另含 audio-import、speech-create、transcription-create，见 [刷新恢复](WEB_RECOVERY.md)。
 
-定向测试为 `tests/audio-flow.mjs`、`tests/audio-api.mjs`、`tests/audio-recovery.mjs`、`tests/audio-upload.mjs`。真实 Chromium 可用[工作台验证脚本](LOCAL_WEB.md#验证与下一阶段)的独立 `--audio` 场景，覆盖原字节播放/下载、刷新、丢失创建回包、只读及窄屏/主题。SDK验证包含HTTP 2025/2026与真实stdio进程的2026路径。所有新音频验证使用受控 Provider 或上传响应；**未实测真实付费语音/转写服务，也不代表所有账号、编码或 harness 已通过验收**。
+定向测试为 `tests/audio-flow.mjs`、`tests/audio-api.mjs`、`tests/audio-recovery.mjs`、`tests/audio-upload.mjs`。真实 Chromium 可用[工作台验证脚本](LOCAL_WEB.md#验证与下一阶段)的独立 `--audio` 场景，覆盖原字节播放/下载、刷新、丢失创建回包、只读及窄屏/主题。SDK验证包含HTTP 2025/2026与真实stdio进程的2026路径。受控 Provider/上传回归与真实账号验收分别记录；**不能把回放、目录存在或单一账号成功推断为所有模型、编码或 harness 已通过验收**。
