@@ -22,7 +22,7 @@ export async function verifySchedulingBrowser({ out, cdp, evaluate, click, wait,
     const session = await restart({ dataRoot, providerConfigPath: file, executionPorts: ports, allowExecution: true,
       scheduling: { schemaVersion: 1, remoteLimit: 1, queueTimeoutMs: 30000 } });
     await cdp('Page.navigate', { url: session.loginUrl });
-    await wait(() => evaluate("document.querySelector('#connection').hidden&&!document.querySelector('#workspace').hidden"), 'scheduler owner login');
+    await wait(() => evaluate("document.readyState==='complete'&&document.body.classList.contains('connected')&&document.querySelector('#connection')?.hidden===true&&document.querySelector('#workspace')?.hidden===false"), 'scheduler owner login');
     await click('#studio-tab'); await click('#new-run');
     await evaluate("document.querySelector('#model').value='ui::image';document.querySelector('#model').dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#edit-prompt').value='排队演示，不调用真实供应商';document.querySelector('#edit-prompt').dispatchEvent(new Event('input',{bubbles:true}))");
     await wait(() => evaluate("!document.querySelector('#start-edit').disabled"), 'scheduler draft ready'); await click('#start-edit');
@@ -38,7 +38,7 @@ export async function verifySchedulingBrowser({ out, cdp, evaluate, click, wait,
     assert.equal(tasks.filter(task => task.attempts.length).length, 1);
     result.checks.push('stopping the queued operation leaves the original accepted Task and produces no additional submission'); save();
     await cdp('Page.reload');
-    await wait(() => evaluate("document.querySelector('#connection').hidden&&!document.querySelector('#workspace').hidden"), 'queued refresh login retained');
+    await wait(() => evaluate("document.readyState==='complete'&&document.body.classList.contains('connected')&&document.querySelector('#connection')?.hidden===true&&document.querySelector('#workspace')?.hidden===false"), 'queued refresh login retained');
     assert.equal(fake.calls.submit.length, 1); result.checks.push('refresh retains login and does not resume a canceled queue item');
     result.status = 'passed'; save();
   } finally { await app.dispose(); }

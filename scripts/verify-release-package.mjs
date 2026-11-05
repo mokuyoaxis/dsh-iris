@@ -31,7 +31,9 @@ async function check(name, values, cwd, timeoutMs) {
   const record = { name, ...result, timedOut, timeoutMs, elapsedMs,
     ...(timedOut ? { timerLatenessMs: Math.max(0, elapsedMs - timeoutMs) } : {}) };
   report.checks.push(record); save(); console.log(JSON.stringify(record));
-  assert(result.status === 0 && !result.signal && !result.error && !timedOut,
+  const succeeded = result.status === 0 && !result.signal && !result.error && !timedOut;
+  if (!succeeded) console.error(fs.readFileSync(path.join(out, name + '.log'), 'utf8'));
+  assert(succeeded,
     name + ' failed; inspect ' + path.join(out, name + '.log'));
 }
 try {
