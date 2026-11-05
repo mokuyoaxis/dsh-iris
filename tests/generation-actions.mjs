@@ -30,6 +30,7 @@ for (const p of [
 ]) {
   const saved = config.upsert({ ...p, models: [
     { id: 'wan2.2-t2v-flash', capabilities: ['video-gen'] },
+    { id: 'wan2.2-i2v-flash', capabilities: ['video-gen'] },
     { id: 'wan2.2-s2v-flash', capabilities: ['video-gen'] }
   ] });
   providerIds[p.key] = saved.id;
@@ -95,15 +96,16 @@ try {
     'Core Attempt 保存明确拒绝与受理事实', firstTask.attempts);
   assert(tasks.all().length === legacyBefore, 'Core 视频任务零 legacy 双写', tasks.all().length);
 
-  // 后续只使用 good 的两个明确分配模式。
-  config.setAssignmentOrder('video-gen', [goodRef, models.modelRef(providerIds.good, 'wan2.2-s2v-flash')]);
+  // 后续按实际输入家族选择 good 的图生视频和数字人候选。
+  config.setAssignmentOrder('video-gen', [models.modelRef(providerIds.good, 'wan2.2-i2v-flash'), models.modelRef(providerIds.good, 'wan2.2-s2v-flash')]);
   const frame = path.join(root, 'outputs', 'frame.png');
   fs.writeFileSync(frame, Buffer.from('fake-png'));
   const i2v = await runAction({}, 'video', { prompt: 'move', first_frame_path: frame, size: '640*480' });
   tasks.stopWatchAll();
   await stopProviderTaskWatchesForDsh();
   const i2vBody = submitCalls.at(-1).body;
-  assert(i2v.storage === 'core' && i2v.mode === 'i2v' && String(i2vBody.input.img_url).startsWith('data:image/png;base64,'),
+  assert(i2v.storage === 'core' && i2v.mode === 'i2v' && i2vBody.model === 'wan2.2-i2v-flash'
+    && String(i2vBody.input.img_url).startsWith('data:image/png;base64,'),
     'i2v 走 Core 链路并通过共享动作发送首帧 data URL', i2vBody);
   assert(tasks.all().length === legacyBefore, 'i2v 零 legacy 双写', tasks.all().length);
 

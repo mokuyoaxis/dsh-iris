@@ -23,16 +23,18 @@ const server = http.createServer((req, res) => { void Promise.resolve(serveApi(r
 server.listen(0, '127.0.0.1'); await once(server, 'listening');
 const url = 'http://127.0.0.1:' + server.address().port + '/iris/api/core/artifact/' + artifact.id + '/media';
 const read = fs.readFileSync, stream = fs.createReadStream;
+// Core opens the canonical root; Windows TEMP may use an 8.3 alias.
+const objectPrefix = path.join(fs.realpathSync.native(dataRoot), 'artifact-store', 'v0', 'objects') + path.sep;
 let fullReads = 0, streams = 0, openStreams = 0;
 fs.readFileSync = (file, ...args) => {
-  if (String(file).startsWith(path.join(dataRoot, 'artifact-store/v0/objects') + path.sep)) {
+  if (String(file).startsWith(objectPrefix)) {
     fullReads++; throw new Error('whole-object read forbidden at DSH media route');
   }
   return read(file, ...args);
 };
 fs.createReadStream = (file, ...args) => {
   const result = stream(file, ...args);
-  if (String(file).startsWith(path.join(dataRoot, 'artifact-store/v0/objects') + path.sep)) {
+  if (String(file).startsWith(objectPrefix)) {
     streams++; openStreams++; result.once('close', () => openStreams--);
   }
   return result;

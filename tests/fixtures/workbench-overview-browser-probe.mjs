@@ -115,7 +115,7 @@ export async function verifyOverviewBrowser({ out, dataRoot, chosenRunId, tokenF
     session = await restart(root, config, { allowProviderManagement: false });
     await login();
     await check('v3 read-only service shows audio support without offering creation or management', `!document.querySelector('[data-overview-create]')&&!document.querySelector('[data-overview-configure]')&&${card('tts')}.querySelector('.overview-entry').textContent==='面板已接入'&&${card('tts')}.textContent.includes('当前会话未提供记录')`);
-    await cdp('Page.reload'); await wait(() => evaluate("!document.querySelector('#overview-panel').hidden&&document.querySelector('#page-label').textContent==='总览'"), 'overview reload');
+    await cdp('Page.reload'); await wait(() => evaluate("document.readyState==='complete'&&document.querySelector('#overview-panel')?.hidden===false&&document.querySelector('#page-label')?.textContent==='总览'"), 'overview reload');
     await check('overview refresh retains login and does not submit or auto-test', "document.body.classList.contains('connected')&&location.hash==='#overview'&&document.querySelector('#overview-tools').open===false");
     assert.equal(report.requests.filter(item => item.method === 'POST').length, 2);
 
