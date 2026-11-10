@@ -27,6 +27,10 @@ node bin/dsh-iris.js operation inspect op_REPLACE_WITH_64_HEX --data-root /absol
 
 ## 身份与状态
 
+当前源码（未发布）为派发时遇到写者占用的排队 Operation 返回临时 `root_busy` 原因。工作台的“重试原操作”沿用本标签页保存的原 Key 和输入，恢复记录可用时，同标签页刷新后仍可接回；原身份缺失时不新建 Key 代替。具体操作见[数据根占用与原操作重试](MEDIA_SCHEDULING.md#数据根占用与原操作重试当前源码未发布)。
+
+取消遇到 409 时，停止事实尚未持久保存。工作台保留原停止动作，写权释放后再次点击“停止等待”即可重试；存在待保存的停止意图时，“重试原操作”停用。持久状态、格式与启动后 `interrupted` 规则保持。
+
 - 身份按根 UUID 与小写 UUIDv4 Key 派生为 `op_<64 hex>`，不依赖 Token、端口或进程，原 Key 不单独复制。媒体记录不复制 Prompt；插件记录保存其实际JSON输入并纳入摘要，同 Key 改输入/依赖拒绝。
 - 同 Key、同 Run/revision 接回原记录，包含已结束或取消记录；变更输入复用 Key 拒绝。同 Run 最多一条 queued/running，单根活动上限 8；被拒绝的请求不落盘。
 - 接收写入单条完整记录，不双写索引。状态转换按 Operation revision 检查，允许排队、开始及成功/失败/取消/中断的有限转换，结束记录不重新排队。

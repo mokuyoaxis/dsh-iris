@@ -303,6 +303,7 @@ figcaption { display:flex; justify-content:space-between; align-items:center; ga
 .choice-button { width:100%; border:0; border-top:1px solid var(--line); color:var(--ink); background:var(--panel); border-radius:0; min-height:44px; font-size:13px; }
 .choice-button[aria-pressed="true"] { color:var(--accent); background:var(--tint); }
 .run-heading { margin-top:14px; padding:12px; background:var(--soft); border-radius:9px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.operation-actions { display:flex; flex-wrap:wrap; gap:8px; }
 .run-heading h2 { font-size:15px; } #status-message { margin-top:3px; font-size:13px; }
 #run-view[data-tone="warning"] #status-title { color:var(--warning); }
 .result-actions { display:flex; gap:14px; justify-content:space-between; align-items:center; margin:14px 0 8px; }

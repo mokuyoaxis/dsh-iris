@@ -61,6 +61,18 @@ Operation字段与schema版本未改变，当前源码补全了无`startedAt`的
 
 派发时若发现另一写者占用，原 Operation 可继续保留 queued，等待用原 Key 显式接回或停止，不自动抢锁/轮询。内部 `idle()` 的一次 drain 返回不保证所有 queued 记录已终结；调用方应查看原 Operation 状态。
 
+### 数据根占用与原操作重试（当前源码，未发布）
+
+已经遇到根占用的 Operation，在详情与原 Key 查询中附带 `scheduling.phase: "root_busy"`；默认串行模式同样提供此原因。它只表示本实例最近一次派发受阻，不探测锁是否已释放，不写入持久记录；下一次派发时重新计算，终态或重启后不保留。
+
+工作台显示“等待数据根写权限”时：
+
+1. 保留发起操作的标签页，等待其他写入者结束。同标签页刷新只读取原状态，不会换 Key 或发送 POST。
+2. 需要继续时，点击“重试原操作”，沿原 Key、原 Run/revision 接回同一个 Operation。释放写权本身不会自动执行；原身份不可用时，页面不新建身份代替。
+3. 需要停止时，点击“停止等待”。停止也需要写权，忙时返回 409，页面提示尚未保存；写权释放后再次点击，复用原停止动作。已有待保存的停止意图时，“重试原操作”停用。
+
+### 服务重启与其他等待阶段
+
 服务启动将遗留 `queued/running` 标为 `interrupted`，不自动恢复发送。响应丢失先按原 Key 查询；需要继续时用新 Key 与当前 Run revision，保留原 Task/Attempt/连接及插件依赖。未知受理不能通过重启或换调度配置重新生成。强杀后的租约仍需按[执行服务说明](CORE_SERVICE.md)确认实际 stale PID 后恢复。
 
 工作台显示“等待远端任务名额”“等待模型冷却”“等待发送窗口”或“等待网络名额”。授权后的原 Operation 查询附带临时 `scheduling.phase`；该字段不写入持久记录。owner 的 `/api/v0/session` 另有本实例 HTTP/队列/远端数摘要；普通 MCP 不获得策略文件或管理权限。
@@ -69,4 +81,4 @@ Operation字段与schema版本未改变，当前源码补全了无`startedAt`的
 
 该策略用于 Core 服务所装配的媒体能力、共用网络客户端的目录与供应商检测。通过同一服务接入的 Web、MCP、DSH 服务桥受同一实例约束。单次 CLI、DSH 独立原生路径、宿主借用服务及自行绕过客户端联网的可信插件，不因此获得调度承诺。没有增加后台轮询或自动恢复队列。
 
-从源码仓库运行受控本地 HTTP 和独立根用例：`tests/media-scheduler.mjs`、`tests/application-scheduling.mjs`、`tests/scheduling-policy.mjs`、`tests/scheduling-limits.mjs`、`tests/scheduling-api.mjs`、`tests/scheduling-proxy.mjs`、`tests/scheduling-recovery.mjs`；`tests/operation-runner-scheduling-failures.mjs`另覆盖排队失败隔离、终态排空和持久失败保留租约。`scripts/verify-local-web-browser.mjs --scheduling` 验证真实工作台队列提示与停止，`scripts/verify-scheduling-package.mjs` 检查实际候选 CLI/stdio MCP。这些开发脚本不随npm包分发。包验证复用已有依赖，不代表一次干净安装或真实 Agent 交付。这些验证不等于真实供应商压力、真实 Clash/TUN、ComfyUI GPU 或全部平台验收。旧百炼实验的 HTTP 峰值不能代替本片应用入口的容量证明。
+从源码仓库运行受控本地 HTTP 和独立根用例：`tests/media-scheduler.mjs`、`tests/application-scheduling.mjs`、`tests/scheduling-policy.mjs`、`tests/scheduling-limits.mjs`、`tests/scheduling-api.mjs`、`tests/scheduling-proxy.mjs`、`tests/scheduling-recovery.mjs`；`tests/operation-runner-scheduling-failures.mjs`另覆盖排队失败隔离、终态排空和持久失败保留租约。`tests/operation-root-busy.mjs`用独立进程持有真实租约，覆盖串行/调度模式的原因查询、原 Key 重试、取消与重启。`scripts/verify-local-web-browser.mjs --scheduling` 验证真实工作台队列提示、原操作重试、刷新与停止，`scripts/verify-scheduling-package.mjs` 检查实际候选 CLI/stdio MCP。这些开发脚本不随npm包分发。包验证复用已有依赖，不代表一次干净安装或真实 Agent 交付。这些验证不等于真实供应商压力、真实 Clash/TUN、ComfyUI GPU 或全部平台验收。旧百炼实验的 HTTP 峰值不能代替本片应用入口的容量证明。
