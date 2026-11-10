@@ -11,7 +11,8 @@ import { readAllOperations } from '../../lib/operation-store.js';
 // A real independent writer acquires the lease between durable acceptance and dispatch.
 // Only this test process pauses at that handoff; product errors/responses are not mocked.
 export async function createRootBusyFixture(dataRoot) {
-  const root = fs.realpathSync(dataRoot);
+  // Match the runtime's canonical path, including Windows short-path expansion.
+  const root = fs.realpathSync.native(dataRoot);
   const directory = fs.mkdtempSync(path.join(path.dirname(root), 'root-holder-'));
   const child = spawn(process.execPath, [fileURLToPath(new URL('./root-busy-writer-child.mjs', import.meta.url)), root, directory],
     { stdio: ['ignore', 'pipe', 'pipe'] });
