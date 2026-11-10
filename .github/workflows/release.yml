@@ -1,6 +1,6 @@
 name: Release
 
-# 推送版本标签即发布：跑测试 → 打包 → 建 GitHub Release（附 tarball）→ 发布 npm。
+# 推送版本标签：测试/打包 → GitHub草稿与上传回执 → npm接受后公布Release → 独立只读确认。
 # alpha/beta/rc 使用独立 npm 标签与 GitHub prerelease，不更新稳定版入口。
 # GitHub Release 用工作流内置 GITHUB_TOKEN，无需本机凭据；
 # npm 发布需要仓库 secret NPM_TOKEN；缺失时明确失败，避免将部分发行记作成功。
@@ -11,7 +11,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -20,6 +20,9 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      manifest: ${{ steps.package.outputs.manifest }}
     permissions:
       contents: write
       id-token: write # npm provenance（--provenance 需要 OIDC）
@@ -54,52 +57,58 @@ jobs:
       - name: Extract release notes
         run: node scripts/release-notes.mjs "${GITHUB_REF_NAME#v}" > /tmp/release-notes.md
 
-      - name: Create GitHub Release
+      - name: Bind the release archive
+        id: package
+        run: |
+          RELEASE_MANIFEST="$RUNNER_TEMP/iris-release-package.json"
+          MANIFEST_JSON="$(node scripts/release-publication.mjs prepare \
+            --archive "$TARBALL" --tag "$GITHUB_REF_NAME" \
+            --commit "$(git rev-parse HEAD)" --output "$RELEASE_MANIFEST")"
+          printf 'manifest=%s\n' "$MANIFEST_JSON" >> "$GITHUB_OUTPUT"
+          printf 'RELEASE_MANIFEST=%s\n' "$RELEASE_MANIFEST" >> "$GITHUB_ENV"
+
+      - name: Publish with an immutable upload receipt
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          # 重跑时保留已有 Release 和附件，不删除发行记录。
-          gh release list --limit 1000 --json tagName --jq '.[].tagName' > /tmp/iris-release-tags.txt
-          if grep -Fxq "$GITHUB_REF_NAME" /tmp/iris-release-tags.txt; then
-            echo "GitHub Release $GITHUB_REF_NAME 已存在，保留原记录"
-          else
-            RELEASE_FLAGS=()
-            if [ "$RELEASE_PRERELEASE" = "true" ]; then
-              RELEASE_FLAGS+=(--prerelease --latest=false)
-            fi
-            gh release create "$GITHUB_REF_NAME" --verify-tag \
-              --title "Iris $GITHUB_REF_NAME" \
-              --notes-file /tmp/release-notes.md \
-              "${RELEASE_FLAGS[@]}" \
-              "$TARBALL#dsh-iris $GITHUB_REF_NAME tarball"
-          fi
-
-      - name: Publish to npm
-        env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          PKG_FULL="$(node -p "require('./package.json').name")@$(node -p "require('./package.json').version")"
-          # 幂等：该版本已发布过（如重跑）则跳过，避免 409 使整条流水线变红。
-          if npm view "$PKG_FULL" version >/dev/null 2>&1; then
-            echo "::warning::$PKG_FULL 已存在于 npm，跳过发布"
-          else
-            npm publish "$TARBALL" --access public --provenance --tag "$NPM_DIST_TAG"
-          fi
+          node scripts/release-publication.mjs publish \
+            --manifest "$RELEASE_MANIFEST" --archive "$TARBALL" \
+            --notes /tmp/release-notes.md --repo "$GITHUB_REPOSITORY" \
+            --output "$RUNNER_TEMP/npm-publication.json"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iris-release-attempt-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/iris-release-package.json
+            ${{ runner.temp }}/npm-publication.json
+          if-no-files-found: warn
+
+  verify-publication:
+    name: Confirm npm publication (read only)
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
 
       - name: Verify npm publication
+        env:
+          RELEASE_MANIFEST_JSON: ${{ needs.release.outputs.manifest }}
         run: |
-          PKG_NAME="$(node -p "require('./package.json').name")"
-          PKG_VERSION="$(node -p "require('./package.json').version")"
-          # 新版可见性可能晚于 publish 成功；在线重验，最多等待五轮间隔。
-          for attempt in 1 2 3 4 5 6; do
-            if PUBLISHED_VERSION="$(npm view "$PKG_NAME@$PKG_VERSION" version --prefer-online --fetch-retries=0 --fetch-timeout=15000)" \
-                && [ "$PUBLISHED_VERSION" = "$PKG_VERSION" ] \
-                && TAGGED_VERSION="$(npm view "$PKG_NAME" "dist-tags.$NPM_DIST_TAG" --prefer-online --fetch-retries=0 --fetch-timeout=15000)" \
-                && [ "$TAGGED_VERSION" = "$PKG_VERSION" ]; then
-              exit 0
-            fi
-            echo "::notice::npm registry 尚未确认 $PKG_VERSION（$attempt/6）"
-            if [ "$attempt" -lt 6 ]; then sleep 10; fi
-          done
-          echo "::error::npm registry 未确认版本 $PKG_VERSION 及渠道 $NPM_DIST_TAG"
-          exit 1
+          node scripts/release-publication.mjs verify \
+            --manifest-json "$RELEASE_MANIFEST_JSON" \
+            --output "$RUNNER_TEMP/npm-verification.json"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iris-publication-verification-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/npm-verification.json
+          if-no-files-found: warn

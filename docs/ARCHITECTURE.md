@@ -1,6 +1,6 @@
 # Iris 架构与边界
 
-状态：本文说明 **Iris 0.3.0-beta.1** 的共享Core及Web、MCP与插件装配，并保留0.2.7入口图作历史对照。0.2.0建立实例化Core Runtime、Headless CLI及共享Task/Artifact事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.5恢复旧宿主支持，0.2.6增加连接引用、可选功能自动池和目录同步。准确版本及历史范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。Node.js最低22.1.0；Core与插件契约仍为实验性。
+状态：本文说明 **Iris 0.3.0-beta.2**的共享Core及Web、MCP与插件装配，沿用beta.1架构，并保留0.2.7入口图作历史对照。0.2.0建立实例化Core Runtime、Headless CLI及共享Task/Artifact事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.5恢复旧宿主支持，0.2.6增加连接引用、可选功能自动池和目录同步。准确版本及历史范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。Node.js最低22.1.0；Core与插件契约仍为实验性。
 
 ## 当前形态
 

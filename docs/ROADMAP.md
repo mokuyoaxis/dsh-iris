@@ -4,7 +4,7 @@ Iris 的方向是本地优先、Agent 可调用的多模态创作工作台。用
 
 ## 当前状态
 
-本文对应 **Iris 0.3.0-beta.1**，发布状态见 [README](../README.md)。包名为 `@mokuyoaxis/dsh-iris`，保留DSH插件与独立CLI，新增Core Web、通用MCP与显式插件贡献，详见 [beta发布说明](releases/0.3.0-beta.1.md)。稳定通道0.2.7与其[历史说明](releases/0.2.7.md)保留。
+本文对应 **Iris 0.3.0-beta.2**，发布状态见 [README](../README.md)。包名为 `@mokuyoaxis/dsh-iris`，保留DSH插件与独立CLI，Core Web、通用MCP与显式插件贡献沿用beta.1；本次修复根占用时的原操作/停止重试并优化发布确认，详见 [beta.2发行说明](releases/0.3.0-beta.2.md)。稳定通道0.2.7与其[历史说明](releases/0.2.7.md)保留。
 
 - 图片生成、Artifact ID 看图/OCR/定位和聊天改图，支持按模型配置图片协议。
 - 持久图片导入与原生 Qwen 改图；六类功能可选自动池、手选或停用，宿主视觉需明确启用。0.2.5 建立的 12 个准确 DSH 版本范围保持。

@@ -4,7 +4,12 @@
 
 ## [Unreleased]
 
+## [0.3.0-beta.2] - 2026-11-10
+
+本版使用 npm `beta` 与 GitHub prerelease，稳定 `latest` 不更新。见[发行说明](docs/releases/0.3.0-beta.2.md)。
+
 - 修复已接收的 Operation 在数据根被占用时只显示排队、缺少原因的问题：详情与原 Key 查询返回临时 `root_busy` 阶段，工作台显示“等待数据根写权限”并提供“重试原操作”。取消遇到写者繁忙时，工作台保留待保存的停止意图，释放后可再次停止；刷新不自动派发，原身份、持久格式与单写者语义保持。
+- 发布流程拆出独立只读确认任务，在最多10分钟内核对准确版本、归档摘要与渠道；上传前意图与接受回执绑定提交和归档，重跑先核对已有记录。已接受但暂不可见时不重复上传，结果不明时保留草稿与证据并明确失败；认证或摘要错误不伪装成等待。详见[发布流程](docs/RELEASE_PROCESS.md)。
 
 ## [0.3.0-beta.1] - 2026-11-05
 
@@ -523,7 +528,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.1...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.2...HEAD
+[0.3.0-beta.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.1...v0.3.0-beta.2
 [0.3.0-beta.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-alpha.1...v0.3.0-beta.1
 [0.3.0-alpha.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.7...v0.3.0-alpha.1
 [0.2.7]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.6...v0.2.7

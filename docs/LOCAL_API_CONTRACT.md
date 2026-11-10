@@ -108,7 +108,7 @@ I4B 的上传与创建同步完成本地提交，以 201/200 返回 Artifact/Flo
 
 0.3 beta执行模式在原子接收后返回 `202 {contractVersion:0, operation, idempotentReplay:false}`；重放返回 200，状态为 `queued | running | succeeded | failed | canceled | interrupted`。GET 不驱动 Provider；每次显式继续至多一次观察。单根最多 8 条 queued/running，同 Run 最多一条；writer 忙时拒绝新接收，不声称已排队。停止直接中止控制器，随后在同 writer 下落盘并返回 200；不伪造远端 Task canceled。此模式不随 I4B 或只读 Web 自动开启。
 
-当前源码（未发布）：已经接收、但派发时遇到其他写者的 Operation 保持 `queued`。授权后的单项与原 Key 查询附带临时 `operation.scheduling = {"phase":"root_busy"}`，不修改持久 schema。该阶段记录本实例最近一次派发受阻的原因，不证明竞争写者此刻仍持锁；释放后须用原 Key、原 Run/revision 明确重试，接回同一个 Operation，读取和刷新不会派发。停止的终态写入同样受租约约束，忙时返回 `409 IRIS_API_ROOT_BUSY`，不能据此声明已经取消。阶段在下一次派发时重新计算，终态与服务重启后不保留。
+0.3.0-beta.2：已经接收、但派发时遇到其他写者的 Operation 保持 `queued`。授权后的单项与原 Key 查询附带临时 `operation.scheduling = {"phase":"root_busy"}`，不修改持久 schema。该阶段记录本实例最近一次派发受阻的原因，不证明竞争写者此刻仍持锁；释放后须用原 Key、原 Run/revision 明确重试，接回同一个 Operation，读取和刷新不会派发。停止的终态写入同样受租约约束，忙时返回 `409 IRIS_API_ROOT_BUSY`，不能据此声明已经取消。阶段在下一次派发时重新计算，终态与服务重启后不保留。
 
 ## 5. 上传与持久创建幂等（I4B）
 

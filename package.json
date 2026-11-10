@@ -1,6 +1,6 @@
 {
   "name": "@mokuyoaxis/dsh-iris",
-  "version": "0.3.0-beta.1",
+  "version": "0.3.0-beta.2",
   "description": "A multimodal workspace for Agents: Core Web, MCP, CLI and native DSH tools with model pools, durable media tasks, ComfyUI and explicit plugins.",
   "type": "module",
   "main": "lib/index.js",

@@ -19,14 +19,14 @@
 
 Iris connects media services and keeps creative work, tasks and outputs together. Agents can generate, edit, inspect and reuse media through a standalone CLI, a native DSH plugin, or the 0.3 beta Core workbench and generic MCP. Core owns execution and storage; users choose what each client can access.
 
-**Release channels: `0.3.0-beta.1` uses npm `beta`; stable `latest` remains `0.2.7`.** Building on alpha.1's standalone Web, generic MCP, ComfyUI and Core plugins, this release adds explicit network pools, bounded scheduling, text-to-video, environment credential references and independent plugin starters. See the [beta scope](docs/BETA_SCOPE.md) and [release notes](docs/releases/0.3.0-beta.1.md).
+**Release channels: `0.3.0-beta.2` uses npm `beta`; stable `latest` remains `0.2.7`.** Building on beta.1's network pools, bounded scheduling, text-to-video, environment credential references and plugin starters, this release explains root contention, retries the original operation or stop, and gives publication confirmation its own job. See the unchanged [beta scope](docs/BETA_SCOPE.md) and the [release notes](docs/releases/0.3.0-beta.2.md).
 
 | What you need | Entry | Availability |
 |---|---|---|
 | Media tools and prompt refinement inside DSH | [DSH plugin](#dsh-plugin-027) | Published 0.2.7 |
 | Media generation, task inspection and export in a terminal | [Standalone CLI](#standalone-cli-027) | Published 0.2.7; no DSH required |
-| A dedicated UI for models, creation and works | [Core quickstart](docs/CORE_QUICKSTART.md) | 0.3.0-beta.1 |
-| Other Agents sharing the same media workspace | [MCP](docs/MCP.md) · [Agent guide](docs/AGENT_CORE_QUICKSTART.md) | 0.3.0-beta.1 |
+| A dedicated UI for models, creation and works | [Core quickstart](docs/CORE_QUICKSTART.md) | 0.3 beta |
+| Other Agents sharing the same media workspace | [MCP](docs/MCP.md) · [Agent guide](docs/AGENT_CORE_QUICKSTART.md) | 0.3 beta |
 
 ## Workbench preview
 
@@ -74,7 +74,7 @@ Existing roots are not migrated automatically. Video requires a new v4 root, and
 Pin the prerelease in your own project, then choose a **new private location**. Existing workspaces are not migrated:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-beta.1
+npm install @mokuyoaxis/dsh-iris@0.3.0-beta.2
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
@@ -111,7 +111,7 @@ dsh web
 
 Under Settings → Iris Workbench, reference an existing DSH API-key connection or add a service. Choose its protocol, approve model uses and select pool policies. Native DSH mode uses host routes, attachments and lifecycle without a separate Core Web service; it provides 17 Agent tools and the 🫧 prompt-refinement entry.
 
-These commands retain the stable version. To use additions such as the beta ComfyUI UI, explicitly install `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.1`. The exact supported host versions do not expand.
+These commands retain the stable version. Use `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.2` for additions such as the ComfyUI UI. The exact supported host versions do not expand.
 
 After configuration, a minimal request is:
 
@@ -177,7 +177,7 @@ Historical device captures from an Android browser connected to DSH in Termux/PR
 | Workbench and connections | [Login](docs/WORKBENCH_LOGIN.md) · [Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Skills](docs/CORE_SKILLS.md) |
 | Models and flows | [Providers, pools and spectrum](docs/PROVIDER_SETTINGS.md) · [Images / ComfyUI](docs/IMAGE_GENERATION.md) · [Speech / transcription](docs/AUDIO_FLOWS.md) · [Task semantics](docs/TASK_SEMANTICS.md) |
 | Extensions | [Plugin contract](docs/PLUGINS.md) · [Startup](docs/PLUGIN_STARTUP.md) · [Panel](docs/PANEL_EXTENSIONS.md) · [Contact sheet](docs/CONTACT_SHEET.md) |
-| Releases and direction | [0.3 beta release notes](docs/releases/0.3.0-beta.1.md) · [0.2.7 stable](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
+| Releases and direction | [0.3 beta.2 release notes](docs/releases/0.3.0-beta.2.md) · [0.2.7 stable](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
 
 The DSH package retains [`iris-use`](.dsh/skills/iris-use/SKILL.md), [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) and [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md). Core and connection Skills do not replace them.
 

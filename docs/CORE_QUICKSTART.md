@@ -1,13 +1,13 @@
 # Core Workbench Quickstart · 从零启动工作台
 
-This guide is for **0.3.0-beta.1 or the current source tree**. Stable npm **0.2.7 does not include `web serve` or production MCP**. For stable DSH/CLI usage, see the [DSH guide](../user_guide.md) or [standalone CLI](HEADLESS_CLI.md). The beta scope freezes a minimal contract; broader SDK contracts may change; existing roots are not migrated automatically.
+This guide is for **0.3.0-beta.2 or the current source tree**. Stable npm **0.2.7 does not include `web serve` or production MCP**. For stable DSH/CLI usage, see the [DSH guide](../user_guide.md) or [standalone CLI](HEADLESS_CLI.md). The beta scope freezes a minimal contract; broader SDK contracts may change; existing roots are not migrated automatically.
 
 ## Start a new workspace · 新建工作区
 
 Use Node.js ≥22.1.0. To install the prerelease in your project:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-beta.1
+npm install @mokuyoaxis/dsh-iris@0.3.0-beta.2
 npx dsh-iris --help
 ```
 

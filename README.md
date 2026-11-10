@@ -19,14 +19,14 @@
 
 Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成、修改、查看和继续使用媒体。它提供独立 CLI、DSH 原生插件，以及 0.3 beta 的 Web 工作台与通用 MCP：供应商、任务和产物由 Core 管理，客户端按用户选择获得能力。
 
-**版本通道：`0.3.0-beta.1` 通过 npm `beta` 通道获取；稳定 `latest` 保留 `0.2.7`。** 本次在 alpha.1 的独立 Web、通用 MCP、ComfyUI 和 Core 插件之上，新增网络出口池、有界调度、文生视频、环境凭据引用及独立插件模板。最小契约与主要流程按 [beta 范围](docs/BETA_SCOPE.md)收口，完整变化见[发布说明](docs/releases/0.3.0-beta.1.md)。
+**版本通道：`0.3.0-beta.2` 使用 npm `beta`，稳定 `latest` 保留 `0.2.7`。** 本次在 beta.1 的网络出口池、有界调度、文生视频、环境凭据引用和独立插件模板基础上，修复数据根占用时的原因提示与原操作/停止重试，并拆出独立发布确认任务。最小契约与主要流程沿用 [beta 范围](docs/BETA_SCOPE.md)，变化及验证边界见[发布说明](docs/releases/0.3.0-beta.2.md)。
 
 | 你想做什么 | 使用入口 | 范围 |
 |---|---|---|
 | 在 DSH 对话中使用媒体工具与提示词优化 | [DSH 插件](#dsh-插件027) | 已发布 0.2.7 |
 | 在终端生成媒体、查任务、导出作品 | [独立 CLI](#独立-cli027) | 已发布 0.2.7，无需 DSH |
-| 在独立页面配置模型、创作和管理作品 | [Core 工作台快速开始](docs/CORE_QUICKSTART.md) | 0.3.0-beta.1 |
-| 让其他 Agent 使用同一个媒体工作区 | [MCP 接入](docs/MCP.md) · [Agent 指导](docs/AGENT_CORE_QUICKSTART.md) | 0.3.0-beta.1 |
+| 在独立页面配置模型、创作和管理作品 | [Core 工作台快速开始](docs/CORE_QUICKSTART.md) | 0.3 beta |
+| 让其他 Agent 使用同一个媒体工作区 | [MCP 接入](docs/MCP.md) · [Agent 指导](docs/AGENT_CORE_QUICKSTART.md) | 0.3 beta |
 
 ## 工作台预览
 
@@ -74,7 +74,7 @@ Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成�
 在自己的项目中固定安装预发布包，再选择**新的私有位置**。现有工作区不自动迁移：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-beta.1
+npm install @mokuyoaxis/dsh-iris@0.3.0-beta.2
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
@@ -111,7 +111,7 @@ dsh web
 
 在“设置 → Iris 工作台”引用 DSH 已有 API Key 连接或添加服务，选择协议、确认模型用途与功能池。原生 DSH 模式使用宿主路由、附件和生命周期，不要求另起 Core Web 服务；提供 17 个 Agent 工具和对话框 🫧 提示词优化。
 
-以上命令保留稳定版。需要 beta 的 ComfyUI 等功能时，明确改用 `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.1`；宿主准确版本范围不扩大。
+以上命令保留稳定版。需要 beta 的 ComfyUI 等功能时，明确改用 `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.2`；宿主准确版本范围不扩大。
 
 配置后的最小指令：
 
@@ -177,7 +177,7 @@ Node.js ≥22 和可加载的 `sharp` 是基础要求。视频抽帧需 `ffmpeg`
 | 工作台与接入 | [登录](docs/WORKBENCH_LOGIN.md) · [Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Skills](docs/CORE_SKILLS.md) |
 | 模型与流程 | [供应商/模型池/光谱](docs/PROVIDER_SETTINGS.md) · [图片与 ComfyUI](docs/IMAGE_GENERATION.md) · [语音/转写](docs/AUDIO_FLOWS.md) · [任务语义](docs/TASK_SEMANTICS.md) |
 | 扩展 | [插件契约](docs/PLUGINS.md) · [启动选择](docs/PLUGIN_STARTUP.md) · [Panel](docs/PANEL_EXTENSIONS.md) · [多图对照板](docs/CONTACT_SHEET.md) |
-| 版本与方向 | [0.3 beta 发布说明](docs/releases/0.3.0-beta.1.md) · [0.2.7 稳定版](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构](docs/ARCHITECTURE.md) |
+| 版本与方向 | [0.3 beta.2 发布说明](docs/releases/0.3.0-beta.2.md) · [0.2.7 稳定版](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构](docs/ARCHITECTURE.md) |
 
 DSH 随包保留 [`iris-use`](.dsh/skills/iris-use/SKILL.md)、[`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) 和 [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md)。独立 Core 与连接 Skill 不替换它们。
 

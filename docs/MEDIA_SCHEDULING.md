@@ -1,4 +1,4 @@
-# 有界媒体调度（0.3.0-beta.1）
+# 有界媒体调度（0.3.0-beta.2）
 
 本页功能从 `0.3.0-beta.1` 提供，旧alpha.1不包含。默认仍使用串行写入队列；在 `api serve` 或 `web serve` 的现有启动命令增加 `--scheduler-config /absolute/private/scheduling.json`，才启用本片调度。它不启动第二个写者，不扫描配置，不迁移已有数据，不修改全局代理或系统路由。
 
@@ -61,7 +61,9 @@ Operation字段与schema版本未改变，当前源码补全了无`startedAt`的
 
 派发时若发现另一写者占用，原 Operation 可继续保留 queued，等待用原 Key 显式接回或停止，不自动抢锁/轮询。内部 `idle()` 的一次 drain 返回不保证所有 queued 记录已终结；调用方应查看原 Operation 状态。
 
-### 数据根占用与原操作重试（当前源码，未发布）
+### 数据根占用与原操作重试
+
+以下修复从0.3.0-beta.2提供；beta.1不包含此提示与页面重试流程。
 
 已经遇到根占用的 Operation，在详情与原 Key 查询中附带 `scheduling.phase: "root_busy"`；默认串行模式同样提供此原因。它只表示本实例最近一次派发受阻，不探测锁是否已释放，不写入持久记录；下一次派发时重新计算，终态或重启后不保留。
 
