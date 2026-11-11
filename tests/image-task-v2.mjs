@@ -78,9 +78,17 @@ try {
   assert(submitted.attempts[1].acceptance === 'accepted' && submitted.remoteTaskId === 'remote-accepted', '第二候选受理事实已落盘', submitted);
   assert(action.providerId === second.id && action.remoteTaskId === 'remote-accepted', '动作返回实际受理供应商');
 
-  await sleep(900);
-  const finished = await inspectProviderTaskForDsh(action.taskId);
+  // Background delivery has no 900ms latency contract. Observe the original
+  // Task with a bounded wait; the runner's 120-second file budget is unchanged.
+  const deadline = performance.now() + 10000;
+  let finished = await inspectProviderTaskForDsh(action.taskId);
+  while (!['ready', 'failed'].includes(finished.deliveryState) && finished.phase !== 'terminal' && !finished.lastError
+      && performance.now() < deadline) {
+    await sleep(10);
+    finished = await inspectProviderTaskForDsh(action.taskId);
+  }
   assert(finished.outcome === 'succeeded' && finished.deliveryState === 'ready' && finished.status === 'succeeded', '轮询与产物交付按独立事实收口', finished);
+  assert(finished.id === action.taskId && finished.attempts.length === 2 && submitCalls === 2, '等待原 Task 交付不创建新任务或重提生成', finished);
   const media = await readCoreArtifactMediaForDsh(finished.artifactIds[0]);
   assert(media.bytes.equals(FAKE_PNG) && !fs.existsSync(path.join(config.irisHome(), 'outputs')), '异步图片只落盘 Core Artifact');
   const registry = JSON.stringify(coreTaskRecords());

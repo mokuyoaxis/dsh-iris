@@ -193,14 +193,40 @@ try {
     ...(passwordLogin ? { workbenchAuth: { directory: path.join(out, 'password-auth') } } : {}) };
   api = createLocalReadApi(apiOptions); session = await api.start();
   writeLocalApiTokenFile(tokenFile, session.accessToken, dataRoot);
+  const startup = report.browserStartup = { status: 'starting', timeoutMs: 12000, startedAt: new Date().toISOString() };
+  const startupStarted = performance.now(), startupWall = Date.now(), startupCpu = process.cpuUsage();
+  const portFile = path.join(profile, 'DevToolsActivePort');
+  const startupTiming = () => ({ elapsedMs: Math.round(performance.now() - startupStarted), wallElapsedMs: Date.now() - startupWall,
+    driverCpuMicros: process.cpuUsage(startupCpu), portFileExists: fs.existsSync(portFile),
+    process: { pid: browser.pid ?? null, exitCode: browser.exitCode, signalCode: browser.signalCode, closed: browserClosed } });
   browser = spawn(executable, ['--headless=new', ...(report.noSandbox ? ['--no-sandbox'] : []), '--disable-gpu',
     '--disable-dev-shm-usage', '--disable-background-networking', '--disable-extensions', '--disable-sync', '--no-first-run',
     '--remote-debugging-port=0', '--user-data-dir=' + profile, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'], detached: process.platform !== 'win32' });
   browser.stderr.pipe(browserLog, { end: false });
   closed = new Promise(resolve => browser.once('close', (code, signal) => { browserClosed = true; report.browserExit = { code, signal }; resolve(); }));
-  browser.on('error', error => report.browserErrors.push(error.message));
-  await wait(() => fs.existsSync(path.join(profile, 'DevToolsActivePort')), 'Chromium startup');
-  const port = fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0];
+  browser.once('spawn', () => { startup.spawnedAfterMs = Math.round(performance.now() - startupStarted); });
+  browser.once('exit', (code, signal) => {
+    if (startup.status === 'starting') startup.exitBeforeReady = { code, signal, elapsedMs: Math.round(performance.now() - startupStarted) };
+  });
+  browser.on('error', error => {
+    report.browserErrors.push(error.message);
+    if (startup.status === 'starting') startup.spawnError = { code: error.code, message: error.message };
+  });
+  try {
+    await wait(() => {
+      if (startup.spawnError) { startup.status = 'spawn_failed'; throw new Error('Chromium startup failed: ' + startup.spawnError.message); }
+      if (browser.exitCode !== null || browser.signalCode !== null || browserClosed) {
+        startup.status = 'exited_before_ready';
+        throw new Error('Chromium exited before DevTools became ready: ' + JSON.stringify(startup.exitBeforeReady || report.browserExit));
+      }
+      return fs.existsSync(portFile);
+    }, 'Chromium startup');
+    startup.status = 'ready';
+  } catch (error) {
+    if (startup.status === 'starting') startup.status = 'timed_out';
+    throw error;
+  } finally { Object.assign(startup, startupTiming()); save(); }
+  const port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
   const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json();
   socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, { once: true }); socket.addEventListener('error', reject, { once: true }); });
@@ -596,19 +622,23 @@ try {
   report.status = 'passed';
 } catch (error) {
   report.status = 'failed'; report.failure = error.stack; process.exitCode = 1;
+  save();
   if (socket?.readyState === WebSocket.OPEN) {
     try { report.failureView = await evaluate("({detailsOpen:document.querySelector('#run-details')?.open,disclosure:document.querySelector('#run-details .disclosure')?.textContent,feedback:document.querySelector('#feedback')?.textContent,hash:location.hash,connectionState:document.querySelector('#connection-state')?.textContent,connectionFeedback:document.querySelector('#connections-feedback')?.textContent,selectedConnection:document.querySelector('.connection-item[aria-current=true]')?.dataset.connectionId,toolsOpen:document.querySelector('#connection-tool-details')?.open,toolDisclosure:document.querySelector('#connection-tool-details .disclosure')?.textContent,fieldsetDisabled:document.querySelector('#connection-fields')?.disabled})"); }
     catch (diagnosticError) { report.diagnosticError = diagnosticError.message; }
   }
 } finally {
+  if (browser) report.browserCleanup = { before: { closed: browserClosed, exitCode: browser.exitCode, signalCode: browser.signalCode,
+    portFileExists: fs.existsSync(path.join(profile, 'DevToolsActivePort')) }, signalsRequested: [] };
   if (socket) socket.close();
   for (const request of pending.values()) { clearTimeout(request.timer); request.reject(new Error('Browser verification ended')); }
   pending.clear();
   if (browser && !browserClosed) {
+    report.browserCleanup.signalsRequested.push('SIGTERM');
     try { if (process.platform === 'win32') browser.kill('SIGTERM'); else process.kill(-browser.pid, 'SIGTERM'); }
     catch (error) { if (error.code !== 'ESRCH') throw error; }
     await Promise.race([closed, sleep(4000)]);
-    if (!browserClosed) { browser.kill('SIGKILL'); await closed; }
+    if (!browserClosed) { report.browserCleanup.signalsRequested.push('SIGKILL'); browser.kill('SIGKILL'); await closed; }
   }
   if (api) await api.dispose(); await app.dispose(); await new Promise(resolve => browserLog.end(resolve)); save();
   console.log(JSON.stringify({ status: report.status, checks: report.checks.length, screenshots: report.screenshots.length, output: out,

@@ -185,6 +185,10 @@ export async function createNetworkProxyFixture(root) {
     }), 'local upstream request');
   }
   function release(name) { pending.get(name)?.(); }
+  function snapshot() {
+    return { requests: requests.length, connects: connects.length, sockets: sockets.size,
+      listeningServers: servers.filter(server => server.listening).length, pending: [...pending.keys()], closing };
+  }
   async function close() {
     if (closing) return; closing = true;
     for (const complete of pending.values()) complete();
@@ -198,6 +202,6 @@ export async function createNetworkProxyFixture(root) {
     httpOrigin = await listen(http.createServer(originHandler), false);
     httpsOrigin = await listen(https.createServer(credentials, originHandler), true);
     return { httpOrigin, httpsOrigin, ca: credentials.cert, media, requests, connects, plainProxyRequests, errors,
-      createProxy, waitForRequests, release, close };
+      createProxy, waitForRequests, release, snapshot, close };
   } catch (error) { await close(); throw error; }
 }

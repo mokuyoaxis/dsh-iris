@@ -29,9 +29,17 @@ const privateMode = target => {
 };
 const cli = (args, { input, status = 0, config = file, json = true, overrides } = {}) => {
   const supplied = config === null ? args : [...args, '--network-config', config];
+  // Log only command names: input JSON and positional/flag values can contain
+  // credentials, even in rejection cases. Keep the existing 30-second budget.
+  const command = args[0] === 'network' ? args.slice(0, ['nodes', 'pools'].includes(args[1]) ? 3 : 2).join(' ') : args[0];
+  const sequence = checks.length + 1, started = performance.now(), wallStarted = Date.now();
+  console.log('NETWORK_CONFIG_CLI ' + JSON.stringify({ event: 'start', sequence, command, timeoutMs: 30000 }));
   const result = spawnSync(process.execPath, ['--import', pathToFileURL(guard).href, 'bin/dsh-iris.js', ...supplied], {
     cwd, encoding: 'utf8', env: { ...env, ...overrides }, input, timeout: 30000
   });
+  console.log('NETWORK_CONFIG_CLI ' + JSON.stringify({ event: 'end', sequence, command,
+    elapsedMs: Math.round(performance.now() - started), wallElapsedMs: Date.now() - wallStarted,
+    status: result.status, signal: result.signal, ...(result.error ? { errorCode: result.error.code } : {}) }));
   assert.equal(result.error, undefined, 'CLI must finish within its existing subprocess budget');
   assert.equal(result.signal, null, 'CLI must exit normally');
   assert.equal(result.status, status, `${supplied.slice(0, 3).join(' ')}: ${result.stderr}`);
