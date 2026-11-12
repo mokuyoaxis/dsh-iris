@@ -2,6 +2,8 @@
 
 新用户先看[从零启动与页面接入](CORE_QUICKSTART.md#connect-an-agent--连接客户端)；交给安装/使用 Agent 的可复制说明见 [Agent Core 指导](AGENT_CORE_QUICKSTART.md)。本页详述传输、模板与授权契约。
 
+当前源码的 `iris_core_run` 会随已有 Task 返回可选 `errorSummary`，包含类别、固定说明、已知阶段及有效 HTTP 状态，例如 `rate_limit / submit / 429`。这是保存的任务诊断，读取失败任务仍可成功；Operation 的 `succeeded` 表示有限调用已返回，媒体状态以 Task 为准。摘要不包含原始错误文本，也不授予重试权限；受理未知不自动重提。字段细节见 [Run 详情契约](LOCAL_API_CONTRACT.md#4-flowview-与操作反馈)。
+
 同一套 Iris MCP 工具可通过 stdio 或 Streamable HTTP 接入支持对应传输和协议的客户端。无需为每个产品编写 Adapter，客户端名称也不用于授予能力。**通用 MCP 入口从0.3.0-alpha.1提供，稳定 npm 0.2.7 不包含**；安装准确beta版本或使用当前源码；最小面见[beta约定](BETA_SCOPE.md)。
 
 业务数据、Operation、执行队列和 Provider 均归同一个 [Core 服务](CORE_SERVICE.md)。MCP 负责协议和工具交付，使用官方 SDK 2.3.1；不启动第二个业务写者，也不把调用转成 Shell 命令。当前媒体范围为固定 `image-edit/v0`、[文生图 `image-generate/v0`](IMAGE_GENERATION.md)，以及新 v3 根上的 [speech/v0 和 transcribe/v0](AUDIO_FLOWS.md)。文生图需要 v2/v3 根，音频需要显式 `execution init --audio` 新根，原根不迁移。**beta.1**另支持新 v4 根上的[固定文生视频](VIDEO_FLOWS.md)，通过 `execution init --video` 显式创建；v4 保留图片/音频能力，已发布 alpha.1 不支持该开关。

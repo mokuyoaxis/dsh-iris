@@ -50,6 +50,7 @@ global.fetch = async (input, init = {}) => {
     const records = fs.readdirSync(path.join(dshCoreDataRoot(), 'task-store/v0/tasks'));
     const recordsOnDisk = records.map((name) => JSON.parse(fs.readFileSync(path.join(dshCoreDataRoot(), 'task-store/v0/tasks', name), 'utf8')));
     assert(recordsOnDisk.some((task) => task.attempts.at(-1)?.acceptance === 'none'), 'Core Attempt must be durable before HTTP');
+    if (mode === 'aborted') throw new DOMException('This operation was aborted', 'AbortError');
     if (url.includes('first.fixture.invalid')) {
       return new Response(JSON.stringify({ error: { message: 'fixture rejection' } }), { status: mode === 'unknown' ? 500 : 429 });
     }
@@ -113,6 +114,22 @@ try {
   assert.equal(tasks.all().length, legacyBefore);
   assert(!taskBefore.includes('fixture iris flower') && !taskBefore.includes('fixture-first')
     && !taskBefore.includes('fixture.invalid'), 'Core facts must not persist prompt, secrets, or Provider URL');
+
+  mode = 'aborted';
+  config.setModelVerified(first.id, 'same-image', 'image-gen', { ok: true });
+  const beforeAbort = calls.length;
+  let aborted;
+  try { await runAction({}, 'image', { prompt: 'fixture aborted submission' }); } catch (error) { aborted = error; }
+  assert(aborted?.taskId);
+  const abortedPath = path.join(dshCoreDataRoot(), 'task-store/v0/tasks', aborted.taskId + '.json');
+  const abortedBefore = fs.readFileSync(abortedPath);
+  const abortedStatus = await statusTool.execute({ task_id: aborted.taskId });
+  assert.match(abortedStatus, /任务状态查询成功/);
+  assert.match(abortedStatus, /历史任务错误: This operation was aborted/);
+  assert(!/(?:^|\n)error:/.test(abortedStatus), 'A saved Task error is explicitly labeled as history');
+  assert.equal((await inspectProviderTaskForDsh(aborted.taskId)).acceptance, 'unknown');
+  assert.deepEqual(fs.readFileSync(abortedPath), abortedBefore);
+  assert.equal(calls.length, beforeAbort + 1, 'Status reads neither observe nor resubmit the aborted task');
   console.log('DSH synchronous tool -> Core -> preview/status -> CLI export tests passed');
 } finally {
   global.fetch = originalFetch;

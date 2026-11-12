@@ -64,7 +64,10 @@ export async function verifyVideoBrowser({ out, tokenFile, cdp, evaluate, click,
     await check('browser accepts actual video playback', "!document.querySelector('#output-video').paused||document.querySelector('#output-video').ended");
     await check('ready video hides image comparisons and selection and enables original download', "!document.querySelector('#video-result').hidden&&document.querySelector('#image-pair').hidden&&document.querySelector('#view-modes').hidden&&document.querySelector('#reuse-selected').hidden&&!document.querySelector('#download').disabled&&document.querySelector('#download').textContent==='下载视频'&&document.querySelector('#start-edit').disabled");
     await click('#download'); let file;
-    await wait(() => { file = fs.readdirSync(downloads).find(name => name.endsWith('.mp4')); return file; }, 'actual MP4 browser download');
+    await wait(() => {
+      file = fs.readdirSync(downloads).find(name => name.endsWith('.mp4'));
+      return file && fs.statSync(path.join(downloads, file)).size >= VIDEO_MP4.length;
+    }, 'actual MP4 browser download bytes');
     assert.deepEqual(fs.readFileSync(path.join(downloads, file)), VIDEO_MP4); result.download = file;
     assert.equal((await readRun(id)).task.id, original.task.id); assert.equal(fixture.calls.submit.length, 1); assert.equal(fixture.calls.poll.length, 1);
     result.checks.push('service restart observes the same Task, MP4 decodes in Chromium, browser download matches original bytes');

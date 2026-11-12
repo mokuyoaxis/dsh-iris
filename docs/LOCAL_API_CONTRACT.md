@@ -87,12 +87,17 @@ FlowView {
   output: { artifactId } | null,
   comparison: { artifactId } | null,
   selection: { artifactId } | null,
-  task: { id, acceptance, outcome, deliveryState, attemptCount } | null,
+  task: { id, acceptance, outcome, deliveryState, attemptCount,
+          errorSummary?: { category, message, stage?, httpStatus? } } | null,
   metrics: { ratio, diffPixels, totalPixels, width, height } | null
 }
 ```
 
 ID 继续使用当前 `run_` / `task_` / `artifact_` 加 24 位小写十六进制。DTO 不带绝对路径、端点、绑定摘要、远端任务 ID 或任意媒体 URL。媒体信息如格式/尺寸应由独立受控投影提供，不信任用户文件名。`metrics` 仅来自实际已提交比较作品；像素差异不是质量评分。
+
+当前源码为 HTTP / MCP 共用 Run 详情增加可选 `task.errorSummary`，仅在 Task 有保存的错误时出现。`category` 沿用受控 Provider 错误分类，如 `rate_limit`、`network`、`aborted`；`message` 是 Core 按类别生成的固定说明，`stage` 仅返回已知阶段，`httpStatus` 仅返回100–599的整数。例：`{category:"rate_limit",message:"请求受到限流。",stage:"submit",httpStatus:429}`。摘要不复制 `safeMessage`、`providerCode`、原始响应、重试标志或完整错误记录。
+
+这是任务最近保存的诊断，读取它仍是成功的只读查询。摘要不改变 Task 的受理 / 结果 / 交付事实，不等于重试授权；受理未知仍不得自动重提。没有错误时字段省略，旧持久记录和根版本不迁移。
 
 | `status` | 首要操作与文案边界 |
 |---|---|
