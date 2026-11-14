@@ -106,7 +106,8 @@ function tree(root) {
 save();
 const dataRoot = path.join(out, 'core'), fixture = imageFlowFixture(dataRoot);
 const app = createApplicationRuntime({ dataRoot, ...fixture });
-let api, session, browser, socket, sequence = 0, browserClosed = false, closed;
+let api, session, browser, socket, sequence = 0, browserClosed = false, closed, navigation;
+const loadedDocuments = new Set();
 const pending = new Map(), pausedResponses = [], profile = path.join(out, 'browser-profile'), downloads = path.join(out, 'downloads');
 fs.mkdirSync(downloads, { mode: 0o700 });
 const browserLog = fs.createWriteStream(path.join(out, 'browser.log'), { mode: 0o600 });
@@ -116,7 +117,7 @@ async function wait(check, label) {
   while (Date.now() < deadline) { if (await check()) return; await sleep(80); }
   throw new Error('Timed out: ' + label);
 }
-function cdp(method, params = {}) {
+function sendCdp(method, params = {}) {
   return new Promise((resolve, reject) => {
     const id = ++sequence, started = performance.now(), wallStarted = Date.now(), cpu = process.cpuUsage();
     const timeoutError = new Error('CDP timeout: ' + method);
@@ -129,6 +130,24 @@ function cdp(method, params = {}) {
     }, 12000);
     pending.set(id, { resolve, reject, timer, method }); socket.send(JSON.stringify({ id, method, params }));
   });
+}
+async function cdp(method, params = {}) {
+  if (method !== 'Page.reload' && method !== 'Page.navigate') return sendCdp(method, params);
+  const before = (await sendCdp('Page.getFrameTree')).frameTree.frame;
+  const result = await sendCdp(method, params);
+  if (result.errorText) throw new Error(method + ': ' + result.errorText);
+  navigation = method === 'Page.reload' ? { method, frameId: before.id, previousLoader: before.loaderId }
+    : result.loaderId ? { method, frameId: result.frameId, loaderId: result.loaderId } : undefined;
+  return result;
+}
+async function documentLoaded() {
+  if (!navigation) return;
+  const expected = navigation;
+  await wait(async () => {
+    const frame = (await cdp('Page.getFrameTree')).frameTree.frame;
+    const loader = expected.loaderId || (frame.loaderId !== expected.previousLoader && frame.loaderId);
+    return frame.id === expected.frameId && Boolean(loader) && loadedDocuments.has(loader);
+  }, expected.method + ' document load');
 }
 async function evaluate(expression) {
   const result = await cdp('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
@@ -176,11 +195,13 @@ async function capture(name) {
   report.screenshots.push(name + '.png'); save();
 }
 async function chooseToken(file) {
+  await documentLoaded();
   const document = await cdp('DOM.getDocument');
   const input = await cdp('DOM.querySelector', { nodeId: document.root.nodeId, selector: '#token-file' });
   await cdp('DOM.setFileInputFiles', { nodeId: input.nodeId, files: [file] });
 }
 async function readyRun(id) {
+  await documentLoaded();
   await wait(() => evaluate(`(() => { const viewer=document.querySelector('#viewer'), run=document.querySelector('#run-view'); return location.hash===${JSON.stringify('#' + id)}&&Boolean(viewer&&run)&&viewer.getAttribute('aria-busy')==='false'&&!run.hidden; })()`), 'real Run ' + id);
 }
 
@@ -253,8 +274,10 @@ try {
       report.requests.push({ method: value.params.request.method, url: url.href });
     }
     if (value.method === 'Fetch.requestPaused') pausedResponses.push(value.params.requestId);
+    if (value.method === 'Page.lifecycleEvent' && value.params.name === 'load') loadedDocuments.add(value.params.loaderId);
   });
   await cdp('Runtime.enable'); await cdp('Page.enable'); await cdp('Network.enable'); await cdp('Log.enable');
+  await cdp('Page.setLifecycleEventsEnabled', { enabled: true });
   await cdp('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads });
   await cdp('Page.addScriptToEvaluateOnNewDocument', { source: `window.testBlobs=new Set();const create=URL.createObjectURL.bind(URL),revoke=URL.revokeObjectURL.bind(URL);URL.createObjectURL=b=>{const u=create(b);testBlobs.add(u);return u};URL.revokeObjectURL=u=>{testBlobs.delete(u);return revoke(u)}` });
   report.browser = await cdp('Browser.getVersion');
