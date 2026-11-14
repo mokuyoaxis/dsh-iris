@@ -1,5 +1,7 @@
 # Core 服务与 harness 接入（0.3 beta）
 
+beta.3新增[看图/OCR](VISION_FLOWS.md)：显式新v5根、独立vision/ocr选择、Core网络与持久文本/报告；旧根、日常配置和beta.2既有能力保持。
+
 0.3.0-alpha.1提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**稳定 npm 0.2.7 不包含这些入口**；以下使用源码命令，安装beta包后可将 `node bin/dsh-iris.js` 换为 `npx dsh-iris`。支持固定 `image-edit/v0`，显式新 v2 根另提供 [image-generate/v0 与 ComfyUI](IMAGE_GENERATION.md)，新 v3 根另提供 [speech/v0 与 transcribe/v0](AUDIO_FLOWS.md)，同时保留图片流程。**beta.1**另有新 v4 根的[文生视频](VIDEO_FLOWS.md)，不迁移已有根。[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用 CLI，页面下载原字节。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
 
 ## 显式启动
@@ -20,7 +22,7 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
   --connections-file /absolute/new-mcp-pair/server-grants.json
 ```
 
-`--allow-execution` 同时开启零生成上传/创建与有限执行；不传时保持既有默认只读行为。服务需要已初始化的 v1/v2/v3 执行根（beta.1视频流程另支持 v4）和有效的显式配置。配置静态校验、启动和连接握手不调用模型。每次明确继续至多调用一次 `flow.continue`：首次提交或检查/补交付原 Task，不持续轮询，不重提已有 Attempt。
+`--allow-execution` 同时开启零生成上传/创建与有限执行；不传时保持既有默认只读行为。服务需要已初始化的执行根和有效的显式配置：v1/v2支持各自的图片流程，v3加入音频，v4加入文生视频，beta.3的v5另加入看图/OCR并保留既有流程。配置静态校验、启动和连接握手不调用模型。每次明确继续至多调用一次 `flow.continue`：首次提交或检查/补交付原 Task，不持续轮询，不重提已有 Attempt；OCR一次执行可能按计划调用多块，见[调用预算](VISION_FLOWS.md#ocr-完成度与停止)。
 
 第二个执行 Host 无法取得同根 runner 租约；同根可另开只读页面。接收后服务自行收尾，关页或断开 harness 不撤销已接收操作。默认串行模式在 writer 正忙时明确拒绝新接收，调用方保留原 Key 后显式重试，不能假定已排队。
 

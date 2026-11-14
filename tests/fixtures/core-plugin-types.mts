@@ -24,7 +24,10 @@ export async function authorExample(dataRoot: string) {
   const selected = catalog.selectOperations(['example.types.list']);
   const exact: PluginDependency = selected[0].dependency;
   void exact;
-  const options = catalog.snapshot({ audioEnabled: true });
+  const options = catalog.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true });
+  const vision = options.groups.find(group => group.id === 'vision' || group.id === 'ocr');
+  const visionGate: boolean | undefined = vision?.requiresVision;
+  void visionGate;
   // @ts-expect-error Discovery is immutable and cannot grant another tool.
   options.controlTools.push('example.types.list');
   // @ts-expect-error Unmounted page module paths are not exposed in the public catalog.

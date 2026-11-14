@@ -23,4 +23,4 @@ GitHub允许[重跑失败或指定任务](https://docs.github.com/en/actions/how
 
 `tests/release-publication.mjs` 使用受控命令和虚拟时间覆盖延迟、超时、认证/网络失败、摘要不符、回执失败与受理未知。`tests/release-publication-cli.mjs` 在POSIX运行实际工作流Shell及prepare/publish/verify CLI，仅替换外部gh/npm命令与本地提交查询；Windows仍运行独立的元数据和发布状态测试。模拟不证明GitHub编排、真实OIDC、npm Token、注册表可见性或平台CI已成功。
 
-候选还需同一源码的完整测试、实际npm归档消费者与公共类型、Chromium四组场景，以及最终提交的Ubuntu/Windows最低/当前Node22 CI。真实账号/GPU另列，不拿旧发行或受控服务结果代替。本页流程从0.3.0-beta.2使用，实际运行结果按对应发行记录核对，见[发行说明](releases/0.3.0-beta.2.md)。
+候选还需同一源码的完整测试、实际npm归档消费者与公共类型、Chromium五组场景（总览、凭据、视频、调度、视觉），以及最终提交的Ubuntu/Windows最低/当前Node22 CI。真实账号/GPU另列，不拿旧发行或受控服务结果代替。本页流程从0.3.0-beta.2使用，历史实发结果见[beta.2发行说明](releases/0.3.0-beta.2.md)，本轮范围见[beta.3发行说明](releases/0.3.0-beta.3.md)。

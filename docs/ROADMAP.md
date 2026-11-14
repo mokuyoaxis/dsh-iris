@@ -4,7 +4,7 @@ Iris 的方向是本地优先、Agent 可调用的多模态创作工作台。用
 
 ## 当前状态
 
-本文对应 **Iris 0.3.0-beta.2**，发布状态见 [README](../README.md)。包名为 `@mokuyoaxis/dsh-iris`，保留DSH插件与独立CLI，Core Web、通用MCP与显式插件贡献沿用beta.1；本次修复根占用时的原操作/停止重试并优化发布确认，详见 [beta.2发行说明](releases/0.3.0-beta.2.md)。稳定通道0.2.7与其[历史说明](releases/0.2.7.md)保留。
+本文对应 **Iris 0.3.0-beta.3**，发布状态见 [README](../README.md)。包名为 `@mokuyoaxis/dsh-iris`，保留DSH插件与独立CLI、Core Web、通用MCP与显式插件贡献；本次接入Core看图/OCR持久流程与Web建单，补齐模型失效诊断并维护网络与测试，详见 [beta.3发行说明](releases/0.3.0-beta.3.md)。稳定通道0.2.7与其[历史说明](releases/0.2.7.md)保留。
 
 - 图片生成、Artifact ID 看图/OCR/定位和聊天改图，支持按模型配置图片协议。
 - 持久图片导入与原生 Qwen 改图；六类功能可选自动池、手选或停用，宿主视觉需明确启用。0.2.5 建立的 12 个准确 DSH 版本范围保持。
@@ -14,7 +14,7 @@ Iris 的方向是本地优先、Agent 可调用的多模态创作工作台。用
 - 提示词的忠实整理、明确改写、可选建议与预览；完整同步媒体结果缓存后的交付恢复。
 - 工作台全媒体筛选、分页、跨页选择和下载，CLI 的配置、查询与可恢复维护。
 
-DSH与CLI共用Task和Artifact，同一数据根只允许一个写者。纯视觉和提示词预览不自动创建媒体任务；Core与Model Port仍是内部契约。Node.js最低22.1.0。0.2.5恢复旧宿主的当前功能，并覆盖12个准确DSH版本；具体版本和历史范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。
+DSH与CLI共用Task和Artifact，同一数据根只允许一个写者。既有单次视觉与提示词预览不自动创建媒体任务；新的Core看图/OCR入口会明确保存持久任务，随后另行执行。Core运行时与Model Port的内部边界保持。Node.js最低22.1.0。0.2.5恢复旧宿主的当前功能，并覆盖12个准确DSH版本；具体版本和历史范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。
 
 宿主兼容继续集中在Adapter与客户端桥接。后续DSH更新优先检查实际API、工具/附件交付和输入区契约，复用同一验收入口扩充版本矩阵，避免让旧用户长期停留在缺少新功能的Iris分支。
 
@@ -38,7 +38,7 @@ DSH与CLI共用Task和Artifact，同一数据根只允许一个写者。纯视�
 
 连接名目采用用户建档和 MCP 客户端声明，不扫盘或按品牌白名单限制。源码已支持纯数据模板导入及按连接有效工具交付 Skill，复用显式安装器；后续继续完善接入体验和尚未接入的媒体分组。客户端身份声明与媒体实测分别展示。
 
-[通用 MCP](MCP.md)已有 stdio/Streamable HTTP、generic 默认连接、明确功能/工具范围和配置导出，支持固定图片编辑及独立文生图；新 v2 根与 [ComfyUI 入口](IMAGE_GENERATION.md)已提供受控验证。新 v3 根另完成 [TTS/转写闭环](AUDIO_FLOWS.md)，包括Web播放/文本/下载、原任务恢复和MCP可选分组。beta.1的新v4根已接入[固定文生视频](VIDEO_FLOWS.md)及标准MCP资源读取；Core持久音乐/视觉流程仍待后续，既有DSH/CLI能力分别保留。受控测试、真实供应商和设备验收分别记录，不因客户端连接成功就视为全媒体已覆盖。
+[通用 MCP](MCP.md)已有 stdio/Streamable HTTP、generic 默认连接、明确功能/工具范围和配置导出，支持固定图片编辑及独立文生图；新 v2 根与 [ComfyUI 入口](IMAGE_GENERATION.md)已提供受控验证。新 v3 根另完成 [TTS/转写闭环](AUDIO_FLOWS.md)，包括Web播放/文本/下载、原任务恢复和MCP可选分组。beta.1的新v4根已接入[固定文生视频](VIDEO_FLOWS.md)及标准MCP资源读取；beta.3的新v5根接入[看图/OCR](VISION_FLOWS.md)，保留文字/分块报告、部分完成事实及原Task身份。Core持久音乐流程仍待后续，既有DSH/CLI能力分别保留。受控测试、真实供应商和设备验收分别记录，不因客户端连接成功就视为全媒体已覆盖。
 
 [DSH ComfyUI 专区](IMAGE_GENERATION.md#dsh-工作台入口03-alpha)已接通现有供应商、画图与泡泡卡片，提供参数模板和只读节点检查；仍使用宿主原 Task，固定 Flow 尚未进入 DSH 面板。独立 Core 已补 v1 导入/表单预览、LoRA 双权重等参数及原 Run 参数查看；工作流卡片/预设、真实 GPU 与远程部署验收继续后续推进，官网/源码与受控浏览器验证不等于推理验收。
 

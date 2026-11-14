@@ -68,7 +68,7 @@ try {
     ['scheduling', ['scripts/verify-scheduling-package.mjs', '--package-root', installed, '--output', path.join(out, 'scheduling')]]
   ];
   for (const [name, values] of checks) await check(name, values, root, 150000);
-  for (const name of ['overview', 'provider-credentials', 'video', 'scheduling']) {
+  for (const name of ['overview', 'provider-credentials', 'video', 'scheduling', 'vision']) {
     await check('browser-' + name, ['scripts/verify-local-web-browser.mjs', '--browser-executable', args[7],
       '--output', path.join(out, 'browser-' + name), '--no-sandbox', '--' + name], harness, 120000);
   }

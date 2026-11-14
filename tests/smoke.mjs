@@ -8,12 +8,24 @@ import path from 'node:path';
 import { useTempDshHome } from './test-env.js';
 
 useTempDshHome('iris-smoke-home');
-const assert = (cond, msg) => { if (!cond) { console.error('FAIL:', msg); process.exit(1); } };
+const assert = (cond, msg, details) => { if (!cond) { console.error('FAIL:', msg, details === undefined ? '' : JSON.stringify(details)); process.exit(1); } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const { default: crypto } = await import('node:crypto');
 const tasks = await import('../lib/tasks.js');
 const media = await import('../lib/media.js');
+
+async function waitFor(check, label, inspect) {
+  const deadline = performance.now() + 5000;
+  while (performance.now() < deadline) {
+    const value = check(); if (value) return value;
+    await sleep(20);
+  }
+  assert(false, label + '：等待状态超时', inspect());
+}
+function terminalTask(id, label) {
+  return waitFor(() => { const task = tasks.get(id); return task.status !== 'running' && task; }, label, () => tasks.get(id));
+}
 
 /* ================= 任务框架 ================= */
 
@@ -38,9 +50,8 @@ tasks.watch(tasks.get(t1.id), {
   },
   onSuccess: async () => ['a.mp4']
 });
-await sleep(700);
-const f1 = tasks.get(t1.id);
-assert(f1.status === 'succeeded' && JSON.stringify(f1.files) === '["a.mp4"]', '场景1 成功+文件');
+const f1 = await terminalTask(t1.id, '场景1');
+assert(f1.status === 'succeeded' && JSON.stringify(f1.files) === '["a.mp4"]', '场景1 成功+文件', { task: f1, polls });
 
 // 场景 2：轮询容错——连错 4 次后恢复
 let boom = 0;
@@ -51,8 +62,8 @@ tasks.watch(tasks.get(t2.id), {
   poll: () => { if (++boom <= 4) throw new Error('网络抖动'); return { done: true, ok: true, urls: [] }; },
   onSuccess: async () => ['b.png']
 });
-await sleep(2000);
-assert(tasks.get(t2.id).status === 'succeeded', '场景2 抖动后成功');
+const f2 = await terminalTask(t2.id, '场景2');
+assert(f2.status === 'succeeded', '场景2 抖动后成功', { task: f2, polls: boom });
 
 // 场景 3：业务失败直达人话
 const t3 = tasks.create({ cap: 'video', providerId: 'p1', model: 'm', prompt: 'e' });
@@ -62,8 +73,8 @@ tasks.watch(tasks.get(t3.id), {
   poll: () => ({ done: true, ok: false, message: 'InvalidParameter' }),
   onSuccess: async () => []
 });
-await sleep(800);
-assert(/InvalidParameter/.test(tasks.get(t3.id).error || ''), '场景3 失败信息');
+const f3 = await terminalTask(t3.id, '场景3');
+assert(/InvalidParameter/.test(f3.error || ''), '场景3 失败信息', f3);
 
 // 场景 4：连续失败超过容忍度才判死
 const t4 = tasks.create({ cap: 'image', providerId: 'p1', model: 'm', prompt: 'd' });
@@ -72,8 +83,8 @@ tasks.watch(tasks.get(t4.id), {
   intervalMs: 20,
   poll: () => { throw new Error('always down'); }
 });
-await sleep(900);
-assert(/连续失败/.test(tasks.get(t4.id).error || ''), '场景4 连续失败判死');
+const f4 = await terminalTask(t4.id, '场景4');
+assert(/连续失败/.test(f4.error || ''), '场景4 连续失败判死', f4);
 
 // 场景 5：重启恢复三分支
 const t5 = tasks.create({ cap: 'video', providerId: 'p1', model: 'm', prompt: 'r' });
@@ -91,8 +102,8 @@ const resumed = tasks.resumePending((t) => (t.providerId === 'ghost'
       onSuccess: async () => ['c.mp4']
     }));
 assert(resumed.includes(t5.id) && !resumed.includes(t6.id) && !resumed.includes(t7.id), '场景5 恢复分流');
-await sleep(600);
-assert(tasks.get(t5.id).status === 'succeeded', '场景5a 恢复后完成');
+const f5 = await terminalTask(t5.id, '场景5a');
+assert(f5.status === 'succeeded', '场景5a 恢复后完成', f5);
 assert(/超时/.test(tasks.get(t6.id).error || '') && /不可用/.test(tasks.get(t7.id).error || ''), '场景5b/c 标记');
 
 // 场景 6：stopWatchAll 清场（Fiber 清理语义）
@@ -105,7 +116,7 @@ tasks.watch(tasks.get(t8.id), {
   poll: () => { ticks++; return { done: false, status: 'RUNNING' }; },
   onSuccess: async () => []
 });
-await sleep(300);
+await waitFor(() => ticks > 0, '场景6 首次轮询', () => ({ ticks, task: tasks.get(t8.id) }));
 const before = ticks;
 tasks.stopWatchAll();
 tasks.cancel(t8.id, '插件停用');
@@ -121,9 +132,8 @@ tasks.watch(tasks.get(t9.id), {
   poll: () => (++racePolls <= 3 ? { done: true, ok: true, urls: [] } : { done: true, ok: true, urls: ['http://x/d.mp4'] }),
   onSuccess: async () => ['d.mp4']
 });
-const raceDeadline = Date.now() + 5000;
-while (tasks.get(t9.id).status === 'running' && Date.now() < raceDeadline) await sleep(20);
-assert(tasks.get(t9.id).status === 'succeeded' && racePolls > 3, '场景9 竞态重试后落袋');
+const f9 = await terminalTask(t9.id, '场景9');
+assert(f9.status === 'succeeded' && racePolls > 3, '场景9 竞态重试后落袋', { task: f9, racePolls });
 
 // 场景 10：submitGuard——提交抛错即标 failed 并原样重抛（不留 running 孤儿）
 const t10 = tasks.create({ cap: 'transcribe', providerId: 'p1', model: 'm', prompt: 'sg' });

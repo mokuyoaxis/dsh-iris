@@ -30,6 +30,20 @@ for (const secret of ['PRIVATE_', 'private-token', 'private.invalid', 'private-s
   assert(!JSON.stringify(projected).includes(secret), secret);
 }
 assert.equal(JSON.stringify(facts), original, 'Public summaries never rewrite saved Task errors');
+for (const providerCode of ['model_not_found', 'NotFound.Model', 'ModelNotFound', 'IRIS_MODEL_UNAVAILABLE']) {
+  const missing = structuredClone(facts);
+  Object.assign(missing.task.lastError, { category: 'invalid_request', httpStatus: 404, providerCode });
+  const before = JSON.stringify(missing), summary = projectLocalApiFlow(missing).task.errorSummary;
+  assert.match(summary.message, /所选模型.*不可用/, providerCode);
+  assert.deepEqual(Object.keys(summary).sort(), ['category', 'httpStatus', 'message', 'stage']);
+  assert(!JSON.stringify(summary).includes('PRIVATE_'));
+  assert.equal(JSON.stringify(missing), before, 'Historical model-unavailable errors are projected without rewriting the saved Task');
+}
+for (const [httpStatus, providerCode] of [[404, 'route_not_found'], [400, 'model_not_found'], [404, 'PRIVATE_MODEL_NOT_FOUND']]) {
+  const generic = structuredClone(facts);
+  Object.assign(generic.task.lastError, { category: 'invalid_request', httpStatus, providerCode });
+  assert.equal(projectLocalApiFlow(generic).task.errorSummary.message, '请求参数或输入无效。');
+}
 const absent = structuredClone(facts); delete absent.task.lastError;
 assert(!Object.hasOwn(projectLocalApiFlow(absent).task, 'errorSummary'));
 assert.equal(projectLocalApiFlow({ ...facts, task: null }).task, null);

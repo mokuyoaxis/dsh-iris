@@ -1,13 +1,13 @@
 # Core Workbench Quickstart · 从零启动工作台
 
-This guide is for **0.3.0-beta.2 or the current source tree**. Stable npm **0.2.7 does not include `web serve` or production MCP**. For stable DSH/CLI usage, see the [DSH guide](../user_guide.md) or [standalone CLI](HEADLESS_CLI.md). The beta scope freezes a minimal contract; broader SDK contracts may change; existing roots are not migrated automatically.
+This guide is for **0.3.0-beta.3 or the current source tree**. Stable npm **0.2.7 does not include `web serve` or production MCP**. For stable DSH/CLI usage, see the [DSH guide](../user_guide.md) or [standalone CLI](HEADLESS_CLI.md). The beta scope freezes a minimal contract; broader SDK contracts may change; existing roots are not migrated automatically.
 
 ## Start a new workspace · 新建工作区
 
 Use Node.js ≥22.1.0. To install the prerelease in your project:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-beta.2
+npm install @mokuyoaxis/dsh-iris@0.3.0-beta.3
 npx dsh-iris --help
 ```
 
@@ -20,7 +20,7 @@ IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
 
 node bin/dsh-iris.js flow init --data-root "$IRIS_PREVIEW/core"
-node bin/dsh-iris.js execution init --audio --data-root "$IRIS_PREVIEW/core"
+node bin/dsh-iris.js execution init --vision --data-root "$IRIS_PREVIEW/core"
 node bin/dsh-iris.js config init --provider-config "$IRIS_PREVIEW/providers.json"
 
 node bin/dsh-iris.js web serve \
@@ -33,7 +33,7 @@ node bin/dsh-iris.js web serve \
   --port 3182
 ```
 
-`--audio` initializes a new v3 execution root, supporting images, speech and transcription. It does not enable a model, spend credits or migrate existing roots. The switches above explicitly enable:
+`--vision` initializes a new v5 execution root, supporting images, speech, transcription, text-to-video, vision and OCR. It does not select a model, call a provider or migrate existing roots. Existing v3/v4 workspaces keep their original capabilities; see [vision/OCR setup](VISION_FLOWS.md). The switches above explicitly enable:
 
 | Switch | What it permits |
 |---|---|
@@ -70,9 +70,11 @@ Opening pages and refreshing the spectrum do not generate media. Reading a model
 
 For ComfyUI, use an existing service and an explicitly imported **API-format workflow** with mapped prompt/output nodes. Check declared parameters and available LoRA choices, then save and choose that workflow. Iris does not install ComfyUI, invent a graph or discover GPU models by guessing. See [ComfyUI workflows](IMAGE_GENERATION.md#comfyui-入口).
 
-Beta.1 Web/MCP media entries cover image generation/editing, speech, transcription and [text-to-video](VIDEO_FLOWS.md): choose a separate new root and use `execution init --video` instead of `--audio` when initializing it. This creates v4, retains image/audio flows and adds optional video entry points; existing roots are not migrated. Older alpha.1 packages do not support this switch. Image-to-video, S2V, music and vision retain their existing [CLI](HEADLESS_CLI.md) / DSH entries.
+Beta.1 Web/MCP media entries cover image generation/editing, speech, transcription and [text-to-video](VIDEO_FLOWS.md): choose a separate new root and use `execution init --video` instead of `--audio` when initializing it. This creates v4, retains image/audio flows and adds optional video entry points; existing roots are not migrated. Older alpha.1 packages do not support this switch. Image-to-video, S2V and music retain their existing [CLI](HEADLESS_CLI.md) / DSH entries; beta.3 vision/OCR uses another explicit new v5 root.
 
 ## Connect an Agent · 连接客户端
+
+Beta.3 supports [durable vision/OCR](VISION_FLOWS.md) in a separate new root initialized with `execution init --vision`. Select `vision` or `ocr` explicitly in the connection center. Beta.2 does not include this switch; existing roots are never upgraded automatically.
 
 1. Open **客户端 → 新建连接**. Give it any meaningful name. Choose media functions and, for image generation, the separate generation capability. Grant only the operations needed: **读取** for history; **导入与创建** and **执行流程** for new media; **停止等待** only when wanted.
 2. Save, then select a client template under **接入配置**. Use **stdio** for a local client that can run the exported command, or **HTTP** when it supports Streamable HTTP. HTTP here is loopback-only too.

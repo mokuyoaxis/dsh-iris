@@ -18,6 +18,7 @@ import { verifyPanelFeedbackBrowser } from '../tests/fixtures/panel-feedback-bro
 import { verifyWebLoginBrowser } from '../tests/fixtures/web-login-browser-probe.mjs';
 import { verifyVideoBrowser } from '../tests/fixtures/video-browser-probe.mjs';
 import { verifyAudioBrowser } from '../tests/fixtures/audio-browser-probe.mjs';
+import { verifyVisionBrowser } from '../tests/fixtures/vision-browser-probe.mjs';
 import { verifyOverviewBrowser } from '../tests/fixtures/workbench-overview-browser-probe.mjs';
 import { verifyCapabilityCatalogBrowser } from '../tests/fixtures/capability-catalog-browser-probe.mjs';
 import { verifyMcpOnboardingBrowser } from '../tests/fixtures/mcp-onboarding-browser-probe.mjs';
@@ -32,6 +33,12 @@ import { verifyNetworkBrowser } from '../tests/fixtures/network-browser-probe.mj
 import { verifySchedulingBrowser } from '../tests/fixtures/scheduling-browser-probe.mjs';
 
 const args = process.argv.slice(2);
+const visionWorkbench = args.includes('--vision');
+if (visionWorkbench) {
+  assert(args.slice(4).every(flag => ['--no-sandbox', '--vision'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
+    '--vision runs only its focused scenarios');
+  args.splice(args.indexOf('--vision'), 1);
+}
 const schedulingWorkbench = args.includes('--scheduling');
 if (schedulingWorkbench) {
   assert(args.slice(4).every(flag => ['--no-sandbox', '--scheduling'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
@@ -353,6 +360,14 @@ try {
         session = await api.start({ port }); return session;
       } });
     assert.deepEqual(report.browserErrors, [], 'video has no browser exceptions or CSP violations');
+  } else if (visionWorkbench) {
+    await verifyVisionBrowser({ out, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads,
+      restart: async (root, providerConfigPath, executionPorts, modes) => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, providerConfigPath, allowExecution: true, executionPorts, ...modes });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], 'vision has no browser exceptions or CSP violations');
   } else if (audio) {
     await verifyAudioBrowser({ out, tokenFile, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads, pausedResponses,
       restart: async (root, providerConfigPath, executionPorts, modes = {}) => {

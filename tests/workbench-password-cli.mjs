@@ -7,11 +7,16 @@ import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { createTestStages } from './fixtures/test-stages.mjs';
 const require = createRequire(import.meta.url), manifest = require.resolve('@mokuyoaxis/dsh-iris/package.json');
 const cli = path.resolve(path.dirname(manifest), JSON.parse(fs.readFileSync(manifest)).bin['dsh-iris']);
 const work = fs.mkdtempSync(path.join(process.env.IRIS_TEST_EVIDENCE_DIRECTORY || os.tmpdir(), 'iris-password-cli-'));
 const dataRoot = path.join(work, 'core'), irisHome = path.join(work, 'iris-home'), children = [], checks = [];
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const stage = createTestStages('PASSWORD_CLI', () => ({ work, children: children.map(result => ({
+  label: result.label, pid: result.child.pid, exited: result.exited, exitCode: result.child.exitCode,
+  signalCode: result.child.signalCode, stdoutBytes: Buffer.byteLength(result.stdout), stderrBytes: Buffer.byteLength(result.stderr)
+})) }));
 // Windows kill(SIGTERM) is a forced exit. Test normal shutdown by delivering
 // its handler event explicitly, while leaving the real SIGKILL case below.
 const cooperativeSignals = process.platform === 'win32' || process.env.IRIS_TEST_CLI_SIGNAL_MODE === 'ipc';
@@ -26,49 +31,52 @@ function launch(args, service = false) {
   const useIpc = service && cooperativeSignals, label = args.slice(0, 2).join(' ');
   const child = spawn(process.execPath, [...(useIpc ? signalArgs : []), cli, ...args], { stdio: ['ignore', 'pipe', 'pipe', ...(useIpc ? ['ipc'] : [])], env: { ...process.env,
     IRIS_HOME: irisHome, DSH_HOME: path.join(work, 'dsh-home'), IRIS_IMPORT_WORKBENCH_CONFIG: '' } });
-  console.log('PASSWORD_CLI spawn ' + label + ' pid=' + child.pid + ' ipc=' + useIpc);
+  stage.mark('spawn', { label, childPid: child.pid, ipc: useIpc });
   const result = { child, useIpc, label, stdout: '', stderr: '', exited: false }; children.push(result);
   child.stdout.on('data', value => { result.stdout += value; }); child.stderr.on('data', value => { result.stderr += value; });
   result.closed = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', (code, signal) => {
-    result.exited = true; console.log('PASSWORD_CLI close ' + label + ' pid=' + child.pid + ' result=' + (code ?? signal)); resolve({ code, signal });
+    result.exited = true; stage.mark('close', { label, childPid: child.pid, code, signal }); resolve({ code, signal });
   }); });
   return result;
 }
 async function command(args, expected = 0) {
-  const result = launch(args), exit = await result.closed;
+  const result = launch(args), exit = await stage('command ' + result.label, () => result.closed, 15000);
   assert.equal(exit.code, expected, result.stderr); return result;
 }
 async function start(args) {
   const result = launch(args, true);
-  for (let i = 0; i < 400; i++) {
-    if (result.stdout.includes('\n')) {
-      console.log('PASSWORD_CLI ready pid=' + result.child.pid);
-      return { process: result, ...JSON.parse(result.stdout.split('\n')[0]) };
+  return stage('start ' + result.label, async signal => {
+    while (!signal.aborted) {
+      if (result.stdout.includes('\n')) {
+        stage.mark('ready', { childPid: result.child.pid });
+        return { process: result, ...JSON.parse(result.stdout.split('\n')[0]) };
+      }
+      if (result.exited) assert.fail(result.stderr);
+      await delay(50);
     }
-    if (result.exited) assert.fail(result.stderr);
-    await delay(50);
-  }
-  assert.fail('Workbench startup timeout');
+    signal.throwIfAborted();
+  }, 20000);
 }
 async function stop(server) {
   if (!server.process.exited) {
-    console.log('PASSWORD_CLI stop pid=' + server.process.child.pid);
+    stage.mark('stop', { childPid: server.process.child.pid });
     if (server.process.useIpc) server.process.child.send('iris-test-sigterm');
     else server.process.child.kill('SIGTERM');
   }
-  const exit = await server.process.closed;
+  const exit = await stage('stop ' + server.process.label, () => server.process.closed, 10000);
   assert.equal(exit.code, 143, server.process.stderr);
 }
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const tree = () => Object.fromEntries(fs.readdirSync(dataRoot, { recursive: true }).filter(name => fs.lstatSync(path.join(dataRoot, name)).isFile())
   .map(name => [name, crypto.createHash('sha256').update(fs.readFileSync(path.join(dataRoot, name))).digest('hex')]));
 async function request(server, action, value, token, expected = 200) {
-  console.log('PASSWORD_CLI request ' + action);
-  const response = await fetch(server.origin + '/api/v0/' + action, { method: value ? 'POST' : 'GET', headers: {
-    ...(value ? { 'Content-Type': 'application/json', Origin: server.origin } : {}), ...(token ? { Authorization: 'Bearer ' + token } : {})
-  }, ...(value ? { body: JSON.stringify(value) } : {}) });
-  const result = await response.json(); assert.equal(response.status, expected, JSON.stringify(result));
-  console.log('PASSWORD_CLI response ' + action + ' status=' + response.status); return result;
+  return stage('request ' + action, async signal => {
+    const response = await fetch(server.origin + '/api/v0/' + action, { method: value ? 'POST' : 'GET', headers: {
+      ...(value ? { 'Content-Type': 'application/json', Origin: server.origin } : {}), ...(token ? { Authorization: 'Bearer ' + token } : {})
+    }, signal, ...(value ? { body: JSON.stringify(value) } : {}) });
+    const result = await response.json(); assert.equal(response.status, expected, JSON.stringify(result));
+    stage.mark('response', { action, status: response.status }); return result;
+  });
 }
 try {
   await command(['flow', 'init', '--data-root', dataRoot]);
@@ -103,7 +111,7 @@ try {
   server = await start([...args, '--port', port]); assert.equal(server.authentication.configured, false);
   const durable = await request(server, 'workbench/setup', { ticket: new URL(server.loginUrl).hash.slice(7), password: 'Crash-example-password', remember: true });
   const killedPid = server.process.child.pid; server.process.child.kill('SIGKILL');
-  const killed = await server.process.closed; assert.equal(killed.signal, 'SIGKILL');
+  const killed = await stage('owned SIGKILL close', () => server.process.closed); assert.equal(killed.signal, 'SIGKILL');
   const busy = await command([...args, '--port', port], 1); assert.match(busy.stderr, /IRIS_CORE_DATA_ROOT_BUSY/);
   await command(['runtime', 'recover', '--data-root', path.join(server.authStore, 'ownership'), '--confirm-stale-pid', String(killedPid)]);
   server = await start([...args, '--port', port]);
@@ -118,4 +126,10 @@ try {
   assert.deepEqual(tree(), before);
   checks.push('offline reset uses the auth lease only; unsafe stores and conflicting/relative flags fail without changing Core or creating Token files');
   console.log(JSON.stringify({ ok: true, checks, work, signalDelivery: cooperativeSignals ? 'test-ipc-handler-event' : 'native-posix-signal' }, null, 2));
-} finally { for (const result of children) if (!result.exited) await stop({ process: result }); }
+} finally {
+  // Normal shutdown is asserted above. On failure, bound cleanup of this fixture's children.
+  for (const result of children) if (!result.exited) {
+    stage.mark('cleanup-kill', { childPid: result.child.pid, label: result.label }); result.child.kill('SIGKILL');
+    await stage('cleanup ' + result.label, () => result.closed);
+  }
+}

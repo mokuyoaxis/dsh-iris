@@ -2,6 +2,8 @@
 
 新用户先看[从零启动与页面接入](CORE_QUICKSTART.md#connect-an-agent--连接客户端)；交给安装/使用 Agent 的可复制说明见 [Agent Core 指导](AGENT_CORE_QUICKSTART.md)。本页详述传输、模板与授权契约。
 
+**beta.3**另有[看图与OCR](VISION_FLOWS.md)：新的 `execution init --vision` v5根、独立 `vision/ocr` 分组及原Task文本/报告。下方beta.1/beta.2说明仍指对应版本范围；beta.2没有该开关。Web、MCP与CLI均可保存看图/OCR任务，再明确执行原Run；Web可在执行前核对OCR分块与调用预算。
+
 当前源码的 `iris_core_run` 会随已有 Task 返回可选 `errorSummary`，包含类别、固定说明、已知阶段及有效 HTTP 状态，例如 `rate_limit / submit / 429`。这是保存的任务诊断，读取失败任务仍可成功；Operation 的 `succeeded` 表示有限调用已返回，媒体状态以 Task 为准。摘要不包含原始错误文本，也不授予重试权限；受理未知不自动重提。字段细节见 [Run 详情契约](LOCAL_API_CONTRACT.md#4-flowview-与操作反馈)。
 
 同一套 Iris MCP 工具可通过 stdio 或 Streamable HTTP 接入支持对应传输和协议的客户端。无需为每个产品编写 Adapter，客户端名称也不用于授予能力。**通用 MCP 入口从0.3.0-alpha.1提供，稳定 npm 0.2.7 不包含**；安装准确beta版本或使用当前源码；最小面见[beta约定](BETA_SCOPE.md)。
@@ -96,7 +98,7 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
 
 ## 选择能力和工具
 
-功能分组与操作权限分开。当前可选媒体分组为 `image-edit`、`image-generate`、`tts`、`transcribe`；beta.1另有 `video-generate`，根版本进一步限制实际可用分组；查看工具总目录：
+功能分组与操作权限分开。beta.2可选媒体分组为 `image-edit`、`image-generate`、`tts`、`transcribe`、`video-generate`；beta.3另有 `vision/ocr`。根版本进一步限制实际可用分组，新v5同时保留已接入旧能力；查看工具总目录：
 
 ```bash
 node bin/dsh-iris.js mcp capabilities
@@ -107,6 +109,7 @@ node bin/dsh-iris.js mcp capabilities
 - `--capabilities tts`：实际语音候选、文字/可选音色创建、原音频内容及共享 Run/Operation 工具；仅在 v3 根（beta.1也支持 v4）开启。
 - `--capabilities transcribe`：实际转写候选、原音频导入/来源ID创建、音频与文字读取及共享 Run/Operation 工具；仅在 v3 根（beta.1也支持 v4）开启。可用 `tts,transcribe` 同时选择。
 - `--capabilities video-generate`（beta.1）：新 v4 根的实际文生视频候选、保存意图、原视频资源引用及共享 Run/Operation 工具。视频返回 `resource_link`，用标准 `resources/read` 读取 MP4/WebM（≤32 MiB），每次读取检查当前授权；客户端播放支持需另行确认。
+- `--capabilities vision` / `--capabilities ocr`（beta.3）：仅v5根，实际视觉目录、图片导入、对应建单及原文字读取；OCR另有报告读取。执行仍需execute授权，旧连接不扩权。可同时选择；文字和报告各限1 MiB，完整语义见[视觉流程](VISION_FLOWS.md)。
 - `--capabilities none`：关闭媒体流程工具，保留两项连接管理工具。
 - `--tools iris_core_models,iris_core_image`：在分组范围内进一步选择具体工具；`--tools none` 注册零工具。明确工具名单不会暗中补齐连接工具。
 - `--scopes read`：只读；`create` 允许上传/建 Run，`execute` 允许明确继续，`stop` 允许本地停止。必须包含 read；首次继续可能产生模型费用。
@@ -178,7 +181,8 @@ HTTP 使用官方 `createMcpHandler`，提供 2026-07-28 请求元数据模式�
 | 音频导入、转写与文字读取 | 已有 | transcribe 分组，新 v3 根，持久来源与原任务恢复 |
 | 文生视频 | 已有 | beta.1的 video-generate 分组，新 v4 根，标准资源引用与读取；已发布 alpha.1 未接入 |
 | 图生视频/S2V、Music | 已有 | 尚未接入 |
-| 视觉、OCR、定位、摘要 | 已有 | 尚未接入 |
+| 看图问答、OCR | beta.3已有 | vision/ocr 分组，新 v5 根；beta.2 未接入 |
+| 视觉定位、视频摘要 | 已有 | 尚未接入 |
 | 裁剪、像素差异、抽帧、HTML 截图 | 已有 | 尚未接入 |
 | 全媒体任务/作品管理及可恢复维护 | 已有 | 仅有固定流程所需的有限读取，其余尚未接入 |
 

@@ -86,8 +86,8 @@ function usage() {
     '    install/uninstall accept --dry-run. Copy only iris-core; preserve local changes and archive managed updates/removals outside the scan directory. status is read-only and does not verify host discovery.',
     '  dsh-iris doctor [--data-root <absolute-path>] [--json]',
     '  dsh-iris api init --data-root <empty-existing-flow-root>',
-    '  dsh-iris execution init --data-root <empty-existing-flow-root> [--image-generation|--audio|--video]',
-    '    Initialize a NEW v1 request container, v2 with --image-generation, v3 with --audio, or v4 with --video (images + audio + text-to-video). Existing roots are never migrated.',
+    '  dsh-iris execution init --data-root <empty-existing-flow-root> [--image-generation|--audio|--video|--vision]',
+    '    Initialize a NEW v1 request container, v2 with --image-generation, v3 with --audio, v4 with --video, or v5 with --vision (all previous flows + vision/OCR). Existing roots are never migrated.',
     '  dsh-iris execution inspect --data-root <v1-flow-root>',
     '  dsh-iris execution recover-lease --data-root <v1-flow-root> --confirm-stale-pid <pid>',
     '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate|none>] [--tools <comma-separated-names|none>]',
@@ -421,16 +421,16 @@ async function main(args, providerRegistry) {
         console.log(JSON.stringify(result, null, 2)); return 0;
       }
       if (args[1] !== 'init') throw new CliUsageError('不支持的 execution 子命令');
-      const initArgs = args.slice(2), generationFlags = initArgs.filter(value => value === '--image-generation'), audioFlags = initArgs.filter(value => value === '--audio'), videoFlags = initArgs.filter(value => value === '--video');
-      if (generationFlags.length + audioFlags.length + videoFlags.length > 1) throw new CliUsageError('初始化开关重复或冲突；video包含音频和图片，audio包含图片');
-      const options = flags(initArgs.filter(value => !['--image-generation', '--audio', '--video'].includes(value)), ['data-root']);
+      const initArgs = args.slice(2), generationFlags = initArgs.filter(value => value === '--image-generation'), audioFlags = initArgs.filter(value => value === '--audio'), videoFlags = initArgs.filter(value => value === '--video'), visionFlags = initArgs.filter(value => value === '--vision');
+      if (generationFlags.length + audioFlags.length + videoFlags.length + visionFlags.length > 1) throw new CliUsageError('初始化开关重复或冲突；vision包含视频、音频和图片，video包含音频和图片');
+      const options = flags(initArgs.filter(value => !['--image-generation', '--audio', '--video', '--vision'].includes(value)), ['data-root']);
       const suppliedRoot = required(options['data-root'], 'data-root');
       if (!path.isAbsolute(suppliedRoot)) throw new CliUsageError('data-root 必须是已初始化的空 Flow 根绝对路径');
       let dataRoot;
       try { dataRoot = fs.realpathSync(suppliedRoot); }
       catch (_) { throw new CliUsageError('请先在新的专用数据根执行 flow init'); }
       const result = await withApplication(dataRoot, application =>
-        application.execute('execution.init', videoFlags.length ? { video: true } : audioFlags.length ? { audio: true } : generationFlags.length ? { imageGeneration: true } : {}, { signal: cliAbortController.signal }));
+        application.execute('execution.init', visionFlags.length ? { vision: true } : videoFlags.length ? { video: true } : audioFlags.length ? { audio: true } : generationFlags.length ? { imageGeneration: true } : {}, { signal: cliAbortController.signal }));
       console.log(JSON.stringify(result, null, 2)); return 0;
     }
     if (!['list', 'inspect'].includes(args[1])) throw new CliUsageError('operation 只支持只读 list/inspect');

@@ -24,7 +24,16 @@ const starts = [], server = http.createServer((req, res) => {
 });
 server.listen(0, '127.0.0.1'); await once(server, 'listening');
 const url = `http://127.0.0.1:${server.address().port}`;
-const scheduler = createMediaScheduler(policy), manager = createProviderNetworkManager({ scheduler });
+const dispatchStarts = [], scheduler = createMediaScheduler(policy);
+const manager = createProviderNetworkManager({ scheduler, loadTransport: async () => {
+  void globalThis.Request;
+  const { getGlobalDispatcher } = await import('undici'), transport = getGlobalDispatcher();
+  return { getGlobalDispatcher: () => ({ dispatch(options, handler) {
+    dispatchStarts.push({ path: options.path, at: performance.now() });
+    return transport.dispatch(options, handler);
+  } }) };
+} });
+const timingEvidence = () => JSON.stringify({ dispatchStarts, serverReceipts: starts, scheduler: scheduler.snapshot() });
 try {
   const client = manager.resolveProviderNetwork({ providerId: 'fixture', modelRef: 'fixture::a' });
   const result = await client.run(fetch => Promise.all(['/slow', '/slow', '/redirect', '/four', '/five'].map(async endpoint => {
@@ -34,12 +43,15 @@ try {
   assert.equal(scheduler.snapshot().requestsStarted, 6, 'redirect dispatch is included');
   assert.equal(scheduler.snapshot().httpActive, 0, 'body completion releases permits');
   assert(starts.find(x => x.path === '/redirect').at - starts[0].at >= 200, 'response headers do not release a slow body slot');
-  for (let i = 3; i < starts.length; i++) assert(starts[i].at - starts[i - 3].at >= 960, 'rolling actual request starts obey RPS (40ms server receipt tolerance)');
+  assert.equal(dispatchStarts.length, starts.length, 'each actual dispatch reaches the controlled server, including redirect hops');
+  // RPS limits the transport call, not a later server arrival after connection/I/O delays.
+  for (let i = 3; i < dispatchStarts.length; i++) assert(dispatchStarts[i].at - dispatchStarts[i - 3].at >= 960,
+    'rolling transport dispatches obey RPS (40ms timing tolerance): ' + timingEvidence());
   const before429 = performance.now();
   await client.run(async fetch => { const response = await fetch(url + '/429'); await response.text(); });
   await client.run(async fetch => { const response = await fetch(url + '/after429'); await response.text(); });
-  assert(starts.find(x => x.path === '/after429').at - starts.find(x => x.path === '/429').at >= 960);
-  assert(performance.now() - before429 >= 960);
+  assert(dispatchStarts.find(x => x.path === '/after429').at - dispatchStarts.find(x => x.path === '/429').at >= 960, timingEvidence());
+  assert(performance.now() - before429 >= 960, timingEvidence());
   const bounded = createMediaScheduler({ ...policy, httpConcurrency: 1, requestsPerSecond: 100, queueTimeoutMs: 60 });
   const boundedManager = createProviderNetworkManager({ scheduler: bounded });
   try {

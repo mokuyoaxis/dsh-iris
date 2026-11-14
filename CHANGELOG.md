@@ -4,11 +4,18 @@
 
 ## [Unreleased]
 
-- HTTP / MCP 的 Run 详情增加可选安全错误摘要，模型可识别限流等失败原因；只返回已知类别、阶段、HTTP 状态与固定说明，保留凭据、端点和原始诊断的隔离边界。
-- DSH 按 ID 查询任务时明确标注查询成功与历史任务错误，减少将旧任务中断误解为本次查询失败的歧义；原状态、只读行为与生成权限保持。
+## [0.3.0-beta.3] - 2026-11-14
 
+本版使用 npm `beta` 与 GitHub prerelease，稳定 `latest` 不更新。新增能力、独立v5工作区及验证边界见[发行说明](docs/releases/0.3.0-beta.3.md)。
+
+- Web新增看图问答与OCR创建入口：复用原图导入、明确视觉模型及原Key恢复，问题/分块预算先保存为任务，核对后另行明确执行；OCR展示实际计划，手机待执行任务保持设置展开。刷新和读取不推理，恢复日志只保存身份，旧根及只读权限保持。
+- 修复Core看图/OCR丢失“模型不存在”错误语义的问题：明确404会持久记录该连接的模型阻断，OCR部分成功同样生效，后续分块不再请求已确认不可用的模型。HTTP/MCP为新旧模型不可用Task提供明确安全说明；普通404不会误封，不自动换模型或重试。
+- Core/MCP新增看图与OCR持久流程：显式 `execution init --vision` 新v5根、独立vision/ocr授权、单一明确模型与Core网络/调度、原Task文本及OCR报告作品。保留部分结果/缺块和实际调用数，取消不交付部分正文；原UUID查回、重启及交付恢复不重新推理。Web支持状态、纯文本查看与下载；旧根不迁移、旧连接不增权。见[视觉流程](docs/VISION_FLOWS.md)。
+- HTTP / MCP 的 Run 详情增加可选安全错误摘要，让 Agent 可识别限流等失败原因；只返回已知类别、阶段、HTTP 状态与固定说明，保留凭据、端点和原始诊断的隔离边界。
+- DSH 按 ID 查询任务时明确标注查询成功与历史任务错误，减少将旧任务中断误解为本次查询失败的歧义；原状态、只读行为与生成权限保持。
 - 网络配置文件失效、版本降级或身份替换时，及时停止旧路由客户端接纳新操作，并等待已接纳的正文与多跳请求排空；保留合法的多目录上下文及原配置错误。
 - 修复最低支持版本 Node 22.1.0 中网络 Doctor 的超时信号可能随 GC 丢失、检测长期不结束的问题；检测仍限 8 秒，取消和结束后清理计时器。
+- 维护异步测试：冒烟用例等待明确任务状态，RPS按实际传输派发口检验；调度API与口令CLI补齐阶段记录、请求/子进程等待期限及失败清理。保留原整体测试预算。
 
 ## [0.3.0-beta.2] - 2026-11-10
 
@@ -534,7 +541,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.2...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.3...HEAD
+[0.3.0-beta.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.2...v0.3.0-beta.3
 [0.3.0-beta.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.1...v0.3.0-beta.2
 [0.3.0-beta.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-alpha.1...v0.3.0-beta.1
 [0.3.0-alpha.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.7...v0.3.0-alpha.1

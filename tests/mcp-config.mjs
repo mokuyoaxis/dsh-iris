@@ -24,7 +24,9 @@ try {
   const selected = run('mcp', 'config', '--connection-file', pair.clientFile, '--capabilities', 'none', '--tools', 'iris_core_connections', '--format', 'entry');
   assert.equal(selected.status, 0, selected.stderr); assert(JSON.parse(selected.stdout).args.includes('none'));
   const discovered = run('mcp', 'capabilities'); assert.equal(discovered.status, 0);
-  assert.deepEqual(JSON.parse(discovered.stdout).implementedMedia, ['image-edit/v0', 'image-generate/v0', 'speech/v0', 'transcribe/v0', 'video-generate/v0']);
+  assert.deepEqual(JSON.parse(discovered.stdout).implementedMedia, ['image-edit/v0', 'image-generate/v0', 'speech/v0', 'transcribe/v0', 'video-generate/v0', 'vision/v0', 'ocr/v0']);
+  for (const capability of ['vision', 'ocr']) assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile,
+    capabilities: [capability] }), { code: 'IRIS_CONNECTION_CAPABILITY_DENIED' }, 'New capability discovery never expands the saved image grant');
   assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile, tools: ['iris_core_continue'] }), { code: 'IRIS_CONNECTION_CAPABILITY_DENIED' });
   assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile, capabilities: ['video'] }), { code: 'IRIS_CONNECTION_INPUT_INVALID' });
   assert.throws(() => exportMcpConfiguration({ connectionFile: pair.clientFile, transport: 'http' }), { code: 'IRIS_CONNECTION_INPUT_INVALID' });

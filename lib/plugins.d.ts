@@ -142,7 +142,7 @@ export interface CorePluginRegistry {
 export function createCorePluginRegistry(options?: { plugins?: CorePlugin[]; coreVersion?: string }): Promise<CorePluginRegistry>;
 export function loadCorePluginRegistry(options?: { entries?: string[]; coreVersion?: string }): Promise<CorePluginRegistry>;
 export type CoreCapabilityScope = 'read' | 'create' | 'execute' | 'stop';
-export type CoreBridgeCapability = 'image-edit' | 'image-generate' | 'tts' | 'transcribe';
+export type CoreBridgeCapability = 'image-edit' | 'image-generate' | 'tts' | 'transcribe' | 'video-generate' | 'vision' | 'ocr';
 export interface ContributionAccess {
   readonly local: 'requires-configuration' | 'requires-grant' | 'descriptor-only' | 'unavailable';
   readonly web: 'via-media-flow' | 'via-operation' | 'not-exposed' | 'durable-operation-required' | 'not-mounted' | 'available-in-panel' | 'unavailable';
@@ -161,7 +161,7 @@ export interface CoreCapabilitySnapshot {
   readonly controlTools: readonly string[];
   readonly groups: readonly {
     readonly id: CoreBridgeCapability; readonly recipe: string; readonly title: string; readonly label: string; readonly shortTitle: string;
-    readonly media: string; readonly requiresAudio?: boolean; readonly tools: readonly string[];
+    readonly media: string; readonly requiresAudio?: boolean; readonly requiresVideo?: boolean; readonly requiresVision?: boolean; readonly tools: readonly string[];
   }[];
   readonly tools: readonly { readonly name: string; readonly scope: CoreCapabilityScope; readonly description: string }[];
   readonly pluginTools: CoreCapabilitySnapshot['tools'];
@@ -178,7 +178,7 @@ export interface CoreCapabilitySnapshot {
   };
 }
 export interface CoreCapabilityCatalog {
-  snapshot(options?: { audioEnabled?: boolean; videoEnabled?: boolean; panelContributions?: PluginPanelSelection; allowedOperations?: readonly string[] }): CoreCapabilitySnapshot;
+  snapshot(options?: { audioEnabled?: boolean; videoEnabled?: boolean; visionEnabled?: boolean; panelContributions?: PluginPanelSelection; allowedOperations?: readonly string[] }): CoreCapabilitySnapshot;
   /** Validate an explicit local selection. Does not invoke, persist a grant or enable MCP/Web. */
   selectOperations(ids?: readonly string[]): readonly (OperationContribution & CatalogContribution)[];
 }

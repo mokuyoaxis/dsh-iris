@@ -19,7 +19,7 @@
 
 Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成、修改、查看和继续使用媒体。它提供独立 CLI、DSH 原生插件，以及 0.3 beta 的 Web 工作台与通用 MCP：供应商、任务和产物由 Core 管理，客户端按用户选择获得能力。
 
-**版本通道：`0.3.0-beta.2` 使用 npm `beta`，稳定 `latest` 保留 `0.2.7`。** 本次在 beta.1 的网络出口池、有界调度、文生视频、环境凭据引用和独立插件模板基础上，修复数据根占用时的原因提示与原操作/停止重试，并拆出独立发布确认任务。最小契约与主要流程沿用 [beta 范围](docs/BETA_SCOPE.md)，变化及验证边界见[发布说明](docs/releases/0.3.0-beta.2.md)。
+**版本通道：`0.3.0-beta.3` 使用 npm `beta`，稳定 `latest` 保留 `0.2.7`。** 本次新增 Core 看图/OCR 持久流程：在 Web、MCP 或 CLI 保存任务，再明确执行，保留原 Task、文字与分块报告；同时改进失效模型诊断、网络维护和异步测试。视觉能力使用新的 v5 工作区，旧根和连接不自动升级。范围与验证边界见 [beta 约定](docs/BETA_SCOPE.md)及[发布说明](docs/releases/0.3.0-beta.3.md)。
 
 | 你想做什么 | 使用入口 | 范围 |
 |---|---|---|
@@ -52,16 +52,17 @@ Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成�
 
 开发者可从随 beta.1 分发的[独立插件模板](docs/PLUGIN_DEVELOPMENT.md)开始：业务/页面/PNG 预览模板复用公开 SDK；[万相 Provider 模板](templates/provider-starter/README.md)使用工厂上下文 v1，复用 Core 凭据、网络、调度及持久任务。插件身份、贡献版本和授权均独立管理。
 
-旧数据根不自动迁移；新增视频需要显式创建 v4 根，网络绑定也有独立版本门禁。平台测试、受控服务和真实账号验证分别说明，不据此承诺所有供应商、GPU 或客户端均已验收。
+旧数据根不自动迁移；视频需要 v4/v5 根，看图/OCR 需要新 v5 根，网络绑定也有独立版本门禁。平台测试、受控服务和真实账号验证分别说明，不据此承诺所有供应商、GPU 或客户端均已验收。
 
 ### 当前入口覆盖
 
 | 能力 | DSH / 独立 CLI（beta） | Core Web / MCP（beta） |
 |---|---|---|
 | 图片生成、导入与编辑 | 可用 | 可用；新根支持文生图 |
-| 语音合成、音频转写 | 可用 | 新 v3/v4 根可用 |
-| 文生视频 | 可用 | [新 v4 根可用](docs/VIDEO_FLOWS.md) |
-| 图生视频、S2V、音乐、视觉理解 | 可用，取决于服务与本地依赖 | 模型服务可配置；创作入口待接入 |
+| 语音合成、音频转写 | 可用 | v3/v4/v5 根可用 |
+| 文生视频 | 可用 | [v4/v5 根可用](docs/VIDEO_FLOWS.md) |
+| 单图看图、长图 OCR | 可用 | [beta.3 新 v5 根](docs/VISION_FLOWS.md)；Web/MCP/CLI 保存后明确执行，可查看及下载结果 |
+| 图生视频、S2V、音乐 | 可用，取决于服务与本地依赖 | 模型服务可配置；创作入口待接入 |
 | ComfyUI 工作流与开放参数 | alpha 新增；稳定 0.2.7 不含 | 已实现；真实 GPU 推理待验收 |
 | 多图对照板插件 | 不属于 0.2.7 | 显式启用后可用 |
 
@@ -74,12 +75,12 @@ Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成�
 在自己的项目中固定安装预发布包，再选择**新的私有位置**。现有工作区不自动迁移：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-beta.2
+npm install @mokuyoaxis/dsh-iris@0.3.0-beta.3
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
 npx dsh-iris flow init --data-root "$IRIS_PREVIEW/core"
-npx dsh-iris execution init --audio --data-root "$IRIS_PREVIEW/core"
+npx dsh-iris execution init --vision --data-root "$IRIS_PREVIEW/core"
 npx dsh-iris config init --provider-config "$IRIS_PREVIEW/providers.json"
 
 npx dsh-iris web serve \
@@ -91,6 +92,8 @@ npx dsh-iris web serve \
 ```
 
 在源码目录使用 `npm ci` 安装锁定依赖，并把 `npx dsh-iris` 换成 `node bin/dsh-iris.js`。跟随 beta 通道可安装 `@mokuyoaxis/dsh-iris@beta`；需要可复现配置时保留准确版本。
+
+`--vision` 在新根启用 v5，包含图片、语音/转写、文生视频和看图/OCR 流程；它不选择模型、不调用服务，也不转换已有工作区。已有根继续按原能力使用。
 
 首次打开输出的 **`loginUrl` 设置访问口令**，以后用普通地址。默认记住设备，刷新及正常重启后可继续；退出后输入原口令即可。手机无需读取 Termux 私有文件。
 
@@ -111,7 +114,7 @@ dsh web
 
 在“设置 → Iris 工作台”引用 DSH 已有 API Key 连接或添加服务，选择协议、确认模型用途与功能池。原生 DSH 模式使用宿主路由、附件和生命周期，不要求另起 Core Web 服务；提供 17 个 Agent 工具和对话框 🫧 提示词优化。
 
-以上命令保留稳定版。需要 beta 的 ComfyUI 等功能时，明确改用 `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.2`；宿主准确版本范围不扩大。
+以上命令保留稳定版。需要 beta 的 ComfyUI 等功能时，明确改用 `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.3`；宿主准确版本范围不扩大。
 
 配置后的最小指令：
 
@@ -177,7 +180,7 @@ Node.js ≥22 和可加载的 `sharp` 是基础要求。视频抽帧需 `ffmpeg`
 | 工作台与接入 | [登录](docs/WORKBENCH_LOGIN.md) · [Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Skills](docs/CORE_SKILLS.md) |
 | 模型与流程 | [供应商/模型池/光谱](docs/PROVIDER_SETTINGS.md) · [图片与 ComfyUI](docs/IMAGE_GENERATION.md) · [语音/转写](docs/AUDIO_FLOWS.md) · [任务语义](docs/TASK_SEMANTICS.md) |
 | 扩展 | [插件契约](docs/PLUGINS.md) · [启动选择](docs/PLUGIN_STARTUP.md) · [Panel](docs/PANEL_EXTENSIONS.md) · [多图对照板](docs/CONTACT_SHEET.md) |
-| 版本与方向 | [0.3 beta.2 发布说明](docs/releases/0.3.0-beta.2.md) · [0.2.7 稳定版](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构](docs/ARCHITECTURE.md) |
+| 版本与方向 | [0.3 beta.3 发布说明](docs/releases/0.3.0-beta.3.md) · [0.2.7 稳定版](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构](docs/ARCHITECTURE.md) |
 
 DSH 随包保留 [`iris-use`](.dsh/skills/iris-use/SKILL.md)、[`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) 和 [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md)。独立 Core 与连接 Skill 不替换它们。
 

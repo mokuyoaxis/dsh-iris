@@ -19,7 +19,7 @@
 
 Iris connects media services and keeps creative work, tasks and outputs together. Agents can generate, edit, inspect and reuse media through a standalone CLI, a native DSH plugin, or the 0.3 beta Core workbench and generic MCP. Core owns execution and storage; users choose what each client can access.
 
-**Release channels: `0.3.0-beta.2` uses npm `beta`; stable `latest` remains `0.2.7`.** Building on beta.1's network pools, bounded scheduling, text-to-video, environment credential references and plugin starters, this release explains root contention, retries the original operation or stop, and gives publication confirmation its own job. See the unchanged [beta scope](docs/BETA_SCOPE.md) and the [release notes](docs/releases/0.3.0-beta.2.md).
+**Release channels: `0.3.0-beta.3` uses npm `beta`; stable `latest` remains `0.2.7`.** Save a durable Core vision/OCR task through Web, MCP or CLI, then explicitly execute it and keep its original identity, text and chunk report. This version also improves unavailable-model diagnostics, network maintenance and asynchronous tests. Vision requires a new v5 workspace; existing roots and grants are retained. See the [beta scope](docs/BETA_SCOPE.md) and [release notes](docs/releases/0.3.0-beta.3.md).
 
 | What you need | Entry | Availability |
 |---|---|---|
@@ -52,16 +52,17 @@ A white interface with subtle iris colors, light/dark themes, local backgrounds 
 
 Developers can start with the [independent plugin projects](docs/PLUGIN_DEVELOPMENT.md) included in beta.1. The business/page/PNG template uses the public SDK; the [Wan Provider template](templates/provider-starter/README.md) uses factory context v1 and reuses Core credentials, networking, scheduling and durable tasks. Plugins retain their own identities, contribution versions and explicit grants.
 
-Existing roots are not migrated automatically. Video requires a new v4 root, and network bindings have a separate format gate. Platform tests, controlled services and real-account evidence are distinct; they do not certify every provider, GPU or client.
+Existing roots are not migrated automatically. Video requires a v4/v5 root, vision/OCR requires a new v5 root, and network bindings have a separate format gate. Platform tests, controlled services and real-account evidence are distinct; they do not certify every provider, GPU or client.
 
 ### Current entry-point coverage
 
 | Capability | DSH / standalone CLI (beta) | Core Web / MCP (beta) |
 |---|---|---|
 | Image generation, import and editing | Available | Available; text-to-image requires a new generation-capable root |
-| Speech and transcription | Available | Available in new v3/v4 roots |
-| Text-to-video | Available | [Available in new v4 roots](docs/VIDEO_FLOWS.md) |
-| Image-to-video, S2V, music and vision | Available, depending on service and local dependencies | Configurable uses; creation entries still pending |
+| Speech and transcription | Available | Available in v3/v4/v5 roots |
+| Text-to-video | Available | [Available in v4/v5 roots](docs/VIDEO_FLOWS.md) |
+| Single-image vision and long-image OCR | Available | [Beta.3, new v5 roots](docs/VISION_FLOWS.md); save through Web/MCP/CLI, explicitly execute, then view or download results |
+| Image-to-video, S2V and music | Available, depending on service and local dependencies | Configurable uses; creation entries still pending |
 | ComfyUI workflows and exposed parameters | Added in alpha; absent from stable 0.2.7 | Implemented; live GPU inference remains unverified |
 | Contact-sheet plugin | Outside 0.2.7 | Available when explicitly enabled |
 
@@ -74,12 +75,12 @@ Existing roots are not migrated automatically. Video requires a new v4 root, and
 Pin the prerelease in your own project, then choose a **new private location**. Existing workspaces are not migrated:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-beta.2
+npm install @mokuyoaxis/dsh-iris@0.3.0-beta.3
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
 npx dsh-iris flow init --data-root "$IRIS_PREVIEW/core"
-npx dsh-iris execution init --audio --data-root "$IRIS_PREVIEW/core"
+npx dsh-iris execution init --vision --data-root "$IRIS_PREVIEW/core"
 npx dsh-iris config init --provider-config "$IRIS_PREVIEW/providers.json"
 
 npx dsh-iris web serve \
@@ -91,6 +92,8 @@ npx dsh-iris web serve \
 ```
 
 For a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. Use `@mokuyoaxis/dsh-iris@beta` to follow betas, or keep the exact version for a reproducible setup.
+
+`--vision` initializes a new v5 root with image, speech/transcription, text-to-video and vision/OCR flows. It does not select a model, call a provider or convert an existing workspace. Existing roots retain their original capabilities.
 
 Open the printed **`loginUrl` once to set an access password**, then use the ordinary address. Remembered devices survive refreshes and normal restarts; sign back in with the same password after logout. Mobile browsers do not need access to Termux files.
 
@@ -111,7 +114,7 @@ dsh web
 
 Under Settings → Iris Workbench, reference an existing DSH API-key connection or add a service. Choose its protocol, approve model uses and select pool policies. Native DSH mode uses host routes, attachments and lifecycle without a separate Core Web service; it provides 17 Agent tools and the 🫧 prompt-refinement entry.
 
-These commands retain the stable version. Use `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.2` for additions such as the ComfyUI UI. The exact supported host versions do not expand.
+These commands retain the stable version. Use `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.3` for additions such as the ComfyUI UI. The exact supported host versions do not expand.
 
 After configuration, a minimal request is:
 
@@ -177,7 +180,7 @@ Historical device captures from an Android browser connected to DSH in Termux/PR
 | Workbench and connections | [Login](docs/WORKBENCH_LOGIN.md) · [Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Skills](docs/CORE_SKILLS.md) |
 | Models and flows | [Providers, pools and spectrum](docs/PROVIDER_SETTINGS.md) · [Images / ComfyUI](docs/IMAGE_GENERATION.md) · [Speech / transcription](docs/AUDIO_FLOWS.md) · [Task semantics](docs/TASK_SEMANTICS.md) |
 | Extensions | [Plugin contract](docs/PLUGINS.md) · [Startup](docs/PLUGIN_STARTUP.md) · [Panel](docs/PANEL_EXTENSIONS.md) · [Contact sheet](docs/CONTACT_SHEET.md) |
-| Releases and direction | [0.3 beta.2 release notes](docs/releases/0.3.0-beta.2.md) · [0.2.7 stable](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
+| Releases and direction | [0.3 beta.3 release notes](docs/releases/0.3.0-beta.3.md) · [0.2.7 stable](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
 
 The DSH package retains [`iris-use`](.dsh/skills/iris-use/SKILL.md), [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) and [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md). Core and connection Skills do not replace them.
 

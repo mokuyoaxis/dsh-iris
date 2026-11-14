@@ -93,6 +93,7 @@ for (const rel of [
   'lib/model-port-contract.js', 'lib/model-invoker.js', 'lib/prompt-optimizer-core.js', 'lib/vision-core.js',
   'lib/model-call-runtime.js', 'lib/http-vision-model-adapter.js', 'lib/dsh-vision-model-adapter.js', 'lib/vision-model-routing.js',
   'lib/ocr.js', 'lib/ocr-model-routing.js',
+  'lib/vision-flow-input.js', 'lib/vision-provider-adapter.js',
   'lib/locate.js', 'lib/summarize.js', 'lib/summary-input.js', 'lib/vision-input.js', 'lib/composite-vision-routing.js',
   'lib/generation-input.js', 'lib/headless-vision.js', 'lib/video-input.js', 'lib/chromium-browser.js', 'lib/provider-config-service.js', 'lib/task-wait.js', 'lib/core-maintenance.js',
   'lib/task-semantics.js', 'lib/provider-contract.js', 'lib/provider-adapter.js',
