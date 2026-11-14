@@ -24,6 +24,12 @@ export async function verifyVisionBrowser({ out, cdp, evaluate, click, wait, cho
   let session;
   const check = async (name, expression) => { assert.equal(await evaluate(expression), true, name); report.checks.push(name); save(); };
   const status = title => wait(() => evaluate(`document.querySelector('#status-title').textContent===${JSON.stringify(title)}&&!document.querySelector('#viewer').getAttribute('aria-busy').includes('true')`), title);
+  async function reload() {
+    const loader = (await cdp('Page.getFrameTree')).frameTree.frame.loaderId;
+    await cdp('Page.reload');
+    await wait(async () => (await cdp('Page.getFrameTree')).frameTree.frame.loaderId !== loader, 'new vision document');
+    await wait(() => evaluate("Boolean(document.documentElement?.dataset.theme&&document.querySelector('#viewer'))"), 'vision document mounted');
+  }
   const read = async id => { const response = await fetch(session.origin + '/api/v0/runs/' + id, { headers: { Authorization: 'Bearer ' + session.accessToken } }); assert.equal(response.status, 200); return response.json(); };
   try {
     await app.execute('flow.init', {}); await app.execute('execution.init', { vision: true });
@@ -47,7 +53,7 @@ export async function verifyVisionBrowser({ out, cdp, evaluate, click, wait, cho
     let downloaded;
     await wait(() => { downloaded = fs.readdirSync(downloads).find(name => name.endsWith('.txt')); return downloaded && fs.readFileSync(path.join(downloads, downloaded)).equals(Buffer.from(text)); }, 'exact vision text download bytes');
     report.checks.push('actual browser download equals the original text artifact bytes');
-    await cdp('Page.reload'); await readyRun(saved.id); await status('看图结果已保存'); assert.equal(posts, 1); assert.equal((await read(saved.id)).task.id, saved.task.id);
+    await reload(); await readyRun(saved.id); await status('看图结果已保存'); assert.equal(posts, 1); assert.equal((await read(saved.id)).task.id, saved.task.id);
     report.checks.push('reload keeps the original vision Task without another POST');
     await cdp('Page.navigate', { url: session.origin + '/#' + ocr.flow.run.id }); await readyRun(ocr.flow.run.id); await click('#start-edit'); await status('OCR 部分完成');
     await wait(() => evaluate("!document.querySelector('#vision-text-result').hidden"), 'partial OCR text');
@@ -76,8 +82,7 @@ export async function verifyVisionBrowser({ out, cdp, evaluate, click, wait, cho
       // A fragment navigation can keep the old document and its service grants.
       // Reload explicitly so this check always reads the restarted Core session.
       await evaluate(`history.replaceState(null,'',${JSON.stringify('/' + (runId ? '#' + runId : ''))})`);
-      await cdp('Page.reload');
-      await wait(() => evaluate("Boolean(document.documentElement.dataset.theme)"), label + ' mount');
+      await reload();
       if (!retained) { await wait(() => evaluate("!document.querySelector('#connection').hidden"), label + ' login'); await chooseToken(file); }
       await wait(() => evaluate("!document.querySelector('#workspace').hidden&&document.querySelector('#model-summary').textContent!=='读取中'"), label + ' workspace');
     }
@@ -94,7 +99,7 @@ export async function verifyVisionBrowser({ out, cdp, evaluate, click, wait, cho
     await check('saving vision locks the original input and waits for a second explicit action', "document.querySelector('#draft-fields').disabled&&document.querySelector('#start-edit').textContent==='开始看图'&&!document.querySelector('#start-edit').disabled");
     await click('#start-edit'); await status('看图结果已保存'); assert.equal(posts, 3);
     const executedVision = await read(createdVisionId); assert.equal(executedVision.task.attemptCount, 1);
-    await cdp('Page.reload'); await readyRun(createdVisionId); await status('看图结果已保存'); assert.equal(posts, 3);
+    await reload(); await readyRun(createdVisionId); await status('看图结果已保存'); assert.equal(posts, 3);
     assert.equal((await read(createdVisionId)).task.id, executedVision.task.id);
     assert.deepEqual(readCoreArtifactBytes(root, createdVision.source.artifactId).bytes, fs.readFileSync(inputFile));
     await click('#new-run'); await click('[data-creation-mode=ocr]'); await values({ '#model': 'vision-fixture::vision' }); await upload();
