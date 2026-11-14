@@ -116,6 +116,10 @@ node bin/dsh-iris.js mcp capabilities
 
 这些选项可用于 `connection create`。服务端按连接授权检查实际 API 路由，猜工具名或绕过 MCP 也不能调用未选择的功能。stdio 客户端还可进一步缩小本次 `mcp serve` 的范围；HTTP 以该连接在服务端的明确授权为准，需要不同范围时创建各自的连接。
 
+`iris_core_continue`返回queued/running时，默认串行模式应先等原Operation结束，再提交另一项，并检查原Run/Task才判断媒体完成。写者忙拒绝不会替后项排队；保留原UUID并查询，不能自动重发或换Key。中断与查无记录的处理见[接收、查询与停止](CORE_SERVICE.md#接收查询与停止)。
+
+`--scopes read`只缩小连接权限，不决定服务端是否开放Operation路由。恢复原Operation/UUID时，Core须保留提供这些读取的执行服务，普通媒体部署使用`--allow-execution`；客户端仅需read和对应读取工具，无需execute。关闭相应服务后，连接中的read不能重新开放查询；插件执行服务也可提供Operation详情和原Key查询，准确边界见[Core服务说明](CORE_SERVICE.md#接收查询与停止)。
+
 新连接将能力和具体工具列表写入私有授权。后续版本增加新工具不会扩大已有列表。旧文件缺少这两个字段时按原有图片流程和固定 12 工具解释，读取不改文件；未知分组、未知工具和未接入的媒体功能明确拒绝。
 
 ## stdio：填写启动命令

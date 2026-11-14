@@ -21,6 +21,8 @@ Iris connects media services and keeps creative work, tasks and outputs together
 
 **Release channels: `0.3.0-beta.3` uses npm `beta`; stable `latest` remains `0.2.7`.** Save a durable Core vision/OCR task through Web, MCP or CLI, then explicitly execute it and keep its original identity, text and chunk report. This version also improves unavailable-model diagnostics, network maintenance and asynchronous tests. Vision requires a new v5 workspace; existing roots and grants are retained. See the [beta scope](docs/BETA_SCOPE.md) and [release notes](docs/releases/0.3.0-beta.3.md).
 
+Current source also improves Agent execution diagnostics and clarifies serial execution and read-only recovery. These changes are unreleased; see [Unreleased](CHANGELOG.md#unreleased).
+
 | What you need | Entry | Availability |
 |---|---|---|
 | Media tools and prompt refinement inside DSH | [DSH plugin](#dsh-plugin-027) | Published 0.2.7 |

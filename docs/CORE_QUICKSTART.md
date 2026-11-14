@@ -43,7 +43,9 @@ node bin/dsh-iris.js web serve \
 | `--allow-connection-management` | The owner can create, update, revoke and delete MCP grants |
 | `--allow-mcp` | Serve Streamable HTTP at `/mcp`; stdio uses a bridge to the same Core |
 
-The service listens on `127.0.0.1`. Keep this command running. Ctrl+C stops this service normally; it does not start or restart DSH. Only one execution service may manage this root. For read-only use, omit the write switches and unneeded management options; see [the workbench reference](LOCAL_WEB.md).
+The service listens on `127.0.0.1`. Keep this command running. Ctrl+C stops this service normally; it does not start or restart DSH. Only one execution service may manage this root. To run a service that only browses saved Runs and media, omit the write switches and unneeded management options; see [the workbench reference](LOCAL_WEB.md).
+
+To recover original Operations through a read-only MCP connection, keep the existing Core execution service enabled and grant the connection only `read` and its selected read tools. Turning off the service also removes its Operation routes; a read grant cannot enable them. The plugin-service alternative and exact route gates are described in [Core operation recovery](CORE_SERVICE.md#接收查询与停止).
 
 ## Sign in · 登录
 

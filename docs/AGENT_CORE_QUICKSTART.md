@@ -2,6 +2,8 @@
 
 For **0.3.0-beta.3 Core Web/MCP**, use the [Core quickstart](CORE_QUICKSTART.md). Stable npm **0.2.7 has CLI/DSH support, without this Web/MCP entry**; use [the stable Agent guide](AGENT_QUICKSTART.md) for it. Install the exact beta or explicitly choose the beta channel. [Vision/OCR](VISION_FLOWS.md) requires a new v5 root and explicit capability and operation grants.
 
+Current source improves rejection diagnostics and recovery guidance; those changes are [unreleased](../CHANGELOG.md#unreleased). The execution and permission rules below also apply when an installed beta shows only a generic rejection message.
+
 Give this instruction to an Agent helping with setup:
 
 ```text
@@ -39,6 +41,18 @@ receipt. Accepted is not complete; an interrupted/unknown request must not be
 replaced by another generation. Read back the actual artifact before describing
 it, and say explicitly if this client cannot display its content.
 
+In default serial mode, wait for the active Operation to finish before submitting
+another operation. Inspect its saved business result, including the original
+Run/Task for media flows, before claiming completion or starting a dependent step.
+A busy rejection is not a queued
+receipt. After busy or uncertain responses, look up the original UUID; do not
+retry automatically, switch keys or remove a writer lease.
+
+A read-only connection can recover original Operations when Core retains the
+service exposing those reads. This connection needs only read and its selected
+read tools, not execute. Report a service/selection mismatch to the owner rather
+than changing grants or starting another Core to bypass it.
+
 Report package/source identity, selected permissions, actual handshake, Run/Task/
 Operation/artifact IDs where available, result state and what was not verified.
 Never claim paid-provider or GPU success from a controlled replay or static check.
@@ -53,6 +67,8 @@ The client does not need the owner's password or provider keys. Use the actual c
 | Inspect configured choices | Read the returned model/workflow directory; preserve exact references and declared parameters |
 | Create media | Confirm the requested content and required parameters, then create once and explicitly execute the returned Run |
 | Resume an uncertain request | Look up its original request UUID or Operation; report unknown acceptance without resubmitting |
+| Core reports a busy writer or lease | Wait for any active Operation, preserve the original UUID/input and inspect the saved state before an explicitly authorized continuation |
+| Recover an Operation with read access | Use the existing Core service and selected read tools; keep the Operation service enabled without granting this connection execute |
 | Read results | Fetch the original artifact through this connection; distinguish metadata, actual bytes and rendered content |
 | Missing permission or business | Explain the actual denial; ask the owner to change the connection if needed, then reconnect |
 | Core unavailable | Report transport failure; do not initialize a new root or steal its writer lease |
@@ -61,4 +77,6 @@ For ComfyUI, clarify the desired workflow, source image, style/LoRA and exposed 
 
 ## Verification scope · 验证边界
 
-Repository evidence includes real Core persistence, production MCP transports and isolated real-model sessions in Kimi Code and Codex. These are specific tested clients and versions, not a guarantee for every client. The fresh-workspace walkthrough uses a controlled local media replay; real paid media and a live ComfyUI GPU require separate deployment checks. Start with a read-only task, then explicitly authorize the media operation you actually need.
+Repository evidence includes real Core persistence, production MCP transports and earlier isolated real-model sessions in Kimi Code and Codex. Published beta.3 was also checked with real DSH native plugin and Kimi MCP model sessions: import an image, save vision/OCR Runs, explicitly execute, then recover the original identities and results after restart through read-only connections. That flow used one clear synthetic image; it does not establish general OCR accuracy or compatibility with every client.
+
+The unreleased rejection-diagnostic changes were checked with controlled providers, the actual DSH SDK and a packed Core/MCP consumer. No paid Agent model session was rerun for those hints, so these checks do not establish that a model will always follow the new guidance. The fresh-workspace walkthrough uses a controlled local media replay; real paid media and a live ComfyUI GPU require separate deployment checks. Start with a read-only task, then explicitly authorize the media operation you actually need.

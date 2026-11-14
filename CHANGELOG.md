@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+以下为当前源码的后续维护，尚未随已发布的 `0.3.0-beta.3` 发行。
+
+- 改善Core拒绝请求时的Agent诊断：DSH错误文本保留安全错误码、HTTP状态和关联ID，DSH/MCP明确区分写者忙、查无Operation及权限拒绝；等待后先按原UUID核对，不自动重发、不透传服务响应中的任意文字。
+- 工具目录、MCP服务指引和连接专属Skill补充默认串行顺序、有限Operation与媒体完成的区别，以及只读连接查回Operation所需的Core执行服务配置；双语README、Agent指南和快速开始同步说明，授权、API和执行策略保持。
+
 ## [0.3.0-beta.3] - 2026-11-14
 
 本版使用 npm `beta` 与 GitHub prerelease，稳定 `latest` 不更新。新增能力、独立v5工作区及验证边界见[发行说明](docs/releases/0.3.0-beta.3.md)。

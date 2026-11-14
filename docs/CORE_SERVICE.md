@@ -24,7 +24,9 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
 
 `--allow-execution` 同时开启零生成上传/创建与有限执行；不传时保持既有默认只读行为。服务需要已初始化的执行根和有效的显式配置：v1/v2支持各自的图片流程，v3加入音频，v4加入文生视频，beta.3的v5另加入看图/OCR并保留既有流程。配置静态校验、启动和连接握手不调用模型。每次明确继续至多调用一次 `flow.continue`：首次提交或检查/补交付原 Task，不持续轮询，不重提已有 Attempt；OCR一次执行可能按计划调用多块，见[调用预算](VISION_FLOWS.md#ocr-完成度与停止)。
 
-第二个执行 Host 无法取得同根 runner 租约；同根可另开只读页面。接收后服务自行收尾，关页或断开 harness 不撤销已接收操作。默认串行模式在 writer 正忙时明确拒绝新接收，调用方保留原 Key 后显式重试，不能假定已排队。
+第二个执行 Host 无法取得同根 runner 租约；同根可另开只读页面。接收后服务自行收尾，关页或断开 harness 不撤销已接收操作。默认串行模式在 writer 正忙时明确拒绝新接收，不能把拒绝当成已经排队。收到前项的 queued/running 回执后，先读取原 Operation，等该次有限执行结束再提交另一项；依赖前项作品的步骤还须读取原 Run/Task，确认作品确实完成。
+
+连续提交遇到 `409 / IRIS_API_ROOT_BUSY` 时，保留原请求 UUID、Run 和输入，等待活动操作结束后按原 UUID 查询。只有核对原 Core/root、确认该请求没有受理记录且仍在授权范围内，才显式提交同 Key/输入；不自动重发、换 Key 或删除租约。`404 / IRIS_OPERATION_NOT_FOUND` 只表示本次查询在当前 Core 没有找到该 Operation；断线、超时或查询身份不确定时仍须报告受理未知，不能仅凭一个404另建任务。`403 / IRIS_CONNECTION_CAPABILITY_DENIED` 则应核对授权与服务开关，等待写者不会解决权限问题。
 
 beta.1可显式增加 `--scheduler-config /absolute/private/scheduling.json`，启用[有界媒体调度](MEDIA_SCHEDULING.md)：单根仍只有一个写者，网络等待可重叠，HTTP并发/RPS/远端未结束任务分别限额。短接收与结束事务不等待整次网络请求，原任务查询/下载不被新提交额度阻挡。未配置仍保持上述默认语义，不自动迁移或重提。
 
@@ -43,6 +45,8 @@ beta.1可显式增加 `--scheduler-config /absolute/private/scheduling.json`，�
 | GET `/api/v0/operations?key=…` | 原 Key | 丢失响应后接回，不执行 |
 | GET `/api/v0/runs/:id/operations` | `limit` 1–30、`cursor` | 有界原操作列表 |
 | POST `/api/v0/operations/:id/cancel` | JSON `{}` | 先中止本地等待，待终态落盘后返回 200；重复原 ID 接回现有终态 |
+
+**只读连接与只读服务不同。** Operation 详情和原 Key 查询由媒体执行服务（`--allow-execution`）或显式选定的插件执行服务开放；Run 关联的 Operation 列表需要 `--allow-execution`。连接仅授 `read` 并选择对应读取工具即可，不需要 `execute`。关闭所有提供这些读取的执行服务后，相应路由也不再开放，客户端的 read 授权不能补开；已保存 Run/作品的读取按各自入口继续判断。插件执行服务不据此开放普通媒体执行。需要恢复时沿用原 Core/root 和已授权配置，不为通过查询而自动扩权或另启同根写者。
 
 停止不另消费一个请求 Key，也不返回尚未持久化的取消 202。响应丢失时查询原 Operation。`localStopped` 只证明本地操作已停止，`remoteCancellation: not_requested` 表示没有请求远端取消；保留 Task 受理、结果和已交付作品。Operation succeeded 表示该次有限调用返回，作品是否完成仍看 Run/Task。
 

@@ -32,6 +32,10 @@ node bin/dsh-iris.js web serve --data-root /absolute/new-vision-core \
 4. 明确授权后，用另一稳定 UUID、原 Run ID 和当前 revision 调用 `iris_core_continue` 一次。Task/Attempt 先于 HTTP 请求落盘。首次执行可能计费。
 5. 用 `iris_core_run/operation/lookup` 查原身份；读取、刷新、重连、重启均不提交新请求。文本由 `iris_core_vision_text` 读取，OCR报告由 `iris_core_ocr_result` 读取；使用 Run 返回的 output/report Artifact ID。
 
+默认串行服务中，先等当前 Operation 结束，再提交另一个看图或OCR操作；queued/running只是已接收回执，不代表识别完成。若后一项收到写者忙拒绝，保留其原UUID，等待后先查询原记录，确认未受理且仍获授权才显式提交同Key/输入；拒绝不等于已排队，网络中断或未知受理不能自动重做。
+
+按上述媒体服务配置重启后，只读查回 Operation 仍需 Core 保留 `--allow-execution`；客户端连接可以只授 `read` 和相应读取工具，不需要execute。服务端未开放Operation读取时，连接中的read不能补开路由；插件执行服务的读取边界详见[接收、查询与停止](CORE_SERVICE.md#接收查询与停止)。已保存文字和OCR报告仍由各自作品读取入口检查权限，不通过重新识别恢复交付。
+
 每个 Run 固定一个模型；单图至多一次 POST，OCR按实际分块请求分别计数，不把一次 Operation 当作一次模型调用。SSE 正文结束或取消前，Core 保持网络生命周期及 HTTP 调度名额。明确 HTTP 拒绝与不确定受理分别保存；缺少正常终态、断线或调用中取消不能冒充成功。
 
 文本保存为 `text/plain`，OCR另有 `application/json` 报告，各限1 MiB。作品保留来源关系；原图字节不改。交付失败从原私有结果缓存恢复，沿用 Task 和预留 Artifact ID，无需再次调用模型。看图与OCR不执行图片差异比较或版本选择。

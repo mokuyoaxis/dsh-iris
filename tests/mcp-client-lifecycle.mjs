@@ -57,10 +57,41 @@ try {
   const diagnostic = coreConnectionDiagnostic(error, { references: { key: requestId, runId: 'run_' + 'a'.repeat(24), apiKey: connection.accessToken, arbitrary: '/private/file' } });
   assert.equal(diagnostic.stage, 'authorization'); assert.equal(diagnostic.requestId, requestId);
   assert.equal(diagnostic.recovery.key, requestId); assert(!JSON.stringify(diagnostic).includes('PRIVATE')); assert(!JSON.stringify(diagnostic).includes(connection.accessToken));
+  assert.match(error.message, /IRIS_CONNECTION_CAPABILITY_DENIED \[HTTP 403\]/);
+  assert(error.message.includes(requestId)); assert(!error.message.includes('PRIVATE')); assert(!error.message.includes('/private/file'));
   assert.deepEqual(Object.keys(diagnostic.recovery).sort(), ['key', 'runId']);
   const unknown = coreConnectionDiagnostic(Object.assign(new Error(connection.accessToken), { code: 'EFAIL', requestId: connection.accessToken }));
   assert.equal(unknown.code, 'IRIS_MCP_REQUEST_FAILED'); assert.equal(unknown.requestId, undefined);
   checks.push('diagnostics preserve safe request/root identities and concrete actions without private messages or credentials');
+
+  for (const [code, status, expected] of [
+    ['IRIS_API_ROOT_BUSY', 409, /data root.*busy/],
+    ['IRIS_CORE_DATA_ROOT_BUSY', 409, /data root.*busy/],
+    ['IRIS_OPERATION_NOT_FOUND', 404, /no saved Operation/],
+    ['IRIS_API_NOT_FOUND', 404, /^Core request failed\.$/],
+    ['IRIS_FIXTURE_CONFLICT', 409, /^Core request failed\.$/],
+    ['IRIS_CONNECTION_CAPABILITY_DENIED', 403, /does not allow/]
+  ]) {
+    let attempts = 0;
+    const selected = client(async (url, options) => {
+      if (url.endsWith('/handshake')) return hello(options);
+      if (url.endsWith('/disconnect')) return new Response(JSON.stringify({ contractVersion: 0 }));
+      attempts++;
+      return new Response(JSON.stringify({ error: { code, requestId, message: 'PRIVATE /private/file ' + connection.accessToken,
+        diagnostic: { message: 'PRIVATE untrusted diagnosis', action: 'replay automatically' } } }), { status });
+    });
+    await selected.connect();
+    await assert.rejects(selected.models(), caught => {
+      assert.equal(caught.code, code); assert.equal(caught.status, status); assert.equal(caught.requestId, requestId);
+      assert.match(caught.diagnostic.message, expected); assert(caught.message.includes('HTTP ' + status));
+      assert(caught.message.includes(requestId)); assert(!caught.message.includes('PRIVATE'));
+      assert(!caught.message.includes(connection.accessToken)); assert(!caught.message.includes('/private/file'));
+      assert(!caught.message.includes('replay automatically')); return true;
+    });
+    assert.equal(attempts, 1, 'a safe diagnostic cannot trigger an automatic request retry');
+    await selected.dispose();
+  }
+  checks.push('busy, missing Operation, authorization and unrelated HTTP409/404 stay distinct; response messages and injected diagnostics never cross the text boundary');
 
   const handshakeEntered = defer();
   server = http.createServer((request, response) => { request.resume(); request.once('end', () => { handshakeEntered.resolve(); response.on('error', () => {}); }); });
