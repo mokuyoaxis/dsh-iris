@@ -181,7 +181,7 @@ async function chooseToken(file) {
   await cdp('DOM.setFileInputFiles', { nodeId: input.nodeId, files: [file] });
 }
 async function readyRun(id) {
-  await wait(() => evaluate(`location.hash===${JSON.stringify('#' + id)}&&!document.querySelector('#viewer').getAttribute('aria-busy').includes('true')&&!document.querySelector('#run-view').hidden`), 'real Run ' + id);
+  await wait(() => evaluate(`(() => { const viewer=document.querySelector('#viewer'), run=document.querySelector('#run-view'); return location.hash===${JSON.stringify('#' + id)}&&Boolean(viewer&&run)&&viewer.getAttribute('aria-busy')==='false'&&!run.hidden; })()`), 'real Run ' + id);
 }
 
 try {

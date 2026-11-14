@@ -19,7 +19,10 @@ function crash(stage, dataRoot, pid) {
   const result = spawnSync(process.execPath, [childFile, stage, dataRoot, String(pid || '')], { encoding: 'utf8', timeout: 10000 });
   assert.ifError(result.error);
   assert.equal(result.stdout, 'CHECKPOINT ' + stage + '\n', result.stderr || stage + ': interruption checkpoint reached');
-  assert.equal(result.stderr, '', stage + ': must not be an exception exit');
+  // Sharp's ESM JSON import emits this runtime warning on Node 22.1.0.
+  // Keep rejecting every other stderr byte, as well as wrong checkpoints/signals.
+  const stderr = result.stderr.replace(/^\(node:\d+\) ExperimentalWarning: Importing JSON modules is an experimental feature and might change at any time\r?\n(?:\(Use `node --trace-warnings \.\.\.` to show where the warning was created\)\r?\n)?/, '');
+  assert.equal(stderr, '', stage + ': must not be an exception exit');
   // Windows 的进程内 SIGKILL 返回 TerminateProcess 的退出码，父进程没有 signalCode。
   if (process.platform === 'win32') { assert.equal(result.status, 1); assert.equal(result.signal, null); }
   else assert.equal(result.signal, 'SIGKILL', stage);
