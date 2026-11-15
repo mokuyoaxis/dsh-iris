@@ -66,6 +66,8 @@ node bin/dsh-iris.js flow create --data-root /absolute/new-vision-core \
 - 取消/超时停止后续调度，沿用原 OCR 语义，不交付此前的部分正文。保留原 Task/Operation；进程重启不续块或重做整张图。
 - 本地停止不保证 Sharp 已停止、远端取消、退费或停止计费；需要重新识别时，另行明确授权创建新 Run。
 
+重叠区域的文字目前按各块原样保留，拼接正文**不做跨块去重**。`complete`仅表示计划块全部获得完整结果，不表示唯一全文或识别准确率。复核时结合块索引、纵坐标和原图判断，避免将原文中有意重复的句子误删。一次带160像素重叠的实测中，各块CER均0，拼接却多出75个重复字符；样本、判据和边界见[OCR场景验证记录](OCR_VALIDATION.md)。
+
 ## 有限 HTTP 入口
 
 均在 `/api/v0` 下，沿用 Bearer、Host/Origin、根版本、scope及精确工具校验：
