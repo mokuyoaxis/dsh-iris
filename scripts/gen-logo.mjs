@@ -136,15 +136,19 @@ for (const [name, v] of Object.entries(wordmarkOnly ? {} : variants)) {
   console.log('wrote', name, `${width + (v.mark ? CELL * 2 : 0)}x${height + (v.mark ? CELL * 2 : 0)}`);
 }
 
-// README使用7×9字形，首个I为9×11；6单位方块、9单位步距，留3单位缝隙。
+// README把5×7字形的每个实格细分为3×3小颗粒，保留饱满的多排/多列笔画。
 const WORDMARK_LETTERS = {
-  I: ['1111111', '0001000', '0001000', '0001000', '0001000', '0001000', '0001000', '0001000', '1111111'],
-  R: ['1111110', '1000001', '1000001', '1000001', '1111110', '1001000', '1000100', '1000010', '1000001'],
-  S: ['0111111', '1000000', '1000000', '1000000', '0111110', '0000001', '0000001', '0000001', '1111110']
+  I: ['11111', '00100', '00100', '00100', '00100', '00100', '11111'],
+  R: ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+  S: ['01111', '10000', '10000', '01110', '00001', '00001', '11110']
 };
-const initialI = ['111111111', ...Array(9).fill('000010000'), '111111111'];
-const wordmarkGlyphs = [...WORD].map((letter, index) => index === 0 ? initialI : WORDMARK_LETTERS[letter]);
-const WORDMARK_CELL = 6, WORDMARK_STEP = 9, WORDMARK_GAP = 2;
+const expandWordmarkGlyph = glyph => glyph.flatMap(row =>
+  Array(3).fill([...row].map(value => value.repeat(3)).join('')));
+const initialI = Array.from({ length: 23 }, (_, row) =>
+  row < 3 || row >= 20 ? '1'.repeat(17) : '00000001110000000');
+const wordmarkGlyphs = [...WORD].map((letter, index) =>
+  index === 0 ? initialI : expandWordmarkGlyph(WORDMARK_LETTERS[letter]));
+const WORDMARK_CELL = 4, WORDMARK_STEP = 6, WORDMARK_GAP = 4;
 const wordmarkRows = initialI.length;
 const wordmarkColumns = wordmarkGlyphs.reduce((sum, glyph) => sum + glyph[0].length, 0)
   + WORDMARK_GAP * (wordmarkGlyphs.length - 1);
@@ -166,7 +170,7 @@ for (const glyph of wordmarkGlyphs) {
 }
 fs.writeFileSync(path.join(OUT, 'iris-wordmark.svg'), svg({
   width: (wordmarkColumns - 1) * WORDMARK_STEP + WORDMARK_CELL,
-  height: (wordmarkRows - 1) * WORDMARK_STEP + WORDMARK_CELL, pad: WORDMARK_STEP, cellSize: WORDMARK_CELL,
-  title: 'IRIS 彩色像素字标', desc: 'Iris六色细颗粒像素字IRIS，首个I略大，方块间留透明缝隙', rects: wordmarkRects
+  height: (wordmarkRows - 1) * WORDMARK_STEP + WORDMARK_CELL, pad: WORDMARK_STEP * 2, cellSize: WORDMARK_CELL,
+  title: 'IRIS 彩色像素字标', desc: 'Iris六色小颗粒组成多排多列笔画，首个I略大，方块间留透明缝隙', rects: wordmarkRects
 }));
 console.log('wrote iris-wordmark.svg');
