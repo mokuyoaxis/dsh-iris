@@ -2,7 +2,7 @@
 
 beta.3新增[看图/OCR](VISION_FLOWS.md)：显式新v5根、独立vision/ocr选择、Core网络与持久文本/报告；旧根、日常配置和beta.2既有能力保持。
 
-0.3.0-alpha.1提供单根执行服务、连接授权/握手、正式 MCP stdio/Streamable HTTP、DSH 可选共享 Flow 连接与 [owner 持久选择 API](LOCAL_SELECTION.md)。**稳定 npm 0.2.7 不包含这些入口**；以下使用源码命令，安装beta包后可将 `node bin/dsh-iris.js` 换为 `npx dsh-iris`。支持固定 `image-edit/v0`，显式新 v2 根另提供 [image-generate/v0 与 ComfyUI](IMAGE_GENERATION.md)，新 v3 根另提供 [speech/v0 与 transcribe/v0](AUDIO_FLOWS.md)，同时保留图片流程。**beta.1**另有新 v4 根的[文生视频](VIDEO_FLOWS.md)，不迁移已有根。[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用 CLI，页面下载原字节。通用配置导出、用户能力/工具选择与功能覆盖见 [MCP 指南](MCP.md)。
+0.3.0提供单根执行服务、连接授权/握手、MCP stdio/Streamable HTTP、DSH可选共享Flow连接与[owner持久选择API](LOCAL_SELECTION.md)。**历史npm 0.2.7不包含这些入口**；以下使用源码命令，安装准确已发行的0.3包后可将 `node bin/dsh-iris.js` 换为 `npx dsh-iris`。支持固定 `image-edit/v0`，新v2根另提供[image-generate/v0与ComfyUI](IMAGE_GENERATION.md)，新v3根增加[speech/v0与transcribe/v0](AUDIO_FLOWS.md)，新v4根增加[文生视频](VIDEO_FLOWS.md)，新v5根增加[看图/OCR](VISION_FLOWS.md)，不迁移已有根。[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用CLI，页面下载原字节。配置导出、用户能力/工具选择与功能覆盖见[MCP指南](MCP.md)。
 
 ## 显式启动
 

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="136" height="56" viewBox="-8 -8 136 56" role="img" aria-label="IRIS 彩色像素字标" shape-rendering="crispEdges">
+  <title>IRIS 彩色像素字标</title>
+  <desc>六色实心像素块组成的 IRIS，透明背景</desc>
+  <rect x="0" y="0" width="8" height="8" fill="#45317D"/>
+  <rect x="8" y="0" width="8" height="8" fill="#45317D"/>
+  <rect x="16" y="0" width="8" height="8" fill="#45317D"/>
+  <rect x="8" y="8" width="8" height="8" fill="#45317D"/>
+  <rect x="8" y="16" width="8" height="8" fill="#45317D"/>
+  <rect x="8" y="24" width="8" height="8" fill="#45317D"/>
+  <rect x="0" y="32" width="8" height="8" fill="#45317D"/>
+  <rect x="8" y="32" width="8" height="8" fill="#45317D"/>
+  <rect x="16" y="32" width="8" height="8" fill="#6F69B8"/>
+  <rect x="32" y="0" width="8" height="8" fill="#6F69B8"/>
+  <rect x="40" y="0" width="8" height="8" fill="#6F69B8"/>
+  <rect x="32" y="8" width="8" height="8" fill="#6F69B8"/>
+  <rect x="48" y="8" width="8" height="8" fill="#BB78AD"/>
+  <rect x="32" y="16" width="8" height="8" fill="#6F69B8"/>
+  <rect x="40" y="16" width="8" height="8" fill="#BB78AD"/>
+  <rect x="32" y="24" width="8" height="8" fill="#6F69B8"/>
+  <rect x="48" y="24" width="8" height="8" fill="#BB78AD"/>
+  <rect x="32" y="32" width="8" height="8" fill="#BB78AD"/>
+  <rect x="48" y="32" width="8" height="8" fill="#BB78AD"/>
+  <rect x="64" y="0" width="8" height="8" fill="#E59B76"/>
+  <rect x="72" y="0" width="8" height="8" fill="#E59B76"/>
+  <rect x="80" y="0" width="8" height="8" fill="#E59B76"/>
+  <rect x="72" y="8" width="8" height="8" fill="#E59B76"/>
+  <rect x="72" y="16" width="8" height="8" fill="#E59B76"/>
+  <rect x="72" y="24" width="8" height="8" fill="#E59B76"/>
+  <rect x="64" y="32" width="8" height="8" fill="#E59B76"/>
+  <rect x="72" y="32" width="8" height="8" fill="#ED9C91"/>
+  <rect x="80" y="32" width="8" height="8" fill="#ED9C91"/>
+  <rect x="104" y="0" width="8" height="8" fill="#F0D09C"/>
+  <rect x="112" y="0" width="8" height="8" fill="#F0D09C"/>
+  <rect x="96" y="8" width="8" height="8" fill="#ED9C91"/>
+  <rect x="104" y="16" width="8" height="8" fill="#F0D09C"/>
+  <rect x="112" y="16" width="8" height="8" fill="#F0D09C"/>
+  <rect x="112" y="24" width="8" height="8" fill="#F0D09C"/>
+  <rect x="96" y="32" width="8" height="8" fill="#F0D09C"/>
+  <rect x="104" y="32" width="8" height="8" fill="#F0D09C"/>
+</svg>

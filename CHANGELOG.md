@@ -4,8 +4,20 @@
 
 ## [Unreleased]
 
-以下为当前源码的后续维护，尚未随已发布的 `0.3.0-beta.3` 发行。
+后续变更在此记录。
 
+## [0.3.0] - 2026-11-16
+
+0.3 首个正式版汇总 alpha/beta 的 Core 工作台、通用 MCP、持久媒体流程、显式插件、网络出口和有界调度；保留 DSH 原生插件与独立 CLI。正式发布使用 npm `latest` 与 GitHub 正式发行；本地版本准备不代表已经发布。完整变化见[发行说明](docs/releases/0.3.0.md)，从0.2.7或beta升级见[升级指南](docs/UPGRADING_0.3.md)。
+
+- 提供独立 Core Web 工作台、口令登录、供应商/模型池、作品和连接管理；MCP 支持 stdio/Streamable HTTP 与用户明确选择的媒体、工具及操作权限。
+- 持久 Run/Task/Attempt/Operation 串起图片、语音/转写、固定文生视频、看图/OCR与原身份恢复。新v5根支持上述流程，旧根与连接不自动迁移或扩权；受理未知不自动再生成。
+- 提供显式凭据环境引用、供应商网络节点/有序池/绑定与Doctor、有界调度，以及插件业务/页面/预览器和Provider独立模板；[最小插件契约](docs/BETA_SCOPE.md)之外的内部实现与完整SDK继续演进。
+- 最低Node为22.1.0，沿用12个准确DSH版本声明；平台测试、真实账号及客户端验收按实际证据分别说明。Core音乐、跨块OCR去重、真实ComfyUI GPU和全部宿主认证不在本次完成范围。
+
+相对beta.3的后续维护：
+
+- 中英文README改用居中的六色IRIS像素字标，沿用工作台配色和既有3×5字形；新增可复现SVG，旧线稿及历史图形资产保留。
 - 文档补充[四类OCR场景验证](docs/OCR_VALIDATION.md)：密集页面、表格及照片限定区域达到预定判据，重叠长图分块准确但拼接重复；明确`complete`不代表去重后的唯一全文。本次只记录质量结果与现有限制，未修改OCR实现。
 - 改善Core拒绝请求时的Agent诊断：DSH错误文本保留安全错误码、HTTP状态和关联ID，DSH/MCP明确区分写者忙、查无Operation及权限拒绝；等待后先按原UUID核对，不自动重发、不透传服务响应中的任意文字。
 - 工具目录、MCP服务指引和连接专属Skill补充默认串行顺序、有限Operation与媒体完成的区别，以及只读连接查回Operation所需的Core执行服务配置；双语README、Agent指南和快速开始同步说明，授权、API和执行策略保持。
@@ -547,7 +559,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.3...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.7...v0.3.0
 [0.3.0-beta.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.2...v0.3.0-beta.3
 [0.3.0-beta.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.1...v0.3.0-beta.2
 [0.3.0-beta.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-alpha.1...v0.3.0-beta.1

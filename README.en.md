@@ -2,11 +2,9 @@
   <sub><a href="README.md">简体中文</a> | English</sub>
 </p>
 
-<p align="center">
-  <img src="docs/assets/logo/iris-interim-flower.png" width="240" alt="Iris line-art flower (interim mark)">
-</p>
-
-<h1 align="center">Iris</h1>
+<h1 align="center">
+  <img src="docs/assets/logo/iris-wordmark.svg" width="320" alt="IRIS">
+</h1>
 
 <p align="center"><strong>A multimodal workspace for your Agent.</strong></p>
 
@@ -17,18 +15,18 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
 
-Iris connects media services and keeps creative work, tasks and outputs together. Agents can generate, edit, inspect and reuse media through a standalone CLI, a native DSH plugin, or the 0.3 beta Core workbench and generic MCP. Core owns execution and storage; users choose what each client can access.
+Iris connects media services and keeps creative work, tasks and outputs together. Agents can generate, edit, inspect and reuse media through a standalone CLI, a native DSH plugin, or the 0.3 Core workbench and generic MCP. Core owns execution and storage; users choose what each client can access.
 
-**Release channels: `0.3.0-beta.3` uses npm `beta`; stable `latest` remains `0.2.7`.** Save a durable Core vision/OCR task through Web, MCP or CLI, then explicitly execute it and keep its original identity, text and chunk report. This version also improves unavailable-model diagnostics, network maintenance and asynchronous tests. Vision requires a new v5 workspace; existing roots and grants are retained. See the [beta scope](docs/BETA_SCOPE.md) and [release notes](docs/releases/0.3.0-beta.3.md).
+**This page describes `0.3.0`; a regular release uses npm `latest`.** Check that the exact version is published before installing. During release preparation, use source or the local candidate archive; a source version alone does not prove npm publication. The 0.3 line combines Core Web, MCP, durable media and vision/OCR, egress networking, bounded scheduling and explicit plugins. See the [scope](docs/BETA_SCOPE.md), [release notes](docs/releases/0.3.0.md) and [upgrade guide](docs/UPGRADING_0.3.md).
 
-Current source also improves Agent execution diagnostics and clarifies serial execution and read-only recovery. These changes are unreleased; see [Unreleased](CHANGELOG.md#unreleased).
+0.3.0 includes the Agent rejection diagnostics, serial execution and read-only recovery guidance added after beta.3. OCR overlaps remain duplicated; completion does not guarantee unique full text. See the [quality record](docs/OCR_VALIDATION.md).
 
 | What you need | Entry | Availability |
 |---|---|---|
-| Media tools and prompt refinement inside DSH | [DSH plugin](#dsh-plugin-027) | Published 0.2.7 |
-| Media generation, task inspection and export in a terminal | [Standalone CLI](#standalone-cli-027) | Published 0.2.7; no DSH required |
-| A dedicated UI for models, creation and works | [Core quickstart](docs/CORE_QUICKSTART.md) | 0.3 beta |
-| Other Agents sharing the same media workspace | [MCP](docs/MCP.md) · [Agent guide](docs/AGENT_CORE_QUICKSTART.md) | 0.3 beta |
+| Media tools and prompt refinement inside DSH | [DSH plugin](#dsh-plugin-030) | 0.3.0, native entry retained |
+| Media generation, task inspection and export in a terminal | [Standalone CLI](#standalone-cli-030) | 0.3.0; no DSH required |
+| A dedicated UI for models, creation and works | [Core quickstart](docs/CORE_QUICKSTART.md) | 0.3.0 |
+| Other Agents sharing the same media workspace | [MCP](docs/MCP.md) · [Agent guide](docs/AGENT_CORE_QUICKSTART.md) | 0.3.0 |
 
 ## Workbench preview
 
@@ -52,32 +50,32 @@ A white interface with subtle iris colors, light/dark themes, local backgrounds 
 - **User-selected Agent access:** MCP grants select media, operation scopes and tools. stdio and Streamable HTTP share Core, with generic configuration and explicit client templates.
 - **Optional plugins:** Providers, business operations, pages, settings forms and artifact previews can be contributed by plugins. Core validates and assembles them; users grant access. The bundled contact sheet demonstrates a complete persistent business.
 
-Developers can start with the [independent plugin projects](docs/PLUGIN_DEVELOPMENT.md) included in beta.1. The business/page/PNG template uses the public SDK; the [Wan Provider template](templates/provider-starter/README.md) uses factory context v1 and reuses Core credentials, networking, scheduling and durable tasks. Plugins retain their own identities, contribution versions and explicit grants.
+Developers can start with the [independent plugin projects](docs/PLUGIN_DEVELOPMENT.md). The business/page/PNG template uses public exports; the [Wan Provider template](templates/provider-starter/README.md) uses factory context v1 and reuses Core credentials, networking, scheduling and durable tasks. Plugins retain their own identities, contribution versions and explicit grants. Minimal compatibility is retained; the full SDK and internal modules continue to evolve.
 
 Existing roots are not migrated automatically. Video requires a v4/v5 root, vision/OCR requires a new v5 root, and network bindings have a separate format gate. Platform tests, controlled services and real-account evidence are distinct; they do not certify every provider, GPU or client.
 
 ### Current entry-point coverage
 
-| Capability | DSH / standalone CLI (beta) | Core Web / MCP (beta) |
+| Capability | DSH / standalone CLI (0.3.0) | Core Web / MCP (0.3.0) |
 |---|---|---|
 | Image generation, import and editing | Available | Available; text-to-image requires a new generation-capable root |
 | Speech and transcription | Available | Available in v3/v4/v5 roots |
 | Text-to-video | Available | [Available in v4/v5 roots](docs/VIDEO_FLOWS.md) |
-| Single-image vision and long-image OCR | Available | [Beta.3, new v5 roots](docs/VISION_FLOWS.md); save through Web/MCP/CLI, explicitly execute, then view or download results |
+| Single-image vision and long-image OCR | Available | [New v5 roots](docs/VISION_FLOWS.md); save through Web/MCP/CLI, explicitly execute, then view or download results; overlaps are not deduplicated |
 | Image-to-video, S2V and music | Available, depending on service and local dependencies | Configurable uses; creation entries still pending |
-| ComfyUI workflows and exposed parameters | Added in alpha; absent from stable 0.2.7 | Implemented; live GPU inference remains unverified |
-| Contact-sheet plugin | Outside 0.2.7 | Available when explicitly enabled |
+| ComfyUI workflows and exposed parameters | Available with a configured supported workflow | Implemented; live GPU inference remains unverified |
+| Contact-sheet plugin | Uses the separate Core plugin entry | Available when explicitly enabled |
 
 “Available” means an implemented entry, requiring a supported protocol, model and grant. A listed model, eligible candidate, reachable connection and successful media test are different facts. Speech and ComfyUI development checks include controlled services; they do not establish compatibility with arbitrary upstreams.
 
 ## Quickstart
 
-### Core workbench (0.3 beta)
+### Core workbench (0.3.0)
 
-Pin the prerelease in your own project, then choose a **new private location**. Existing workspaces are not migrated:
+These installation commands apply once the exact version is published; before then, use source or the local candidate. Choose a **new private location**. Existing workspaces are not migrated:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-beta.3
+npm install @mokuyoaxis/dsh-iris@0.3.0
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
@@ -93,7 +91,7 @@ npx dsh-iris web serve \
   --allow-connection-management --allow-mcp --port 3182
 ```
 
-For a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. Use `@mokuyoaxis/dsh-iris@beta` to follow betas, or keep the exact version for a reproducible setup.
+For a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. Regular releases update `latest`; prereleases retain their own channels. Keep the exact version for a reproducible setup.
 
 `--vision` initializes a new v5 root with image, speech/transcription, text-to-video and vision/OCR flows. It does not select a model, call a provider or convert an existing workspace. Existing roots retain their original capabilities.
 
@@ -105,18 +103,18 @@ Under **客户端** (Clients), create a connection, choose capabilities and perm
 
 See the [Core quickstart](docs/CORE_QUICKSTART.md) for login, recovery, switch descriptions and an Agent example. Enable plugins separately through an [explicit startup selection](docs/PLUGIN_STARTUP.md). Iris does not scan user disks or install plugin code automatically.
 
-### DSH plugin (0.2.7)
+### DSH plugin (0.3.0)
 
-Check `dsh --version`, Node.js ≥22 and `pnpm` on PATH. Iris 0.2.7 declares the 12 exact DSH versions in its [compatibility matrix](docs/DSH_COMPATIBILITY.md); other versions need separate verification.
+Check `dsh --version`, Node.js ≥22.1.0 and `pnpm` on PATH. Iris 0.3.0 retains the 12 exact DSH versions in its [compatibility matrix](docs/DSH_COMPATIBILITY.md); other versions need separate verification.
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.7
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0
 dsh web
 ```
 
 Under Settings → Iris Workbench, reference an existing DSH API-key connection or add a service. Choose its protocol, approve model uses and select pool policies. Native DSH mode uses host routes, attachments and lifecycle without a separate Core Web service; it provides 17 Agent tools and the 🫧 prompt-refinement entry.
 
-These commands retain the stable version. Use `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.3` for additions such as the ComfyUI UI. The exact supported host versions do not expand.
+Updating the package does not migrate roots, expand host support or grant new model uses and permissions. Pin the historical version and retain its corresponding root when preserving an older environment.
 
 After configuration, a minimal request is:
 
@@ -127,12 +125,12 @@ Use Iris to generate retro-rock background music and save it as an audio artifac
 
 See the [user guide](user_guide.md) and [release-oriented Agent prompt](docs/AGENT_QUICKSTART.md). Updates require a normal plugin backend reload and client refresh; an Agent should not restart unrelated work.
 
-### Standalone CLI (0.2.7)
+### Standalone CLI (0.3.0)
 
 Install in your own project; DSH is not required:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.2.7
+npm install @mokuyoaxis/dsh-iris@0.3.0
 npx dsh-iris --help
 ```
 
@@ -182,10 +180,10 @@ Historical device captures from an Android browser connected to DSH in Termux/PR
 | Workbench and connections | [Login](docs/WORKBENCH_LOGIN.md) · [Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Skills](docs/CORE_SKILLS.md) |
 | Models and flows | [Providers, pools and spectrum](docs/PROVIDER_SETTINGS.md) · [Images / ComfyUI](docs/IMAGE_GENERATION.md) · [Speech / transcription](docs/AUDIO_FLOWS.md) · [Task semantics](docs/TASK_SEMANTICS.md) |
 | Extensions | [Plugin contract](docs/PLUGINS.md) · [Startup](docs/PLUGIN_STARTUP.md) · [Panel](docs/PANEL_EXTENSIONS.md) · [Contact sheet](docs/CONTACT_SHEET.md) |
-| Releases and direction | [0.3 beta.3 release notes](docs/releases/0.3.0-beta.3.md) · [0.2.7 stable](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
+| Releases and direction | [0.3.0 release notes](docs/releases/0.3.0.md) · [Upgrade guide](docs/UPGRADING_0.3.md) · [0.2.7 history](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
 
 The DSH package retains [`iris-use`](.dsh/skills/iris-use/SKILL.md), [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) and [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md). Core and connection Skills do not replace them.
 
-The project uses ES Modules and needs no build step. Install the locked dependencies and run `npm test`; browser verification uses a real local service with controlled upstreams. New Core plugin contracts and configuration remain experimental, without a marketplace or stable SDK commitment. Specific verified Agent connections do not establish attachment presentation in every client.
+The project uses ES Modules and needs no build step. Install the locked dependencies and run `npm test`; browser verification uses a real local service with controlled upstreams. Plugins retain the defined minimal contracts; the full SDK and internal configuration are outside the freeze, and there is no marketplace. Specific verified Agent connections do not establish attachment presentation in every client.
 
 [MIT License](LICENSE)

@@ -1,16 +1,16 @@
 # Agent Quickstart · Core 与 MCP 接入指导
 
-For **0.3.0-beta.3 Core Web/MCP**, use the [Core quickstart](CORE_QUICKSTART.md). Stable npm **0.2.7 has CLI/DSH support, without this Web/MCP entry**; use [the stable Agent guide](AGENT_QUICKSTART.md) for it. Install the exact beta or explicitly choose the beta channel. [Vision/OCR](VISION_FLOWS.md) requires a new v5 root and explicit capability and operation grants.
+For **0.3.0 Core Web/MCP**, use the [Core quickstart](CORE_QUICKSTART.md). The historical **0.2.7 package has CLI/DSH support without this Web/MCP entry**; [the DSH/CLI Agent guide](AGENT_QUICKSTART.md) covers those paths. Check exact-version availability before installation; during release preparation use source or the local candidate. See the [upgrade guide](UPGRADING_0.3.md). [Vision/OCR](VISION_FLOWS.md) requires a new v5 root and explicit capability and operation grants.
 
-Current source improves rejection diagnostics and recovery guidance; those changes are [unreleased](../CHANGELOG.md#unreleased). The execution and permission rules below also apply when an installed beta shows only a generic rejection message.
+0.3.0 includes the rejection diagnostics and recovery guidance added after beta.3. The execution and permission rules below also apply when an older installed beta shows only a generic rejection message.
 
 Give this instruction to an Agent helping with setup:
 
 ```text
 Help me use Iris (@mokuyoaxis/dsh-iris). First read README and check the actual
 installed package or source revision, Node version and available CLI commands.
-Distinguish stable 0.2.7 from the 0.3 beta Core workbench/MCP implementation.
-Installing latest does not opt into beta; use the exact prerelease or beta tag.
+Distinguish historical 0.2.7 from the 0.3.0 Core workbench/MCP implementation.
+Use an exact published version; a source version does not prove npm publication.
 Do not install a different package, upgrade the host or migrate a data root silently.
 
 Ask which path I want: the Core workbench, an existing Iris MCP connection,
@@ -79,6 +79,6 @@ For ComfyUI, clarify the desired workflow, source image, style/LoRA and exposed 
 
 Repository evidence includes real Core persistence, production MCP transports and earlier isolated real-model sessions in Kimi Code and Codex. Published beta.3 was also checked with real DSH native plugin and Kimi MCP model sessions: import an image, save vision/OCR Runs, explicitly execute, then recover the original identities and results after restart through read-only connections. That flow used one clear synthetic image; it does not establish general OCR accuracy or compatibility with every client.
 
-The unreleased rejection-diagnostic changes were checked with controlled providers, the actual DSH SDK and a packed Core/MCP consumer. No paid Agent model session was rerun for those hints, so these checks do not establish that a model will always follow the new guidance. The fresh-workspace walkthrough uses a controlled local media replay; real paid media and a live ComfyUI GPU require separate deployment checks. Start with a read-only task, then explicitly authorize the media operation you actually need.
+The rejection-diagnostic changes added after beta.3 were checked with controlled providers, the actual DSH SDK and a packed Core/MCP consumer. No paid Agent model session was rerun for those hints, so these checks do not establish that a model will always follow the new guidance. The fresh-workspace walkthrough uses a controlled local media replay; real paid media and a live ComfyUI GPU require separate deployment checks. Start with a read-only task, then explicitly authorize the media operation you actually need.
 
 A separate [four-scene OCR check](OCR_VALIDATION.md) used seven real vision calls through a protocol driver, without another text Agent session. Three authored layouts and one small public photo were scored within predefined bounds. All chunks completed, but overlapping long-image text remained duplicated in the joined output. Treat `complete` as execution coverage, then inspect text accuracy and boundary duplication separately.

@@ -1,6 +1,6 @@
 # Core 语音合成与音频转写（0.3 beta）
 
-0.3.0-alpha.1的 Web 与通用 MCP 接入 `speech/v0`、`transcribe/v0`，共用现有 Provider、Task/Attempt、持久 Run 和单根 Operation runner。**稳定 npm 0.2.7 不含这些新增入口。** 原独立 CLI/DSH 的语音和转写继续使用各自原入口；这里描述新的 Core 流程。
+0.3.0的Web与通用MCP包含 `speech/v0`、`transcribe/v0`，从alpha.1接入，共用Provider、Task/Attempt、持久Run和单根Operation runner。**历史npm 0.2.7不含这些Core入口。** 原独立CLI/DSH的语音和转写继续使用各自原入口；这里描述Core持久流程。
 
 ## 新建音频工作区
 

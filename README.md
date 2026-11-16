@@ -2,11 +2,9 @@
   <sub>简体中文 | <a href="README.en.md">English</a></sub>
 </p>
 
-<p align="center">
-  <img src="docs/assets/logo/iris-interim-flower.png" width="240" alt="Iris 线稿鸢尾花（临时标志）">
-</p>
-
-<h1 align="center">Iris</h1>
+<h1 align="center">
+  <img src="docs/assets/logo/iris-wordmark.svg" width="320" alt="IRIS">
+</h1>
 
 <p align="center"><strong>给你的 Agent 一个多模态工作区。</strong></p>
 
@@ -17,18 +15,18 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
 
-Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成、修改、查看和继续使用媒体。它提供独立 CLI、DSH 原生插件，以及 0.3 beta 的 Web 工作台与通用 MCP：供应商、任务和产物由 Core 管理，客户端按用户选择获得能力。
+Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成、修改、查看和继续使用媒体。它提供独立 CLI、DSH 原生插件，以及 0.3 的 Web 工作台与通用 MCP：供应商、任务和产物由 Core 管理，客户端按用户选择获得能力。
 
-**版本通道：`0.3.0-beta.3` 使用 npm `beta`，稳定 `latest` 保留 `0.2.7`。** 本次新增 Core 看图/OCR 持久流程：在 Web、MCP 或 CLI 保存任务，再明确执行，保留原 Task、文字与分块报告；同时改进失效模型诊断、网络维护和异步测试。视觉能力使用新的 v5 工作区，旧根和连接不自动升级。范围与验证边界见 [beta 约定](docs/BETA_SCOPE.md)及[发布说明](docs/releases/0.3.0-beta.3.md)。
+**本文面向 `0.3.0`，正式发行使用 npm `latest`。** 安装前核对准确版本是否已发行；发布准备期间使用源码或本地候选包，源码版本号不代表 npm 已经发布。0.3 汇总独立工作台、MCP、持久媒体与看图/OCR、网络出口、有界调度及显式插件。范围见[兼容约定](docs/BETA_SCOPE.md)与[发行说明](docs/releases/0.3.0.md)，从 0.2.7 或 beta 升级见[升级指南](docs/UPGRADING_0.3.md)。
 
-当前源码另改进 Agent 执行错误提示，并补齐串行执行与只读恢复指引；这些维护尚未随 beta.3 发布，见[未发布变更](CHANGELOG.md#unreleased)。
+0.3.0 还纳入 beta.3 后的 Agent 拒绝诊断、串行执行与只读恢复指引。OCR 重叠块尚未去重，完成状态不代表唯一全文；见[质量验证](docs/OCR_VALIDATION.md)。
 
 | 你想做什么 | 使用入口 | 范围 |
 |---|---|---|
-| 在 DSH 对话中使用媒体工具与提示词优化 | [DSH 插件](#dsh-插件027) | 已发布 0.2.7 |
-| 在终端生成媒体、查任务、导出作品 | [独立 CLI](#独立-cli027) | 已发布 0.2.7，无需 DSH |
-| 在独立页面配置模型、创作和管理作品 | [Core 工作台快速开始](docs/CORE_QUICKSTART.md) | 0.3 beta |
-| 让其他 Agent 使用同一个媒体工作区 | [MCP 接入](docs/MCP.md) · [Agent 指导](docs/AGENT_CORE_QUICKSTART.md) | 0.3 beta |
+| 在 DSH 对话中使用媒体工具与提示词优化 | [DSH 插件](#dsh-插件030) | 0.3.0，保留原生入口 |
+| 在终端生成媒体、查任务、导出作品 | [独立 CLI](#独立-cli030) | 0.3.0，无需 DSH |
+| 在独立页面配置模型、创作和管理作品 | [Core 工作台快速开始](docs/CORE_QUICKSTART.md) | 0.3.0 |
+| 让其他 Agent 使用同一个媒体工作区 | [MCP 接入](docs/MCP.md) · [Agent 指导](docs/AGENT_CORE_QUICKSTART.md) | 0.3.0 |
 
 ## 工作台预览
 
@@ -52,32 +50,32 @@ Iris 连接媒体服务、保存创作过程与作品，让 Agent 可以生成�
 - **Agent 自选能力**：MCP 连接按媒体、操作权限和工具选择；stdio 与 Streamable HTTP 共用 Core，支持通用入口及显式客户端模板。
 - **可选插件**：Provider、新业务操作、页面、设置表单和作品预览可由插件贡献，Core 校验和装配，用户决定授权。随包多图对照板展示一次完整的持久业务。
 
-开发者可从随 beta.1 分发的[独立插件模板](docs/PLUGIN_DEVELOPMENT.md)开始：业务/页面/PNG 预览模板复用公开 SDK；[万相 Provider 模板](templates/provider-starter/README.md)使用工厂上下文 v1，复用 Core 凭据、网络、调度及持久任务。插件身份、贡献版本和授权均独立管理。
+开发者可从[独立插件模板](docs/PLUGIN_DEVELOPMENT.md)开始：业务/页面/PNG 预览模板复用公开 SDK；[万相 Provider 模板](templates/provider-starter/README.md)使用工厂上下文 v1，复用 Core 凭据、网络、调度及持久任务。插件身份、贡献版本和授权均独立管理；本版保留最小兼容面，完整 SDK 与内部模块继续演进。
 
 旧数据根不自动迁移；视频需要 v4/v5 根，看图/OCR 需要新 v5 根，网络绑定也有独立版本门禁。平台测试、受控服务和真实账号验证分别说明，不据此承诺所有供应商、GPU 或客户端均已验收。
 
 ### 当前入口覆盖
 
-| 能力 | DSH / 独立 CLI（beta） | Core Web / MCP（beta） |
+| 能力 | DSH / 独立 CLI（0.3.0） | Core Web / MCP（0.3.0） |
 |---|---|---|
 | 图片生成、导入与编辑 | 可用 | 可用；新根支持文生图 |
 | 语音合成、音频转写 | 可用 | v3/v4/v5 根可用 |
 | 文生视频 | 可用 | [v4/v5 根可用](docs/VIDEO_FLOWS.md) |
-| 单图看图、长图 OCR | 可用 | [beta.3 新 v5 根](docs/VISION_FLOWS.md)；Web/MCP/CLI 保存后明确执行，可查看及下载结果 |
+| 单图看图、长图 OCR | 可用 | [新 v5 根](docs/VISION_FLOWS.md)；Web/MCP/CLI 保存后明确执行，可查看及下载结果；重叠块未去重 |
 | 图生视频、S2V、音乐 | 可用，取决于服务与本地依赖 | 模型服务可配置；创作入口待接入 |
-| ComfyUI 工作流与开放参数 | alpha 新增；稳定 0.2.7 不含 | 已实现；真实 GPU 推理待验收 |
-| 多图对照板插件 | 不属于 0.2.7 | 显式启用后可用 |
+| ComfyUI 工作流与开放参数 | 可用；需配置受支持的工作流 | 已实现；真实 GPU 推理待验收 |
+| 多图对照板插件 | 使用独立 Core 插件入口 | 显式启用后可用 |
 
 “可用”表示有对应入口，仍需受支持的协议、模型和权限。目录列出、配置候选、连接可达和媒体实测是不同事实；语音及 ComfyUI 的开发验证包括受控服务，不据此承诺任意上游兼容。
 
 ## 快速开始
 
-### Core 工作台（0.3 beta）
+### Core 工作台（0.3.0）
 
-在自己的项目中固定安装预发布包，再选择**新的私有位置**。现有工作区不自动迁移：
+以下安装命令用于已发行的准确版本；发布前使用源码或本地候选包。选择**新的私有位置**，现有工作区不自动迁移：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0-beta.3
+npm install @mokuyoaxis/dsh-iris@0.3.0
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
@@ -93,7 +91,7 @@ npx dsh-iris web serve \
   --allow-connection-management --allow-mcp --port 3182
 ```
 
-在源码目录使用 `npm ci` 安装锁定依赖，并把 `npx dsh-iris` 换成 `node bin/dsh-iris.js`。跟随 beta 通道可安装 `@mokuyoaxis/dsh-iris@beta`；需要可复现配置时保留准确版本。
+在源码目录使用 `npm ci` 安装锁定依赖，并把 `npx dsh-iris` 换成 `node bin/dsh-iris.js`。正式发行更新 `latest`，预发布继续使用各自渠道；需要可复现配置时保留准确版本。
 
 `--vision` 在新根启用 v5，包含图片、语音/转写、文生视频和看图/OCR 流程；它不选择模型、不调用服务，也不转换已有工作区。已有根继续按原能力使用。
 
@@ -105,18 +103,18 @@ npx dsh-iris web serve \
 
 完整的登录、恢复、参数解释和 Agent 示例见 [Core 快速开始](docs/CORE_QUICKSTART.md)。插件由[启动选择文件](docs/PLUGIN_STARTUP.md)另行启用；不扫描用户磁盘或自动安装代码。
 
-### DSH 插件（0.2.7）
+### DSH 插件（0.3.0）
 
-先核对 `dsh --version`、Node.js ≥22 与 PATH 中的 `pnpm`。Iris 0.2.7 声明支持[兼容矩阵](docs/DSH_COMPATIBILITY.md)中的 12 个准确 DSH 版本；未列出的版本需另行核实。
+先核对 `dsh --version`、Node.js ≥22.1.0 与 PATH 中的 `pnpm`。Iris 0.3.0 沿用[兼容矩阵](docs/DSH_COMPATIBILITY.md)中的 12 个准确 DSH 版本；未列出的版本需另行核实。
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.7
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0
 dsh web
 ```
 
 在“设置 → Iris 工作台”引用 DSH 已有 API Key 连接或添加服务，选择协议、确认模型用途与功能池。原生 DSH 模式使用宿主路由、附件和生命周期，不要求另起 Core Web 服务；提供 17 个 Agent 工具和对话框 🫧 提示词优化。
 
-以上命令保留稳定版。需要 beta 的 ComfyUI 等功能时，明确改用 `dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-beta.3`；宿主准确版本范围不扩大。
+包升级不迁移数据根、不扩大宿主版本范围，也不自动新增模型用途或权限。需要保留旧环境时继续固定历史版本和对应数据根。
 
 配置后的最小指令：
 
@@ -127,12 +125,12 @@ dsh web
 
 操作步骤见[用户指南](user_guide.md)，给安装 Agent 的提示见 [Agent 简要 Prompt](docs/AGENT_QUICKSTART.md)。升级后需正常重载插件后端并刷新客户端；不要让 Agent 擅自重启其他任务。
 
-### 独立 CLI（0.2.7）
+### 独立 CLI（0.3.0）
 
 在自己的项目中安装，无需 DSH：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.2.7
+npm install @mokuyoaxis/dsh-iris@0.3.0
 npx dsh-iris --help
 ```
 
@@ -182,10 +180,10 @@ Node.js ≥22 和可加载的 `sharp` 是基础要求。视频抽帧需 `ffmpeg`
 | 工作台与接入 | [登录](docs/WORKBENCH_LOGIN.md) · [Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Skills](docs/CORE_SKILLS.md) |
 | 模型与流程 | [供应商/模型池/光谱](docs/PROVIDER_SETTINGS.md) · [图片与 ComfyUI](docs/IMAGE_GENERATION.md) · [语音/转写](docs/AUDIO_FLOWS.md) · [任务语义](docs/TASK_SEMANTICS.md) |
 | 扩展 | [插件契约](docs/PLUGINS.md) · [启动选择](docs/PLUGIN_STARTUP.md) · [Panel](docs/PANEL_EXTENSIONS.md) · [多图对照板](docs/CONTACT_SHEET.md) |
-| 版本与方向 | [0.3 beta.3 发布说明](docs/releases/0.3.0-beta.3.md) · [0.2.7 稳定版](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构](docs/ARCHITECTURE.md) |
+| 版本与方向 | [0.3.0 发行说明](docs/releases/0.3.0.md) · [升级指南](docs/UPGRADING_0.3.md) · [0.2.7 历史发行](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构](docs/ARCHITECTURE.md) |
 
 DSH 随包保留 [`iris-use`](.dsh/skills/iris-use/SKILL.md)、[`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) 和 [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md)。独立 Core 与连接 Skill 不替换它们。
 
-项目使用 ES Modules，无构建步骤。安装现有锁定依赖后运行 `npm test`；浏览器验证使用真实本地服务和受控上游。新 Core 插件契约和配置仍属实验性接口，暂无社区市场或稳定 SDK 承诺。已验证的特定 Agent 接入不等于任意客户端的附件呈现都已验收。
+项目使用 ES Modules，无构建步骤。安装现有锁定依赖后运行 `npm test`；浏览器验证使用真实本地服务和受控上游。插件保留已定义的最小契约，完整 SDK 与内部配置不在冻结范围；暂无社区市场。已验证的特定 Agent 接入不等于任意客户端的附件呈现都已验收。
 
 [MIT License](LICENSE)

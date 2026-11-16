@@ -4,9 +4,9 @@ Iris 的方向是本地优先、Agent 可调用的多模态创作工作台。用
 
 ## 当前状态
 
-本文对应 **Iris 0.3.0-beta.3**，发布状态见 [README](../README.md)。包名为 `@mokuyoaxis/dsh-iris`，保留DSH插件与独立CLI、Core Web、通用MCP与显式插件贡献；本次接入Core看图/OCR持久流程与Web建单，补齐模型失效诊断并维护网络与测试，详见 [beta.3发行说明](releases/0.3.0-beta.3.md)。稳定通道0.2.7与其[历史说明](releases/0.2.7.md)保留。
+本文对应 **Iris 0.3.0**，发布状态见 [README](../README.md)。包名为 `@mokuyoaxis/dsh-iris`，保留DSH插件与独立CLI，汇总Core Web、通用MCP、显式插件、网络出口、有界调度与持久媒体/视觉流程，详见[0.3.0发行说明](releases/0.3.0.md)。正式发行更新npm latest，版本准备不等于已经发布；从0.2.7或beta升级见[升级指南](UPGRADING_0.3.md)，[0.2.7历史说明](releases/0.2.7.md)保留。
 
-当前源码继续维护 Agent 执行体验：DSH 保留安全拒绝信息，MCP 明确写者忙与查无原操作的处理，并补齐串行执行、有限回执和只读连接恢复指引。这批变更列于 [Unreleased](../CHANGELOG.md#unreleased)，尚未作为新版本发行。已发布 beta.3 的 DSH/Kimi 小样本完整流程与本轮受控诊断验证分开说明，见 [Agent 验证边界](AGENT_CORE_QUICKSTART.md#verification-scope--验证边界)。
+0.3.0纳入beta.3后的Agent执行维护：DSH保留安全拒绝信息，MCP明确写者忙与查无原操作的处理，并补齐串行执行、有限回执和只读连接恢复指引。已发布beta.3的DSH/Kimi小样本完整流程与后续受控诊断验证分开说明，见[Agent验证边界](AGENT_CORE_QUICKSTART.md#verification-scope--验证边界)。[OCR场景验收](OCR_VALIDATION.md)仍保留重叠长图唯一全文未通过的结果，本次未实现去重。
 
 - 图片生成、Artifact ID 看图/OCR/定位和聊天改图，支持按模型配置图片协议。
 - 持久图片导入与原生 Qwen 改图；六类功能可选自动池、手选或停用，宿主视觉需明确启用。0.2.5 建立的 12 个准确 DSH 版本范围保持。
@@ -34,9 +34,9 @@ DSH与CLI共用Task和Artifact，同一数据根只允许一个写者。既有�
 
 ## 近期优先：插件契约与真实接入
 
-0.3 alpha提供 [Core 插件贡献契约](PLUGINS.md)、统一目录、接入预设和默认 Panel 三处组合挂载。[多图对照板](CONTACT_SHEET.md)现已通过公开接口贯穿真实业务、持久 Operation/原 UUID、Web 选择、MCP和包外消费者；验证重启/强杀、缺失/准确版本、缩权及原作品读取。后续按实际反馈完善启用/分发体验和媒体覆盖，不把显式程序化装配称为插件市场。契约仍为实验性，RC与稳定版时间尚未确定。
+0.3提供[Core插件贡献契约](PLUGINS.md)、统一目录、接入预设和默认Panel三处组合挂载。[多图对照板](CONTACT_SHEET.md)已通过公开接口贯穿真实业务、持久Operation/原UUID、Web选择、MCP和包外消费者；验证重启/强杀、缺失/准确版本、缩权及原作品读取。0.3.0保留[最小兼容面](BETA_SCOPE.md)，完整SDK与内部实现继续演进；后续按实际反馈完善分发体验和媒体覆盖，暂无插件市场。
 
-**0.3 beta进展**：[Core 工作台](LOCAL_WEB.md)已有创作、作品、连接与供应商页面；按独立开关提供图片、语音/转写、有限观察/本地停止、版本约束选择、原字节下载及 owner 配置管理。[Core 服务](CORE_SERVICE.md)提供 Operation、单根 runner 与授权桥；[原请求恢复](WEB_RECOVERY.md)重连只读、不自动首次执行。beta.1新增新v4根的固定文生视频、凭据引用、出口与调度；候选范围见[beta约定](BETA_SCOPE.md)，不自动迁移旧根。npm 0.2.7 尚不含这些Core新入口。
+**0.3工作台**：[Core工作台](LOCAL_WEB.md)已有创作、作品、连接与供应商页面；按独立开关提供图片、语音/转写、有限观察/本地停止、版本约束选择、原字节下载及owner配置管理。[Core服务](CORE_SERVICE.md)提供Operation、单根runner与授权桥；[原请求恢复](WEB_RECOVERY.md)重连只读、不自动首次执行。v4/v5根包含固定文生视频，v5另含看图/OCR；凭据引用、出口与调度按明确配置使用。范围见[兼容约定](BETA_SCOPE.md)，不自动迁移旧根；历史npm 0.2.7不含这些Core新入口。
 
 连接名目采用用户建档和 MCP 客户端声明，不扫盘或按品牌白名单限制。源码已支持纯数据模板导入及按连接有效工具交付 Skill，复用显式安装器；后续继续完善接入体验和尚未接入的媒体分组。客户端身份声明与媒体实测分别展示。
 

@@ -1,6 +1,6 @@
 # Provider 扩展首版（0.3 beta）
 
-0.3.0-alpha.1 已提供实例级媒体协议注册及显式加载可信扩展，稳定版 0.2.7 尚不包含此入口。`@mokuyoaxis/dsh-iris/provider-extensions` 是实验性 v0 窄入口，不是完整 Core SDK，也未承诺长期兼容。下列命令适用于beta.1；旧alpha.1只支持原有窄入口，新增工厂上下文、网络与环境引用需beta.1。
+0.3.0保留从alpha.1提供的实例级媒体协议注册及显式加载可信扩展，历史0.2.7不包含此入口。`@mokuyoaxis/dsh-iris/provider-extensions`是实验性v0窄入口，不是完整Core SDK；统一Provider最小面见[契约](PROVIDER_PLUGIN_CONTRACT.md)。下列命令适用于0.3.0；工厂上下文、网络与环境引用从beta.1加入，旧alpha.1只支持原有窄入口。
 
 六类内置协议（含 [ComfyUI API 工作流](IMAGE_GENERATION.md)）和外部协议消费同样的描述及 Adapter 契约；独立 CLI/API 使用自己的注册实例。当前 DSH 嵌入入口没有新增外部模块加载设置，原有工具、Skills 和存储规则保持。
 

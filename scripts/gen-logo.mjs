@@ -16,6 +16,9 @@ const PALETTE = {
   letter: '#26204F' // 字标（浅底深紫，与垂瓣拉开层级）
 };
 
+// 0.3 README 字标沿用工作台的六色顺序；每格为实色，不使用渐变或字体。
+const WORDMARK_PALETTE = ['#45317D', '#6F69B8', '#BB78AD', '#E59B76', '#ED9C91', '#F0D09C'];
+
 // 鸢尾图形标：9 列 × 10 行。B=旗瓣 F=垂瓣 H=花心 S=茎
 const MARK = [
   '....B....',
@@ -125,9 +128,24 @@ const variants = {
 };
 
 fs.mkdirSync(OUT, { recursive: true });
-for (const [name, v] of Object.entries(variants)) {
+const wordmarkOnly = process.argv.includes('--wordmark-only');
+for (const [name, v] of Object.entries(wordmarkOnly ? {} : variants)) {
   const width = v.mark ? MARK_W * CELL : LOGO_W;
   const height = v.mark ? MARK_H * CELL : LOGO_H;
   fs.writeFileSync(path.join(OUT, name), svg({ width, height, title: v.title, desc: v.desc, rects: v.rects, pad: v.mark ? CELL : 0 }));
   console.log('wrote', name, `${width + (v.mark ? CELL * 2 : 0)}x${height + (v.mark ? CELL * 2 : 0)}`);
 }
+
+const wordmarkRects = rectsForWord(() => '').map(({ x, y }) => {
+  const column = (x - WORD_X) / CELL, row = (y - WORD_Y) / CELL;
+  // 六色按原105度方向离散到完整像素块，字形复用上方3×5矩阵。
+  const position = (column + row * Math.tan(Math.PI / 12))
+    / (WORD_COLS - 1 + 4 * Math.tan(Math.PI / 12));
+  const index = Math.min(WORDMARK_PALETTE.length - 1, Math.floor(position * WORDMARK_PALETTE.length));
+  return { x: column * CELL, y: row * CELL, fill: WORDMARK_PALETTE[index] };
+});
+fs.writeFileSync(path.join(OUT, 'iris-wordmark.svg'), svg({
+  width: WORD_COLS * CELL, height: 5 * CELL, pad: CELL,
+  title: 'IRIS 彩色像素字标', desc: '六色实心像素块组成的 IRIS，透明背景', rects: wordmarkRects
+}));
+console.log('wrote iris-wordmark.svg');

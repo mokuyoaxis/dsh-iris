@@ -2,6 +2,16 @@
 
 Iris与DSH的版本号独立。安装前运行 `dsh --version`，并核对要安装的Iris版本；发布状态见 [README](../README.md)。
 
+## Iris 0.3.0
+
+0.3.0沿用下方12个准确DSH版本声明，最低Node.js为 **22.1.0**。新增Core工作台/MCP、网络、调度和视觉持久流程不扩大宿主支持范围；独立Core无需安装DSH。正式版本已发行后可固定安装：
+
+```bash
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0
+```
+
+发布准备期间使用源码或本地候选包，不把版本号当作已发行证据。升级步骤见[0.3升级指南](UPGRADING_0.3.md)。历史SDK/受控宿主验收与实际完整宿主装载分别记录；0.3.0并不宣称重新认证了全部宿主组合。下方各预发布和0.2.x章节保留其历史时点。
+
 ## Iris 0.3.0-beta.1
 
 beta.1沿用下方12个准确DSH宿主版本，新增出口、调度、凭据与Core文生视频等功能不扩大宿主声明。独立Core Web/MCP无需安装DSH；两类入口覆盖见[发行说明](releases/0.3.0-beta.1.md)。安装beta时明确指定：
@@ -20,7 +30,7 @@ beta.1要求Node.js ≥22.1.0，包声明、Doctor与最低CI使用同一版本�
 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-alpha.1
 ```
 
-稳定通道仍为0.2.7。沿用声明不代表本次alpha重新实测了所有宿主组合；宿主/客户端SDK与实际装载结果仍须分别核对。
+alpha.1发布时稳定通道为0.2.7。沿用声明不代表本次alpha重新实测了所有宿主组合；宿主/客户端SDK与实际装载结果仍须分别核对。
 
 ## Iris 0.2.7
 
@@ -54,10 +64,10 @@ dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0-alpha.1
 
 ## 安装与升级
 
-在上述 12 个准确版本的宿主中，固定安装 Iris 0.2.7：
+在上述12个准确版本的宿主中，正式0.3.0已发行后固定安装该版本；历史环境可以继续固定0.2.7和对应数据根：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.7
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0
 ```
 
 使用其他profile时替换 `web`。更新后检查服务端装载、刷新Web客户端，并查看Iris工作台的 [宿主诊断](HOST_DOCTOR.md)。alpha.3及之后的DSH改善了插件更新与热加载，但仍以实际装载结果为准。

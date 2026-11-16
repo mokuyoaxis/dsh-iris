@@ -1,6 +1,6 @@
 # ComfyUI workflows · 工作流、参数与 API 搭配
 
-This reference describes the **0.3.0-beta.1 implementation**, not stable npm 0.2.7. Confirm the installed command and returned catalog before using it; missing support does not authorize installing or upgrading software. Keep the explicit roots and private provider file from the [CLI reference](cli.md).
+This reference describes the **0.3.0 implementation**, introduced during the alpha/beta series; historical npm 0.2.7 does not include it. Confirm the installed command and returned catalog before using it; missing support does not authorize installing or upgrading software. Keep the explicit roots and private provider file from the [CLI reference](cli.md).
 
 ## Ask before creating · 提问确认需求
 

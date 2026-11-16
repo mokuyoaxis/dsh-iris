@@ -2,9 +2,9 @@
 
 **beta.3**在显式新v5根另有[视觉/OCR契约](VISION_FLOWS.md#有限-http-入口)：`vision-models/visions/ocrs`、独立作品文字/报告读取与FlowView完成度。沿用原UUID与scope/tools边界，旧根和beta.2不含这些入口。
 
-0.2.7实现 **I4A 默认只读**与 **I4B 显式本地创建**：显式本机监听、Bearer/Host/Origin、受控流程/媒体，以及主动启用的上传/创建与持久身份接回，见 [只读 API](LOCAL_API.md)和 [本地创建](LOCAL_CREATION.md)。0.3.0-alpha.1另提供 [有限执行服务](CORE_SERVICE.md)、[连接握手](CORE_CONNECTIONS.md)与 [owner持久选择](LOCAL_SELECTION.md)。本契约尚未冻结为公开SDK；稳定0.2.7只包含上述I4A/I4B入口。
+0.3.0保留从0.2.7提供的 **I4A默认只读**与 **I4B显式本地创建**：显式本机监听、Bearer/Host/Origin、受控流程/媒体，以及主动启用的上传/创建与持久身份接回，见[只读API](LOCAL_API.md)和[本地创建](LOCAL_CREATION.md)。0.3另提供[有限执行服务](CORE_SERVICE.md)、[连接握手](CORE_CONNECTIONS.md)与[owner持久选择](LOCAL_SELECTION.md)。HTTP契约未因此冻结为完整公开SDK；历史0.2.7只包含上述I4A/I4B入口，下文beta标记说明功能加入阶段。
 
-已发布固定流程通过 [CLI](IMAGE_FLOW.md)执行，0.3 beta另有上方 Core 服务；[独立 Web Demo](WEB_PROTOTYPE.md)只消费内存演示，保留到 0.3.0 阶段统一润色。Demo 尚未接入只读 API，也不作为完整服务或写操作已实现的依据。
+固定流程可通过[CLI](IMAGE_FLOW.md)或0.3的Core服务使用；[独立Web Demo](WEB_PROTOTYPE.md)保留为纯内存演示，没有接入只读API，不作为真实服务或写操作已实现的依据。
 
 0.3 beta另有 [Core 工作台](LOCAL_WEB.md)，通过显式 `web serve` 同源提供固定静态资源；登录页不包含私有数据，API/图片仍要求 Bearer。默认只读，创建、执行和选择分别显式开启，不要求连接管理；页面按能力接入改图、比较、选择、停止和下载。npm 0.2.7 尚不含，不改变下方已发布 I4A/I4B 的能力边界。
 

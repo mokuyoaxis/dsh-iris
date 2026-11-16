@@ -1,6 +1,6 @@
 # dsh-iris 用户指南
 
-本指南对应 Iris 0.2.7。安装要求见 [README](README.md)，升级范围见 [CHANGELOG](CHANGELOG.md) 和 [发布说明](docs/releases/0.2.7.md)。
+本指南对应Iris 0.3.0的DSH/CLI入口。安装要求与准确发行状态见[README](README.md)，升级步骤见[0.3升级指南](docs/UPGRADING_0.3.md)，变化见[CHANGELOG](CHANGELOG.md)与[发行说明](docs/releases/0.3.0.md)。独立Core工作台/MCP另见[从零启动](docs/CORE_QUICKSTART.md)；旧数据根不自动迁移。
 
 功能来自明确标签、旧能力字段绑定或供应商能力元数据，账号和名称不会自动赋能。0.2.4/0.2.5 要求明确功能名单；0.2.6 保留旧名单和空配置行为，也可主动启用自动池。详见 [升级说明](docs/FUNCTION_MODEL_ASSIGNMENTS.md)。
 
@@ -10,24 +10,24 @@
 
 ## 安装
 
-先运行`dsh --version`。Iris 0.2.7 沿用 0.2.5 的 12 个准确 DSH 版本，详见 [兼容矩阵](docs/DSH_COMPATIBILITY.md)。还需要 PATH 中的 pnpm 及至少一个所需功能的供应商。当前 Iris 最低 Node.js 为 22.0.0，即使保留旧 DSH 也需满足；宿主要求更高时以宿主为准。
+先运行`dsh --version`。Iris 0.3.0沿用0.2.5建立的12个准确DSH版本，详见[兼容矩阵](docs/DSH_COMPATIBILITY.md)。还需要PATH中的pnpm及至少一个所需功能的供应商。最低Node.js为 **22.1.0**，即使保留旧DSH也需满足；宿主要求更高时以宿主为准。以下安装命令在准确版本已发行后使用，发布准备期间使用源码或本地候选包。
 
 在矩阵所列宿主中，将固定版本加入Web profile：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.2.7
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0
 dsh web
 ```
 
 npm 上无 scope 的 `dsh-iris` 是另一款插件；安装或更新 Iris Media 时必须使用完整 scoped 包名。
 
-只下载包可运行`npm pack @mokuyoaxis/dsh-iris@0.2.7`；普通`npm install`不会自动加入DSH profile。仍需保留历史Iris0.1.4时可以固定其版本，历史DSH/Node要求见兼容矩阵；0.1.4不包含当前Core媒体CLI与后续新功能。
+只下载包可运行`npm pack @mokuyoaxis/dsh-iris@0.3.0`；普通`npm install`不会自动加入DSH profile。保留历史环境时固定其准确版本和对应数据根；历史DSH/Node要求见兼容矩阵，0.1.4不包含当前Core媒体CLI与后续新功能。
 
 浏览器默认打开 `http://127.0.0.1:3080`。插件安装后只会在下一次 DSH 启动时装载；如果 DSH 已经运行，请先停止再启动。启动输出包含一次性认证参数时，必须完整打开该 URL，不能只输入裸地址。
 
 ### 独立 CLI
 
-无需DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.2.7`，通过 `npx dsh-iris --help` 查看入口。发布状态见README，完整说明见 [Headless CLI](docs/HEADLESS_CLI.md) 和 [视觉CLI](docs/VISION_CLI.md)。
+无需DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.3.0`，通过 `npx dsh-iris --help` 查看入口。发布状态见README，完整说明见[Headless CLI](docs/HEADLESS_CLI.md)和[视觉CLI](docs/VISION_CLI.md)。
 
 未列入对应Iris版本兼容矩阵的DSH版本须另行验收。让Agent协助安装时，可使用 [简要Prompt](docs/AGENT_QUICKSTART.md)。
 
@@ -66,7 +66,7 @@ DSH 已配好同一媒体服务时，可在第 1 步选择连接来源，明确�
 
 ## ComfyUI 工作台（0.3 beta）
 
-稳定npm 0.2.7尚不含此界面；安装0.3.0-beta.1后可在“+ 添加供应商”选择“ComfyUI · 已有服务”，保存地址/认证后导入 API 图或 Iris 参数模板，明确节点和公开参数；检查、保存不生成图片。画图时选择具体工作流，可调整 LoRA 双权重、种子等声明参数，并从只读检查取得可用选项。Iris 不安装 ComfyUI 或模型，静态检查不等于真实 GPU 验收。完整操作与限制见 [DSH ComfyUI 入口](docs/IMAGE_GENERATION.md#dsh-工作台入口03-alpha)。
+0.3.0可在“+ 添加供应商”选择“ComfyUI · 已有服务”，保存地址/认证后导入API图或Iris参数模板，明确节点和公开参数；检查、保存不生成图片。画图时选择具体工作流，可调整LoRA双权重、种子等声明参数，并从只读检查取得可用选项。历史npm 0.2.7不含此界面；Iris不安装ComfyUI或模型，静态检查不等于真实GPU验收。完整操作与限制见[DSH ComfyUI入口](docs/IMAGE_GENERATION.md#dsh-工作台入口03-alpha)。
 
 ## 供应商与协议
 
@@ -390,7 +390,7 @@ npx @mokuyoaxis/dsh-iris doctor --json
 
 已安装包也可以直接运行 `dsh-iris doctor`。退出码为 `0`（正常）、`1`（警告）和 `2`（硬错误）。Doctor 会执行一个随后立即删除的本地写入探针，并检查配置、任务、能力分配、临时文件和产物引用；输出不含完整 API Key。离线模式无法检查 DSH 工具/客户端是否已经装载，也不会用付费请求验证 Provider。
 
-**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 Iris 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.2.7 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
+**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 Iris 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.3.0 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
 
 ## Host Doctor
 

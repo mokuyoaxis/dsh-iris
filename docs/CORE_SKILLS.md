@@ -52,7 +52,7 @@ kimi --skills-dir /absolute/path/to/iris/skills
 
 ## ComfyUI 参考与 API 搭配（0.3 beta）
 
-现有 `iris-core` 按需读取 [ComfyUI 参考](../skills/iris-core/references/comfyui.md)，说明工作流选择、公开参数、LoRA的模型/CLIP双权重和原任务恢复。正文仍为英文、标题附中文；本扩展从0.3.0-alpha.1提供，稳定0.2.7不包含。安装器随整个目录复制参考；已有安装须显式更新，不自动修改日常harness。
+现有 `iris-core` 按需读取[ComfyUI参考](../skills/iris-core/references/comfyui.md)，说明工作流选择、公开参数、LoRA的模型/CLIP双权重和原任务恢复。正文仍为英文、标题附中文；本扩展从0.3.0-alpha.1提供并保留到0.3.0，历史0.2.7不包含。安装器随整个目录复制参考；已有安装须显式更新，不自动修改日常harness。
 
 ComfyUI 请求先集中确认尚缺少的图像目标、工作流、LoRA 与参数偏好；可以先只读查看真实目录辅助选择，关键要求明确后再创建和执行。沿用已有回答和授权，完整要求或明确委托选择时无需反复提问；普通 API 请求沿用所选 API 配置。工作流与参数 ID、类型、默认值及范围来自实际目录；服务当前可选 LoRA 等值须经明确的只读检查核实，不凭模型名称推断或自动安装节点。
 
@@ -61,7 +61,7 @@ ComfyUI 请求先集中确认尚缺少的图像目标、工作流、LoRA 与参�
 ## 当前边界
 
 - 首版覆盖图片及其任务，支持单步操作和图片续作；视频、语音和界面验收不在首版范围内。
-- DSH 原有三项 Skill、工具、附件与工作台流程保持，不把新 Skill 自动注册为第四项 DSH Skill；DSH 使用方式见 [README](../README.md#dsh-插件027)。
+- DSH 原有三项 Skill、工具、附件与工作台流程保持，不把新 Skill 自动注册为第四项 DSH Skill；DSH 使用方式见 [README](../README.md#dsh-插件030)。
 - 本版新增独立的 Core 指导，不迁移或改写旧 DSH Skill。后续若合并公共参考，应先证明 DSH 流程和资源解析保持。
 - Core Artifact ID 属于指定根，宿主附件、路径与 URL 不可互换；交付时由实际宿主呈现导出文件。
 - 0.3 beta的正式 MCP 入口见 [Core 服务](CORE_SERVICE.md)，需独立配置授权连接。`iris-core` 的可执行说明仍是 CLI；下方连接专属 Skill 仅指导 MCP。Skill 安装不自动注册 MCP，不能据此声称日常 harness 已接入或真实 Agent 已验收。

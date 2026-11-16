@@ -4,7 +4,7 @@
 
 开发自己的独立插件可从[模板与包外验收](PLUGIN_DEVELOPMENT.md)开始；普通用户使用下面的随包入口即可。
 
-使用0.3.0-beta.1或当前源码；**稳定 npm 0.2.7 没有这些插件启动参数。** 本地安装可在下文 `dsh-iris` 前加 `npx`，源码树可替换为 `node bin/dsh-iris.js`。
+使用0.3.0或当前源码；**历史npm 0.2.7没有这些插件启动参数。** 安装前核对准确发行状态；本地安装可在下文 `dsh-iris` 前加 `npx`，源码树可替换为 `node bin/dsh-iris.js`。
 
 沿用 `web serve` / `api serve` 启动一个明确数据根的 Core 服务。插件配置只决定加载与启用，不安装插件、不创建 MCP 授权。stdio MCP 启动的是连接此服务的桥接进程，HTTP MCP 使用同一服务的 `/mcp`；两者都需要 Core 继续运行。
 

@@ -41,4 +41,4 @@ Preserve the original Task after interruption or unknown acceptance; do not prob
 
 Return the actual image file or a host-accessible asset, with the Task/Artifact IDs needed to continue. Distinguish availability, export, display in the conversation, and visual verification. Report partial results and unmet conditions accurately.
 
-This skill covers images and their tasks. The ComfyUI path requires 0.3.0-alpha.1 or compatible source; stable npm 0.2.7 does not include it. Check the actual installed version. Existing DSH skills continue to guide DSH-native tools and workbench workflows.
+This skill covers images and their tasks. The ComfyUI path was introduced in 0.3.0-alpha.1 and is included in 0.3.0; historical npm 0.2.7 does not include it. Check the actual installed version and published-version availability. Existing DSH skills continue to guide DSH-native tools and workbench workflows.

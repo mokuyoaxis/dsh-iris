@@ -1,6 +1,6 @@
 # Core 插件贡献 v0（0.3 beta，实验性）
 
-0.3.0-beta.1 保留从alpha.1开始提供的 `@mokuyoaxis/dsh-iris/plugins` 入口及类型声明。**稳定 npm 0.2.7 没有这个入口**；示例用于beta包或当前源码；最小面见[beta约定](BETA_SCOPE.md)，完整SDK尚未冻结。兼容检查读取实际包版本，预发布标识也参与SemVer先后比较。
+0.3.0保留从alpha.1开始提供的 `@mokuyoaxis/dsh-iris/plugins` 入口及类型声明。**历史npm 0.2.7没有这个入口**；示例用于0.3包或当前源码；最小面见[范围约定](BETA_SCOPE.md)，完整SDK尚未冻结。兼容检查读取实际包版本，预发布标识也参与SemVer先后比较；插件声明须覆盖实际0.3.0版本。
 
 想从一个可运行的独立项目开始，可看[插件开发与包外验收](PLUGIN_DEVELOPMENT.md)及[可复制模板](../templates/plugin-starter/README.md)。模板随beta.1分发，使用已公开的SDK，含真实对照板业务、页面、PNG 预览器和隔离自检，不安装或自动授权 harness。
 
@@ -54,7 +54,7 @@ export default definePlugin({
 });
 ```
 
-`min` 从首次提供此SDK的0.3.0-alpha.1开始，稳定0.2.7不支持插件入口。Core兼容区间使用闭/开边界，npm peer范围另按npm SemVer规则处理；支持0.3预发布的插件可明确声明 `>=0.3.0-alpha.1 <0.4.0`，不能假定仅有稳定版下界的范围会接受预发布。
+`min`从首次提供此SDK的0.3.0-alpha.1开始，历史0.2.7不支持插件入口。Core兼容区间使用闭/开边界，npm peer范围另按npm SemVer规则处理；覆盖0.3预发布和0.3.0的插件可明确声明 `>=0.3.0-alpha.1 <0.4.0`，不能假定仅有稳定版下界的范围会接受预发布。
 
 宿主显式加载已安装且可信的 JS/MJS 入口；示例使用已经存在的 Core 数据根，只读调用不会创建它：
 
