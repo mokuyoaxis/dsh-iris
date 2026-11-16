@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// IRIS 视觉资产生成：像素块（cell）几何母题——鸢尾花图形标 + 3×5 像素字 IRIS。
+// IRIS视觉资产生成：历史鸢尾花/3×5字形，以及README的细颗粒字标。
 // 源数据即下方矩阵；`node scripts/gen-logo.mjs` 复现 docs/assets/logo/*.svg。
 
 const OUT = path.resolve(process.cwd(), 'docs/assets/logo');
@@ -75,10 +75,10 @@ function rectsForWord(colorOf) {
   return out;
 }
 
-function svg({ width, height, title, desc, rects, pad = 0 }) {
+function svg({ width, height, title, desc, rects, pad = 0, cellSize = CELL }) {
   const vb = pad ? `${-pad} ${-pad} ${width + pad * 2} ${height + pad * 2}` : `0 0 ${width} ${height}`;
   const body = rects.map((r) =>
-    `  <rect x="${r.x}" y="${r.y}" width="${CELL}" height="${CELL}" fill="${r.fill}"/>`
+    `  <rect x="${r.x}" y="${r.y}" width="${cellSize}" height="${cellSize}" fill="${r.fill}"/>`
   ).join('\n');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width + pad * 2}" height="${height + pad * 2}" viewBox="${vb}" role="img" aria-label="${title}" shape-rendering="crispEdges">
   <title>${title}</title>
@@ -136,16 +136,37 @@ for (const [name, v] of Object.entries(wordmarkOnly ? {} : variants)) {
   console.log('wrote', name, `${width + (v.mark ? CELL * 2 : 0)}x${height + (v.mark ? CELL * 2 : 0)}`);
 }
 
-const wordmarkRects = rectsForWord(() => '').map(({ x, y }) => {
-  const column = (x - WORD_X) / CELL, row = (y - WORD_Y) / CELL;
-  // 六色按原105度方向离散到完整像素块，字形复用上方3×5矩阵。
-  const position = (column + row * Math.tan(Math.PI / 12))
-    / (WORD_COLS - 1 + 4 * Math.tan(Math.PI / 12));
-  const index = Math.min(WORDMARK_PALETTE.length - 1, Math.floor(position * WORDMARK_PALETTE.length));
-  return { x: column * CELL, y: row * CELL, fill: WORDMARK_PALETTE[index] };
-});
+// README使用7×9字形，首个I为9×11；6单位方块、9单位步距，留3单位缝隙。
+const WORDMARK_LETTERS = {
+  I: ['1111111', '0001000', '0001000', '0001000', '0001000', '0001000', '0001000', '0001000', '1111111'],
+  R: ['1111110', '1000001', '1000001', '1000001', '1111110', '1001000', '1000100', '1000010', '1000001'],
+  S: ['0111111', '1000000', '1000000', '1000000', '0111110', '0000001', '0000001', '0000001', '1111110']
+};
+const initialI = ['111111111', ...Array(9).fill('000010000'), '111111111'];
+const wordmarkGlyphs = [...WORD].map((letter, index) => index === 0 ? initialI : WORDMARK_LETTERS[letter]);
+const WORDMARK_CELL = 6, WORDMARK_STEP = 9, WORDMARK_GAP = 2;
+const wordmarkRows = initialI.length;
+const wordmarkColumns = wordmarkGlyphs.reduce((sum, glyph) => sum + glyph[0].length, 0)
+  + WORDMARK_GAP * (wordmarkGlyphs.length - 1);
+const wordmarkRects = [];
+let wordmarkColumn = 0;
+for (const glyph of wordmarkGlyphs) {
+  glyph.forEach((row, glyphY) => {
+    [...row].forEach((value, x) => {
+      if (value !== '1') return;
+      const column = wordmarkColumn + x, y = wordmarkRows - glyph.length + glyphY;
+      // 原105度六色方向离散到实色方块，不引入字体或渐变资源。
+      const position = (column + y * Math.tan(Math.PI / 12))
+        / (wordmarkColumns - 1 + (wordmarkRows - 1) * Math.tan(Math.PI / 12));
+      const index = Math.min(WORDMARK_PALETTE.length - 1, Math.floor(position * WORDMARK_PALETTE.length));
+      wordmarkRects.push({ x: column * WORDMARK_STEP, y: y * WORDMARK_STEP, fill: WORDMARK_PALETTE[index] });
+    });
+  });
+  wordmarkColumn += glyph[0].length + WORDMARK_GAP;
+}
 fs.writeFileSync(path.join(OUT, 'iris-wordmark.svg'), svg({
-  width: WORD_COLS * CELL, height: 5 * CELL, pad: CELL,
-  title: 'IRIS 彩色像素字标', desc: '六色实心像素块组成的 IRIS，透明背景', rects: wordmarkRects
+  width: (wordmarkColumns - 1) * WORDMARK_STEP + WORDMARK_CELL,
+  height: (wordmarkRows - 1) * WORDMARK_STEP + WORDMARK_CELL, pad: WORDMARK_STEP, cellSize: WORDMARK_CELL,
+  title: 'IRIS 彩色像素字标', desc: 'Iris六色细颗粒像素字IRIS，首个I略大，方块间留透明缝隙', rects: wordmarkRects
 }));
 console.log('wrote iris-wordmark.svg');
