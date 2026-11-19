@@ -1,23 +1,22 @@
-# Core 启动与插件启用（0.3 beta）
+# Core 启动与插件启用（0.3.0）
 
-仅需媒体创作或首次连接 Agent 时，可先走 [Core 快速开始](CORE_QUICKSTART.md)；本页说明如何额外启用可信插件，不必先编写 Node 启动脚本。
+通过 `--plugin-config` 启动参数，你可以使用纯 JSON 配置文件显式装载受信任插件、启用持久业务操作并挂载工作台页面，无需手写 Node 启动脚本。
 
-开发自己的独立插件可从[模板与包外验收](PLUGIN_DEVELOPMENT.md)开始；普通用户使用下面的随包入口即可。
+> [!NOTE]
+> - 仅使用内置媒体功能时，请直接参考 [Core 快速开始](CORE_QUICKSTART.md)。
+> - 若要开发和打包自己的独立插件，请参考 [独立插件开发](PLUGIN_DEVELOPMENT.md) 与 [插件契约 v0](PLUGINS.md)。
+> - **命令运行方式**：若通过 `npm install @mokuyoaxis/dsh-iris@0.3.0` 安装在本地项目中，命令不会自动进入全局 `PATH`，请在下方 `dsh-iris` 命令前加上 `npx`（即 `npx dsh-iris ...`）；若在已执行 `npm ci` 的源码仓库中运行，请将 `dsh-iris` 替换为 `node bin/dsh-iris.js`。
 
-使用0.3.0或当前源码；**历史npm 0.2.7没有这些插件启动参数。** 安装前核对准确发行状态；本地安装可在下文 `dsh-iris` 前加 `npx`，源码树可替换为 `node bin/dsh-iris.js`。
+## 准备配置并启动
 
-沿用 `web serve` / `api serve` 启动一个明确数据根的 Core 服务。插件配置只决定加载与启用，不安装插件、不创建 MCP 授权。stdio MCP 启动的是连接此服务的桥接进程，HTTP MCP 使用同一服务的 `/mcp`；两者都需要 Core 继续运行。
-
-## 准备一次，重复启动
-
-选择已经存在的父目录，如 `/absolute/iris`。下面使用新的专用数据根；必须在导入作品前完成执行初始化，不迁移已有根：
+选择一个已存在的父目录（例如 `/absolute/iris`），在全新的专用数据根中依次完成 Flow 与执行初始化（必须在导入作品前完成初始化，旧数据根不会自动迁移）：
 
 ```bash
-dsh-iris flow init --data-root /absolute/iris/core
-dsh-iris execution init --data-root /absolute/iris/core
+npx dsh-iris flow init --data-root /absolute/iris/core
+npx dsh-iris execution init --data-root /absolute/iris/core
 ```
 
-将下面内容保存为 `/absolute/iris/startup.json`，它只启用随包[多图对照板](CONTACT_SHEET.md)：
+将以下内容保存为 `/absolute/iris/startup.json`（示例仅启用随包自带的[多图对照板](CONTACT_SHEET.md)）：
 
 ```json
 {
@@ -30,84 +29,76 @@ dsh-iris execution init --data-root /absolute/iris/core
 }
 ```
 
-列出随包入口并检查明确选择：
+先列出随包内置入口并用 `plugins inspect` 检查配置：
 
 ```bash
-dsh-iris plugins list
-dsh-iris plugins inspect --plugin-config /absolute/iris/startup.json
+npx dsh-iris plugins list
+npx dsh-iris plugins inspect --plugin-config /absolute/iris/startup.json
 ```
 
-`inspect` 输出实际插件 ID、版本、兼容范围、贡献和启用选择；不启动 Core、不建立执行租约或连接授权。它会导入并激活**可信 Node 代码**，随后释放资源；不是代码沙箱，也不验证供应商、模型或 GPU。
+`inspect` 会实际导入并激活所配置的**可信 Node 插件代码**，输出插件 ID、版本、Core 兼容区间、贡献清单与启用选择，随后立即释放资源；它不会启动 Core 服务、不会占用数据根租约，也不会创建 MCP 连接授权。
 
-启动工作台、连接管理与 HTTP MCP：
+确认无误后，启动工作台、连接管理中心与 HTTP MCP：
 
 ```bash
-dsh-iris web serve --data-root /absolute/iris/core \
+npx dsh-iris web serve --data-root /absolute/iris/core \
   --plugin-config /absolute/iris/startup.json \
   --port 3182 \
   --connection-store /absolute/iris/connections \
   --allow-connection-management --allow-mcp
 ```
 
-首次打开输出的 `loginUrl` 设置访问口令，之后使用普通地址；“记住此设备”可跨刷新与正常重启，退出后输入原口令即可。见[工作台登录](WORKBENCH_LOGIN.md)。对照板使用已有 Core 图片；可在第一次启动前用 `artifact import` 导入，见[完整业务用法](CONTACT_SHEET.md)。它无需 Provider 配置或 `--allow-execution`；后者控制媒体流程，插件业务执行独立选择。
+首次启动请打开终端输出的 `loginUrl` 设置访问口令，此后直接访问普通地址即可（详见[工作台登录](WORKBENCH_LOGIN.md)）。多图对照板处理的是当前 Core 根中已有的图片，可在启动前用 `artifact import` 导入（见[多图对照板用法](CONTACT_SHEET.md)），无需配置模型供应商或开启媒体 `--allow-execution`。
 
-正常 Ctrl+C 退出后，可以原样重复启动命令。保持同一数据根、固定端口、连接目录和所需准确插件版本，已经导出的 MCP 连接继续有效。不要同时启动两个管理同一根的执行服务；冲突会报忙，不抢锁。强制退出后的租约恢复仍须先核对进程，再按 [Core 服务](CORE_SERVICE.md)的明确命令处理。
+正常按下 `Ctrl+C` 停止服务后，可原样重复上述启动命令。只要保持相同的数据根、固定端口、认证目录、连接目录及所需的插件版本，已记住的浏览器登录态与已导出的 MCP 配置均继续有效。请勿对同一数据根同时启动两个执行服务（会返回繁忙错误而不会抢锁）；若进程被强杀遗留租约，请先核对进程状态，再按 [Core 服务](CORE_SERVICE.md)中的恢复命令显式释放。
 
 ## 查看插件状态（当前源码）
 
-此页入口从 **0.3.0-beta.1** 提供；登录后打开侧栏“插件”：
+登录工作台后，点击左侧导航的 **插件** 页（只读诊断视图），可以集中核对：
 
-- 插件卡片列出准确身份、版本和 Core 兼容范围，展开后查看模型协议、业务操作、页面、设置与预览贡献。加载时通过兼容校验不代表模型或业务已经实测。
-- 业务是否被服务启用、页面是否选入工作台，分别取自 Core 的实际装配；加载代码不等于授权。
-- 客户端授权区分准确版本不一致、服务未启用、缺少执行权限、未选 `plugin_call` 和已撤销；“授权允许执行”只描述配置条件。握手实例可能请求更小的范围，握手记录也不证明客户端持续在线。
-- 原授权所需的业务未加载时保留准确依赖和原因，不会自动改成新版本或移除原记录。授权读取失败显示“未知”，不会冒充零授权；重新读取只访问现有只读接口，不调用业务或探测模型。
+- **加载与兼容信息**：插件卡片展示准确插件 ID、版本号与 Core 兼容范围，展开后可查看其声明的 Provider 协议、业务操作（Operation）、页面（Page）、设置（Settings）与预览器（Renderer）贡献。
+- **服务启用状态**：分别展示某项业务是否已被当前服务启用（`operations`）、页面是否已选入当前工作台（`panel`）——加载代码本身不等于已启用或已授权。
+- **客户端授权与握手对照**：清晰区分“插件版本不匹配”、“服务未启用该业务”、“连接缺少 `execute` 权限”、“未勾选 `iris_core_plugin_call` 工具”与“连接已撤销”。即使旧授权关联的插件在本次启动中未加载，原有依赖记录与原因也会如实保留，不会静默改绑到新版本或抹除记录。
 
-“管理客户端授权”打开已有连接设置。此页不编辑启动文件、安装插件或热加载代码；启用仍按下方选择文件，在正常停止后重新启动服务。若启动失败、服务尚未运行，请在启动终端核对 `code`、`stage`、`file` 和可能的 `field`，也可对确认可信的插件运行 `plugins inspect`；页面无法读取一次尚未启动服务的失败。
+点击页面上的“管理客户端授权”可直接跳转到连接中心。该页面不提供在线编辑启动文件、安装插件或热重载代码的功能；如需调整插件配置，请在正常停止服务后修改 JSON 文件并重启。若服务在启动阶段即告失败，请在终端查看输出的 `code`、`stage`、`file` 与 `field` 诊断信息。
 
-## 选择文件
+## 启动选择文件格式（`plugins.json`）
 
-| 字段 | 含义 |
+启动配置文件必须是 ≤64 KiB 的普通 JSON 文件，拒绝未知字段：
+
+| 字段 | 规则与含义 |
 |---|---|
-| `schemaVersion` | 必须为 `0`；不自动迁移 |
-| `entries` | 必填数组；已知内置引用或明确的本地 `.js` / `.mjs` 绝对路径；空数组不加载插件 |
-| `operations` | 可选完整业务 ID 数组；省略不启动插件业务 runner，`[]` 接管历史但不开放新业务，明确 ID 才启用 |
+| `schemaVersion` | 必须为 `0` |
+| `entries` | 必填数组：可填写内置标识（如 `"builtin:contact-sheet"`）或本地 `.js` / `.mjs` 文件的**绝对路径**（空数组表示不加载任何插件；拒绝相对路径、包名、远程 URL 或重复入口） |
+| `operations` | 可选的完整业务 ID 数组：省略时不启动插件业务 runner；`[]` 仅接管/读取历史记录而不接受新业务调用；填入明确 ID 后开放对应业务执行 |
 | `panel.pages` / `settings` / `renderers` | 可选、互不重复的完整贡献 ID 列表；省略的类别不挂载 |
 
-配置必须是最多 64 KiB 的普通 JSON 文件。不接受相对路径、包名、网络 URL、重复的实际入口或未知字段。外部插件由用户单独安装后，提供明确入口；CLI 不扫描磁盘、不查询市场、不自动执行安装。
-
-加载会校验插件版本、Core 兼容范围、贡献和资源；未知业务/页面或缺失资源导致启动失败，不静默忽略。错误包含 `code`、`stage`、`file`，配置边界错误可附 `field`。兼容范围不是签名或隔离保证，仅加载可信插件。
-
-`panel` 仅用于默认 `web serve`，与 `--panel` 整套 Panel 替换互斥。`api serve` 可使用同一启动机制，但其选择文件必须省略 `panel`。既有 `--provider-extension` 继续加载旧 Provider 工厂，与 `--plugin-config` 互斥；新插件的 Provider 从同一注册器装配，不能把新清单当成旧工厂。
+- **严格校验**：启动时会在激活前校验插件版本、Core 兼容区间、贡献声明与静态资源文件；一旦引用了未知的业务/页面 ID 或资源缺失，启动将直接失败并指明具体阶段与字段，不会静默忽略。
+- **参数互斥**：`panel` 组合挂载仅适用于默认 `web serve`（与整套替换界面的 `--panel` 参数互斥，`api serve` 的启动配置文件中不得包含 `panel`）。同时，`--plugin-config` 与旧版 `--provider-extension` 互斥，新版 Provider 插件应统一放入 `entries` 中由同一注册器装配。
 
 ## 登录与重启
 
-普通 `web serve` 不需要 Token 参数。认证目录由 Iris 管理，可显式 `--auth-store /absolute/private-auth`；启动、取地址与重置时保持一致。用 `web login --data-root /absolute/iris/core` 取地址，`web password reset --data-root /absolute/iris/core` 重置口令并撤销全部浏览器会话。重置不修改作品或 MCP 授权；手机浏览器无需读取 Termux 私有文件。
-
-固定 `--port` 可保留浏览器站点存储和已导出的 MCP 配置。CLI 保持前台运行，不自动注册后台服务、系统自启或更改客户端配置。认证存储单独取得写者租约，强杀后也需明确核对恢复。
+默认情况下，`web serve` 使用访问口令模式，认证状态由 Iris 在根外私有目录管理（也可显式指定 `--auth-store /absolute/private-auth`，并在启动、`web login --data-root` 与 `web password reset --data-root` 时保持一致）。重置口令会撤销全部浏览器会话，但不会修改作品或 MCP 授权。
 
 ### 旧 Token 模式与 API 服务
 
-`api serve` 仍要求 `--token-dir` 与 `--token-file` 二选一；`web serve` 显式提供这两个参数时选择旧登录模式，与 `--auth-store` 互斥。目录位于 Core 数据根之外，父目录须存在；不存在的末级目录按 POSIX 0700 创建，已有目录须私有且不能是符号链接，不自动调整权限。每次成功启动创建新的 `session-<UUID>.token`，文件为 0600，并在输出中返回实际 `tokenFile`。
+`api serve` 仍要求传入 `--token-dir` 或 `--token-file`（二选一）；如果在 `web serve` 中显式提供了这两个参数，也会切换回旧版一次性链接 / Token 登录模式（此时不能与 `--auth-store` 混用）：
 
-旧会话文件保留且内容不覆盖，旧 owner/浏览器登录在服务停止后失效；新启动打开新的 `loginUrl`。已经保存的 MCP 连接使用独立凭据，不依赖 owner Token 的轮换。目录不自动清理旧文件。
-
-链接过期时，使用**本次启动**输出的 `origin` / `tokenFile` 获取新链接，无需重启：
+- **`--token-dir`（支持原命令重复启动）**：目录须位于 Core 数据根之外（父目录须存在，新建末级目录权限为 POSIX `0700`，拒绝符号链接）。每次成功启动都会在目录内排他创建新的 `session-<UUID>.token`（`0600`）并在终端输出其路径 `tokenFile`；旧文件保留以备审计，服务停止后旧会话即失效。
+- **`--token-file`**：每次启动必须指向一个**尚不存在**的根外绝对路径，拒绝覆盖已有文件。
+- **刷新登录链接**：在旧 Token 模式下，若一次性 `loginUrl` 已过期（10 分钟有效期），可在不重启服务的前提下使用当次启动的 `origin` 与 `tokenFile` 获取新链接：
 
 ```bash
-dsh-iris web login --origin http://127.0.0.1:3182 \
+npx dsh-iris web login --origin http://127.0.0.1:3182 \
   --token-file /absolute/iris/sessions/session-本次UUID.token
 ```
 
-原 `--token-file` 行为保持：必须给新的根外文件路径，已有文件会拒绝覆盖。两种登录模式默认端口均为随机端口，需要稳定地址时主动指定固定 `--port`。
-
 ## 启用与授权分别进行
 
-1. `entries` 装载可信实现，贡献进入实际目录。
-2. `operations` 开放服务业务，`panel` 选择界面入口；不授予任何连接权限。
-3. 在工作台“客户端”创建连接，选择准确插件业务与 `read/execute/stop` 中需要的操作权限，再导出 stdio 或 HTTP 配置；配置导入目标 harness 后才会连接。
+插件从加载到可被外部 Agent 调用，经过三道相互独立的关卡：
 
-媒体生图、改图、语音等仍使用原 `--allow-execution --provider-config ...` 及功能选择；上传/创建、持久选择、供应商管理各有独立开关。启用插件业务不连带开启这些媒体写权限。
+1. **`entries` 装载代码**：导入可信实现并将其贡献注册到能力目录。
+2. **`operations` / `panel` 服务启用**：在当前 Core 服务上开启特定业务的持久化执行或挂载工作台页面（此时任何 MCP 连接仍默认无权调用，且启用插件业务不会连带开启媒体生图 `--allow-execution` 或供应商管理权限）。
+3. **客户端连接显式授权**：在工作台 **客户端** 页面新建或编辑连接，勾选目标插件业务精确版本以及 `read` / `execute` / `stop` 权限，再导出 stdio 或 HTTP 配置交给客户端。
 
-启动失败或退出时，CLI 先关闭服务、任务 runner 和租约，再释放插件；插件清理异常会报告，但仍尝试其余清理。启动后的配置与模块不会热加载，需要明确停止、核对后重启。业务仍按原 UUID 和准确版本恢复记录，不自动重做；插件缺失或停用时可用 `entries:[]` / `operations:[]` 启动历史读取，原作品继续保留。
-
-程序化装配仍可使用公开 [插件 SDK](PLUGINS.md)，适合已有 Node 宿主；CLI 启动不需要手写启动脚本。
+当服务关闭或启动失败时，CLI 会严格按照 **“HTTP 服务 / 任务 Runner → 写者租约 → 插件注册器”** 的顺序逆序清理资源。对于既有 Node 宿主，也可以直接使用公开的 [插件 SDK](PLUGINS.md) 进行程序化装配。

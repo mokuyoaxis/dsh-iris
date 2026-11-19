@@ -2,11 +2,11 @@
 
 悬浮泡泡目前采用 `iris-bubble.svg` 曲线鸢尾花（2026-09-30 概念替换）。2026-09-15 的像素块（cell）Logo 与图标集保留作为历史设计资产。旧 `docs/assets/iris-wordmark.svg` 已不再使用，源码文件暂留作历史兼容。
 
-**0.3.0的中英文README使用居中的 `iris-wordmark.svg` 彩色像素字标**：5×7字形的每个实格细分为3×3颗粒，普通字形最终为15×21；首个I为17×23并对齐基线。笔画由多排、多列颗粒组成，避免单线过细；方块4单位、步距6单位，留2单位透明缝隙。保留Iris工作台原六色，按105度方向分配到实色像素格。README宽度仍为320px，单块约2.7px、缝隙约1.4px，细颗粒与饱满字形同时保留；没有外部字体、脚本或资源。单独复现可运行 `node scripts/gen-logo.mjs --wordmark-only`，不重写历史图形资产。
+**0.3.0 的中英文 README 使用居中的深浅色自适应英雄组合标志 `iris-wordmark.svg` / `iris-wordmark-dark.svg`**：左侧为对称光学环抱弧、多层透明渐变鸢尾花瓣与暖金色花心，右侧为纯矢量贝塞尔路径绘制的 `Iris.` 定制字标（星芒 `i` 点与尾点呼应工作台暖色点缀）。整套组合画布为 `310×138`（README 中推荐显示宽度 `340px`），不依赖任何外部字体、脚本或位图，由 `README.md` 与 `README.en.md` 通过 `<picture>` 的 `prefers-color-scheme` 自动切换浅色/深色版本（不支持 `<picture>` 的预览环境回退到 `iris-wordmark.svg`）。单独复现可运行 `node scripts/gen-logo.mjs --wordmark-only`，不重写历史像素资产。
 
-此前的 `iris-interim-flower.png`（2026-09-17）保留为历史素材：维护者自生成素材裁剪的灰度线稿鸢尾花，仅取花形、已去除源图中的第三方字标。README字标、悬浮泡泡和历史图形标分别管理，本次未修改应用内泡泡或主题。
+此前的 `iris-interim-flower.png`（2026-09-17）保留为历史素材：维护者自生成素材裁剪的灰度线稿鸢尾花，仅取花形、已去除源图中的第三方字标。README 组合标志、悬浮泡泡和历史像素资产分别管理，应用内泡泡与历史 `/iris-mark.svg` 图标保持不变。
 
-字标六色：`#45317D`、`#6F69B8`、`#BB78AD`、`#E59B76`、`#ED9C91`、`#F0D09C`，与 `lib/web/styles.css` 的工作台配色一致。下方原鸢尾图形配色继续适用于历史资产。
+主题配色沿用 `lib/web/styles.css` 的工作台六色光谱（`#45317D`、`#6F69B8`、`#BB78AD`、`#E59B76`、`#ED9C91`、`#F0D09C`）与叶片青绿；深色版本提亮花瓣与字标以保证暗底对比度。下方原像素鸢尾配色继续适用于历史像素资产。
 
 ## 悬浮泡泡概念
 
@@ -23,7 +23,8 @@
 
 | 文件 | 用途 |
 |---|---|
-| `iris-wordmark.svg`（466×160） | 0.3.0 README的多排细颗粒彩色像素字标，首个I略大、透明底，推荐显示宽度320px |
+| `iris-wordmark.svg`（310×138） | 0.3.0 README 浅色底及通用回退主组合标志：矢量鸢尾徽记 + 定制 `Iris.` 路径字标，透明底，推荐宽度 `340px` |
+| `iris-wordmark-dark.svg`（310×138） | 0.3.0 README 深色底自适应主组合标志：提亮花瓣与亮薰衣草紫字标，用于 GitHub Dark Mode |
 | `iris-logo.svg`（208×80） | 主锁定标志：彩色图形标 + 字标，浅色底适用（README、文档头） |
 | `iris-logo-mono.svg` | 单色墨（`#1E1E24`），浅底单色场景 |
 | `iris-logo-mono-inverse.svg` | 单色反白（`#F5F3FF`），深色底场景 |

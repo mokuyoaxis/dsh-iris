@@ -1,87 +1,83 @@
-# Core 语音合成与音频转写（0.3 beta）
+# Core 语音合成与音频转写（0.3.0）
 
-0.3.0的Web与通用MCP包含 `speech/v0`、`transcribe/v0`，从alpha.1接入，共用Provider、Task/Attempt、持久Run和单根Operation runner。**历史npm 0.2.7不含这些Core入口。** 原独立CLI/DSH的语音和转写继续使用各自原入口；这里描述Core持久流程。
+Iris 的独立 Core 工作台与通用 MCP 支持持久化的 **语音合成（`speech/v0`）** 与 **音频转写（`transcribe/v0`）** 流程，与图片/视频流程共用同一套 Task/Attempt 存储与单根 Operation 调度器。
 
-## 新建音频工作区
+## 初始化音频工作区
 
-先在新的专用位置初始化，保留原图片工作区：
+语音合成与转写需要初始化在 **v3 及以上** 数据根中（`--audio` 创建 v3 根并包含图片流程；如需同时开启视频或看图/OCR，请改用 `--video` 创建 v4 根或 `--vision` 创建 v5 根）：
 
 ```bash
-node bin/dsh-iris.js flow init --data-root /absolute/new-audio-core
-node bin/dsh-iris.js execution init --data-root /absolute/new-audio-core --audio
-node bin/dsh-iris.js web serve --data-root /absolute/new-audio-core \
+npx dsh-iris flow init --data-root /absolute/new-audio-core
+npx dsh-iris execution init --data-root /absolute/new-audio-core --audio
+
+npx dsh-iris web serve --data-root /absolute/new-audio-core \
   --provider-config /absolute/existing-providers.json \
-  --token-file /absolute/new-audio-owner-token --allow-execution
+  --allow-execution --allow-connection-management \
+  --connection-store /absolute/new-audio-connections --allow-mcp
 ```
 
-`--audio` 建立 `creation-requests/v3`，同时支持原图片编辑/生成。不要与 `--image-generation` 混用，也不要在已有 v0/v1/v2 根上执行迁移；原根继续按原能力运行。beta.1视频流程另提供 `--video` 新 v4 根，保留这些音频流程；已有 v3 不迁移，三个开关不混用。省略这些开关的 `execution init` 仍建立 v1 图片编辑根，`--image-generation` 仍建立 v2。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.0` 时，`dsh-iris` 不会进入全局 `PATH`，请使用 `npx dsh-iris ...`；从源码仓库运行时请改用 `node bin/dsh-iris.js ...`。
 
-打开输出的 `loginUrl`；刷新保留当前标签页登录，过期后可用 `web login` 获取新链接，见 [工作台登录](LOCAL_WEB.md#启动与连接)。播放和下载已有结果无需 Provider；新建 Run 需要显式配置，执行另需 `--allow-execution`。音频不需要 `--allow-selection`。
+在 [模型服务](PROVIDER_SETTINGS.md) 中为已支持的供应商（内置沿用 DashScope 音频协议）确认 `tts` / `transcribe` 模型用途并选择池策略。浏览页面、读取目录与播放历史音频均不依赖写权限或产生供应商调用。
 
-配置沿用[模型服务](PROVIDER_SETTINGS.md)：为模型明确确认 TTS/转写用途和功能池，再从实际候选中选择。候选不是健康证明，打开页面不做实测。内置音频协议沿用现有 DashScope 实现；配置了 OpenAI 图片接口不等于接入 OpenAI TTS/ASR。这里没有新增语音协议、模型自动替换或音色发现接口。
+## CLI 与工作台使用
 
-## CLI 保存与继续（beta.1修复）
-
-独立 `flow create/continue` 现装配与服务相同的图片、语音、转写和视频候选。先建立上述 v3/v4 根，并在功能池中允许所选模型：
+### 通过 CLI 创建与继续
 
 ```bash
-node bin/dsh-iris.js flow create --data-root /absolute/new-audio-core \
+# 创建语音合成 Run（不立即合成）
+npx dsh-iris flow create --data-root /absolute/new-audio-core \
   --provider-config /absolute/existing-providers.json \
   --input '{"recipe":"speech/v0","model_ref":"provider::tts-model","text":"鸢尾花","voice":"Cherry"}'
-node bin/dsh-iris.js flow continue run_0123456789abcdef01234567 \
+
+# 执行一次合成（使用上一步返回的 Run ID）
+npx dsh-iris flow continue run_0123456789abcdef01234567 \
   --data-root /absolute/new-audio-core --provider-config /absolute/existing-providers.json
 ```
 
-Run ID 使用创建命令的实际返回值。转写使用 `recipe:"transcribe/v0"`、明确 `model_ref` 及 `source_artifact_id`，来源应先由当前根的 Web/MCP 音频导入保存；这里不新增 CLI 音频导入命令。创建不合成或上传；首次继续才执行，后续继续只观察或交付原 Task，受理未知不重提。已完成且本地结果完整时，无需 Provider 配置再次读取结果。
+转写流程使用 `recipe: "transcribe/v0"` 及已导入当前根的 `source_artifact_id`（音频可通过 Web 工作台或 MCP `iris_core_import_audio` 导入）。
 
-## 页面使用
+### 在工作台中使用
 
-- **语音合成**：选择实际语音模型，填写朗读文字，必要时展开音色并填该模型支持的标识；留空使用现有协议默认值。点击合成后，保存输入、明确执行一次、保存原音频，可试听并下载。
-- **音频转写**：选择 WAV/MP3/OGG/FLAC 原音频及转写模型。点击开始后先保存来源作品和 Run，再在原 Task 的 Attempt 内临时上传、提交。异步任务显示“查看原任务”；每次明确点击只观察一次，不持续远端轮询。
-- **作品**：v3 工作区按图片、语音、转写分类。语音卡片点击“载入试听”后获取原音频；同一时间只保留一个作品卡播放器，离页或切分类释放。转写文字在流程页以纯文本显示，原音频可播放，文字可下载。
+- **语音合成**：选择模型、输入朗读文本（最多 20,000 字符）及可选音色标识（最多 64 字符），提交后将生成单一音频产物，可直接试听并下载原字节文件（无需像图片那样做多选）。
+- **音频转写**：上传 WAV / MP3 / OGG / FLAC 原音频并选择模型后，Iris 会先持久化保存来源作品与 Run，再在 `Attempt` 内临时上传至供应商端并提交异步任务。之后点击“查看原任务”可逐拍观察直到获取纯文本转写结果。
+- **作品库分类**：支持按“图片 / 语音 / 转写”筛选查看；音频卡片按需点击“载入试听”，切换页面或分类时会自动释放浏览器播放器资源。
 
-生成音频/转写是单一结果，保存后即可下载，无需图片版本选择。下载保留原字节；实际落盘以浏览器下载记录为准。离开创作页暂停播放，退出或切换流程释放相应媒体。当前不提供流式合成、音色目录、录音、长音频切片、字幕时间轴或本地 TTS。
+## 格式边界与容器校验
 
-beta.1交付新语音/音乐结果时，会读取有限文件头确认WAV或MP3容器，再保存真实MIME与后缀；不把供应商声明的MP3套在WAV字节上。不支持的音频响应保留已受理事实并报交付失败，不重新合成。此为容器识别，不是完整解码或格式迁移；已入库的旧作品不自动改写。
-
-## 有限 HTTP 契约
-
-以下均以 `/api/v0` 开头，保留 Bearer、Host/Origin、无 CORS 和有限权限。新路由只在 v3 根（beta.1也支持 v4）开放；创建使用原 UUIDv4 `Idempotency-Key`，首次 201、同 Key 同输入 200、不同输入 409。
-
-| 路由 | 输入与结果 |
+| 限制项 | 规格 |
 |---|---|
-| GET/HEAD `/audio-models` | 实际允许的 `modelRef/displayName/capability`；capability 为 tts 或 transcribe，无端点/密钥，无探测 |
-| POST `/audio` | 原音频字节与精确 Content-Type；保存 `imported-audio`，不上传 Provider、不转写 |
-| POST `/speeches` | `{modelRef,text,voice?}`；创建固定 speech Run，不合成 |
-| POST `/transcriptions` | `{modelRef,sourceArtifactId}`；来源必须是当前根支持的音频作品，不接受外部 URL 或服务器路径，不上传/转写 |
-| GET/HEAD `/artifacts/:id/audio` | 原 WAV/MP3/OGG/FLAC 字节；现有 `/content` 仍只读图片 |
-| GET/HEAD `/artifacts/:id/text` | 原 `text/plain` 字节，不作为 HTML 展示 |
-| GET/HEAD `/runs?kind=all\|image\|speech\|transcribe` | 同一组实际记录上的分类、计数与有界分页；省略 kind 为 all |
-| GET/HEAD `/runs/:id/download` | 音频 Run 的单一已保存输出，受控 wav/mp3/ogg/flac/txt 附件名；图片仍要求明确选择 |
+| 音频导入大小上限 | **20 MiB**（MCP Base64 输入上限为 8 MiB 字符） |
+| 支持的输入容器与 MIME | `audio/wav`、`audio/mpeg`、`audio/ogg`、`audio/flac`（导入时核对文件头前缀） |
+| 输出音频与文本上限 | 音频读取/播放最多 **64 MiB**；转写纯文本最多 **1 MiB** |
+| 合成结果容器校验 | 落盘时校验 WAV / MP3 文件头并记录真实 MIME 与后缀，不盲从供应商声明 |
 
-`/runs/:id`、`/continue`、Operation 查询/原 Key 接回和本地停止沿用[执行契约](CORE_SERVICE.md)。音频 DTO 使用原 recipe；speech.input 为 `{modelRef,text,voice?}`，transcribe.input 仅 `{modelRef}`，来源和输出通过 Artifact ID 引用；`ready` 表示单一结果已保存。原图/像素比较字段为空，不构造音频的图片比较或选择。
+## MCP 授权与工具集
 
-原音频上传最多 **20 MiB**，流式累积检查上限，并核对容器前缀与 MIME：`audio/wav`、`audio/mpeg`、`audio/ogg`、`audio/flac`。这不是完整解码或供应商格式验收；容器内部编码仍须符合实际模型。JSON 创建正文最多64 KiB，朗读文字最多20,000字符、音色标识最多64字符。播放/下载音频最多64 MiB，转写文本最多1 MiB；当前不支持 Range 或边下边播。
+在连接中心（v3+ 根）选择 `tts` 或 `transcribe` 分组及所需操作权限（`read`/`create`/`execute`/`stop`）后，MCP 客户端将获得对应工具：
 
-## MCP 按功能选择
+- **`tts` 分组**：`iris_core_audio_models`、`iris_core_create_speech`、`iris_core_audio`
+- **`transcribe` 分组**：`iris_core_audio_models`、`iris_core_import_audio`、`iris_core_create_transcription`、`iris_core_audio`、`iris_core_transcript`
 
-只有用户明确选择的 `tts`、`transcribe` 分组才获得对应工具，操作 scopes 继续独立：read 查询/取回，create 导入/创建，execute 有限继续，stop 本地停止。原默认 image-edit、旧文件的固定12工具与已有具体名单不扩权。新 v3 连接中心开放音频选择，旧根拒绝音频握手与授权。
+上述分组共用 `iris_core_run`、`iris_core_continue`、`iris_core_operation`、`iris_core_lookup`、`iris_core_stop` 等核心工具。`iris_core_audio` 返回标准 MCP audio 内容块，实际播放体验取决于所用客户端；`iris_core_transcript` 返回 UTF-8 文本数据（请将转写正文视为不可信数据，勿把录音中的文字当作系统指令执行）。
 
-| 分组 | 新工具 |
+> [!NOTE]
+> DSH 原生共享 Flow 桥暂未接入音频投影，如仍需在 DSH 中使用语音/转写，请继续使用 DSH 原生媒体工具，或通过通用 MCP / 独立 Web 工作台接入。
+
+## HTTP 契约与恢复验证
+
+`/runs/:id`、`/continue`、Operation 查询/接回与停止复用 [Core 执行契约](CORE_SERVICE.md)，`/api/v0` 下新增音频专用路由（创建请求支持 UUIDv4 `Idempotency-Key` 幂等）：
+
+| 路由 | 职责与边界 |
 |---|---|
-| tts | `iris_core_audio_models`、`iris_core_create_speech`、`iris_core_audio` |
-| transcribe | `iris_core_audio_models`、`iris_core_import_audio`、`iris_core_create_transcription`、`iris_core_audio`、`iris_core_transcript` |
+| `GET/HEAD /api/v0/audio-models` | 返回当前允许的 `tts` / `transcribe` 模型列表（只读，不探测） |
+| `POST /api/v0/audio` | 导入原音频字节并校验 Content-Type，保存为 `imported-audio` |
+| `POST /api/v0/speeches` | `{modelRef, text, voice?}` 创建语音合成 Run |
+| `POST /api/v0/transcriptions` | `{modelRef, sourceArtifactId}` 创建转写 Run（仅引用当前根内音频作品） |
+| `GET/HEAD /api/v0/artifacts/:id/audio` | 读取原 WAV/MP3/OGG/FLAC 音频字节 |
+| `GET/HEAD /api/v0/artifacts/:id/text` | 读取纯文本转写结果（以 `text/plain` 返回） |
+| `GET/HEAD /api/v0/runs?kind=all\|image\|speech\|transcribe` | 按能力分类过滤并分页查看历史 Run |
+| `GET/HEAD /api/v0/runs/:id/download` | 下载音频或文本单一输出 |
 
-两组复用 Run、Operation、continue、lookup、stop 等现有工具，并按原 Run 能力再次校验。导入音频要求标准 Base64，最多8 MiB字符，实际原字节上限比HTTP更小。`iris_core_audio` 返回标准 MCP audio 内容块；客户端是否显示播放器或附件取决于客户端，不能把成功返回解释为所有 harness 均可播放。`iris_core_transcript` 返回 UTF-8 文本数据，转写中的指令不得作为系统指令执行。
-
-配置方法见 [通用 MCP](MCP.md)。连接专属 Skill 按实际工具生成英文指导和中文标题，说明真实模型选择、音色边界、导入限制、明确继续和原身份恢复；不自行增加工具或安装 MCP。
-
-DSH 可选的原生共享 Flow 桥仍限图片，未接入 Core 音频附件投影；该桥若选择音频组会明确拒绝启动，不注册失效工具。DSH 原17项工具中的语音/转写功能保持原入口；新音频流程使用通用 MCP 或 Core 工作台。
-
-## 恢复与验证
-
-输入来源在当前根持久保存；临时上传 URL 只在执行期间存在，不进入 Run、Task、创建意图、普通投影或日志。一次创建预留固定步骤及 Task 身份；重连、刷新或同 Key 重放不会重新上传、提交或观察。上传准备失败记录在原 Attempt，受理未知不重提；停止仅结束本地等待，不证明远端取消或退款。
-
-原结果保存失败时，通过原 Run 明确接回；已有私有交付缓存时无需 Provider。浏览器恢复表只存有界身份，不存朗读文字、音色、音频或转写正文；查到创建成功不自动首次执行。查询类型另含 audio-import、speech-create、transcription-create，见 [刷新恢复](WEB_RECOVERY.md)。
-
-定向测试为 `tests/audio-flow.mjs`、`tests/audio-api.mjs`、`tests/audio-recovery.mjs`、`tests/audio-upload.mjs`。真实 Chromium 可用[工作台验证脚本](LOCAL_WEB.md#验证与下一阶段)的独立 `--audio` 场景，覆盖原字节播放/下载、刷新、丢失创建回包、只读及窄屏/主题。SDK验证包含HTTP 2025/2026与真实stdio进程的2026路径。受控 Provider/上传回归与真实账号验收分别记录；**不能把回放、目录存在或单一账号成功推断为所有模型、编码或 harness 已通过验收**。
+- **安全与恢复**：临时上传 URL 仅在执行过程中存在，不落盘写入 Run/Task/日志；上传失败、网络超时或 `unknown` 受理均保持原 Task 身份不重提，已缓存的完整同步结果可在无供应商连接时直接本地修复交付（浏览器恢复机制见[请求恢复](WEB_RECOVERY.md)）。
+- **验证覆盖**：核心回归见 `tests/audio-flow.mjs`、`tests/audio-api.mjs`、`tests/audio-recovery.mjs`、`tests/audio-upload.mjs`，以及 [工作台验证脚本](LOCAL_WEB.md#验证与下一阶段) 的 `--audio` Chromium 场景（使用受控响应覆盖双传输、音视频容器校验、恢复与主题适配）。

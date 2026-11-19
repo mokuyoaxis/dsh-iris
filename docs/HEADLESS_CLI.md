@@ -1,264 +1,131 @@
-# Headless CLI
+# Headless CLI（0.3.0）
 
-`run music` 支持音乐生成与模型级协议配置，见 [音乐生成](MUSIC.md)。0.2.6 可选择自动池、仅用所选模型或停用，旧名单和空配置不自动改变，见 [功能模型池](FUNCTION_MODEL_POOLS.md)。
+`dsh-iris` CLI 支持在完全脱离 DSH 宿主的环境下运行，通过显式传入 `--data-root`（物理数据根绝对路径）与私有 `--provider-config`，完成本地媒体处理、多模态生成、视觉分析、任务恢复与数据维护。
 
-本文面向Iris 0.3.0的传统CLI入口，涵盖无DSH的本地处理、媒体生成、视觉分析、配置和任务管理。媒体结果保存为Core Artifact，可在后续进程中检查、分析或导出；传统纯视觉命令不自动创建产物，新的[Core看图/OCR](VISION_FLOWS.md)会明确保存持久任务。Core内部接口与Artifact v0尚未冻结为公共SDK。
+> [!NOTE]
+> 如需在终端配合 Agent 使用图片工作流，可安装随包提供的 [`iris-core` Skill](CORE_SKILLS.md)。若需开启 Web 工作台与 MCP，请参阅 [Core 快速开始](CORE_QUICKSTART.md)。
 
-0.3.0需要Node.js **≥22.1.0**；历史0.2.7的22.0.0要求不适用。按[README](../README.md)核对准确发行状态，正式版本已发行后安装 `npm install @mokuyoaxis/dsh-iris@0.3.0` 并运行 `npx dsh-iris --help`。源码入口为 `node bin/dsh-iris.js ...`；发布准备期间可使用源码或本地tarball。旧根不自动迁移，见[升级指南](UPGRADING_0.3.md)。
-
-0.2.7开始提供宿主无关的[`iris-core` Skill](CORE_SKILLS.md)，指导Agent使用这些图片、任务和作品命令；英文正文附中文标题，独立分发，不改变DSH三项Skill。`skills install/status/uninstall`可显式复制、检查和可恢复卸载，支持Kimi或自定义扫描目录，安装/卸载可`--dry-run`。0.3.0保留这些入口，另含正式MCP传输；Web/MCP见[Core快速开始](CORE_QUICKSTART.md)，按连接授权生成的Skill与CLI Skill用途不同。
-
-0.2.1 提供 `vision look / locate / ocr / summarize`。文件输入的纯视觉不需要数据根，支持显式模型覆盖、JSON/文本、结果和拼图文件；图片/帧 Artifact ID 输入需显式数据根，以 reader 读取既有 Core 产物，只有主动音轨转写才创建 Core Task/Artifact。完整命令与输出规则见 [独立视觉 CLI](VISION_CLI.md)；S2V、HTML、配置、等待及批量管理见 [CLI 管理](CLI_MANAGEMENT.md)。
-
-0.2.4新增 `artifact import --data-root /absolute/path/core --input '{"image_path":"/absolute/path/source.png"}'`，将本地图片保存为持久作品，不调用模型；详见 [图片导入](IMAGE_IMPORT.md)。npm0.2.3不包含此命令。
-
-0.2.7 开始让图片生成、导入、比较、作品查询/导出和单项任务查询共用 [内部应用运行时](CORE_RUNTIME_CONTRACT.md#应用运行时装配)，提供实例写队列、输入快照和操作级取消/释放。每个 CLI 调用仍是独立进程，队列不在进程之间共享；同时写同一数据根仍可能返回 busy。已有命令参数和 Task/Artifact 格式保持。
-
-0.2.7 另提供 [固定图片流程](IMAGE_FLOW.md)：先在新的专用根 `flow init`，再导入素材并执行 `flow create/continue/select/export`；`flow inspect/list` 只读。Run 私有保存创作输入，Task 新增可选流程绑定；原 Task/Artifact 记录和配置不自动迁移，旧版 writer 不得写该流程根。此功能随 npm 0.2.7 分发。
-
-从0.2.7提供的 `api serve --data-root /absolute/path/flow-core --token-file /absolute/private/new-session.token` 默认启动[只读本地API](LOCAL_API.md)：固定回环监听、独立会话鉴权，提供模型/流程查询和受控图片。Token写入新的根外私有文件，stdout不含Token；GET/HEAD不写Core或调用Provider。新空Flow根可另执行 `api init`，再用 `--allow-local-writes` 主动启用[上传/创建](LOCAL_CREATION.md)，它们不执行生成。0.3.0另有明确初始化与授权的[有限执行/取消服务](CORE_SERVICE.md)，不随默认只读入口开启；Demo仅保留在源码树中。
-
-## 配置查询与离线诊断
-
-beta.1另提供 `network init/show/check` 与 `network nodes|pools list/add/set/remove`，只管理独立、显式私有文件；不改变当前出站，也不创建 Core 根或调用模型。用法、修订与引用保护见[出口节点与池](NETWORK_RESOURCES.md)，alpha.1/0.2.7尚不包含此命令。
-
-[N2供应商绑定](NETWORK_ROUTING.md)另有v2文件、新目录包装与实例代理运行时，已完成受控HTTP/HTTPS代理、真实CLI/API及原任务跨进程恢复验证。[N3网络工作台](NETWORK_WORKBENCH.md)已接Web管理与Core进程内Doctor，需 `api/web serve --allow-network-management --network-config <private-file>`；均属beta.1，普通MCP不获得管理权限。
+## 安装与入口
 
 ```bash
-dsh-iris providers list --provider-config /absolute/path/to/providers.json
-dsh-iris capabilities list --provider-config /absolute/path/to/providers.json
-dsh-iris doctor --data-root /absolute/path/to/iris-data --json
+npm install @mokuyoaxis/dsh-iris@0.3.0
+npx dsh-iris --help
 ```
 
-前两项只读取显式提供的私有配置文件，不创建 Core Runtime 或数据根，也不请求 Provider。`providers list` 输出供应商身份、启用/配置状态、认证方式、媒体协议及其推断标记、配置能力、模型数和已有目录摘要；不输出 API Key 或端点。`capabilities list` 按六类功能的当前策略列出 CLI 可用的 `providerId::modelId` 候选链；空链标为 `gap: no_configured_model`。这些只是配置和历史证据，不证明远端模型或协议可调用。
+项目内安装 `@mokuyoaxis/dsh-iris@0.3.0` 时，`dsh-iris` 不会自动加入全局 `PATH`，因此以下示例统一使用 `npx dsh-iris ...`；从已执行 `npm ci` 的源码仓库直接运行时，将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。要求 **Node.js ≥22.1.0**（若从旧版升级，请先阅读 [升级指南](UPGRADING_0.3.md)）。
 
-显式 `doctor --data-root` 是只读 Core 盘点：检查 Task/Artifact 结构、Index 一致性、孤立/未解析条目和写者租约；不创建缺失的根、不执行写入探针、不重建索引，也不释放租约。活跃写者可能使盘点在读取期间变化。省略 `--data-root` 时仍检查 DSH profile，保留原有写入探针，并纳入该 profile 的 `core-v0`。两种模式都返回 legacy/Core 计数对照，显式模式只统计指定根同层的 legacy 文件。退出码为 `0` 正常、`1` 警告、`2` 硬错误；诊断不会调用 Provider。
-
-## 异常退出后的写者租约
-
-当前源码的 `api/web serve` 还可显式使用 `--scheduler-config <absolute-private-json>`，详情见[有界媒体调度](MEDIA_SCHEDULING.md)。这不是单次 CLI 或独立 DSH 路径的并发开关；未配置保持原行为。
-
-POSIX 上的 SIGINT/SIGTERM 可被 CLI 捕获并释放运行中的租约；Windows 请使用运行终端的 Ctrl+C 正常关闭。Windows 上 Node 的 `child.kill('SIGTERM')` 会强制结束进程，不能据此期待清理回调执行，见 [Node 信号说明](https://nodejs.org/docs/latest-v22.x/api/process.html#signal-events)。SIGKILL、OOM 或断电也可能留下租约。后续写操作返回 `IRIS_CORE_DATA_ROOT_BUSY` 时，先用 `doctor --data-root <absolute-path> --json` 只读查看 `core-writer-lease`。仅当报告中的 owner PID 为 `missing`，并且你已确认没有跨主机或其他仍在写入的进程，才可显式回显该 PID：
+## 配置查询、网络与离线诊断
 
 ```bash
-dsh-iris runtime recover --data-root /absolute/path/to/iris-data --confirm-stale-pid 12345
+# 查看脱敏后的供应商与六类能力候选链（不创建数据根，也不访问供应商）
+npx dsh-iris providers list --provider-config /absolute/path/to/providers.json
+npx dsh-iris capabilities list --provider-config /absolute/path/to/providers.json
+
+# 只读盘点指定 Core 数据根（不执行写入探针，也不自动修复或释放租约）
+npx dsh-iris doctor --data-root /absolute/path/to/iris-data --json
 ```
 
-此命令会再次核对租约证据和 PID，写入私有恢复审计记录后释放陈旧租约；活跃、无法确认、损坏或 PID 不匹配时拒绝。它不是 Doctor 的自动副作用，也不会修复 Task/Artifact。不要手动删除 `.iris-runtime-writer-v0` 或把“PID 不存在”单独当作安全证明。
+- **凭据与协议扩展**：供应商配置文件支持内联 `apiKey`、环境变量引用 `apiKeyEnv`（[环境凭据引用](PROVIDER_CREDENTIALS.md)）与模型级协议覆写；也可通过 `--provider-extension` 加载外部协议扩展。
+- **网络出口管理**：通过 `network init/show/check`、`network nodes|pools` 与 `network catalog|bindings` 管理独立的私有网络出口配置，并在生成或查询命令中显式传入 `--network-config`（详见 [出口节点与池](NETWORK_RESOURCES.md) 与 [供应商出口绑定](NETWORK_ROUTING.md)）。
+- **调度与服务**：`api serve` / `web serve` 可配合 `--scheduler-config` 开启[有界媒体调度](MEDIA_SCHEDULING.md)或 `--allow-network-management` 管理出口资源（见 [网络工作台](NETWORK_WORKBENCH.md)）。
 
-0.2.2保留创建/释放意图和恢复步骤证据。Doctor 可报告 `phase: pending` 或 `recovering`；恢复本身被强杀后重新运行 Doctor，回显最新 PID，不沿用旧确认。只有完整证据且所有相关 PID 已退出才可继续；无 owner 的旧空目录及仅剩旧 `.owner.stale-*` 的现场仍拒绝。恢复审计保留完整退役目录，普通启动不删除它们。需要支持 hard link 的私有文件系统；参数、Task/Artifact/配置版本不变。细节与验证边界见 [Core Runtime 契约](CORE_RUNTIME_CONTRACT.md)。
+> [!TIP]
+> `doctor --json` 退出码：`0` 正常、`1` 有警告、`2` 有硬错误。省略 `--data-root` 时检查当前 DSH profile 及其 `core-v0`。
 
-媒体与视觉路由会持久记录短时 429 冷却或明确额度/预算耗尽，后续候选跳过受阻模型。冷却到期不发起请求；持续停用需 `models test` 成功恢复。状态及私有配置写入规则见 [Provider 健康](PROVIDER_HEALTH.md) 与 [CLI 管理命令](CLI_MANAGEMENT.md)。
+## 本地媒体工具（无模型调用）
 
-## 裁剪并保存 Artifact
+裁剪、像素差异分析与视频抽帧仅在本地使用 `sharp` 与系统 `ffmpeg`/`ffprobe`，不读取供应商配置或发起网络请求：
 
 ```bash
-dsh-iris run crop \
+# 裁剪并保存为 Core Artifact
+npx dsh-iris run crop \
   --data-root /absolute/path/to/iris-data \
   --input '{"image_path":"/absolute/path/input.png","left":10,"top":20,"width":640,"height":480}'
-```
 
-输出为 JSON，其中包含 `artifact.id`、媒体类型、字节数、创建时间与裁剪尺寸。结果不会返回输入文件或数据根的绝对路径。
-
-## 本地图片差异与视频抽帧
-
-两项命令只使用本机文件、Core Artifact、Sharp 与可选系统 ffmpeg；不读取 Provider 配置，不发起网络请求：
-
-```bash
-dsh-iris media diff \
+# 像素差异分析（输出比率、最差区域与 pixel-diff 热力图；支持 path 或 Artifact ID）
+npx dsh-iris media diff \
   --data-root /absolute/path/to/iris-data \
   --input '{"image_a_path":"/absolute/path/a.png","image_b_path":"/absolute/path/b.png","grid":8,"top_regions":3}'
 
-dsh-iris media frames \
+# 视频抽帧（最多 20 帧，支持 jpeg/png；支持 video_path 或 artifact_id）
+npx dsh-iris media frames \
   --data-root /absolute/path/to/iris-data \
   --input '{"video_path":"/absolute/path/clip.mp4","max_frames":8,"target_width":640,"format":"jpeg","quality":85}'
 ```
 
-`media.diff` 返回差异比例、像素计数、最差区域和 `pixel-diff` 热力图 Artifact。A/B 两侧也可分别用 `image_a_artifact_id` / `image_b_artifact_id` 读取已有图片 Artifact；此时热力图写入 `derived-from` 关系。
+本地输入文件路径绝不会写入 Artifact Manifest 或命令返回结果；S2V、HTML 截图（`media html`）、批量检查与配置维护命令详见 [CLI 管理参考](CLI_MANAGEMENT.md)。
 
-`media.frames` 返回视频元数据和一组 `video-frame` Artifact；输入也可用 `artifact_id` 指向已有视频 Artifact，此时每帧写入 `frame-of` 关系。帧数最多 20，格式仅支持 `jpeg` 或 `png`；系统没有 ffmpeg/ffprobe 或视频无效时命令稳定失败，不影响其他 CLI 能力。Manifest 和命令结果都不保存宿主输入路径。
+## 多模态生成与视觉分析
 
-## Provider 图片生成
+所有生成命令均需显式传入 `--data-root` 与私有 `--provider-config`（POSIX 文件权限须对 group/other 不可读写）：
 
-当前源码另支持显式[环境凭据引用](PROVIDER_CREDENTIALS.md)：配置保存 `apiKeyEnv` 名称，值来自当前 Core/CLI 进程；已发布 alpha.1/0.2.7 尚不支持，原 `apiKey` 配置保持。
-
-CLI 必须同时收到显式 Core 数据根和私有供应商配置文件，不推断 DSH、HOME 或 cwd：
+| 命令 | 核心输入参数 | 执行与产物特征 |
+|---|---|---|
+| `run image` | `{prompt, size?, n?, model_ref?, source_artifact_id?, workflow_parameters?}` | 同步或异步提交；支持 `source_artifact_id` 改图与 [模型级图片协议](CLI_MANAGEMENT.md#模型级图片协议) |
+| `run video` | `{prompt, size?, duration?, img_data_url?, first_frame_path?, model_ref?}` | 支持 t2v/i2v（以及 S2V，见[CLI 管理](CLI_MANAGEMENT.md)），产物为 `video/mp4` |
+| `run tts` | `{text, voice?, model_ref?}` | 同步完成型，交付 `audio/mpeg` / `audio/wav` 到 `generated-audio` |
+| `run transcribe` | `{audio_url \| audio_path, model_ref?}` | 上传型异步；`audio_path` 在取得写权与原 Attempt 后临时上传，签名 URL 不落盘，产出 `text/plain` |
+| `run music` | `{prompt, model_ref?, retry_502?}` | 支持 `music-gen` 协议；遇 HTTP 502 默认最多额外重试 2 次（可能产生额外费用，可设 `retry_502: 0` 关闭），见[音乐生成](MUSIC.md) |
+| `vision <look\|locate\|ocr\|summarize>` | 文本/图片路径或 Core `artifact_id` | 纯文件分析无需数据根；引用 Core 产物或主动音轨转写需 `--data-root`，见[独立视觉 CLI](VISION_CLI.md) |
 
 ```bash
-dsh-iris run image \
+# 图片生成示例（省略 model_ref 时按当前能力池顺序选取）
+npx dsh-iris run image \
   --data-root /absolute/path/to/iris-core-data \
   --provider-config /absolute/path/to/providers.json \
   --input '{"prompt":"一朵雨后的鸢尾花","model_ref":"provider-id::model-id","size":"1024*1024","n":1}'
 ```
 
-`model_ref` 可省略；省略时按当前功能策略选择候选，自动池按登记顺序，手选模式按名单顺序，停用不调用。指定时须属于当前允许范围且本次只调用该项。每个请求从首项开始，只有明确 `not_accepted` 才进入下一项。配置文件须为普通文件，POSIX 权限不得开放给 group/other；API Key、端点、Prompt 和下载 URL 都不会写入 Task 输出。
-
-模型必须存在于配置的 `models` 或旧模型字段中，且具备所请求的能力；缺失时返回配置错误，不注入厂商默认模型。显式 `models:[]` 表示没有可用模型。`model_ref` 也接受裸模型名，同名跨供应商时从当前功能名单中取首个匹配项；需要精确绑定账号时使用 `providerId::modelId`。显式指定只选择该模型，不扩展 failover 候选。
-
-裸 DashScope 账号不自动写入厂商目录或授予功能能力。已有明确保存的模型和旧能力字段绑定继续保留；独立 CLI 配置同样需要声明模型用途，并明确启用自动池或配置手选名单。
-
-生图按每个模型的有效图片协议调用，保存真实 PNG/JPEG/WebP 字节。聊天改图使用 `source_artifact_id`，创建关联原图的新 Artifact；具体参数和协议限制见 [模型级图片协议](CLI_MANAGEMENT.md#模型级图片协议) 与 [Artifact 聊天改图](CLI_MANAGEMENT.md#artifact-聊天改图)。
-
-同步图片会在一次命令内完成 Task → Attempt → Provider Adapter → download → Artifact。异步图片模型先持久化受理事实与远端 Task ID；之后由用户显式执行单步观察，不建立后台 timer。
-
-视频（t2v/i2v）同样走 Core：
-
-```bash
-dsh-iris run video \
-  --data-root /absolute/path/to/iris-data \
-  --provider-config /absolute/path/to/providers.json \
-  --input '{"prompt":"海浪拍岸","size":"1280*720","duration":5}'
-```
-
-普通视频输入为 `{prompt, size?, duration?, img_data_url?, first_frame_path?, model_ref?}`：首帧可用 data URL 或绝对本地路径，二者互斥。0.2.1 支持 S2V 的 `first_frame_path + audio_path + resolution?`，共用 Core Attempt 的按候选上传，见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。视频产物为 `video/mp4` / `generated-video`。显式 `task observe` 每次推进一拍；0.2.1 `task wait` 提供有界等待，不重新提交。
-
-语音合成是同步完成型，一次命令内完成 Task → Attempt → 交付：
-
-```bash
-dsh-iris run tts \
-  --data-root /absolute/path/to/iris-data \
-  --provider-config /absolute/path/to/providers.json \
-  --input '{"text":"要合成的文本","voice":"Cherry"}'
-```
-
-输入冻结为 `{text, voice?, model_ref?}`；产物走语音 Profile：`audio/mpeg`/`audio/wav` 白名单，Artifact kind 为 `generated-audio`（远端 URL 下载物化，inline base64 直接落盘）。同步完成即终态，`task observe/redeliver/cancel` 对终态语音任务一律拒绝，终态失败可用 `task retry` 显式重试为新任务。
-
-转写是上传型异步：
-
-```bash
-dsh-iris run transcribe \
-  --data-root /absolute/path/to/iris-data \
-  --provider-config /absolute/path/to/providers.json \
-  --input '{"audio_url":"https://example.com/public.wav"}'
-# 或本地文件（经实际候选 Provider 的临时存储上传）：
-dsh-iris run transcribe \
-  --data-root /absolute/path/to/iris-data \
-  --provider-config /absolute/path/to/providers.json \
-  --input '{"audio_path":"/absolute/path/to/voice.wav"}'
-```
-
-输入冻结为 `{audio_url | audio_path, model_ref?}`（二选一）：`audio_url` 必须是 `https://` 或 `oss://`；`audio_path` 在命令内先上传为临时 `oss://` 地址再提交——**签名/临时 URL 绝不写入 Core 记录**。受理后由显式 `task observe` 逐拍推进；远端成功后正文物化为 `text/plain` 的 `transcript` Artifact（`artifact inspect/export` 可直接读取/导出文本）。终态失败可用 `task retry --input '{"audio_url":"..."}' --confirm-billing` 显式重试为新任务。
-
-beta.1在取得写权并保存原 Task/Attempt 后才上传本地音频；根忙不上传。每个候选使用自身账号重新准备输入，两段上传都响应取消；实际上传失败写入原 Attempt，取消后不继续候选。命令返回 Task 结果时应检查 `acceptance/outcome/lastError`，进程退出0不单独表示生成成功；静态不支持上传仍返回 `IRIS_PROVIDER_INPUT_PREPARATION_UNSUPPORTED`，不建立 Task。
+- **防重提与健康跳过**：每次请求从候选列表首项开始，只有明确 `not_accepted` 时才切换下一候选；短时 429 冷却与额度耗尽记录会自动跳过受阻模型（详见[Provider 健康状态](PROVIDER_HEALTH.md)）。
+- **固定流程 CLI**：通过 `flow init` / `flow create` / `flow continue` / `flow select` / `flow export`（以及 `execution init`）可在独立根中管理固定可恢复流程与本地 API 服务（详见 [固定图片流程](IMAGE_FLOW.md)、[本地 API](LOCAL_API.md) 与 [Core 服务](CORE_SERVICE.md)）。
 
 ## 检查 Task 与 Artifact
 
-Task 查询是纯 reader，不需要 Provider 配置，也不会触发 submit、poll、恢复或下载：
+查询命令以只读方式（`reader`）打开数据根，绝不修改数据或向供应商发起请求：
 
 ```bash
-dsh-iris task list --data-root /absolute/path/to/iris-data
-
-dsh-iris task inspect task_0123456789abcdef01234567 \
-  --data-root /absolute/path/to/iris-data
+# 列出或检查 Task 事实（不含 Prompt、API Key、端点或数据根路径）
+npx dsh-iris task list --data-root /absolute/path/to/iris-data
+npx dsh-iris task inspect task_0123456789abcdef01234567 --data-root /absolute/path/to/iris-data
 ```
 
-输出只包含已经持久化的安全 Task/Attempt 事实；不返回 Prompt、API Key、下载 URL 或数据根路径。
+新建 Attempt 可选记录 `stageTimestamps`（7 个单调阶段时间戳）与 `selectionReason`（`explicit` / `assignment` / `pool`），供事后只读追溯。
 
-新建 Attempt 可选保存 `stageTimestamps`：排队、开始提交、提交响应、远端终态、开始下载、下载校验完成和本地 Artifact 处理完成七个边界。字段按发生顺序单调不减；旧记录缺失该字段仍可读取。重新交付会从新的下载开始边界重新计时，不伪造尚未跨过的阶段。
+### 控制与恢复已有 Task
 
-新建 Attempt 还可选保存 `selectionReason`：`explicit` 表示调用方明确指定允许范围内的模型，`assignment` 表示按提交时的手选名单选择，`pool` 表示自动池选择。0.2.4/0.2.5 不产生新的池补齐候选，0.2.6 在主动启用自动池后使用 `pool`。该事实随 Attempt 在 Provider submit 前落盘；`task inspect` 只展示持久记录，不按当前策略事后猜测。旧记录缺少字段时保持缺失；第几次 failover 仍看 `ordinal`。
-
-已受理的异步图片 Task 可以显式推进一次：
+| 命令 | 行为与安全边界 |
+|---|---|
+| `task observe <id>` | 对异步任务最多执行**一次** `poll`，若已成功则直接下载产物（`task wait` 提供单次命令内的有界轮询）；校验端点与协议 SHA-256 binding，漂移时在联网前拒绝 |
+| `task redeliver <id>` | 针对生成成功但交付失败（`deliveryState=failed`）的任务重新取回产物；若有完整同步结果缓存可省略 `--provider-config`（见[同步交付恢复](SYNC_DELIVERY_RECOVERY.md)），绝不重新生成 |
+| `task cancel <id>` | 向供应商发起取消请求；仅在远端明确确认时记为 `canceled`，绝不伪造已取消 |
+| `task retry <id> --confirm-billing --input '...'` | 针对终态未成功任务创建**全新 Task**（建立 `retriedFrom` 关联）；因 Core 不保存 Prompt，须重新提供 `--input` 并显式确认 `--confirm-billing`；视频重试需额外在 `--input` 中指明 `"video_mode": "t2v"\|"i2v"\|"s2v"` |
 
 ```bash
-dsh-iris task observe task_0123456789abcdef01234567 \
-  --data-root /absolute/path/to/iris-data \
-  --provider-config /absolute/path/to/providers.json
+# Artifact 管理与导出（export 默认不覆盖已有文件）
+npx dsh-iris artifact import --data-root /absolute/path/to/iris-data --input '{"image_path":"/absolute/path/source.png"}'
+npx dsh-iris artifact list --data-root /absolute/path/to/iris-data
+npx dsh-iris artifact inspect artifact_0123456789abcdef01234567 --data-root /absolute/path/to/iris-data
+npx dsh-iris artifact export artifact_0123456789abcdef01234567 --data-root /absolute/path/to/iris-data --output /absolute/path/out.png
+npx dsh-iris artifact rebuild --data-root /absolute/path/to/iris-data
 ```
 
-每次命令最多执行一次 Provider `poll`；若远端已成功，则在同一次命令中下载并写入 Core Artifact。它不会调用 `submit`、不会采用当前 assignment/failover，也不会自动循环。CLI 只按 Task 中保存的 `providerId::modelId` 恢复原 Adapter：API Key 可以轮换；Provider 被停用、模型被移除或失去图片能力时会在网络请求前失败。
+DSH 工作台与 Headless CLI 共用 Core 的可恢复隔离和恢复入口：通过 `core delete / cleanup / transactions / restore` 执行带引用保护与事务隔离的清理。legacy `outputs/` 的删除仍永久生效，两种行为须按作品来源区分（见 [CLI 管理](CLI_MANAGEMENT.md) 与 [工作台作品管理](WORKBENCH_ARTIFACTS.md)）。
 
-新 Task 还保存提交协议与实际媒体端点的 SHA-256 binding，不保存端点本身。端点或协议改变时，`observe` 会拒绝把旧远端 Task ID 发送给新端点。此前没有 binding 的异步 Task 保持可读，但不会被猜测性恢复；可继续使用创建它的旧入口处理。
+## 异常退出后的写者租约
 
-同一份"显式单步观察、绝不重新提交"也已在 DSH 侧开放：工作台 API 提供 `POST /iris/api/core/task/:id/reobserve`，用户任务区的 Core 投影行和高级诊断卡提供「重新观察」按钮。三者经同一个 Command Service 命令（对外命令名 `task.reobserve`，实现与 `task.observe` 相同），共用原 Provider/binding 校验；每次调用至多一次 poll，对终态、未受理、无远端 ID 或 binding 漂移的任务在网络前拒绝。
+正常发送 `SIGINT`/`SIGTERM`（或 Windows 终端 `Ctrl+C`）时，CLI 会等待收尾并安全释放单写者租约。如果进程因 `SIGKILL`、OOM 或断电意外中止，后续写操作会提示 `IRIS_CORE_DATA_ROOT_BUSY`。
 
-beta.1补齐两处恢复边界：Core/Flow 恢复和 DSH 启动接管遇到已明确 `not_accepted`、但最终失败尚未落盘的任务时，按原 Attempt 和安全错误收口为失败；不尝试下一候选、不重新生成。纯 reader 查询仍只读，不暗中恢复记录。
+遇到繁忙时**切勿手动删除租约目录**，请按以下步骤确认并恢复：
 
-DSH 启动恢复旧 `tasks.json` 时，先解析当次宿主连接引用，再按任务原协议和远端 ID 观察；连接暂不可用则保留原记录及原因，恢复连接后可在下次启动接管，仍受既有观察窗口限制。保持旧格式，不自动迁入 Core 根，也不自动翻转已被旧版本标为失败的记录。旧任务缺少 Core 的端点 binding 保护，不能据此保证历史端点变更后的身份校验。
+1. 运行只读检查查看租约所有者信息：
+   ```bash
+   npx dsh-iris doctor --data-root /absolute/path/to/iris-data --json
+   ```
+2. 仅当报告确认 `ownerStatus` 为 `missing` 且确认本机或跨主机已无进程仍在写入时，显式回显该 `PID` 执行恢复（恢复过程会留存完整退役审计目录，详见 [Core Runtime 契约](CORE_RUNTIME_CONTRACT.md)）：
+   ```bash
+   npx dsh-iris runtime recover --data-root /absolute/path/to/iris-data --confirm-stale-pid 12345
+   ```
 
-已成功但本地产物取回失败（deliveryState=failed）的 Task 可以显式重新取回，绝不重新生成：
+## 包外打包验证
 
-```bash
-dsh-iris task redeliver task_0123456789abcdef01234567 \
-  --data-root /absolute/path/to/iris-data \
-  --provider-config /absolute/path/to/providers.json
-```
-
-异步任务每次命令至多一次带 redelivery 语义标志的 `poll`（拿远端产物清单）接一轮下载；不调用 `submit`、不新建 Attempt、不产生第二次生成费用。非 failed、缺少可恢复来源或需联网时 binding 漂移，会在调用前拒绝；成功后再次调用被同样拒绝，失败回落 failed 后可再次显式执行。DSH 侧同构开放：`POST /iris/api/core/task/:id/redeliver` 与工作台「重新取回作品」按钮。
-
-0.2.3 支持同步结果的私有缓存恢复：完整字节仅做本地交付，可省略 `--provider-config`；只有 URL 尚需下载时才解析原供应商，且不 poll。旧任务没有完整缓存时不能追溯恢复；详见 [同步交付恢复](SYNC_DELIVERY_RECOVERY.md)。
-
-已受理且尚未终态的 Task 可以显式请求远端取消：
-
-```bash
-dsh-iris task cancel task_0123456789abcdef01234567 \
-  --data-root /absolute/path/to/iris-data \
-  --provider-config /absolute/path/to/providers.json
-```
-
-**只有供应商明确确认才把 outcome 写成 `canceled`**；供应商不支持远端取消（当前 DashScope 与 OpenAI Images 媒体协议均不提供经过验证的取消实现）时，取消未发生，任务保持真实状态并可继续显式观察；超时或网络失败记 `cancelState=unknown` 且保持非终态，可用 `task observe` 显式收敛。任何分支都绝不伪造"已取消"。已请求过取消但远端未确认的任务拒绝再次取消；竞态下远端先沉淀的成功事实不得被取消覆盖。DSH 侧同构开放：`POST /iris/api/core/task/:id/cancel` 与工作台需二次确认的「取消任务」按钮。
-
-终态且未成功交付的 Task 可以重试为**新任务**。这是控制面唯一产生新的真实计费的动作，必须显式确认：
-
-```bash
-dsh-iris task retry task_0123456789abcdef01234567 \
-  --data-root /absolute/path/to/iris-data \
-  --provider-config /absolute/path/to/providers.json \
-  --input '{"prompt":"重新输入的生成指令"}' \
-  --confirm-billing \
-  [--model-ref providerId::modelId]
-```
-
-缺 `--confirm-billing` 时在网络与创建之前拒绝。候选链按当前 assignments/池实况重新解析（不绑定旧 Provider/binding——旧配置可能正是失败原因），`--model-ref` 可显式指定。新 Task 有全新 id、attempts 与提交时实况 binding，并记录单向 `retriedFrom` 指向旧 Task；旧 Task 零变化。**Task 记录不持久化 Prompt**，所以生成指令必须由 `--input` 重新提供，绝不从旧任务恢复。DSH 侧同构开放：`POST /iris/api/core/task/:id/retry`（请求体必须 `confirmBilling:true`）与工作台「重试为新任务」按钮（重新输入指令 + 重复计费确认弹窗）。
-
-重试输入按旧 Task 的能力校验：图片为 `{prompt, size?, n?}`，TTS 为 `{text, voice?}`，转写为 `{audio_url}`。转写 retry 要求重新提供 HTTPS/OSS 地址，本地 `audio_path` 上传仍通过正常提交入口处理；模型覆盖使用外层 `--model-ref`，不放在 retry 的 `--input` 中。
-
-beta.1中的视频重试必须另外在 `--input` 中明确 `video_mode`（`t2v/i2v/s2v`）：t2v 重新填写提示词；i2v 还需 `img_data_url` 或绝对 `first_frame_path`；s2v 需绝对 `first_frame_path`、`audio_path`，可选 `resolution`。所选模式与媒体输入冲突、缺失时在解析候选和创建新 Task 前拒绝，不从旧模型名推测模式，不静默转为 t2v。此控制字段仅用于 `task retry`，不发送给供应商、不保存到旧 Task，也不用于 `run video` 或固定文生视频 Flow。DSH 简化按钮改为「重新创建文生视频」，须先明确输入 t2v；HTTP 请求须带 `video_mode:"t2v"`。图生/数字人视频通过完整视频工具或 CLI 重新提供来源，简化 HTTP 入口拒绝媒体字段，不读取服务器文件。
-
-```bash
-dsh-iris task retry task_0123456789abcdef01234567 \
-  --data-root /absolute/path/to/iris-data \
-  --provider-config /absolute/path/to/providers.json \
-  --model-ref providerId::i2v-model \
-  --input '{"video_mode":"i2v","prompt":"重新输入的视频指令","first_frame_path":"/absolute/path/to/frame.png"}' \
-  --confirm-billing
-```
-
-CLI、DSH 正常生成与 retry 共用输入规范：Prompt/文本修剪后为 1–20000 字符，图片 `n` 为 1–4 的整数（缺省 1），视频时长为 1–60 的数字，规范化后的显式 size/voice 为 1–64 字符。转写地址修剪后最多 20000 字符。数字字符串会转为数字；非法生成参数在提交前拒绝，不创建新的计费 Task。CLI 和 retry 还会拒绝未知输入字段；DSH 保留自己的宿主参数，由入口提取生成参数，工作台清空可选文本框仍使用默认值。
-
-```bash
-dsh-iris artifact inspect artifact_0123456789abcdef01234567 \
-  --data-root /absolute/path/to/iris-data
-
-dsh-iris artifact list --data-root /absolute/path/to/iris-data
-
-dsh-iris artifact export artifact_0123456789abcdef01234567 \
-  --data-root /absolute/path/to/iris-data \
-  --output /absolute/path/cropped.png
-
-dsh-iris artifact rebuild --data-root /absolute/path/to/iris-data
-```
-
-`task` 与 `artifact` 的 `inspect/list` 以 reader 打开数据根，不创建或修复文件。`run`、`export` 使用 writer；`rebuild` 是显式 recover 操作。同一数据根已有写者时返回 `IRIS_CORE_DATA_ROOT_BUSY`。导出默认不覆盖已有文件。
-
-## 当前边界
-
-- Core 的 `run`、`media`、`task`、`artifact` 和 `runtime recover` 操作必须显式提供绝对 `--data-root`，避免误写日常 profile；配置查询只要求 `--provider-config`，Doctor 省略数据根时按上述默认范围检查。
-- 该路径只使用 Node.js、`sharp` 和 Iris Core，不加载 DSH/Cordis，也不启动服务；只有显式媒体生成、视觉分析、模型发现/实测及任务观察/等待/交付/取消/重试会访问供应商；Doctor 与本地列表查询不触发探针。
-- Artifact Manifest v0 已包含 SHA-256、关系边、可重建 Index 和进程崩溃窗口恢复；格式与限制见 [Artifact Manifest v0](ARTIFACT_MANIFEST.md)。
-- 当前开放 `crop`、同步/异步图片提交、视频 t2v/i2v 提交、语音同步合成（`run tts`）、音频转写（`run transcribe`）、图片/视频/转写单步观察（CLI `task observe` 与工作台「重新观察」共用）、失败产物重新取回（CLI `task redeliver` 与工作台「重新取回作品」共用）、人工取消（CLI `task cancel` 与工作台「取消任务」共用，只有供应商明确确认才记为已取消）、重试为新任务（CLI `task retry` 与工作台「重试为新任务」共用，必须显式确认计费且重新提供 prompt/文本/音频地址）、Task 只读查询与 Artifact 管理；0.2.1 已补齐 S2V、HTML、视觉分析、模型与配置管理、任务等待、批量操作和 Core 隔离/恢复，见 [CLI 管理](CLI_MANAGEMENT.md)。后台自动观察由 DSH 生命周期负责，CLI 不启动常驻服务。
-- 0.2.1 Headless CLI 提供 `core delete/cleanup/transactions/restore`：默认只读预览，明确选择和确认后隔离文件，引用保护和恢复哈希检查均生效，详见 [CLI 管理与补齐](CLI_MANAGEMENT.md)。DSH 工作台已接上同一 Core 隔离/恢复命令，见 [工作台作品管理](WORKBENCH_ARTIFACTS.md)；既有永久删除、清空与孤儿清理仍只处理 legacy `outputs/`。Core 永久 purge 留待 0.2.x，不要手动删除 `core-v0` 中的记录、Manifest 或对象。
-
-## 源码仓库的包外验收
-
-在源码仓库运行以下开发验收命令，需要 Node/npm 与本机 ffmpeg/ffprobe：
-
-```bash
-node scripts/verify-headless-package.mjs
-# npm 缓存完整时也可让依赖安装离线执行：
-node scripts/verify-headless-package.mjs --offline
-```
-
-脚本在仓库外的独立临时目录打包、安装 tarball，通过 npm 安装的 `dsh-iris` 入口验证 help、crop、diff、抽帧以及图片、视频、TTS、转写的 Task/Artifact 闭环。安装树不含 DSH/Cordis，不链接仓库依赖；Provider 请求全部由复制到包外的 fixture 接管，本地 Sharp/ffmpeg 则实际处理媒体。报告检查每次 observe 只有一次 poll、无重提，Artifact 导出字节与 Manifest SHA-256 一致，reader 和导出保持 Core 零写入且不请求 Provider。
-
-每次运行保留独立目录内的 tarball、安装日志、fixture 数据、导出产物和 `report.json`，终端输出验收目录和报告位置。该脚本属于源码开发工具，不随 npm 包发布；没有真实 Provider、DSH 重启或其他平台的验收结果时，不据此声明那些路径已通过。
+源码仓库提供独立包外回归脚本 `scripts/verify-headless-package.mjs`（支持 `--offline`），会在仓库外临时目录打包并安装 `.tgz`，使用离线 fixture 完整校验 CLI 帮助、本地图像工具及四类媒体闭环。

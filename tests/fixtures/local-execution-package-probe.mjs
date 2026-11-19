@@ -10,7 +10,7 @@ import { httpMcpClient } from './mcp-http-client.mjs';
 
 const [cli, dataRoot, providerConfig, imageFile, work, flowFixture] = process.argv.slice(2);
 const key = () => crypto.randomUUID(), digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
-const configHash = digest(fs.readFileSync(providerConfig)), clients = [];
+const configBefore = JSON.parse(fs.readFileSync(providerConfig, 'utf8')), clients = [];
 let commands = 0, api, output = '', stderr = '', exited = false, exit;
 const stage = name => console.error('[installed-execution] ' + name);
 function run(args) {
@@ -100,7 +100,14 @@ try {
     stage('http-era-verified ' + version);
   }
   assert.equal(JSON.parse(fs.readFileSync(stateFile)).flowSubmits, 1);
-  assert.equal(digest(fs.readFileSync(providerConfig)), configHash);
+  const configAfter = JSON.parse(fs.readFileSync(providerConfig, 'utf8'));
+  assert(configAfter.providers[0].health?.observations?.some(item => item.modelId === 'edit' && item.capability === 'image-gen' && item.lastSuccess?.source === 'task'));
+  for (const provider of configAfter.providers) {
+    assert((provider.health?.observations || []).every(item => item.capability === 'image-gen'));
+    delete provider.health;
+  }
+  for (const provider of configBefore.providers) delete provider.health;
+  assert.deepEqual(configAfter, configBefore);
   for (const client of clients) for (const stream of Object.values(client.output())) assert(!stream.includes(config.accessToken));
   assert(!output.includes(config.accessToken));
   api.kill('SIGTERM'); const stopped = await exit;
@@ -111,7 +118,7 @@ try {
   console.log(JSON.stringify({ cliProcesses: commands, officialSdk: true, installedApiAndMcp: true, configuredProviderFactory: true,
     genericDefault: true, stdioAndHttpBothProtocolEras: true, exportedStdioCommandLaunched: true, selectedTools: 2, privateHttpExport: true,
     explicitV1: true, mockedSubmissions: 1, crossProcessReplay: true, noAutomaticResubmit: true, exactImageBytes: true,
-    artifactSha256: digest(actual.bytes), noCredentialOutput: true, providerConfigUnchanged: true, gracefulStop: process.platform !== 'win32' }));
+    artifactSha256: digest(actual.bytes), noCredentialOutput: true, onlyTaskHealthRecorded: true, gracefulStop: process.platform !== 'win32' }));
 } finally {
   stage('shutdown-start');
   for (const client of clients.reverse()) await client.kill();

@@ -1,63 +1,59 @@
-# 工作台访问口令（0.3 beta）
+# 工作台访问口令（0.3.0）
 
-普通 `web serve` 使用一个访问口令，不要求账号、邮箱或读取Token文件。**下文针对0.3.0；历史npm 0.2.7没有 `web serve`。** 源码树可把 `dsh-iris` 替换为 `node bin/dsh-iris.js`，安装前核对准确发行状态。
+独立 Core Web 工作台（`web serve`）默认采用**单工作区访问口令**登录，无需配置账号、邮箱或手动拷贝 Token 文件。
 
-## 首次设置与日常使用
+## 首次设置与日常登录
 
-使用已有的专用 Flow 根；不要转换已有业务数据：
-
-```bash
-dsh-iris web serve --data-root /absolute/iris/core --port 3182
-```
-
-首次打开输出的 `loginUrl`，在网页中设置 8–128 个字符的访问口令。没有 10 分钟倒计时；设置成功后该设置入口失效。设置尚未完成时，服务重启会生成新的设置入口。初次链接允许设置访问口令，应私下保管。
-
-之后收藏普通地址，例如 `http://127.0.0.1:3182`。默认勾选“记住此设备”30天，刷新、新标签页和服务正常重启后继续使用；不勾选时仅当前标签页保存，服务端会话最长12小时。保持相同数据根、认证目录和端口。浏览器清除站点数据、隐私模式或禁止存储时，可能需要重新输入口令；页面会说明存储限制。
-
-默认 Panel 在首屏绘制前读取已保存的明暗主题；恢复登录期间显示同色的简洁过渡页，验证成功直接进入工作区，不先展示登录卡片。没有可用登录或验证失败时再显示表单与说明；入口资源加载失败提供重新加载。背景图继续在浏览器内异步读取，不上传到 Core。
-
-“退出”经服务确认后撤销当前浏览器会话并清除本机保存的登录。退出后在同一地址输入原口令即可，无需找文件或向 Agent 取新链接。若退出请求尚未确认，页面保留状态并提示重试。已经接收的业务操作不因退出而取消。
-
-## 忘记地址或口令
-
-只需记住启动时的 Core 数据根，不需要查找凭据文件。在另一个本机终端执行：
+使用已初始化的专用数据根启动工作台：
 
 ```bash
-dsh-iris web login --data-root /absolute/iris/core
-dsh-iris web password reset --data-root /absolute/iris/core
+npx dsh-iris web serve --data-root /absolute/iris/core --port 3182
 ```
 
-`web login` 在已设置时返回普通登录地址；尚未设置时返回当前设置入口，不绕过已设置口令。`web password reset` 撤销全部工作台会话并返回新的设置入口；服务运行时无需重启，不修改作品、任务、供应商配置或 MCP 连接密钥/授权。服务正常停止后也可重置，下一次启动再打开输出的设置入口。不要把口令写在命令参数或聊天里。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.0` 后不会自动写入全局 `PATH`，请通过 `npx dsh-iris ...` 执行 CLI；从已执行 `npm ci` 的源码仓库运行时，请将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。
 
-认证目录默认是 `$IRIS_HOME/web-auth/<物理数据根的SHA-256>`，`IRIS_HOME` 默认 `~/.iris`。用户不需要打开该目录。可在启动、取地址及重置命令中一致指定 `--auth-store /absolute/private-auth`。它必须与 Core 根相互独立，使用私有真实目录，POSIX目录0700、文件0600；Android共享存储通常不适合保存此目录。
+1. **首次设置**：在浏览器打开终端输出的一次性 `loginUrl`，设置 `8–128` 个字符的访问口令（设置成功后该链接立即失效；若尚未完成设置时重启服务，会重新生成新的设置链接）。
+2. **日常访问**：设置完成后直接收藏并使用普通地址（例如 `http://127.0.0.1:3182`）。默认勾选“记住此设备”可保持登录 30 天，刷新或正常重启服务后无需重新登录；不勾选则仅保留在当前标签页（服务端会话最长 12 小时）。
+3. **退出登录**：点击页顶“退出”会经服务端撤销当前浏览器会话并清除本地登录态与临时配置预览（不影响正在运行的后端任务）。再次访问时输入原口令即可进入。
 
-认证状态有独立写者租约。异常强杀后先核对原进程，再对 `<认证目录>/ownership` 使用现有 `doctor` 和明确的 `runtime recover` 流程；不会自动清锁或抢占实例。Core 执行根与连接目录的租约仍按各自契约处理。损坏、未知版本或属于其他根的认证状态明确报错，不自动覆盖。
+> [!TIP]
+> 保持固定的 `--data-root`、`--auth-store`（如已指定）与 `--port`，可避免浏览器的站点会话存储和已导出的 MCP 配置失效。
+
+## 找回地址与重置口令
+
+在另一个终端中执行以下命令即可查回地址或重置口令，**运行中的服务无需重启**：
+
+```bash
+# 查看当前登录地址（已设置时返回普通地址，未设置时返回设置入口）
+npx dsh-iris web login --data-root /absolute/iris/core
+
+# 重置访问口令并撤销所有活跃浏览器会话（保留作品、任务与 MCP 授权）
+npx dsh-iris web password reset --data-root /absolute/iris/core
+```
+
+认证状态默认保存在 `$IRIS_HOME/web-auth/<物理数据根 SHA-256>`（`$IRIS_HOME` 默认 `~/.iris`），也可通过 `--auth-store /absolute/private-auth` 显式指定位于 Core 数据根之外的私有目录（POSIX 权限 `0700`/`0600`）。
+
+认证目录同样持有独立的写者租约。若遇进程强杀遗留租约，请先核对进程状态，再对 `<认证目录>/ownership` 使用 `doctor` 与 `runtime recover` 恢复，切勿手动删锁。
 
 ## 凭据边界
 
-口令只在同源登录请求中发送，服务端使用内置异步 scrypt、独立随机盐保存派生值，不保存明文。每次登录生成独立浏览器凭据，服务端只保存摘要和期限，最多32个有效会话。口令错误受有限速控制。
-
-“记住此设备”将浏览器凭据保存在当前 origin 的 localStorage，普通模式使用 sessionStorage；不保存口令、owner 控制令牌或 MCP 密钥。继续使用 Bearer 而非共享本机端口的 Cookie，保留精确 Host/Origin、无 CORS 和现有 CSP。可信同源插件仍有页面脚本权限，只加载经过审查的模块；这不是不可信代码沙箱。
-
-owner 控制记录仅在私有认证目录供本机 CLI 使用，浏览器会话和 MCP 连接均不能调用口令重置接口。MCP 使用连接中心导出的独立授权，浏览器登录不代替 MCP 配置。服务仍只绑定 `127.0.0.1`，没有新增公网监听、远程账户、SSO 或自动服务管理。
+- **口令保护**：口令仅在严格同源请求中传输，服务端使用异步 `scrypt` 与独立随机盐保存派生值，不落盘明文，并限制错误尝试速率。
+- **存储隔离**：“记住此设备”将独立的浏览器会话 Bearer 保存在当前 `origin` 的 `localStorage`（不记住时使用 `sessionStorage`），不存储口令、owner 控制令牌或 MCP 连接密钥。服务端最多保留 32 个活跃浏览器会话。
+- **权限分离**：工作台会话只控制网页登录态，不能调用本地口令重置接口（仅本机 CLI 通过私有认证目录可用），也不替代 MCP 客户端的独立授权。
 
 ## 旧 Token 模式
 
-显式提供 `--token-file` 或 `--token-dir` 时，`web serve` 保留旧的一次性链接和备用 Token 登录，服务重启后需新链接；与 `--auth-store` 互斥。`api serve` 继续要求 Token 参数，不默认开放口令登录。旧模式仍可使用 `web login --origin <实际地址> --token-file <本次文件>`。新默认方式不迁移或删除这些旧文件。
+在 `web serve` 中显式传入 `--token-file` 或 `--token-dir`（与 `--auth-store` 互斥）时，可沿用一次性链接与备用 Token 登录模式（`api serve` 仍使用该模式）；服务重启后需通过 `web login --origin <实际地址> --token-file <当前文件>` 获取新链接。
 
 ## 接口与装配
 
-以下路径均位于 `/api/v0/workbench` 下，不接受查询参数；POST仅接受最多1024字节的 JSON。所有入口保留 Host/Origin 检查，不开放 CORS。
+默认工作台与替代 Panel 均通过下列 `/api/v0/workbench` 接口识别当前认证模式（`password` 或兼容 `token`）并装配登录状态。所有接口强制校验 `Host`/`Origin` 与同源策略（不开放 CORS，POST 请求体上限 1024 字节）：
 
-| 路径 | 方法与输入 | 身份与输出 |
+| 路径 | 方法与输入 | 作用说明 |
 |---|---|---|
-| `/auth` | GET/HEAD，无正文 | 有限公开状态：`contractVersion:0, mode:'password', configured, authId, rememberDays, minPasswordLength, maxPasswordLength`；不返回私有路径或哈希 |
-| `/setup` | POST `{ticket,password,remember}` | 严格同源，验证首次设置票据；返回独立会话 |
-| `/password-login` | POST `{password,remember}` | 严格同源，验证访问口令；返回独立会话 |
-| `/logout` | POST `{}` | 严格同源及当前浏览器 Bearer，幂等撤销；返回 `signedOut:true` |
-| `/setup-link` | POST `{}` | 仅本机 owner 控制令牌；尚未设置时返回 `setupUrl` |
-| `/password-reset` | POST `{}` | 仅本机 owner 控制令牌；重置后返回 `setupUrl` |
-
-会话响应为 `{contractVersion:0, authId, accessToken, expiresAt, remember}`；`accessToken` 是浏览器会话，不能用于 MCP 或口令重置。未知字段、跨源请求、错误口令、过期会话或版本冲突明确返回对应错误，不自动降级到其他认证方式。正常退出只撤销提供的会话；已撤销会话可重复退出，便于丢失响应后重试。
-
-Node 宿主用公开 `createCorePluginWorkbench` 时，显式传入 `workbenchAuth: { directory: '/absolute/private-auth' }` 才启用口令模式；未传时保持旧 SDK 行为。生命周期、媒体写权限和插件选择见[工作台](LOCAL_WEB.md)与[稳定启动](PLUGIN_STARTUP.md)。
+| `/auth` | `GET`/`HEAD` | 返回当前认证配置与公开状态（`mode: 'password'`、`configured`、`rememberDays` 等，不含哈希与路径） |
+| `/setup` | `POST {ticket, password, remember}` | 验证首次设置票据并初始化口令，返回浏览器会话 |
+| `/password-login` | `POST {password, remember}` | 验证口令并返回浏览器会话 |
+| `/logout` | `POST {}` | 撤销当前浏览器 Bearer 会话 |
+| `/setup-link` | `POST {}` | 仅限本机 owner 控制令牌，未设置口令时获取 `setupUrl` |
+| `/password-reset` | `POST {}` | 仅限本机 owner 控制令牌，撤销全部浏览器会话并返回新的 `setupUrl` |

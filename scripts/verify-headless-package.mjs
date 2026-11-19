@@ -28,6 +28,19 @@ const reportFile = path.join(work, 'report.json');
 const digest = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
+function assertOnlyHealthObservationsUpdated(configFile, expectedConfig, { modelId, capability, message }) {
+  const actual = readJson(configFile);
+  const expected = structuredClone(expectedConfig);
+  assert(actual.providers.some(provider => provider.health?.observations?.some(item => item.modelId === modelId
+    && item.capability === capability && item.lastSuccess?.source === 'task')), message);
+  for (const provider of actual.providers) {
+    assert((provider.health?.observations || []).every(item => item.capability === capability), message);
+    delete provider.health;
+  }
+  for (const provider of expected.providers) delete provider.health;
+  assert.deepEqual(actual, expected, message);
+}
+
 function saveReport() {
   fs.writeFileSync(reportFile, JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
 }
@@ -385,6 +398,8 @@ try {
   assert.equal(reused.transcription.status, 'provided');
   assert.equal(digest(fs.readFileSync(artifactSheet)), readJson(visionStateFile).vision.at(-1).imageSha256);
   assert.deepEqual(snapshot(dataRoot), coreBeforeVision, '已安装 CLI 复用原帧，不改写 Core');
+  assert.equal(digest(fs.readFileSync(visionConfigFile)), visionConfigBefore, '纯视觉调用不得改写配置');
+  const visionConfigExpected = readJson(visionConfigFile);
   const visionRoot = path.join(work, 'vision-core');
   const audioSummary = visionCli('summarize', { video_path: videoPath, max_frames: 2, transcribe: true,
     transcribe_model_ref: 'vision-fixture::asr' }, ['--data-root', visionRoot]);
@@ -392,7 +407,9 @@ try {
   const asrTask = readJson(path.join(visionRoot, 'task-store/v0/tasks', audioSummary.transcription.taskId + '.json'));
   assert.equal(asrTask.attempts.length, 1); assert.equal(asrTask.deliveryState, 'ready');
   assert(!fs.existsSync(path.join(visionRoot, '.iris-runtime-writer-v0')));
-  assert.equal(digest(fs.readFileSync(visionConfigFile)), visionConfigBefore);
+  assertOnlyHealthObservationsUpdated(visionConfigFile, visionConfigExpected, {
+    modelId: 'asr', capability: 'transcribe', message: '显式音轨转写不得改动账号、模型或功能分配'
+  });
   report.visionCli = { installedBin: true, noDshOrCordis: true, commands: 10, pureVisionNoCoreWrites: true,
     existingFrameArtifactsReadOnly: true, existingImageArtifactsReadOnly: true,
     strictExplicitSelection: true, ocrPartialExitCode: 1, sameContactSheetBytes: true, coreAsrTaskId: asrTask.id,
@@ -556,7 +573,7 @@ try {
     baseUrl: 'https://flow.fixture.invalid/v1', mediaProtocol: 'openai-images',
     models: [{ id: 'edit', capabilities: ['image-gen'], imageProtocol: 'openai-chat-images' }] }],
   assignments: { 'image-gen': ['flow::edit'] } }), { mode: 0o600 });
-  const flowConfigHash = digest(fs.readFileSync(flowConfig));
+  const flowConfigHash = digest(fs.readFileSync(flowConfig)), flowConfigExpected = readJson(flowConfig);
   await sharp({ create: { width: 16, height: 16, channels: 3, background: '#ff0000' } }).png().toFile(flowImage);
   cli(['flow', 'init', ...flowArgs]);
   const flowSource = cli(['artifact', 'import', ...flowArgs, '--input', JSON.stringify({ image_path: flowImage })]).artifact;
@@ -565,6 +582,7 @@ try {
   const flowId = flowCreated.run.id;
   cli(['flow', 'list', ...flowArgs]); cli(['flow', 'inspect', flowId, ...flowArgs]);
   assert.equal(state().flowSubmits || 0, 0);
+  assert.equal(digest(fs.readFileSync(flowConfig)), flowConfigHash, 'flow create/list/inspect 不得改写配置');
   const flowDone = cli(['flow', 'continue', flowId, ...flowArgs, '--provider-config', flowConfig]);
   assert.equal(flowDone.status, 'awaiting_selection'); assert.equal(flowDone.task.id, flowCreated.run.edit.taskId);
   assert.equal(cli(['flow', 'continue', flowId, ...flowArgs]).task.id, flowDone.task.id);
@@ -582,13 +600,15 @@ try {
     assert.equal(digest(bytes), ref.sha256); await sharp(bytes).metadata();
     report.artifacts.push({ id: artifact.id, kind: artifact.kind, mediaType: artifact.mediaType, sha256: ref.sha256, flowId });
   }
-  assert.equal(digest(fs.readFileSync(flowConfig)), flowConfigHash);
+  assertOnlyHealthObservationsUpdated(flowConfig, flowConfigExpected, {
+    modelId: 'edit', capability: 'image-gen', message: 'Flow 执行不得改动账号、模型或功能分配'
+  });
   const privateRun = fs.readFileSync(path.join(flowRoot, 'flow-store/v0/runs', flowId + '.json'), 'utf8');
   for (const forbidden of ['fixture-key-package', 'flow.fixture.invalid', flowRoot]) assert(!privateRun.includes(forbidden));
   assert(!fs.existsSync(path.join(flowRoot, '.iris-runtime-writer-v0')));
   report.imageFlow = { runId: flowId, taskId: flowDone.task.id, submitCount: 1, inspectCreatesNoTask: true,
     repeatContinueNoSubmit: true, sourceAndOutputAndComparisonHashesVerified: true, exportHashVerified: true,
-    referencesProtected: true, privateConfigUnchanged: true, writerReleased: true };
+    referencesProtected: true, onlyTaskHealthRecorded: true, writerReleased: true };
   const apiProbe = path.join(work, 'local-api-probe.mjs'), apiStateBefore = state();
   fs.copyFileSync(path.join(repo, 'tests/fixtures/local-api-package-probe.mjs'), apiProbe);
   report.localReadApi = JSON.parse(run(process.execPath, [apiProbe, path.join(installed, 'bin/dsh-iris.js'), flowRoot, flowId,

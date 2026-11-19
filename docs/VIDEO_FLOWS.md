@@ -1,89 +1,73 @@
-# 文生视频 · 持久流程与资源交付
+# Core 文生视频（0.3.0）
 
-这是 **0.3.0-beta.1 新增功能**。使用准确beta版本或npm `beta`通道；旧alpha.1没有下面的 `--video`、视频 Web 表单与 MCP 分组。原有 CLI / DSH 视频入口继续可用。
+Iris 支持在独立 Core 工作台、Headless CLI 与通用 MCP 中保存并执行持久化的 **文生视频（`video-generate/v0`）** 流程。
 
-协议按实际模型选择。`wan2.2-t2v-plus`等旧系列应对照官方[万相2.1–2.6文生视频接口](https://help.aliyun.com/zh/model-studio/legacy-wan-text-to-video-api-reference)；官方当前主视频页已转向wan2.7新协议，不能仅凭同品牌模型套用其字段或声称已有实现覆盖。
+> [!NOTE]
+> 请按所用模型选择匹配的协议：例如百炼 `wan2.2-t2v-plus` 等系列对应官方[万相 2.1–2.6 文生视频接口](https://help.aliyun.com/zh/model-studio/legacy-wan-text-to-video-api-reference)，请勿直接套用 `wan2.7` 等新版协议的字段假定。图生视频（i2v）与 S2V 请继续使用原有的 CLI / DSH 工具入口。
 
-## 新建专用工作区
+## 初始化视频工作区
 
-以下路径必须是新的空 Flow 根：
+文生视频需要初始化在 **v4 及以上** 数据根中（`--video` 创建 `creation-requests/v4`，保留此前全部图片与音频流程；如需同时使用看图/OCR，请使用 `--vision` 初始化 v5 根）：
 
 ```bash
-node bin/dsh-iris.js flow init --data-root /absolute/new-video-core
-node bin/dsh-iris.js execution init --video --data-root /absolute/new-video-core
-node bin/dsh-iris.js web serve --data-root /absolute/new-video-core \
+npx dsh-iris flow init --data-root /absolute/new-video-core
+npx dsh-iris execution init --video --data-root /absolute/new-video-core
+
+npx dsh-iris web serve --data-root /absolute/new-video-core \
   --provider-config /absolute/private/providers.json --allow-execution \
   --auth-store /absolute/private/video-auth \
   --connection-store /absolute/private/video-connections \
   --allow-connection-management --allow-mcp
 ```
 
-`--video` 显式建立 `creation-requests/v4`，同时包含原图片、语音与转写流程。不能与 `--audio` 或 `--image-generation` 混用；已有 v0–v3 根不升级、迁移或降级。旧版本在请求区门禁拒绝 v4；不要让旧版本 CLI 写入此根。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.0` 时，`dsh-iris` 不会自动写入全局 `PATH`，请使用 `npx dsh-iris ...`；若在源码仓库中运行，请改用 `node bin/dsh-iris.js ...`。
 
-初始化、读取目录、创建连接与保存视频意图均不生成。只有明确的首次继续调用模型，可能产生费用。模型池仍来自真实配置和既有用途规则；此固定流程要求用户选择一个实际 `modelRef`，不会跨请求轮询或悄悄切换模型。
+Iris 会按已知的 `t2v`/`i2v`/`s2v`/`r2v` 输入家族区分模型，固定文生视频流程会主动拒绝已知非 `t2v` 模型（未标注家族的兼容 ID 仍沿用既有候选路径）。
 
-beta.1修复统一检查明确的t2v/i2v/s2v/r2v模型家族：文生与图生候选不互选，固定文生视频Flow拒绝已知i2v/s2v/r2v模型。CLI/DSH和显式视频重试使用相同规则。没有这些家族标记的兼容模型ID延续原有t2v/i2v路径，实际支持仍由协议和上游决定；本片不新增模型元数据格式或迁移目录。
+## CLI 与工作台使用
 
-独立 CLI `flow create/continue` 已补齐视频候选装配（beta.1修复），无需启动 Web：
+### CLI 创建与继续
 
 ```bash
-node bin/dsh-iris.js flow create --data-root /absolute/new-video-core \
+# 1. 保存文生视频意图（不触发提交）
+npx dsh-iris flow create --data-root /absolute/new-video-core \
   --provider-config /absolute/private/providers.json \
   --input '{"recipe":"video-generate/v0","model_ref":"provider::t2v-model","prompt":"鸢尾花随风轻摆","duration":5}'
-node bin/dsh-iris.js flow continue run_0123456789abcdef01234567 \
+
+# 2. 明确继续一次（异步任务未结束时再次调用只执行一次观察，不会重提）
+npx dsh-iris flow continue run_0123456789abcdef01234567 \
   --data-root /absolute/new-video-core --provider-config /absolute/private/providers.json
 ```
 
-Run ID 使用创建命令的实际返回值。首次继续仅提交一次；异步未结束时再次明确继续只观察原 Task，不重提。该固定流程仍仅文生视频；独立 `task retry` 的模式和媒体输入规则见[CLI 重试](HEADLESS_CLI.md#检查-task-与-artifact)，不会因此扩展本流程范围。
+### 输入与交付边界
 
-## 输入、任务和交付边界
+- **输入规范**：固定配方接受明确 `modelRef`、`prompt`（最多 20,000 字符），可选 `size`（最多 64 字符）与数值型 `duration`（1–60 秒）；具体参数支持以所选上游模型为准。
+- **单次执行与恢复**：每次“继续”对应唯一 `Operation`（首次提交或单步观察原 Task）。在工作台点击“停止等待”仅中止本地操作，不代表供应商远端取消或退款。交付失败且已有完整缓存时，可在重启后接回原交付而无需重新生成。
+- **格式与大小上限**：固定流程、Core Web 与 MCP 视频读取支持 **MP4 / WebM**，上限 **32 MiB**（读取前先校验 Manifest、类型与文件大小；通用 Provider Task 下载上限仍为 1 GiB，DSH 媒体 GET 保持流式发送与分块 SHA-256 校验）。若结果超出 32 MiB 限制，原 Task 与产物仍保留，不会误删或自动重生成。
+- **工作台体验**：**创作 → 生成视频** 默认折叠高级参数，结果区内置原视频播放与下载；**作品 → 视频** 仅在点击“载入视频”后才读取视频流，离开页面或退出时自动释放媒体资源。
 
-- 固定配方为 `video-generate/v0`：明确 `modelRef`、`prompt`，可选 `size` 和数值型 `duration`（1–60 秒）。Prompt 最多20,000字符、尺寸最多64字符；具体参数支持由实际模型决定，目录不等于实测。
-- 首片仅文生视频；不接受首帧、音频、S2V、任意供应商 JSON、本机路径或外部结果 URL。原 CLI / DSH 的图生视频和 S2V 入口不受影响。
-- 创建预留唯一 Run/Task，并持久保存创建 UUID 和输入摘要；不立即提交。继续保存独立 Operation UUID，一次有限调用只提交或观察原 Task，受理未知不重新提交。
-- 服务重启、刷新、历史读取不自动生成或查询供应商。异步任务需明确点击“查看原任务”再观察一次；停止等待只终止本地操作，不代表远端取消、退款或未计费。
-- 原 Task 已成功但落盘失败时接回原交付；已有完整缓存可在无 Provider 的重启后修复。保留原 Run/Task/Operation/Artifact 身份。
-- 视频为单一结果，无图片选择步骤。交付和读取限 MP4/WebM、最多 **32 MiB**；API 验证保存记录、大小及 SHA-256。没有完整编码探测、Range 或边下边播，客户端收到完整 Blob 后播放；真实模型的编码兼容性仍需验收。
-- 类型或大小不符时保留原 Task 与已有交付证据，明确报错，不重新生成。工作台不输出供应商签名 URL、密钥或服务器存储路径。
+## HTTP 与 MCP 接入
 
-beta.1修复会先检查 Manifest、媒体类型及实际普通文件大小，再读取固定流程的结果。超出32 MiB时保留已成功的原 Task/Artifact；重启后再次继续仍明确拒绝，不整读该文件或重新生成。这个上限属于固定 Flow/Core Web/MCP 视频读取入口；通用 Provider Task 的视频下载上限仍为1 GiB。DSH同源作品媒体GET按流发送、HEAD不分配完整文件缓冲，两者在发送前保留分块SHA-256校验；没有新增Range或编码探测。
+`/api/v0` 下开放以下视频专用路由（复用 [Core 执行契约](CORE_SERVICE.md) 的 Run/Operation 接口与 `Idempotency-Key` 幂等规则，JSON 请求体上限 64 KiB）：
 
-Web 的 **创作 → 生成视频** 使用实际候选，参数默认折叠；结果提供原视频播放器和下载。**作品 → 视频** 点击“载入视频”才读取，不自动播放；离页、换分类和退出释放媒体。撤销执行权限的只读服务仍可按读取授权播放已有结果。浏览器恢复表只存身份，不存 Prompt 或凭据；丢失创建回包后接回原意图，不自动首次提交。
-
-## HTTP 与 MCP
-
-HTTP 路径均以 `/api/v0` 开头，沿用 Bearer、Host/Origin、连接功能和具体工具授权：
-
-| 入口 | 含义 |
+| 路由 | 用途说明 |
 |---|---|
-| GET/HEAD `/video-models` | 真实池内文生视频候选；不探测，无密钥/端点 |
-| POST `/videos` | JSON 意图，稳定 UUIDv4 `Idempotency-Key`；同 Key 同输入重放，不同输入409 |
-| GET/HEAD `/artifacts/:id/video` | 授权后的原 MP4/WebM |
-| GET/HEAD `/runs/:id/download` | 单一结果原字节及匹配扩展名 |
-| Run / Operation 的既有入口 | 创建查询、有限继续、原操作查询和本地停止 |
+| `GET/HEAD /api/v0/video-models` | 列出当前池内允许的文生视频候选（只读） |
+| `POST /api/v0/videos` | 保存文生视频 Run（201 创建 / 同 Key 同输入 200 / 冲突 409） |
+| `GET/HEAD /api/v0/artifacts/:id/video` | 读取已授权的 MP4/WebM 视频字节 |
+| `GET/HEAD /api/v0/runs/:id/download` | 下载单一结果原字节 |
 
-JSON 正文最多64 KiB。v0–v3 根不开放此媒体组，旧连接和默认 image-edit 不自动扩权。MCP 由用户明确选择 `video-generate`，再分别选择 read/create/execute/stop 和需要的具体工具：
+在 v4+ 根的连接中心选择 `video-generate` 分组后，MCP 客户端会额外获得：
+- `iris_core_video_models`（只读候选）
+- `iris_core_create_video`（保存意图）
+- `iris_core_video`（读取视频资源引用）
 
-| 工具 | 行为 |
-|---|---|
-| `iris_core_video_models` | 读取实际候选 |
-| `iris_core_create_video` | 保存意图，尚不生成 |
-| `iris_core_video` | 校验并引用已保存的原视频，不调用模型 |
+由于 MCP 规范目前没有原生视频内容块，`iris_core_video` 会返回标准 `resource_link`（URI 为 `iris://video/ARTIFACT_ID`），客户端通过标准的 `resources/read` 获取 `BlobResourceContents`。每次读取均会重新校验当前连接权限（撤销或缩权后立即生效）；由于客户端对视频播放器的支持各异，拿到资源引用不代表客户端已实际播放。
 
-继续、查询和停止复用原工具，并按原 Run 媒体组校验。MCP 无原生 video 内容块，视频工具返回标准 `resource_link`，URI 为 `iris://video/ARTIFACT_ID`。客户端通过标准 `resources/read` 获取 Base64 BlobResourceContents；每次读取重新检查 Core 当前授权。仅选择视频读取工具才注册资源模板，缩权或撤销后旧进程也无法继续读取。连接专属 Skill 由实际工具生成视频指导。
-
-客户端可能只显示引用，不提供播放器；拿到引用不等于看过视频。DSH 原生共享桥暂不投影视频资源，选择视频组时明确拒绝启动；使用通用 MCP、Core Web，或原 DSH 视频工具。
+> [!NOTE]
+> DSH 原生共享 Flow 桥暂未支持视频附件投影，在 DSH 端请继续使用原生 `iris_generate_video` 工具，或使用通用 MCP 与独立 Web 工作台。
 
 ## 验证范围
 
-以下测试和`scripts/`开发验收命令从源码仓库根运行，不随npm包分发。定向用例：`tests/video-flow.mjs`、`tests/video-api.mjs`、`tests/video-recovery.mjs`。真实 Chromium 场景：
-
-```bash
-node scripts/verify-local-web-browser.mjs \
-  --browser-executable /absolute/path/to/chromium \
-  --output /absolute/new-video-evidence --video
-```
-
-覆盖实际小视频解码/播放、原字节下载、重启接回、丢失创建回包、停止、只读、窄屏和暗色；标准 SDK 的 HTTP/stdio 2025/2026 路径验证资源与权限。这些回归使用受控 Provider。
-
-另于2026-11-01完成百炼北京 `wan2.2-t2v-plus` 的真实单例：832×480、5秒H.264/MP4，1次生成提交、2次原任务查询；隔离服务重启接回同一Task、正式MCP资源读取、真实Chromium播放/下载与SHA一致均通过。未修改日常连接或查询实际账单。该结果仅覆盖这个模型、参数和当时环境，**不代表所有上游、账号、编码或客户端播放器均已实测**。
+- **自动化回归**：`tests/video-flow.mjs`、`tests/video-api.mjs`、`tests/video-recovery.mjs`（覆盖双传输 MCP 资源读取与权限缩减），以及 [工作台浏览器验证](LOCAL_WEB.md#验证与下一阶段) 中的 `--video` 场景。
+- **实机验证记录**：于 `2026-11-01` 在百炼北京 `wan2.2-t2v-plus`（832×480、5 秒 H.264/MP4）完成过单账号真实端到端验证，包含服务重启后原 Task 接回、正式 MCP 资源读取、Chromium 播放下载与 SHA-256 校验通过（真实兼容性仍取决于具体上游模型、账号与客户端播放器）。

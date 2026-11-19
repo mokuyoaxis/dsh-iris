@@ -1,201 +1,126 @@
 # dsh-iris 用户指南
 
-本指南对应Iris 0.3.0的DSH/CLI入口。安装要求与准确发行状态见[README](README.md)，升级步骤见[0.3升级指南](docs/UPGRADING_0.3.md)，变化见[CHANGELOG](CHANGELOG.md)与[发行说明](docs/releases/0.3.0.md)。独立Core工作台/MCP另见[从零启动](docs/CORE_QUICKSTART.md)；旧数据根不自动迁移。
-
-功能来自明确标签、旧能力字段绑定或供应商能力元数据，账号和名称不会自动赋能。0.2.4/0.2.5 要求明确功能名单；0.2.6 保留旧名单和空配置行为，也可主动启用自动池。详见 [升级说明](docs/FUNCTION_MODEL_ASSIGNMENTS.md)。
-
-可 [引用 DSH 连接](docs/DSH_PROVIDER_CONNECTIONS.md)，并在确认模型用途时启用 [功能自动池](docs/FUNCTION_MODEL_POOLS.md)，无需二次分配；已有名单与空配置不会自动改变。
-
-供应商详情提供默认折叠的“模型目录”，可同步目录并查看新增、未列出及失败保留状态；自动请求按需刷新并缓存 10 分钟。当前连接明确返回模型不存在的条目会被隔离，新发现项仍须确认用途。目录同步不发起模型实测或生成。
+本指南面向 **Iris 0.3.0** 的 **DSH 原生插件**与 **独立 CLI** 入口。若你使用独立 Core Web 工作台与通用 MCP，请转至[Core 快速开始](docs/CORE_QUICKSTART.md)。发布说明与版本升级请参阅 [README](README.md)、[0.3 升级指南](docs/UPGRADING_0.3.md)、[发行说明](docs/releases/0.3.0.md) 与 [CHANGELOG](CHANGELOG.md)。
 
 ## 安装
 
-先运行`dsh --version`。Iris 0.3.0沿用0.2.5建立的12个准确DSH版本，详见[兼容矩阵](docs/DSH_COMPATIBILITY.md)。还需要PATH中的pnpm及至少一个所需功能的供应商。最低Node.js为 **22.1.0**，即使保留旧DSH也需满足；宿主要求更高时以宿主为准。以下安装命令在准确版本已发行后使用，发布准备期间使用源码或本地候选包。
+安装前请确认环境满足 **Node.js ≥22.1.0**、PATH 中可用 `pnpm`，且 `dsh --version` 属于[兼容矩阵](docs/DSH_COMPATIBILITY.md)中列出的 12 个受支持 DSH 版本。
 
-在矩阵所列宿主中，将固定版本加入Web profile：
+将固定版本加入 DSH 的 Web profile 并启动：
 
 ```bash
 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0
 dsh web
 ```
 
-npm 上无 scope 的 `dsh-iris` 是另一款插件；安装或更新 Iris Media 时必须使用完整 scoped 包名。
+> [!IMPORTANT]
+> 安装或市场搜索时请认准完整包名 **`@mokuyoaxis/dsh-iris`**（无 scope 的 `dsh-iris` 是另一款插件）。若只下载本地归档可运行 `npm pack @mokuyoaxis/dsh-iris@0.3.0`。
 
-只下载包可运行`npm pack @mokuyoaxis/dsh-iris@0.3.0`；普通`npm install`不会自动加入DSH profile。保留历史环境时固定其准确版本和对应数据根；历史DSH/Node要求见兼容矩阵，0.1.4不包含当前Core媒体CLI与后续新功能。
-
-浏览器默认打开 `http://127.0.0.1:3080`。插件安装后只会在下一次 DSH 启动时装载；如果 DSH 已经运行，请先停止再启动。启动输出包含一次性认证参数时，必须完整打开该 URL，不能只输入裸地址。
+- 浏览器默认打开 `http://127.0.0.1:3080`；若启动日志输出了一次性认证参数，请使用完整 URL 打开。
+- 插件会在下一次启动 DSH 时装载（运行前可通过 `dsh --profile web --dump-config` 确认包含 `@mokuyoaxis/dsh-iris` 与唯一 ID `mokuyoaxis-dsh-iris`，profile 机制见 [DSH 官方文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)）。
+- 如果让 AI Agent 协助安装与配置，可直接参考 [Agent 简要 Prompt](docs/AGENT_QUICKSTART.md)。
 
 ### 独立 CLI
 
-无需DSH，在自己的项目安装 `npm install @mokuyoaxis/dsh-iris@0.3.0`，通过 `npx dsh-iris --help` 查看入口。发布状态见README，完整说明见[Headless CLI](docs/HEADLESS_CLI.md)和[视觉CLI](docs/VISION_CLI.md)。
-
-未列入对应Iris版本兼容矩阵的DSH版本须另行验收。让Agent协助安装时，可使用 [简要Prompt](docs/AGENT_QUICKSTART.md)。
-
-通过dsh-market安装时也要核对显示的Iris版本、完整scoped包名和对应发行版的DSH支持范围。市场可能缓存npm信息；0.2.4及更早发行版仍按各自历史范围安装。
-
-可以在启动前检查组合配置：
+无需 DSH，直接在自己的项目中安装使用：
 
 ```bash
-dsh --profile web --dump-config
+npm install @mokuyoaxis/dsh-iris@0.3.0
+npx dsh-iris --help
 ```
 
-输出中应出现 `@mokuyoaxis/dsh-iris` 配置层和唯一行 ID `mokuyoaxis-dsh-iris`。DSH 的插件命令和 profile 机制见[官方说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)。
-
-## 导入已有图片（0.2.4）
-
-在作品区展开“导入图片”，选择上传文件、会话附件或宿主路径，点击“保存到作品”。支持最多20 MiB的静态PNG/JPEG/WebP，保存原字节副本、保留原文件，不需要供应商或模型分配。成功后可使用图片卡的看图、OCR、改图及下载。
-
-导入要求Iris0.2.4，0.2.3没有此工具。Agent入口为 `iris_import_image`，CLI入口为 `artifact import`；上传临时副本与持久作品的区别及示例见 [图片导入](docs/IMAGE_IMPORT.md)。
+详细命令请参阅 [Headless CLI](docs/HEADLESS_CLI.md) 与 [独立视觉 CLI](docs/VISION_CLI.md)。
 
 ## 最快配置：DashScope
 
-打开“设置 → Iris 工作台”，然后：
+在 DSH 中打开 **设置 → Iris 工作台**，按以下几步即可完成首次配置：
 
-1. 点击“+ 添加供应商”。
-2. 名称可填“阿里云百炼”。
-3. Base URL 填 `https://dashscope.aliyuncs.com/compatible-mode/v1`；如果账号使用百炼业务空间专属域名，再把“媒体 Base URL”填为同地域的 `https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`（地域按账号实际情况替换）。
-4. 填入与模型、Endpoint 同地域的 DashScope API Key，点击“保存”。
-5. 展开供应商的“模型目录”，点击“同步目录”；也可手动填写已核对的模型 ID。
-6. 点击“设置功能”，勾选已确认支持的用途。首次配置可同时勾选“同时启用所选功能的自动池”，点击“保存模型用途”。
+1. 点击 **+ 添加供应商**（若 DSH 已配好同一服务的 API Key，可直接选用并[引用 DSH 连接](docs/DSH_PROVIDER_CONNECTIONS.md)）。
+2. 名称填写“阿里云百炼”，Base URL 填写 `https://dashscope.aliyuncs.com/compatible-mode/v1`；如果使用百炼业务空间专属域名，将“媒体 Base URL”填写为同地域的 `https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`（地域按账号实际情况替换）。
+3. 填入同地域的 DashScope API Key 并保存。
+4. 展开供应商卡片中的 **模型目录** 并点击 **同步目录**（也可手动添加已知模型 ID）。目录会自动缓存 10 分钟，并在当前连接返回“模型不存在”时隔离不可用条目。
+5. 点击 **设置功能**，勾选确认支持的用途；首次配置可同时勾选 **同时启用所选功能的自动池** 并保存。
 
-DSH 已配好同一媒体服务时，可在第 1 步选择连接来源，明确协议后直接复用地址与密钥，无需重复填写。连接支持范围见 [连接复用](docs/DSH_PROVIDER_CONNECTIONS.md)。
+配置保存后立即生效，无需重启 DSH。
 
-选择自动池后，确认过用途的合格模型按登记顺序参与调用；保留“仅用所选模型”时，还需在“功能池与调用方式”选择模型。旧空名单不会自动变成自动池，升级差异见 [功能模型池](docs/FUNCTION_MODEL_POOLS.md)。
+## ComfyUI 工作台
 
-保存供应商和修改能力分配都会立即生效，不需要重启 DSH。
-
-## ComfyUI 工作台（0.3 beta）
-
-0.3.0可在“+ 添加供应商”选择“ComfyUI · 已有服务”，保存地址/认证后导入API图或Iris参数模板，明确节点和公开参数；检查、保存不生成图片。画图时选择具体工作流，可调整LoRA双权重、种子等声明参数，并从只读检查取得可用选项。历史npm 0.2.7不含此界面；Iris不安装ComfyUI或模型，静态检查不等于真实GPU验收。完整操作与限制见[DSH ComfyUI入口](docs/IMAGE_GENERATION.md#dsh-工作台入口03-alpha)。
+在 **+ 添加供应商** 中选择 **ComfyUI · 已有服务**，填写服务地址与可选认证后，即可导入 API 格式工作流或 Iris 参数模板，映射提示词与输出节点并开放 LoRA 双权重、种子等标量参数。Iris 不会自行安装 ComfyUI 或猜测图结构；完整操作见 [DSH ComfyUI 入口](docs/IMAGE_GENERATION.md#dsh-工作台入口03-alpha)。
 
 ## 供应商与协议
 
-Iris 当前支持两类调用路径：
+Iris 支持两类主流媒体调用路径：
 
-| 路径 | 可用能力 | 说明 |
+| 路径 | 支持能力 | 说明 |
 |---|---|---|
-| DashScope 百炼 | 图片、视频、TTS、转写、视觉 | 覆盖最完整；媒体请求只允许阿里云官方 HTTPS 域名 |
-| OpenAI 兼容 | Images/聊天/Responses 图片生成、聊天带图编辑、Chat Completions 视觉 | 具体模型和能力取决于兼容服务 |
+| **DashScope（百炼）** | 图片、视频、TTS、转写、视觉 | 能力覆盖完整；媒体请求仅发送至阿里云官方 HTTPS 域名 |
+| **OpenAI 兼容** | Images / 聊天 / Responses 生图、聊天改图、视觉理解 | 具体支持取决于兼容端点的实际接口 |
 
-工作台会按实际媒体端点安全推断协议：设置了“媒体 Base URL”时以它为准，否则沿用 Base URL。阿里云官方 DashScope、地域和 Workspace HTTPS 域名可使用 `dashscope`，其他地址使用 `openai-images`，也可以在供应商卡片中明确选择。即使配置被误标为 `dashscope`，Iris 也会在 fetch 前拒绝向非官方地址发送 DashScope API Key。分离端点后，普通 Base URL 可继续服务视觉/对话，媒体 Base URL 专门服务图片、视频、TTS、转写和媒体模型发现；留空即保持旧行为。
-
-0.2.1支持每个生图模型独立设置 `imageProtocol`，省略或 `auto` 继承账号默认。例如网关的 `gemini-image` 如果通过聊天接口返回图片，可显式设置 `image-gen` 能力和 `openai-chat-images` 协议；已验证 Responses 生图的模型可选择 `openai-responses-images`（当前同步单图）。同账号的其他模型仍可使用 `openai-images` 或 `dashscope`。仅有模型名称的目录不会自动证明生图能力。产物保留真实 PNG/JPEG/WebP 字节和后缀，保存为 Core Artifact 后可按 ID 看图/OCR，详见 [配置与使用示例](docs/CLI_MANAGEMENT.md#模型级图片协议)。
-
-同一个 OpenAI 兼容 Base URL 只有在实际提供相应接口时才能承担对应能力：图片生成按模型配置选择 Images、聊天或 Responses 接口，聊天改图需模型支持带图生成，视觉理解需要支持图片输入的 Chat Completions 接口。通用 OpenAI 兼容端点目前不能替代 Iris 的 DashScope 视频、TTS 或转写协议。
-
-自动选择的未知端点会在供应商管理区显示“协议为推断值，请确认”，仍按 OpenAI Images 兼容格式请求。显式选择协议后清除标记；不支持的显式协议会在请求前报错，配置值仍保留。视觉类型 `type` 与媒体协议独立，未支持的视觉类型不会被转换为 OpenAI。
+工作台会根据实际媒体端点（优先使用“媒体 Base URL”，留空则沿用 Base URL）安全判断协议；若系统自动推断了未知端点，界面会提示“协议为推断值，请确认”，你可以在供应商卡片中随时显式指定。需要区分同一账号下不同模型的生图接口时，可为单个模型设置 `imageProtocol`（如 `openai-chat-images` 或 `openai-responses-images`，省略或 `auto` 则继承账号默认，见[模型级图片协议](docs/CLI_MANAGEMENT.md#模型级图片协议)）。
 
 ## 模型池
 
-“发现模型”对普通 OpenAI 兼容服务读取 `GET /models`；对阿里云官方端点读取并分页拉完 `GET /api/v1/models`。供应商返回的 `IG/VG/ASR/TTS/VU` 等明确能力元数据用于功能分类；只有名称或未知能力时，模型显示“未标注功能”，需手动设置。已有明确配置（包括空标签）优先，后续重新发现不会覆盖。分类声明仍需实测，不证明远端接口已经可用。发现失败时，原模型池不会被清空。
+点击 **同步目录** 时，OpenAI 兼容服务会读取 `GET /models`，阿里云官方端点会分页拉取 `GET /api/v1/models`，并将新的模型合并到当前列表（不会覆盖你手动维护的模型和空标签）。模型须经**确认用途**后才会进入对应能力池；如果服务端没有 `/models` 接口，可手动输入模型 ID 并标注用途。
 
-模型发现采用合并更新：保留手工模型、明确功能标签及本次目录未返回的旧模型，只追加或更新发现项。删除模型仍需用户显式操作。裸账号在保存或加载时都不再补厂商默认模型；已经保存的模型和标签保留，`imageModel` 等旧字段仍作为明确功能绑定兼容。空模型池、空能力标签保持权威。某项功能没有候选时会提示配置。
+模型池支持以下六类能力标识：
 
-模型池中的能力名称如下：
-
-| 能力 | 配置值 | 典型工具 |
+| 能力 | 配置值 | 典型 Agent 工具 |
 |---|---|---|
-| 图片生成 | `image-gen` | `iris_draw_image` |
-| Artifact 原图编辑（聊天生图） | `image-gen` | `iris_edit_image` |
+| 图片生成 / Artifact 改图 | `image-gen` | `iris_draw_image`、`iris_edit_image` |
 | 视频生成 | `video-gen` | `iris_generate_video` |
 | 语音合成 | `tts` | `iris_speak_text` |
 | 音频转写 | `transcribe` | `iris_transcribe_audio` |
 | 视觉理解 | `vision` | `iris_look_at_image`、OCR、定位、视频摘要 |
 
-没有 `/models` 接口时，可以手动添加模型名，再通过“设置功能”明确选择用途；也可在配置中填写模型的 `capabilities`。省略标签时保持未标注，即使名字像已知媒体模型也不会进入功能候选链。
-
-未提供标签的模型仍可在后续发现中接收供应商能力元数据；显式保存空标签表示当前不加入任何功能池，发现不会覆盖该选择。
-
-Iris 按六类功能的当前策略组织候选池：自动模式使用已确认用途的合格模型，手选模式按所选顺序，停用模式不发起新调用。每次从首项开始，媒体生成只有明确未受理才安全切换。确认用途不发起实测或生成；勾选同时启用自动池会明确改变所选功能策略。
-
-点击模型旁单项能力标记会进行验证。视觉、图片和 TTS 会先显示确认框，再发起真实供应商请求，不是本地校验：
-
-- 视觉测试会发送一张最小测试图；
-- 图片和 TTS 测试会生成真实产物；
-- 视频不会自动提交探针，因为“只确认受理”也可能创建计费任务；正常使用可通过“视频生成”验证，耗尽后的恢复须用 CLI `models test --capability video-gen --input` 明确提供真实素材。
-- 转写不使用空样本探针；耗尽后的恢复须用 CLI `models test --capability transcribe --input` 明确提供真实音频。
-
-模型不必经过“测”才能使用；正常的真实任务成功也会形成健康证据。模型池按钮只测试被点击的“供应商 × 模型 × 能力”，不会顺带验证同名模型或其他能力。
+> [!NOTE]
+> 点击模型旁的能力标签可以进行**单模型实测**：视觉会发送最小测试图，图片和 TTS 会生成真实测试产物（可能计费，弹窗确认后执行）。视频与转写不会自动提交空样本探针，需要恢复耗尽状态时可使用 CLI `models test --capability video-gen|transcribe --input ...` 提供真实素材。
 
 ### 健康颜色与时间
 
-工作台顶部、功能卡片、模型池和主泡泡共享同一份持久健康快照：
+工作台顶部、功能卡片、模型池与悬浮泡泡共享同一份健康状态视图（完整规则见 [Provider 健康状态](docs/PROVIDER_HEALTH.md)）：
 
-| 颜色 | 状态 | 如何得到 |
+| 颜色 | 状态 | 说明 |
 |---|---|---|
-| 灰色 | 未配置 | 没有可用的当前候选；默认 bearer 认证缺 Key 时会回到灰色，`auth:'none'` 不要求 Key |
-| 蓝色 | 已配置，待验证 | 配置可用于路由，但尚无 7 天内成功证据，或旧成功已经过期 |
-| 绿色 | 近期验证成功 | 显式实测或真实任务在 7 天内成功 |
-| 暗红色 | 认证失败 | 最近出现明确 401、403 或认证/权限错误 |
-| 琥珀色 | 429 冷却中 | 临时跳过模型，显示恢复候选资格的时间；优先遵从 `Retry-After`，默认 60 秒 |
-| 红色 | 额度/预算耗尽已停用 | 明确免费额度或预算耗尽，手动实测成功后恢复 |
-
-绿色旁显示最近成功时间，受阻模型显示原因和时间。短时限流与明确耗尽按账号 × 模型持久记录，重启后继续跳过；冷却到期只恢复候选资格，不发起请求、不自动变绿。实测按钮保持可用，可提前检测；只有明确的实测成功才解除持续停用，失败、发现、改变分配或旧任务成功都不能解除。修改 Key/端点会使旧验证证据失效，但不会清除耗尽停用。网络、5xx、内容安全、取消和受理未知不覆盖近期成功。此冷却/耗尽规则已纳入 0.2.1。
-
-有多条 failover 路径时，可用候选近期成功则汇总为绿色，其次为待验证的蓝色；全部仅冷却时为琥珀色，全部受阻且含决定性失败时显示调用受阻。没有路径则为灰色。完整契约见 [Provider 与能力健康状态](docs/PROVIDER_HEALTH.md)。
+| 灰色 | 未配置 | 当前没有可用候选（或 bearer 模式缺少 Key） |
+| 蓝色 | 已配置，待验证 | 路由就绪，但最近 7 天内无成功记录 |
+| 绿色 | 近期验证成功 | 最近 7 天内通过实测或真实任务成功调用 |
+| 暗红色 | 认证失败 | 近期出现 401/403 等鉴权或权限错误 |
+| 琥珀色 | 429 冷却中 | 暂时跳过，优先按 `Retry-After`（默认 60 秒）恢复候选资格 |
+| 红色 | 额度耗尽已停用 | 明确触发额度/预算耗尽，需手动实测成功后恢复 |
 
 ## 能力分配和故障转移
 
-每项能力都可以设置一个有序的“供应商 + 模型”列表。界面显示的是模型名和供应商，配置中保存为 `providerId::modelId` 复合引用，因此不同供应商的同名模型不会冲突。
+你可以为每项能力配置**自动池**、**手动有序名单**或**停用**（详见 [功能模型池](docs/FUNCTION_MODEL_POOLS.md) 与 [分配说明](docs/FUNCTION_MODEL_ASSIGNMENTS.md)）：
 
-- 六类功能可选自动池、仅用所选模型或停用；手选不补池，自动池只纳入已确认用途的合格模型，每个请求从首项开始。
-- 临时指定模型须在当前功能允许范围内，本次只调用该项；功能停用时不能绕过。
-- “清空分配”停止新调用，模型、任务与作品保留；已有任务按原绑定观察和补交付。
-- 视觉可将“DSH 当前默认模型”加入手选名单，或在自动池中明确启用宿主视觉；默认不加入。
-
-生成类故障转移只覆盖上传、提交和同步生成阶段。远端一旦受理异步任务，Iris 就会继续跟踪这个任务，不会因轮询或下载失败自动重提，以免重复生成和计费。
+- 界面显示模型与供应商名称，底层以 `providerId::modelId` 复合引用保存，避免不同供应商下的同名模型冲突。
+- 每次请求按顺序从首项尝试；仅当供应商在上传、提交或同步生成阶段明确未受理时，才会切换到下一个候选。异步任务一旦被远端受理，Iris 会持续跟踪该任务，绝不因轮询或下载失败自动重提。
+- “清空分配”会停止新调用，但已有任务和作品不受影响；DSH 主模型需在视觉策略中显式加入或启用才会参与视觉任务。
 
 ## 音乐生成
 
-为音乐服务添加实际模型，确认“音乐”用途，选择 **Chat Completions（内嵌音频）** 协议，再启用音乐自动池或加入手选名单。这个接口要求服务在聊天响应正文中返回 MP3/WAV 音频 data URL；音乐与 TTS 的用途及协议分别确认。
+配置音乐服务时，添加对应模型并确认 **音乐** 用途，将协议设为 **Chat Completions（内嵌音频）**（要求响应正文中返回 MP3/WAV data URL），再启用自动池或加入手动名单即可。
 
-配置后可在DSH中说“用Iris生成一首复古摇滚配乐”，或使用工作台音乐卡片。生成结果可试听、下载与导出；音乐和TTS分别配置，配乐按需加入多步骤流程。
-
-音乐入口默认在明确HTTP502后额外重试两次，可能消耗额外额度；可用 `retry_502: 0` 关闭。时长、歌词和人声通过描述表达，精确控制取决于模型。完整配置与CLI示例见 [音乐生成](docs/MUSIC.md)。
+默认情况下，音乐生成在遇到明确 HTTP 502 时会自动额外重试最多两次（即最多共提交三次，**可能产生额外费用**；可用 `retry_502: 0` 关闭）。完整参数与 CLI 用法见 [音乐生成](docs/MUSIC.md)。
 
 ## 从旧工作台显式导入
 
-首次使用请直接在 Iris 工作台添加供应商。已有旧 ai-paint 配置时，可使用下面的一次性导入入口；无需安装旧项目。
+Iris 将供应商配置、密钥与分配独立保存在 `$DSH_HOME/iris/v1/providers.json`（未设置 `DSH_HOME` 时默认位于 `~/.dsh/iris/v1/providers.json`），与旧版 `ai-paint` 完全隔离。
 
-导入由宿主进程读取本地配置，API Key 不需要经过 Agent 会话或命令行参数。
-
-从 0.1.1 起，Iris 独立保存供应商、密钥、模型池和能力分配，位置为 `$DSH_HOME/iris/v1/providers.json`（未设置 `DSH_HOME` 时使用用户目录下的 `.dsh`）。修改 Iris 配置不会影响 ai-paint，反之亦然。
-
-默认启动不会扫描其他项目。推荐通过工作台手动添加供应商；需要迁移旧 ai-paint 配置时，先停止目标 DSH 实例并备份其 Iris 配置，再显式指定来源文件的绝对路径。Bash 示例：
+若需要从旧版 `ai-paint` 迁移基础供应商信息与密钥，请先停止目标 DSH 实例、备份已有配置，再在启动命令中通过 `IRIS_IMPORT_WORKBENCH_CONFIG` 传入旧配置文件的绝对路径（仅在 Iris 尚无供应商时执行一次）：
 
 ```bash
 IRIS_IMPORT_WORKBENCH_CONFIG="/absolute/path/ai-paint/data/config.json" dsh web
 ```
 
-其他 Shell 请使用其环境变量设置方式。`IRIS_IMPORT_WORKBENCH_CONFIG` 的值只是来源配置文件的路径，不包含 API Key；该变量属于运行 DSH 的进程，目标仍由该进程的 `DSH_HOME` 决定。导入仅在 Iris 没有供应商时执行，复制供应商基本信息和凭据，不修改来源文件、不合并覆盖已有供应商，也不迁移模型池或能力分配。之后应在工作台检查协议并重新分配模型，后续启动不再设置此变量。
+`IRIS_IMPORT_WORKBENCH_CONFIG` 的值只是来源配置文件的路径，不包含 API Key；导入过程只复制基础供应商信息与凭据，不修改原文件、不合并已有供应商，也不会迁移模型池或分配名单。导入完成后请在工作台核对协议与模型分配，并在后续启动时移除该环境变量。
 
-变量未设置时不进行导入；相对路径会被拒绝。文件不可读、JSON 无效或没有有效供应商时会给出提示，不输出密钥。导入后的密钥写入 Iris 自己的配置文件，权限设为仅当前用户可读写；工作台和接口只返回密钥提示，不返回完整值。该操作不发送模型请求。
+## 导入已有图片
 
-## 工作台作品管理
-
-作品库统一展示 Core 与旧版的图片、视频、音频和文本，默认每页 24 个，可按媒体类型、来源和产物类型筛选。刷新或关闭识别结果保留当前页码与筛选。
-
-Core 图片卡可直接点击“看图”或“OCR”；结果可以复制、下载为文本或取消。原始 PNG 可直接识别，不需要复制附件路径或转换 JPG。OCR 会明确显示部分完成，详细用法见 [工作台作品管理](docs/WORKBENCH_ARTIFACTS.md)。这些入口属于 0.2.1，更新本地插件后需重新加载 DSH 后端与客户端。
-
-作品详情和跨页选择支持批量管理：可复制选中 ID，或把 Core/旧版作品合为一个 ZIP 下载（最多 200 项、128 MiB）。Core 删除先展示预览，明确确认后移入可恢复回收区；任务/产物引用会阻止删除，关联的已结束任务记录需逐项明确勾选。“Core 回收区”可恢复同一隔离事务，遇到原位置冲突不会覆盖文件；旧版作品仍保留原有永久删除语义。
-
-### 按 Artifact ID 改图
-
-Core 静态 PNG/JPEG/WebP 图片卡可点击“改图”，填写修改指令，再选择当前图片池允许的带图编辑模型。点击“生成修改版”才调用模型，修改版保存为关联原图的新作品，原图保留；可继续看图、OCR、下载或编辑。
-
-Agent可调用 `iris_edit_image`，提供 `source_artifact_id`、`prompt` 与可选 `model`；CLI使用 `run image`，模型字段为 `model_ref`，见 [Artifact改图](docs/CLI_MANAGEMENT.md#artifact-聊天改图)。支持openai-chat-images带图生成，0.2.4另支持DashScope原生Qwen edit/max/plus、2.0/pro及日期快照。不提供mask、多参考图或连续编辑历史。
+在作品区展开 **导入图片**，通过本地上传、会话附件或宿主路径导入最多 20 MiB 的静态 PNG/JPEG/WebP。导入会原样保留字节副本与原文件，不消耗模型额度，完成后可直接用于看图、OCR、改图或下载（Agent 工具为 `iris_import_image`，CLI 为 `artifact import`，详见[图片导入](docs/IMAGE_IMPORT.md)）。
 
 ## 高级配置文件
 
-一般应使用 Iris 工作台。只有在配置工作台尚未覆盖的协议或模型能力时，才需要直接编辑：
-
-```text
-$DSH_HOME/iris/v1/providers.json
-```
-
-没有设置 `DSH_HOME` 时，默认位置是 `~/.dsh/iris/v1/providers.json`。
-
-直接编辑前先停止 DSH；Iris 会缓存已经加载的配置，运行时改文件不会可靠地刷新内存状态。示例：
+绝大多数配置均可直接在工作台完成。若需直接编辑 `$DSH_HOME/iris/v1/providers.json`，请先停止 DSH，修改后再重启：
 
 ```json
 {
@@ -222,78 +147,46 @@ $DSH_HOME/iris/v1/providers.json
 }
 ```
 
-`mediaBaseUrl` 可以省略或留空，此时媒体调用沿用 `baseUrl`。`assignments` 可以省略，但从 0.2.4 起缺失分配不发起对应功能的新调用；0.2.6 也不会将其静默改为自动池。包含特殊字符的 provider 或模型引用会经过 URL 编码，复杂引用建议在工作台中生成，不要手写。
-
-可为明确不需要认证的本地端点设置 `"auth": "none"` 并省略 `apiKey`；缺省或 `"auth": "bearer"` 仍要求 Key，保持旧配置行为。无认证模式不会发送 Authorization 头，已有的旧 Key 也不会被带入该模式的媒体请求。0.2.7 工作台尚无专门的无认证开关，需按上述停机原则编辑私有配置；beta.1已在添加供应商与认证设置中提供选择。不要对需要认证的公网端点使用 `auth:none`。
-
-API Key 以明文保存在宿主侧的 `providers.json` 中。POSIX 上 Iris 目录为 `0700`、文件为 `0600`，0.1.1 首次启动会收紧既有 Iris 树但不修改内容或跟随符号链接；Windows 的 mode 不能替代 ACL。状态接口和界面只返回掩码，不会显示完整 Key。不要把这个文件提交到版本库或发给他人。
+- 省略 `mediaBaseUrl` 时沿用 `baseUrl`；对于明确无需认证的本地端点，可设置 `"auth": "none"` 并省略 `apiKey`（切勿对需要认证的公网端点使用无认证模式）。
+- 含有特殊字符的 `providerId::modelId` 建议通过工作台生成；明文密钥以私有文件权限保存（POSIX 上目录 `0700`、文件 `0600`），请勿将此文件提交到代码仓库。
 
 ## 文件输入
 
-Iris 工作台中的文件字段提供三种方式：
+工作台中的文件输入支持三种来源：
 
-1. “上传文件”：推荐方式，适合浏览器和 DSH 不在同一文件系统的情况。
-2. “会话附件”：复用当前会话或 Iris 已生成的图片。
-3. “高级·宿主路径”：填写 DSH 进程能够读取的绝对路径。
+1. **上传文件**（推荐）：适合浏览器与 DSH 进程不在同一台设备或文件系统的场景，单文件上限 **64 MB**（默认保留 7 天）。
+2. **会话附件**：直接复用当前对话或 Iris 已生成的图片。
+3. **高级 · 宿主路径**：填写 DSH 宿主进程可读的绝对路径（跨环境细节见[跨环境文件访问](docs/file-access-across-environments.md)）。
 
-浏览器上传单文件上限为 64 MB，默认保留 7 天。视频和音频操作最终都需要一个宿主可读路径；浏览器自己的路径、`content://` URI 和远程电脑上的路径不能直接使用。跨系统细节见[文件访问与跨环境](docs/file-access-across-environments.md)。
-
-看图、定位和 OCR 还可直接使用 Core 图片 `artifact_id`；视频摘要可复用 `frame_artifact_ids`。Core ID 与会话附件 ID 不混用，原 PNG 无需先转换为 JPG。Artifact 输入只读核验 MIME 与哈希，不要求原文件或临时导出。
-
-视觉操作共用完整终态、取消和整体预算。账号/模型的输入预算只处理发送副本，默认 8 MiB；Core 原图与下载保持不变。长图 OCR 最多 32 块、64 次生成、120 秒，明确标记部分完成和缩小时的细字风险；定位将模型的 0–1000 归一化坐标映射回原图像素。配置与示例见 [输入预算](docs/CLI_MANAGEMENT.md#看图输入预算)、[OCR](docs/OCR_MODEL.md) 和 [定位/摘要](docs/COMPOSITE_VISION.md)。
+Core 图片可直接使用 `artifact_id` 发起看图、定位、OCR 与改图，视频摘要可复用 `frame_artifact_ids`，无需转为 JPG。视觉模型默认使用 8 MiB 发送副本（原图不变）；长图 OCR 限制最多 32 块、64 次生成、120 秒总预算（详见 [输入预算](docs/CLI_MANAGEMENT.md#看图输入预算)、[OCR](docs/OCR_MODEL.md) 与 [定位/摘要](docs/COMPOSITE_VISION.md)）。
 
 ## 最小指令
 
-配置完成后，可以直接在会话中说：
+配置完成后，可以直接在 DSH 对话中使用自然语言或工具名发起任务：
 
 ```text
 使用 iris_draw_image：画一只坐在蓝色窗边的白猫。
-```
-
-```text
 总结我刚上传的这张图片。
-```
-
-```text
 用 Iris 总结 /absolute/path/demo.mp4，再把摘要合成为语音。
 ```
 
-直接写工具名最明确；自然语言也可以，由 Agent 判断需要调用哪个 Iris 工具。视频、图片和语音生成可能产生供应商费用。
-
-插件自动注册三项随包 Skill：单步操作用 `iris-use`，多步骤创作用 `iris-compose-media`，界面验收用 `iris-verify-ui`。无需复制 Skill 或切换到仓库目录；项目中的同名 Skill 优先，宿主未提供 registry 时工具仍可使用。
-
-三项共用[能力与产物说明](.dsh/skills/iris-use/references/media-contract.md)。Core音频返回Artifact ID与播放链接；需要audio_path时先导出成宿主文件。音乐独立于TTS，组合流程仅在用户要求时加入；分别交付音视频素材不代表已经混音成片。
-
-用户想稳定指定方法时，可直接用 DSH 的 `/name` 形式：
+插件随包自动注册三项常用 Skill，你也可以直接以 `/name` 显式调用（三者共用[媒体契约说明](.dsh/skills/iris-use/references/media-contract.md)）：
 
 ```text
 /iris-use 用已经分配的音乐模型生成一首摇滚配乐
-
 /iris-compose-media 分析我上传的产品照，生成同构图海报，再检查是否符合要求
-
 /iris-verify-ui 对比当前截图和参考图，定位偏差并给出有证据的结论
 ```
 
-也可以继续用自然语言让 Agent 自动发现。单步绘图、OCR、转写等无需强行唤起组合 Skill，直接说需求或指定对应 Iris 工具即可。Skill 只规划工具链，不会绕过 Iris 的任务、费用确认和安全边界。
-
 ## 对话框提示词优化
 
-0.2.2 在既有只组装、本次规则和可编辑对照上提供一般功能：默认忠实整理、可选改写表达、独立补充建议，以及折叠卡、改图用途与贴近 Skills 的指令；特殊功能后续安排。详见 [提示词优化与规则组装](docs/PROMPT_OPTIMIZER.md)。规则按次传入，原有自定义 v1 配置保留，读取旧配置不自动重写。
+启用插件后，DSH 输入框旁会出现半透明的 **🫧** 按钮，点击即可打开悬浮提示词优化面板（支持桌面悬浮窗与移动端底部面板，详情见[提示词优化与规则组装](docs/PROMPT_OPTIMIZER.md)与[真机截图](docs/screenshots.md)）：
 
-安装并启用 Iris 后，DSH 对话输入区会出现一个没有边框、底色和文字的“🫧”入口。点击后打开半透明玻璃悬浮窗；桌面端靠近输入区，手机窄屏自动变为底部面板，并适配浏览器安全区、可用高度和内部滚动。它独立于 Iris 工作台，可用于普通问答、写作、编程以及图片/视频生成提示词。[查看 Android 16 真机完整流程](docs/screenshots.md)。
+1. 输入草稿并点击 **🫧**，选择目标场景（通用、画图、改图、视频、数字人）。
+2. 选择处理方式：**忠实整理**（保留原文句序仅做分段整理，不调用模型）、**改写表达**（按规则润色，调用模型）或**只组装**（拼接模板前后缀）。
+3. 检查对比预览，按需展开“可选补充与待确认”获取创意建议，确认后点击写回输入框或复制。
 
-使用流程：
-
-1. 在对话框写入草稿，点击“🫧”。
-2. 在一般功能中选择“通用、画图、改图、视频、数字人”（旧 0.2.1 的四目标调用保持兼容）。
-3. 默认“忠实整理”，保持原文与句序，只调整分组/分段；单片段直接保留原文，不调用模型。需要润色或明确改变指定内容时选择“改写表达”，再展开本次规则；只组装仍原样拼接草稿与前后缀，不调用模型。旧后端保留“智能优化”。
-4. 编辑预览、检查原文与改动，然后选择“写回输入框、复制、重新生成预览”或“恢复原文”。需要额外创意时展开“可选补充与待确认”，点击获取才调用一次模型；勾选后还需点击采纳才加入预览，可以撤回上次采纳。手动编辑会清除旧建议绑定；建议与待确认问题不代表已验证事实或用户已有要求。折叠不清空选择和结果，Iris 不会自动发送消息。
-
-默认路由是当前会话模型；当前会话没有选择时使用 DSH 默认模型，固定配置优先于这两项。预览显示实际选择原因。“指令与模型设置”可查看指令、导出/导入 JSON，选择“仅恢复默认指令”或“恢复全部设置”；前者保留模型、生成参数和入口开关。配置单独保存在 `$DSH_HOME/iris/v1/prompt-optimizer.json`，不包含供应商 API Key，也不与 `providers.json` 混合。
-
-再次优化失败或取消会保留已有预览，等待期间继续编辑时，新结果不会覆盖手工改动。配置异常会说明默认值和原文件保留状态；导入前可先导出备份。
-
-导出文件格式：
+配置单独保存在 `$DSH_HOME/iris/v1/prompt-optimizer.json`，支持导出/导入局部或完整配置：
 
 ```json
 {
@@ -307,9 +200,7 @@ Iris 工作台中的文件字段提供三种方式：
     "video": "视频提示词的补充要求",
     "s2v": "首帧加音频数字人视频的补充要求"
   },
-  "route": {
-    "mode": "session"
-  },
+  "route": { "mode": "session" },
   "generation": {
     "temperature": 0.3,
     "reasoningEffort": "off-if-supported",
@@ -319,130 +210,81 @@ Iris 工作台中的文件字段提供三种方式：
 }
 ```
 
-如需固定使用另一供应商模型，把路由改为：
-
-```json
-{
-  "route": {
-    "mode": "fixed",
-    "provider": "DSH 中注册的 provider id",
-    "model": "该 provider 下的 model id"
-  }
-}
-```
-
-`generation.reasoningEffort` 默认是 `off-if-supported`：Iris 查询 DSH 的模型元数据，只在模型明确提供 `off`（或等价关闭档位）时关闭 thinking；不支持时回退供应商默认值。它也可设为 `provider-default`（忽略会话档位）、`inherit`（显式继承会话 High/Low）或当前模型声明的具体 effort ID。thinking token 可能与正文共用 `maxOutputTokens`，因此不建议先盲目提高上限；优先关闭 thinking，或用 `fixed` 路由选择轻量非思考模型，确有长输出需求时再调高，当前允许 64–4096。Iris 不会自动重试，避免重复计费。
-
-导入允许局部配置，缺少的字段会补成 Iris 默认值，未知字段不会落盘。面板导出的则是完整配置。Prompt 最大 32 KiB，结果最大 16000 字符；请求无工具权限，且不会附带会话历史、附件、工作区文件或 API Key。当前版本不会改写含 `@` 或 `/` 结构化引用的草稿，以免写回时破坏引用节点。面板可单独关闭这个对话入口；关闭后 Iris 工作台、Agent 工具和任务后台仍然运行，可在“设置 → Iris 工作台 → 对话框提示词优化”重新启用。开发中若只热更新了客户端而服务端尚未重载，关闭请求可能返回 `method not allowed`；重启 DSH 并刷新浏览器即可让新接口生效，正式安装或升级后也应重启宿主。
+如需固定模型，可将 `route` 设为 `{"mode": "fixed", "provider": "<provider_id>", "model": "<model_id>"}`。`reasoningEffort` 默认为 `off-if-supported`（当模型支持关闭 thinking 时优先关闭，以免思考 token 占用 `maxOutputTokens`）。单次 Prompt 上限 32 KiB，输出上限 16000 字符，请求不携带工具权限、会话历史或 API Key，且默认跳过含 `@`/`/` 结构化引用的草稿。
 
 ## 任务和产物
 
-Iris 会在会话输入区显示运行中任务，并在 Iris 工作台保留最近任务。长时间生成转入后台后，可以让 Agent 调用 `iris_task_status`，或在工作台中打开任务详情。
+运行中的任务会显示在输入区上方；长时间异步任务（如视频或转写）转入后台后，Agent 可通过 `iris_task_status` 查询，或直接在工作台查看详情。
 
-Task v2 将“供应商是否受理、观察是否继续、远端结果和本地交付”分开记录。观察暂停、受理/结果未知，以及生成成功但交付失败会进入“需要处理”：
+当任务出现观察暂停、受理未知或交付失败时，工作台会将其归入“需要处理”，并提供精准恢复动作（底层诊断规则见[错误与取消传播](docs/PROVIDER_ADAPTER_CONTRACT.md#错误与取消传播)）：
 
-- **重新观察**：只恢复已有远端任务的轮询，绝不提交新的生成请求。
-- **重新交付**：只重新查询并下载已经成功的远端产物；同步结果没有远端任务 ID 时会拒绝伪恢复。
-- **知情重试**：新建一次可能收费的生成任务，必须独立确认，并在新旧 Task 间记录关联。创建新任务后，原提醒自动归档为“已通过重试处理”，不会继续占用泡泡角标。当前只为能无损还原输入的文生图和文生视频提供按钮；文件输入和可能被截断的文本应从原始输入重新发起。
-- **标为已读 / 恢复提醒**：用户可以隐藏已经理解但暂不处理的提醒，并从历史详情重新打开。已读只影响提醒队列，不会把受理未知伪造成成功、失败或未受理。
+- **重新观察**：仅对已有远端任务再查询一次，绝不重发生成。
+- **重新交付**：仅重新下载已成功生成的远端产物。
+- **知情重试**：显式确认计费后创建新任务并建立 `retriedFrom` 关联（文生图/视频支持快捷入口，文件类输入需从原始输入重新发起）。
+- **标为已读 / 恢复提醒**：隐藏或恢复提醒角标，不改变任务本身的真实状态。
 
-旧版任务会明确显示“旧任务 · 只读”。只有服务端明确返回 `schemaVersion=1` 才使用该标签；客户端与服务端热更新暂时不同步时，不会把字段缺失的新任务误判为旧任务。
+### 作品管理与数据目录
 
-### 生图错误诊断（0.2.2）
-
-即时错误与任务详情显示同一脱敏原因。包装的网络异常保留请求或正文读取阶段及可用的底层错误码，可区分 DNS/TLS、连接建立超时、等待响应头超时和正文中断；原生取消/超时保持各自分类，鉴权、参数、限流及额度错误分别分类。`fetch failed` 本身不能证明图片太大或网关回收长连接，需结合阶段与错误码判断。
-
-尺寸按当前协议归一分隔符。DashScope 多模态只校验已确认的总像素范围，合法长边不受额外单边上限限制；本地面积不合法明确记为未受理。传输中断仍保留受理未知，不自动重提收费请求。HTTP 200 响应头不等于正文完整或图片已交付；生成成功后的本地交付失败仍与生成结果分开记录。详见 [Provider Adapter 契约](docs/PROVIDER_ADAPTER_CONTRACT.md#错误与取消传播)。
-
-### 清除历史与作品库
-
-工作台中的作品库独立于任务历史。新落盘媒体会自动入库；首次升级会接回已有 `outputs/`，也可以随时点击“找回本地作品”重新扫描。清空已完成任务或清理旧任务只删除任务状态、Prompt、错误与重试记录，作品仍可在工作台和泡泡打开。
-
-旧版作品删除或清空会永久删除实际媒体文件，需独立确认；相关旧任务记录保留，但媒体链接失效。“删除孤儿产物”只处理 legacy `outputs/`。Core 作品使用预览和可恢复回收区，引用保护会阻止单独删除；关联已结束任务需逐项明确选择，恢复不覆盖冲突。详见 [旧版作品库](docs/ARTIFACT_LIBRARY.md) 与 [Core 作品管理](docs/WORKBENCH_ARTIFACTS.md)。收藏、标签和搜索仍为后续功能。
-
-默认数据目录：
-
-| 路径 | 内容 |
-|---|---|
-| `$DSH_HOME/iris/v1/outputs/` | 图片、音频和视频产物 |
-| `$DSH_HOME/iris/v1/uploads/` | 浏览器上传的临时输入 |
-| `$DSH_HOME/iris/v1/tasks.json` | 任务状态与附件索引 |
-| `$DSH_HOME/iris/v1/artifacts.json` | 作品库最小索引与随机访问令牌，不含 Prompt 和任务关系 |
-| `$DSH_HOME/iris/v1/providers.json` | 供应商、模型池和能力分配 |
-| `$DSH_HOME/iris/v1/prompt-optimizer.json` | 提示词优化器的用户 JSON 配置 |
-
-音视频播放链接带随机令牌。默认只接受回环 Host。反向代理或 LAN 访问时，需要同时显式信任外部 Host，并按需设置媒体链接基址，例如：
+- **作品库与回收机制**：Core 作品支持直接点击看图、OCR、按 Artifact ID 改图（见[Artifact 改图](docs/CLI_MANAGEMENT.md#artifact-聊天改图)）、跨页勾选与批量 ZIP 打包下载（最多 200 项、128 MiB）。Core 删除默认先进入可恢复回收区并受引用保护，而旧版 `outputs/` 删除仍为永久生效（详见 [Core 作品管理](docs/WORKBENCH_ARTIFACTS.md) 与 [旧版作品库](docs/ARTIFACT_LIBRARY.md)）。
+- **反向代理访问**：媒体链接带随机访问令牌，默认仅允许回环 Host；若需经反向代理或局域网访问，请在代理层配置 HTTPS 与身份认证后，显式设置信任列表：
 
 ```bash
 IRIS_TRUSTED_HOSTS="dsh.example.com" DSH_WEB_BASE="https://dsh.example.com" dsh web
 ```
 
-列表用逗号分隔，可填写 `host` 或精确的 `host:port`；反向代理应保留正确的 Host。`IRIS_TRUSTED_HOSTS` 只防止意外 Host 暴露，不验证用户身份。只要服务位于公网或不可信网络，就必须由反向代理或 DSH 部署层提供 HTTPS 和认证，不能把随机媒体令牌当作登录机制。
+默认数据目录结构如下：
 
-## 离线 Doctor
+| 路径 | 用途 |
+|---|---|
+| `$DSH_HOME/iris/v1/outputs/` | 图片、音频和视频产物 |
+| `$DSH_HOME/iris/v1/uploads/` | 浏览器上传临时文件 |
+| `$DSH_HOME/iris/v1/tasks.json` | 任务状态与附件索引 |
+| `$DSH_HOME/iris/v1/artifacts.json` | 作品库索引与访问令牌 |
+| `$DSH_HOME/iris/v1/providers.json` | 供应商、模型池与能力分配 |
+| `$DSH_HOME/iris/v1/prompt-optimizer.json` | 提示词优化器配置 |
 
-运行以下命令不会启动 DSH，也不会发送任何供应商请求：
+## 诊断工具（Offline Doctor & Host Doctor）
+
+- **离线 Doctor**（不启动 DSH、不联网调用模型）：
 
 ```bash
-npx @mokuyoaxis/dsh-iris doctor
 npx @mokuyoaxis/dsh-iris doctor --json
+# 只读盘点指定 Core 数据根（不执行写入探针，也不自动修复）：
+npx @mokuyoaxis/dsh-iris doctor --data-root /absolute/path --json
 ```
 
-已安装包也可以直接运行 `dsh-iris doctor`。退出码为 `0`（正常）、`1`（警告）和 `2`（硬错误）。Doctor 会执行一个随后立即删除的本地写入探针，并检查配置、任务、能力分配、临时文件和产物引用；输出不含完整 API Key。离线模式无法检查 DSH 工具/客户端是否已经装载，也不会用付费请求验证 Provider。
+退出码含义：`0` 正常、`1` 有警告、`2` 有硬错误。若因进程强杀遗留写者租约，请先用 `doctor` 确认失效 PID，再按[写者租约恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)执行 `runtime recover`。
 
-**0.2.0** 另提供 `doctor --data-root <绝对路径> --json`：只读盘点指定 Core 数据根的 Task、Artifact、Index 和租约，不执行上述写入探针，也不自动修复。`providers list` 与 `capabilities list` 可用 `--provider-config <私有配置绝对路径>` 只读查看脱敏供应商摘要和按配置排序的候选链；它们不代表远端能力已实测。异常退出留下租约时，先用显式 Doctor 查看 owner，再按 [Headless CLI 的恢复步骤](docs/HEADLESS_CLI.md#异常退出后的写者租约)人工确认并运行 `runtime recover`，不要手动删除租约。安装 Iris 后使用 `dsh-iris` 命令；临时运行可用 `npx --package @mokuyoaxis/dsh-iris@0.3.0 dsh-iris ...`。旧版 0.1.4 不包含这些 Core 命令。
-
-## Host Doctor
-
-DSH 运行后打开“设置 → Iris 工作台 → 宿主诊断”。卡片检查宿主/服务端/客户端版本、当前工具和随包 Skill、四组路由与四个 UI Slot。0.2.7 保留 17 个工具和三项 DSH Skill；升级后检查服务端实际装载、刷新页面，并确认功能策略。点击“刷新”查看结果，原始 JSON 可在同一浏览器访问 `/iris/api/doctor`；该路由使用 Iris 的 Host/来源守卫，不提供独立身份认证。
-
-0.2.4新增图片导入后检查17个工具，三项Skill保持；0.2.3为16个工具。
-
-Host Doctor 不打开 Browser、不读取附件或会话、不调用模型，也不请求供应商。报告中的 `exitCode` 是诊断严重度，不是 HTTP 状态：`0` 全部健康，`1` 有可降级警告，`2` 有硬错误。未安装 HTML Browser 时出现一条 Browser 警告是预期降级；如果提示尚未收到客户端握手，刷新 DSH 页面后再点“刷新”。若显示 `not found`，通常是前端已更新而 DSH 后端仍运行旧插件代码，应重启 DSH 后再刷新页面。
-
-Host Doctor 显示通过，只代表“插件与宿主接口已正确装载”，不代表 API Key 或某个模型可调用。供应商侧应看能力健康颜色与恢复条件，并在模型池中显式实测或完成一项真实任务。完整字段和安全边界见 [Host Doctor](docs/HOST_DOCTOR.md)，两类检查的区别见 [Provider 与能力健康状态](docs/PROVIDER_HEALTH.md)。
+- **Host Doctor**：在 DSH 中打开 **设置 → Iris 工作台 → 宿主诊断**（对应同源 `/iris/api/doctor`），可一键核对宿主/插件版本、17 个工具与 3 项 Skill、路由及 UI Slot 装载情况，并支持主动触发一次本地浏览器**截图自检**（详见 [Host Doctor](docs/HOST_DOCTOR.md)）。若尚未安装浏览器服务，出现 1 条 Browser 警告属于正常降级；如果接口返回 `not found`，通常需要重启 DSH 后端以加载最新插件代码。
 
 ## 可选依赖
 
-0.2.1 提供 [独立视觉 CLI](docs/VISION_CLI.md)：`vision look / locate / ocr / summarize`。必须显式指定私有 Provider 配置；可指定 `--model-ref providerId::modelId` 严格选型、保存 JSON/文本或摘要拼图。默认只分析画面；文件输入不要求数据根，使用 `artifact_id` 或 `frame_artifact_ids` 时需显式数据根并只读 Core，主动音轨转写使用 Core writer。
-
-视频文件抽帧依赖 PATH 中的 `ffmpeg` 与 `ffprobe`。缺少它们无法从视频文件生成新帧；摘要可复用既有 Core 帧 ID，不需要这两个工具。生成、看图、OCR 或语音工具不受影响。
-
-DSH HTML 截图需要宿主提供兼容的 `browser` 服务，例如 `dsh-builtin-browser`；Iris 不自动安装或启动独立浏览器。浏览器本身所需的显示服务与运行环境由其实现决定。独立 CLI 显式提供 Chromium 可执行文件，见 [HTML 截图](docs/CLI_MANAGEMENT.md#html-截图)。截图页在离线沙箱中运行，不加载远程脚本、字体或图片；需要的资源应内联到 HTML。
-
-0.2.7 的截图适配修复直接接收浏览器返回的 PNG，再保存为 Core 作品，无需将浏览器的下载目录扩大到 Iris 数据根。返回图片最多 64 MiB、单边 16384、4000 万像素；DSH 的宽高参数仍只控制内容容器的最小尺寸，不改变宿主视口。
-
-0.2.7 截图地址优先使用显式 `DSH_WEB_BASE`，否则读取宿主公开的实际监听地址与端口；通配监听地址转换为对应回环地址。旧宿主缺少地址信息时保留 3080 并显示提示。反代前缀、远程浏览器和不同访问拓扑仍须显式指定浏览器可访问的 HTTP(S) 地址，不附带登录 token、查询参数或 URL 凭据；媒体播放链接沿用原基址约定。
-
-0.2.7 在“诊断与运行信息 → 宿主诊断”提供“截图自检”：点击后才启动浏览器，生成一张不含外部资源的本地测试作品，成功后可展开预览。自检不调用模型，最多等待 60 秒，可取消；取消会停止等待，若刚完成保存仍可在作品库查看。只刷新宿主诊断不会打开浏览器，接口存在也不等于当前浏览器已经实测成功。
+- **视觉 CLI**：`vision look / locate / ocr / summarize` 支持独立 CLI 调用（使用 `artifact_id` 或 `frame_artifact_ids` 时需显式提供 `--data-root`）。
+- **视频抽帧**：依赖系统 PATH 中的 `ffmpeg` 与 `ffprobe`；仅使用已有 `frame_artifact_ids` 做摘要时不依赖它们。
+- **HTML 截图**：DSH 内需宿主提供 `browser` 服务（如 `dsh-builtin-browser`），独立 CLI 需显式指定 Chromium 路径（见 [HTML 截图](docs/CLI_MANAGEMENT.md#html-截图)）。截图页面在离线沙箱中渲染，需将依赖的资源内联进 HTML。
 
 ## 更新和卸载
 
-更新 npm 版本：
-
 ```bash
+# 更新插件（更新后请重启 DSH）
 dsh plugin --profile web update @mokuyoaxis/dsh-iris
-```
 
-从 0.1.1 升级到 0.1.2 时，插件自带 bundle 会自动使用新的唯一行 ID。如果你曾在个人 `cordis.patch.yml` 中手动覆盖 `id: dsh-iris`，需要把该覆盖改成 `id: mokuyoaxis-dsh-iris`，否则 DSH 会报告旧行未匹配。
-
-更新后重启 DSH。卸载插件：
-
-```bash
+# 卸载插件（会保留 $DSH_HOME/iris/v1/ 中的个人配置与作品）
 dsh plugin --profile web remove @mokuyoaxis/dsh-iris
 ```
 
-卸载不会自动删除 `$DSH_HOME/iris/v1/` 中的配置和产物。
+> [!NOTE]
+> 从 `0.1.1` 升级时，若曾在个人 `cordis.patch.yml` 中手动覆盖过 `id: dsh-iris`，需将其更新为 `id: mokuyoaxis-dsh-iris`。
 
 ## 常见问题
 
-- **对话框没有“🫧”入口**：确认 Iris 客户端已加载且当前存在会话；再到“设置 → Iris 工作台 → 对话框提示词优化”检查是否被单独关闭。
-- **提示词优化提示没有模型**：先在当前会话选择主模型，或在 JSON 中配置 `route.mode: "fixed"`。
-- **设置中没有 Iris 工作台**：确认插件已加入 Web profile，并在安装后重启 DSH；可用 `dsh plugin --profile web list` 和 `--dump-config` 检查。
-- **没有可用模型**：先确认供应商已启用且 Key 有效，再运行“发现模型”；未标注模型需通过“设置功能”选择用途，不支持 `/models` 时手动添加并标注。
-- **OpenAI 兼容图片请求走错协议**：核对模型的有效图片协议；`/images/generations` 使用 `openai-images`，网关聊天图片扩展使用 `openai-chat-images`，同步 `/responses` 生图使用 `openai-responses-images`。可在生图模型行或 CLI `models protocol` 设置模型级覆盖，不需要改变同账号其他模型的接口。
-- **反向代理访问返回 `untrusted host`**：把浏览器实际使用的域名或 `host:port` 加入 `IRIS_TRUSTED_HOSTS`，保留 Host，并确认代理层已经启用认证。
-- **模型池为空时使用宿主看图**：在视觉手选名单中加入“DSH 当前默认模型”，或在自动池中明确启用宿主视觉；宿主模型须声明图片输入。也可确认自持 `vision` 模型用途，再启用自动池或加入手选名单。
-- **视频摘要提示 ffmpeg 不可用**：安装系统级 `ffmpeg` 和 `ffprobe`，并确保 DSH 进程的 PATH 能找到它们。
-- **本地文件不存在**：这里的“本地”指 DSH 宿主，不一定是浏览器所在设备；优先用“上传文件”。
-- **视频任务长时间运行**：不要重复提交。用 `iris_task_status` 或工作台任务详情查询原任务。
+- **对话框没有“🫧”入口**：确认 Iris 客户端已加载且当前存在会话，再到“设置 → Iris 工作台 → 对话框提示词优化”检查是否被关闭。
+- **提示词优化提示没有模型**：先在当前会话选择主模型，或在配置文件中改用 `route.mode: "fixed"`。
+- **设置中没有 Iris 工作台**：确认插件已加入目标 Web profile 并重启了 DSH（可用 `dsh plugin --profile web list` 与 `--dump-config` 检查）。
+- **没有可用模型**：确认供应商已启用且 Key 有效，运行“同步目录”后通过“设置功能”勾选用途；无 `/models` 接口时请手动添加模型并标注用途。
+- **OpenAI 兼容图片请求走错协议**：检查模型级的 `imageProtocol`（`/images/generations` 用 `openai-images`，聊天带图接口用 `openai-chat-images`，同步 `/responses` 用 `openai-responses-images`）。
+- **反向代理访问返回 `untrusted host`**：将实际访问域名或 `host:port` 加入 `IRIS_TRUSTED_HOSTS`，确保反代透传 `Host` 并配置好访问认证。
+- **模型池为空时使用宿主看图**：在视觉手选名单中加入“DSH 当前默认模型”，或在自动池中显式启用宿主视觉（须宿主模型支持图片输入）。
+- **视频摘要提示 `ffmpeg` 不可用**：安装 `ffmpeg` 和 `ffprobe`，并确保它们在 DSH 进程的 `PATH` 中。
+- **本地文件不存在**：工作台中的“宿主路径”指 DSH 运行所在的机器，而非浏览器本地设备；跨设备场景请优先使用“上传文件”。
+- **视频任务长时间运行**：请勿重复提交；使用 `iris_task_status` 或工作台任务详情查询原任务进度。

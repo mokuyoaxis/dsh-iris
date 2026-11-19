@@ -1,14 +1,12 @@
 # Iris 架构与边界
 
-状态：本文说明 **Iris 0.3.0-beta.2**的共享Core及Web、MCP与插件装配，沿用beta.1架构，并保留0.2.7入口图作历史对照。0.2.0建立实例化Core Runtime、Headless CLI及共享Task/Artifact事实；后续加入共享视觉、图片编辑、音乐和交付恢复。0.2.5恢复旧宿主支持，0.2.6增加连接引用、可选功能自动池和目录同步。准确版本及历史范围见 [兼容矩阵](DSH_COMPATIBILITY.md)。Node.js最低22.1.0；Core与插件契约仍为实验性。
+本文介绍 **Iris 0.3.0** 的共享 Core、Web 工作台、MCP 网关、插件装配与 DSH 宿主边界（兼容宿主列表见 [兼容矩阵](DSH_COMPATIBILITY.md)，运行要求为 Node.js ≥22.1.0）。
 
 ## 当前形态
 
-当前源码的 [Core 工作台](LOCAL_WEB.md)已连接真实持久执行、停止、作品选择和供应商管理；[通用 MCP](MCP.md)及[显式插件贡献](PLUGINS.md)复用同一服务与授权边界。图片生成/编辑、语音/转写和插件业务按用户所选范围启用。下方示意图表示 0.2.7 已发布入口，完整当前覆盖见 [README](../README.md#当前入口覆盖)。
+Iris 以单一 npm 包同时交付四类入口：[Core Web 工作台](LOCAL_WEB.md)（支持口令登录、持久执行、选择与供应商管理）、[通用 MCP](MCP.md)、Headless CLI 与 DSH 原生插件（各自能力覆盖见 [README](../README.md#当前入口覆盖)）。工作台支持通过 [Panel/主题](PANEL_EXTENSIONS.md) 显式组合或替换界面，以及通过 [模型服务](PROVIDER_SETTINGS.md) 管理供应商配置。
 
-0.3 beta另提供独立 [Panel/主题](PANEL_EXTENSIONS.md)和 [C3 供应商设置](PROVIDER_SETTINGS.md)：页面可显式替换，配置管理复用应用层原子写入；默认媒体权限与 Core Task/Artifact 格式保持。它们不随已发布 0.2.7 提供，也不自动替换 DSH 内嵌 UI。
-
-Iris仍以一个npm包交付。DSH插件负责原生Agent工具、附件、浏览器和内嵌UI；Headless CLI与独立Core服务（Web/MCP）在没有DSH/Cordis的进程中接收明确数据根和私有Provider配置。各入口共用Core Runtime、Provider Task Runner、Task/Artifact Store和本地Command，不能在同一根同时充当写者；MCP桥连接已有Core服务，不另建业务写者。
+DSH 插件负责原生 Agent 工具、附件、浏览器桥接与内嵌 UI；Headless CLI 与独立 Core 服务（Web/MCP）在无 DSH/Cordis 依赖的进程中接收显式数据根与私有 Provider 配置。所有入口共用 Core Runtime、Provider Task Runner、Task/Artifact Store 与本地 Command（同一物理根同时只允许一个写者，MCP 桥接复用同一 Core 服务）。
 
 ```text
 DSH Host / Cordis                         Headless CLI

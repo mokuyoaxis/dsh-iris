@@ -1,29 +1,23 @@
 # Core Workbench Quickstart · 从零启动工作台
 
-This guide is for **0.3.0 or the current source tree**. The historical 0.2.7 package does not include `web serve` or production MCP. For DSH/CLI usage, see the [DSH guide](../user_guide.md) or [standalone CLI](HEADLESS_CLI.md). The [0.3.0 scope](BETA_SCOPE.md) retains minimal contracts; broader SDK contracts may change. Read the [upgrade guide](UPGRADING_0.3.md) before replacing an older installation; existing roots are not migrated automatically.
+This guide walks through setting up the **Iris 0.3.0** standalone Core workbench from scratch. If you are using DSH or the standalone CLI instead, see the [DSH User Guide](../user_guide.md) or [Headless CLI](HEADLESS_CLI.md); if you are upgrading from an older release, check the [upgrade guide](UPGRADING_0.3.md) first.
+
+> [!NOTE]
+> Choose a **new private directory** under your home folder on a filesystem that supports hard links (on Termux/PRoot, use the Linux home directory rather than Android shared storage). Existing workspaces are never modified or migrated automatically.
 
 ## Start a new workspace · 新建工作区
 
-Use Node.js ≥22.1.0. Once the exact version is published, install it in your project; during release preparation, use source or the local candidate archive:
-
-```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0
-npx dsh-iris --help
-```
-
-The commands below use a source checkout: install its locked dependencies with `npm ci`, then run from the repository root. For the installed beta package, replace `node bin/dsh-iris.js` with `npx dsh-iris`. Use `@beta` instead of the exact version only when you intend to follow beta releases.
-
-Choose a **new private directory under your home**, on a filesystem that supports hard links. On Termux/PRoot, keep it in the Linux home rather than Android shared storage. These commands create a new workspace; they do not migrate an old DSH or Flow root. If the paths already contain data, choose another location.
+Iris requires **Node.js ≥22.1.0**. Install `@mokuyoaxis/dsh-iris@0.3.0` (or run `npm ci` inside a source checkout and replace `npx dsh-iris` with `node bin/dsh-iris.js`):
 
 ```bash
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
 
-node bin/dsh-iris.js flow init --data-root "$IRIS_PREVIEW/core"
-node bin/dsh-iris.js execution init --vision --data-root "$IRIS_PREVIEW/core"
-node bin/dsh-iris.js config init --provider-config "$IRIS_PREVIEW/providers.json"
+npx dsh-iris flow init --data-root "$IRIS_PREVIEW/core"
+npx dsh-iris execution init --vision --data-root "$IRIS_PREVIEW/core"
+npx dsh-iris config init --provider-config "$IRIS_PREVIEW/providers.json"
 
-node bin/dsh-iris.js web serve \
+npx dsh-iris web serve \
   --data-root "$IRIS_PREVIEW/core" \
   --auth-store "$IRIS_PREVIEW/auth" \
   --provider-config "$IRIS_PREVIEW/providers.json" \
@@ -33,67 +27,63 @@ node bin/dsh-iris.js web serve \
   --port 3182
 ```
 
-`--vision` initializes a new v5 execution root, supporting images, speech, transcription, text-to-video, vision and OCR. It does not select a model, call a provider or migrate existing roots. Existing v3/v4 workspaces keep their original capabilities; see [vision/OCR setup](VISION_FLOWS.md). The switches above explicitly enable:
+`execution init --vision` creates a **v5** execution root with image, speech, transcription, text-to-video, vision, and OCR flows ready (without calling any provider). Each flag on `web serve` grants a clear, opt-in capability:
 
-| Switch | What it permits |
+| Switch | What it enables |
 |---|---|
-| `--allow-provider-management` | The workbench owner can edit media services, models and pools |
-| `--allow-execution` | Local imports, Run creation and supported media execution |
-| `--allow-selection` | Save an image selection for a completed Run |
-| `--allow-connection-management` | The owner can create, update, revoke and delete MCP grants |
-| `--allow-mcp` | Serve Streamable HTTP at `/mcp`; stdio uses a bridge to the same Core |
+| `--allow-provider-management` | Edit media services, models, and function pools in the UI |
+| `--allow-execution` | Local imports, Run creation, and media execution |
+| `--allow-selection` | Save an image selection on a completed Run |
+| `--allow-connection-management` | Create, edit, revoke, and delete MCP client grants |
+| `--allow-mcp` | Expose the `/mcp` Streamable HTTP endpoint alongside stdio |
 
-The service listens on `127.0.0.1`. Keep this command running. Ctrl+C stops this service normally; it does not start or restart DSH. Only one execution service may manage this root. To run a service that only browses saved Runs and media, omit the write switches and unneeded management options; see [the workbench reference](LOCAL_WEB.md).
+The server binds to `127.0.0.1` and stays in the foreground (stop it cleanly with `Ctrl+C`). Only one execution writer may own a given data root at a time. To launch a read-only gallery instead, omit the write and management flags—see the [Core Web reference](LOCAL_WEB.md).
 
-To recover original Operations through a read-only MCP connection, keep the existing Core execution service enabled and grant the connection only `read` and its selected read tools. Turning off the service also removes its Operation routes; a read grant cannot enable them. The plugin-service alternative and exact route gates are described in [Core operation recovery](CORE_SERVICE.md#接收查询与停止).
+> [!TIP]
+> If a read-only MCP connection needs to look up or recover historical Operations, keep the Core execution service running—read grants on the connection authorize access, while the execution service provides the lookup routes. See [Core operation recovery](CORE_SERVICE.md#接收查询与停止).
 
 ## Sign in · 登录
 
-Open the printed **`loginUrl` once to set your access password**. Afterwards, open the ordinary `origin` and use that password. Remembered devices survive refreshes and normal restarts; logging out lets you sign back in with the same password. A mobile browser does not need access to Termux files.
+Open the printed **`loginUrl`** once in your browser to set your workspace access password. After setup, bookmark and use the regular `origin` URL—remembered devices stay signed in across page refreshes and normal restarts.
 
-In another terminal, recover the address without restarting:
+To retrieve a fresh login URL or reset your password without restarting the running server:
 
 ```bash
-node bin/dsh-iris.js web login \
+# Retrieve login address
+npx dsh-iris web login \
+  --data-root "$HOME/.iris/preview/core" \
+  --auth-store "$HOME/.iris/preview/auth"
+
+# Reset password and revoke active browser sessions (keeps works and MCP grants)
+npx dsh-iris web password reset \
   --data-root "$HOME/.iris/preview/core" \
   --auth-store "$HOME/.iris/preview/auth"
 ```
 
-Use `web password reset` with the same paths only when you intend to reset the password and revoke all browser sessions. It preserves works and MCP grants. See [login and recovery](WORKBENCH_LOGIN.md). The workspace password, a provider API key and an MCP connection credential are three separate credentials.
+Workspace passwords, provider API keys, and MCP connection credentials are stored and managed separately—see [login and recovery](WORKBENCH_LOGIN.md).
 
 ## Make the first work · 生成第一件作品
 
-1. Open **模型服务 → 添加服务**. Select the documented protocol, enter a name, Base URL and API key, or explicitly choose no authentication if the service supports it. Save the connection.
-2. Open **模型与用途**, read the saved service's model directory or enter an exact model ID, and explicitly check its intended use. Save again. Approving a new use can enable its automatic pool; check the save summary.
-3. Under **功能模型池**, choose automatic selection, a manually ordered list, or disabled. A manual empty list stays empty. Automatic selection uses confirmed, eligible models in stable order; it is not cross-request round-robin.
-4. Under **创作 → 生成图片**, choose an actual configured model, enter a prompt and click **开始生成**. This is the step that calls the provider and may cost money. Choose the completed result, then download it. **作品** keeps the Run and its related outputs.
+1. **Add a provider**: Open **模型服务 → 添加服务**, pick the documented protocol, enter your Base URL and API key (or choose no-auth for local endpoints), and save.
+2. **Approve models**: Under **模型与用途**, sync the model directory or enter model IDs manually, check their intended capabilities, and save.
+3. **Choose a pool policy**: Under **功能模型池**, set each capability to automatic, a manually ordered list, or disabled. Automatic pools select confirmed, healthy models in stable order.
+4. **Generate**: Open **创作 → 生成图片**, select a configured model, enter your prompt, and click **开始生成**.
 
-Opening pages and refreshing the spectrum do not generate media. Reading a model directory or checking a connection only checks that interface; neither proves media generation works. Optional keepalive is off by default and lasts only for this service session. Full details: [providers, pools and health](PROVIDER_SETTINGS.md).
-
-For ComfyUI, use an existing service and an explicitly imported **API-format workflow** with mapped prompt/output nodes. Check declared parameters and available LoRA choices, then save and choose that workflow. Iris does not install ComfyUI, invent a graph or discover GPU models by guessing. See [ComfyUI workflows](IMAGE_GENERATION.md#comfyui-入口).
-
-Beta.1 Web/MCP media entries cover image generation/editing, speech, transcription and [text-to-video](VIDEO_FLOWS.md): choose a separate new root and use `execution init --video` instead of `--audio` when initializing it. This creates v4, retains image/audio flows and adds optional video entry points; existing roots are not migrated. Older alpha.1 packages do not support this switch. Image-to-video, S2V and music retain their existing [CLI](HEADLESS_CLI.md) / DSH entries; beta.3 vision/OCR uses another explicit new v5 root.
+Browsing pages, inspecting the health spectrum, and syncing model catalogs are all read-only—billable requests happen only when you explicitly start generation. For ComfyUI setups, import an **API-format workflow** with mapped prompt/output nodes; see [ComfyUI workflows](IMAGE_GENERATION.md#comfyui-入口). For full provider and pool details, see [providers, pools, and health](PROVIDER_SETTINGS.md).
 
 ## Connect an Agent · 连接客户端
 
-Beta.3 supports [durable vision/OCR](VISION_FLOWS.md) in a separate new root initialized with `execution init --vision`. Select `vision` or `ocr` explicitly in the connection center. Beta.2 does not include this switch; existing roots are never upgraded automatically.
-
-1. Open **客户端 → 新建连接**. Give it any meaningful name. Choose media functions and, for image generation, the separate generation capability. Grant only the operations needed: **读取** for history; **导入与创建** and **执行流程** for new media; **停止等待** only when wanted.
-2. Save, then select a client template under **接入配置**. Use **stdio** for a local client that can run the exported command, or **HTTP** when it supports Streamable HTTP. HTTP here is loopback-only too.
-3. Generate the configuration and merge the Iris entry into the client's chosen MCP configuration. Preserve existing entries. Reconnect in that client, then refresh the workbench to inspect the actual handshake.
-4. Optionally generate and download the **连接专属 Skill**, then explicitly install it in that client's supported Skills directory:
+1. **Create a connection**: Open **客户端 → 新建连接**, name the client, select the media groups it needs (for example `image-edit`, `image-generate`, `vision`, or `ocr`), and choose scopes: **读取** (`read`), **导入与创建** (`create`), **执行流程** (`execute`), and optionally **停止等待** (`stop`).
+2. **Export MCP config**: Under **接入配置**, check whether the Agent runs on the same machine as Core, choose **stdio** or **HTTP** (loopback `/mcp`), and merge the generated snippet into your client's MCP configuration. Keep Core running while clients connect, and keep exported configs private.
+3. **Install the connection Skill (optional)**: Download the generated **连接专属 Skill** bundle—it documents only the tools granted to that connection without embedding credentials—and install it explicitly:
 
 ```bash
-node bin/dsh-iris.js skills install \
+npx dsh-iris skills install \
   --bundle /absolute/path/to/iris-skill.json \
   --directory /absolute/path/to/client-skills
 ```
 
-The downloaded Skill contains instructions for the effective tools, without the connection key. The exported MCP configuration is private and may contain a credential; do not commit or share it. The CLI-oriented `iris-core` Skill is a separate entry, intended for direct CLI use.
-
-The client starts a stdio **bridge**, not a second Core writer. Both transports require this Core service to stay running. A saved connection is an authorization record; it does not install a client or mean that client is online. On the same machine, keeping the data root, authentication directory, connection directory, installed executable path and port stable preserves normal logins and exported configurations.
-
-Hand the client this task after it sees the actual tools:
+4. **Verify**: Reconnect your MCP client, refresh the workbench to view the recorded handshake, and test with a clear prompt:
 
 ```text
 Use only this Iris MCP connection. Read the actual configured image models,
@@ -103,12 +93,10 @@ Read back the resulting artifact. Report its Run ID, artifact ID and actual stat
 If acceptance or the result is unknown, inspect it; do not submit again automatically.
 ```
 
-For an Agent handling setup, use the [Agent quickstart](AGENT_CORE_QUICKSTART.md). Transport details, templates and errors are in [MCP](MCP.md).
-
-Beta.1 provides **选择与授权 → 获取配置 → 核对接入**. Confirm where the Agent runs: the current loopback address and local stdio paths cannot be copied directly to another machine. Its **Iris 端配置检查** reads service/authorization facts without creating a bridge or testing media. Export, this check and an actual client's optional declaration are separate evidence; missing optional client metadata is not proof of a failed call. See [the onboarding flow](MCP.md#工作台连续接入当前源码).
+For setup prompts you can hand directly to an Agent, see the [Agent Core guide](AGENT_CORE_QUICKSTART.md). For transport specs, presets, and `mcp check`, see [MCP](MCP.md).
 
 ## Optional plugins and recovery · 可选插件与恢复
 
-The quickstart above uses built-in media capabilities. Optional plugins need an explicit startup selection. Follow [plugin startup](PLUGIN_STARTUP.md) to load the bundled [contact sheet](CONTACT_SHEET.md), choose its page/operation and then grant that exact business to a connection. Loading code, enabling a business and authorizing a client are separate choices. Plugins are trusted Node code, not a sandbox or a marketplace install.
+Optional plugins are loaded explicitly via a startup selection file—follow [plugin startup](PLUGIN_STARTUP.md) to try the bundled [contact sheet](CONTACT_SHEET.md) plugin and grant its business operation to a connection.
 
-Restart by stopping this service normally and repeating the same `web serve` command. Core keeps the original Run/Task/Operation and artifacts; restart does not automatically regenerate. After a forced exit, inspect the lease and its owner before any explicit recovery; never delete a lock to get past “busy”. See [Core lifecycle](CORE_SERVICE.md) and [request recovery](WEB_RECOVERY.md).
+When restarting normally (`Ctrl+C` followed by the same `web serve` command), Core preserves all Runs, Tasks, Operations, and artifacts without re-submitting anything. If a process terminated uncleanly and left a stale writer lease, inspect the lease owner with `doctor` before performing an explicit recovery—see [Core lifecycle](CORE_SERVICE.md) and [request recovery](WEB_RECOVERY.md).

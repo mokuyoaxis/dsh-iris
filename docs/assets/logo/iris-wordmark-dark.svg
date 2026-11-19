@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="310" height="138" viewBox="0 0 310 138" role="img" aria-label="Iris">
+  <title>Iris（深色底）</title>
+  <desc>Iris 多模态工作区标志与字标（适配深色背景）</desc>
+  <defs>
+    <radialGradient id="irisHalo" cx="50%" cy="46%" r="50%">
+      <stop offset="0%" stop-color="#8F7CF6" stop-opacity="0.26"/>
+      <stop offset="56%" stop-color="#D284BF" stop-opacity="0.09"/>
+      <stop offset="100%" stop-color="#0D1117" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="irisRingL" x1="-54" y1="-34" x2="-24" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A59BFF" stop-opacity="0.18"/>
+      <stop offset="50%" stop-color="#9388F2" stop-opacity="0.58"/>
+      <stop offset="100%" stop-color="#C685BA" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="irisRingR" x1="54" y1="-34" x2="24" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#DF92BA" stop-opacity="0.18"/>
+      <stop offset="50%" stop-color="#F2BA86" stop-opacity="0.62"/>
+      <stop offset="100%" stop-color="#F4D59D" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="irisStdSideL" x1="-34" y1="-36" x2="0" y2="6" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#CFC3FF"/>
+      <stop offset="100%" stop-color="#6657BF"/>
+    </linearGradient>
+    <linearGradient id="irisStdSideR" x1="34" y1="-36" x2="0" y2="6" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E2B6F2"/>
+      <stop offset="100%" stop-color="#735BC2"/>
+    </linearGradient>
+    <linearGradient id="irisStdCenter" x1="0" y1="-45" x2="0" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FBF8FF"/>
+      <stop offset="52%" stop-color="#C2B4FF"/>
+      <stop offset="100%" stop-color="#6654BC"/>
+    </linearGradient>
+    <linearGradient id="irisStdSheen" x1="0" y1="-44" x2="0" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="irisFallL" x1="-42" y1="2" x2="-4" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8A7AE2"/>
+      <stop offset="52%" stop-color="#5D48AC"/>
+      <stop offset="100%" stop-color="#9B63AC"/>
+    </linearGradient>
+    <linearGradient id="irisFallR" x1="42" y1="2" x2="4" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#BD80CE"/>
+      <stop offset="52%" stop-color="#6E4CB0"/>
+      <stop offset="100%" stop-color="#CE7D9F"/>
+    </linearGradient>
+    <linearGradient id="irisFallCenter" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#AEA1F5"/>
+      <stop offset="52%" stop-color="#6E56BC"/>
+      <stop offset="100%" stop-color="#CA83B9"/>
+    </linearGradient>
+    <linearGradient id="irisLeafL" x1="-30" y1="20" x2="0" y2="47" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#99DBC2"/>
+      <stop offset="100%" stop-color="#4B8E77"/>
+    </linearGradient>
+    <linearGradient id="irisLeafR" x1="30" y1="20" x2="0" y2="47" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B0E6CF"/>
+      <stop offset="100%" stop-color="#579F86"/>
+    </linearGradient>
+    <linearGradient id="irisHeartOuter" x1="0" y1="-6" x2="0" y2="17" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFF7E2"/>
+      <stop offset="52%" stop-color="#F2CA82"/>
+      <stop offset="100%" stop-color="#E48E68"/>
+    </linearGradient>
+    <linearGradient id="irisHeartInner" x1="0" y1="-2" x2="0" y2="11" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#FFF0C4" stop-opacity="0.35"/>
+    </linearGradient>
+    <linearGradient id="irisTextGrad" x1="0" y1="0" x2="145" y2="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="52%" stop-color="#EFEAFF"/>
+      <stop offset="100%" stop-color="#C6BCFA"/>
+    </linearGradient>
+    <linearGradient id="irisSparkGrad" x1="60" y1="-2" x2="80" y2="15" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B975AE"/>
+      <stop offset="52%" stop-color="#DF8E7F"/>
+      <stop offset="100%" stop-color="#EDA87A"/>
+    </linearGradient>
+    <linearGradient id="irisDotGrad" x1="133" y1="59" x2="146" y2="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E59B76"/>
+      <stop offset="52%" stop-color="#ECAC82"/>
+      <stop offset="100%" stop-color="#F0D09C"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(71, 69)">
+    <circle cx="0" cy="0" r="60" fill="url(#irisHalo)"/>
+    <path d="M-38.21 39.56 A55 55 0 0 1 -38.21 -39.56" fill="none" stroke="url(#irisRingL)" stroke-width="1.35" stroke-linecap="round"/>
+    <path d="M38.21 -39.56 A55 55 0 0 1 38.21 39.56" fill="none" stroke="url(#irisRingR)" stroke-width="1.35" stroke-linecap="round"/>
+    <circle cx="-55" cy="0" r="1.95" fill="#9B90F8" opacity="0.85"/>
+    <circle cx="55" cy="0" r="1.95" fill="#F2C185" opacity="0.88"/>
+    <path d="M-2 22 L2 22 L2.1 45.5 C2.1 47 -2.1 47 -2.1 45.5 Z" fill="url(#irisLeafL)"/>
+    <path d="M-1 45.5 C-15 44 -26 36 -28.5 22 C-18.5 24 -8.5 31.5 -1 42 Z" fill="url(#irisLeafL)"/>
+    <path d="M1 45.5 C15 44 26 36 28.5 22 C18.5 24 8.5 31.5 1 42 Z" fill="url(#irisLeafR)"/>
+    <path d="M-2.5 5 C-20 3 -33 -12 -26.5 -31.5 C-12 -31.5 -2 -16 -1.5 3 Z" fill="url(#irisStdSideL)"/>
+    <path d="M2.5 5 C20 3 33 -12 26.5 -31.5 C12 -31.5 2 -16 1.5 3 Z" fill="url(#irisStdSideR)"/>
+    <path d="M0 -45.5 C-13 -30 -13.5 -12 -1.5 6.5 L1.5 6.5 C13.5 -12 13 -30 0 -45.5 Z" fill="url(#irisStdCenter)"/>
+    <path d="M0 -42 C-5.5 -28 -5.5 -14 -0.5 1 L0 -42 Z" fill="url(#irisStdSheen)" opacity="0.58"/>
+    <path d="M-1.5 4 C-16.5 -6.5 -38.5 -1 -41.5 16 C-42.5 25 -35 32.5 -30.5 33.5 C-32 26 -28 18 -18 18 C-9.5 18 -3.5 23.5 -1.5 12 Z" fill="url(#irisFallL)"/>
+    <path d="M1.5 4 C16.5 -6.5 38.5 -1 41.5 16 C42.5 25 35 32.5 30.5 33.5 C32 26 28 18 18 18 C9.5 18 3.5 23.5 1.5 12 Z" fill="url(#irisFallR)"/>
+    <path d="M0 1.5 C-14.5 8 -16 26.5 0 39.5 C16 26.5 14.5 8 0 1.5 Z" fill="url(#irisFallCenter)"/>
+    <path d="M0 -5.5 C-5.6 -0.8 -7.2 6.2 -3 12.2 L0 17 L3 12.2 C7.2 6.2 5.6 -0.8 0 -5.5 Z" fill="url(#irisHeartOuter)"/>
+    <path d="M0 -1.5 C-2.8 1.5 -3.4 5.5 -1.2 9 L0 11.2 L1.2 9 C3.4 5.5 2.8 1.5 0 -1.5 Z" fill="url(#irisHeartInner)"/>
+  </g>
+  <g transform="translate(148, 33)">
+    <g fill="url(#irisTextGrad)">
+      <rect x="0" y="0" width="11.4" height="72" rx="2.2"/>
+      <path d="M23.5 23.2 C23.5 21.8 24.5 21 26 21 L32.6 21 C34 21 34.8 21.9 35 23.6 L35 27.5 C37.8 22.3 42.3 19.8 48.2 19.8 C50.5 19.8 52.3 20.3 53.6 21.1 L51.0 31.3 C49.5 30.5 47.8 30.1 45.7 30.1 C39.2 30.1 35 35.4 35 44.2 L35 69.8 C35 71.2 34 72 32.5 72 L25.7 72 C24.3 72 23.5 71.1 23.5 69.8 Z"/>
+      <rect x="63.2" y="21" width="11.4" height="51" rx="2.2"/>
+      <path d="M106.8 19.6 C117.2 19.6 124.5 24.4 126.1 32.5 C126.3 33.7 125.5 34.5 124.3 34.7 L117.0 36.1 C115.9 36.3 115.1 35.7 114.8 34.5 C113.5 30.3 110.3 28.4 106.0 28.4 C101.0 28.4 97.8 30.5 97.8 33.7 C97.8 37.1 100.9 38.6 108.2 40.4 L111.4 41.2 C121.8 43.8 127.4 48.2 127.4 56.2 C127.4 66.2 119.0 73.2 106.2 73.2 C94.0 73.2 86.2 67.6 84.6 58.6 C84.4 57.5 85.1 56.6 86.3 56.4 L93.8 55.0 C94.9 54.8 95.7 55.4 96.0 56.6 C97.4 61.5 101.1 64.2 106.5 64.2 C112.2 64.2 115.8 61.8 115.8 58.2 C115.8 54.6 112.7 52.8 104.9 50.9 L101.8 50.1 C91.8 47.6 86.4 43.2 86.4 35.2 C86.4 25.8 94.4 19.6 106.8 19.6 Z"/>
+    </g>
+    <path d="M68.9 -0.4 C70.0 4.2 71.5 5.7 76.1 6.8 C71.5 7.9 70.0 9.4 68.9 14.0 C67.8 9.4 66.3 7.9 61.7 6.8 C66.3 5.7 67.8 4.2 68.9 -0.4 Z" fill="url(#irisSparkGrad)"/>
+    <circle cx="139.6" cy="66.2" r="5.8" fill="url(#irisDotGrad)"/>
+  </g>
+</svg>

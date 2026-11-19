@@ -1,26 +1,25 @@
 # Wan Provider starter / 万相供应商模板
 
-A copyable, independent Provider plugin using only `@mokuyoaxis/dsh-iris/plugins` and the public `package.json` export to locate the CLI. It implements the Wan 2.6 asynchronous image protocol itself. It does not call Iris's private transports or duplicate its Task store, queue, authentication or MCP server.
+这是一个可独立复制运行的 Provider 插件模板，仅通过 `@mokuyoaxis/dsh-iris/plugins` 与包元数据（定位 CLI）接入 Iris，实现阿里云百炼 **Wan 2.6 异步文生图协议**，完全复用 Core 的凭据解析、网络出口路由、有界调度、Task 持久化与原任务恢复能力。
 
-This template requires **Core 0.3.0-beta.1 and Provider factory context v1**. It checks `PROVIDER_FACTORY_CONTEXT_VERSION === 1` before setup. Install the exact beta package or a verified compatible Core archive. The older alpha.1 package fails with an explicit feature error and creates no data.
+本模板依赖 **Iris `0.3.0`**（或 `0.3.0-beta.1+`）提供的 **Provider 工厂上下文 v1**（`PROVIDER_FACTORY_CONTEXT_VERSION === 1`）。
 
 ## Copy and check
 
-Copy this entire directory outside the Iris repository into a new project, then install the explicitly chosen Core archive in that project:
+将整个目录复制到 Iris 仓库之外的新路径，安装指定版本的 Core 后即可运行协议冒烟测试与完整闭环自检（全程使用本地回环模拟服务，无外部账号或付费调用）：
 
 ```bash
-npm install --save-exact @mokuyoaxis/dsh-iris@0.3.0-beta.1
+npm install --save-exact @mokuyoaxis/dsh-iris@0.3.0
 node scripts/protocol-smoke.mjs
 npm test
 ```
 
-These tests use synthetic credentials and loopback HTTP services only. They initialize new private temporary roots, run the actual installed Core CLI and formal HTTP MCP, and preserve their evidence directories. No provider account, paid call or harness configuration is involved. Archive acceptance separately checks the same template as its own npm tarball. The template has no runtime dependency beyond its Core peer and Node 22.1.0+.
-
-`private: true` prevents accidentally publishing this example. Before publishing your own plugin, choose your package/plugin/contribution IDs, review its implementation and compatibility, update its independent versions, then deliberately remove that flag. The local `npm pack --ignore-scripts` acceptance does not publish anything.
+> [!NOTE]
+> `private: true` 用于防止误发布示例包。发布自己的 Provider 插件前，请更新包名、插件/贡献 ID 与版本号，仔细核对兼容声明与打包清单后再移除该标记。
 
 ## Configure a new workspace
 
-Provide the correct workspace/region API **root** from your own account. Do not append `/api/v1` or `/compatible-mode/v1`. Export your credential through your normal secure environment mechanism before starting Core; do not paste the key into a command argument or this project. Setup receives only the environment variable's **name**:
+准备你的百炼地域 API 根地址（不要在末尾附加 `/api/v1` 或 `/compatible-mode/v1`），并通过环境变量导出 API Key（只将**变量名**传给初始化脚本）：
 
 ```bash
 npm run setup -- \
@@ -29,22 +28,18 @@ npm run setup -- \
   --credential-env YOUR_WAN_KEY_VARIABLE
 ```
 
-The parent directory must already exist. Setup refuses any existing target, even an empty directory, and refuses data inside the plugin project. It writes private Provider/startup files, initializes a new image-generation execution root through the public CLI, and prints exact `startArgv`. It never reads the key, starts a server, imports another harness's settings or submits a generation. Failed setup leaves its partial directory for inspection.
+`setup` 会在指定的**全新私有目录**中写入配置文件并初始化支持文生图的 Core 数据根，同时打印完整的 `web serve` 启动命令：
 
-Run the printed argv to open Core Web. The default Web login uses Core's normal first-use access passphrase flow. The contributed protocol appears in Provider settings. Read its actual model directory, review the result, explicitly save the supported model and select its image-generation policy. Setup leaves the model list empty and image generation disabled until that selection. Discovering a directory grants no execution authority.
-
-In Connections, select **image generation** and the required read/create/execute/stop permissions, then export the ordinary MCP configuration for your client. This Provider reuses the Core image tools; installing it does not add an independent MCP tool or grant a connection new rights. Core owns execution and artifacts. Keep the plugin installed at the configured path and its version unchanged while recovering its original tasks.
+1. 启动服务并打开 `loginUrl` 设置工作台访问口令。
+2. 在 **模型服务** 中查看注册进来的自定义协议，拉取或核对模型目录、显式确认模型用途并启用功能模型池策略。
+3. 在 **客户端** 中按需勾选 **图片生成（image-generate）** 及所需权限，即可通过工作台或 MCP 发起文生图并支持重启后的原任务恢复。
 
 ## Supported protocol and limits
 
-- Identity: `example.wan-image` 0.1.0, contribution `example.wan-image.images` 0.1.0; Plugin/Adapter contract v0 plus factory context v1. Rename these together for your own implementation.
-- `GET /api/v1/models?capabilities=IG&page_no=…&page_size=100`: validate a complete, stable directory of at most 1,000 rows, then expose only actually returned `wan2.6-t2i`. A recognized ID is an implementation boundary, not a fabricated model pool or proof of account availability.
-- `POST /api/v1/services/aigc/image-generation/generation`: `X-DashScope-Async: enable`, `messages` text input, explicit `n` defaulting to 1, optional `width*height`. This is the Wan 2.6 format, not the older Wan 2.5 endpoint. Core's image Run currently requests one image; the adapter accepts 1–4 for other public consumers.
-- Poll only the original `/api/v1/tasks/{task_id}`. Missing submission identity or malformed/oversized submission responses mean **unknown acceptance**. Never retry a POST or switch a model/exit automatically after an ambiguous submission.
-- Download PNG results, at most 8 MiB each, into the exact new staging path supplied by Core. API requests refuse redirects; signed CDN downloads follow redirects through the same borrowed Core network port and receive no API Authorization header. JSON responses are limited to 1 MiB. Upstream details are not reflected into safe errors.
-- No source upload, image edit, remote cancellation or unsupported model fallback. Stopping local waiting does not prove remote cancellation or stopped billing. Remote task IDs/result URLs have the vendor's limited lifetime; persistence cannot recover a vendor-expired result.
-- The adapter owns no agents, background timers or queues. Core resolves the current credential for each factory, owns network routing/scheduling, and drains each full awaited method, including body reads and child requests. Await every request and body before returning; do not keep the borrowed port for later background work or dispose it.
+- **身份与版本**：插件 `example.wan-image` (`0.1.0`)、贡献 `example.wan-image.images` (`0.1.0`)，遵循 Plugin/Adapter 契约 v0 与工厂上下文 v1（二次开发时请一并更换 ID）。
+- **模型目录**：请求 `GET /api/v1/models?capabilities=IG&page_no=…&page_size=100`（上限 1,000 行），仅暴露实际返回的 `wan2.6-t2i`。
+- **异步生图与轮询**：通过 `POST /api/v1/services/aigc/image-generation/generation`（携带 `X-DashScope-Async: enable`、`messages` 文本、`n` 与可选 `width*height`）提交；缺少任务 ID 或响应异常时记为 **unknown acceptance**，绝不自动重提。轮询仅请求原 `/api/v1/tasks/{task_id}`。
+- **安全下载与边界**：API 请求拒绝重定向，签名 CDN 下载通过 Core 借出的网络端口跟随重定向且不附带 API `Authorization` 头；下载 PNG 上限 8 MiB（JSON 上限 1 MiB），错误记录自动脱敏。
+- **生命周期归属**：适配器不自建定时器、队列或网络池，所有请求统一使用 Core 传入的 `context.network.fetch` 并在对应方法内 `await` 完成。
 
-The plugin is trusted Node code, not a network/filesystem sandbox. This reference intentionally uses only the borrowed `context.network.fetch` for its HTTP requests and writes only the supplied delivery file.
-
-The protocol was checked against the official [Wan image API](https://help.aliyun.com/zh/model-studio/text-to-image-v2-api-reference) and [model directory API](https://help.aliyun.com/zh/model-studio/list-models) on 2026-11-03. Acceptance uses controlled local responses; it does not certify a live account, region, billing behavior or every Wan model.
+上述协议行为基于 2026-11-03 核对的官方[万相文生图 API v2](https://help.aliyun.com/zh/model-studio/text-to-image-v2-api-reference)与[模型列表 API](https://help.aliyun.com/zh/model-studio/list-models) 实现；正式上线前请结合自己的真实账号与地域环境完成实测。

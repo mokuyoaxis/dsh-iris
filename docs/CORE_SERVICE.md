@@ -1,107 +1,81 @@
-# Core 服务与 harness 接入（0.3 beta）
+# Core 执行服务与宿主接入（0.3.0）
 
-beta.3新增[看图/OCR](VISION_FLOWS.md)：显式新v5根、独立vision/ocr选择、Core网络与持久文本/报告；旧根、日常配置和beta.2既有能力保持。
+Iris 的 Core 执行服务提供单物理数据根上的队列调度、Operation 持久化、MCP 协议网关（stdio / Streamable HTTP）以及可选的 DSH 宿主共享连接桥。
 
-0.3.0提供单根执行服务、连接授权/握手、MCP stdio/Streamable HTTP、DSH可选共享Flow连接与[owner持久选择API](LOCAL_SELECTION.md)。**历史npm 0.2.7不包含这些入口**；以下使用源码命令，安装准确已发行的0.3包后可将 `node bin/dsh-iris.js` 换为 `npx dsh-iris`。支持固定 `image-edit/v0`，新v2根另提供[image-generate/v0与ComfyUI](IMAGE_GENERATION.md)，新v3根增加[speech/v0与transcribe/v0](AUDIO_FLOWS.md)，新v4根增加[文生视频](VIDEO_FLOWS.md)，新v5根增加[看图/OCR](VISION_FLOWS.md)，不迁移已有根。[Web](LOCAL_WEB.md)按显式权限接入创作、观察、停止和选择，默认只读；服务器路径导出仍用CLI，页面下载原字节。配置导出、用户能力/工具选择与功能覆盖见[MCP指南](MCP.md)。
+按初始化的数据根版本，同一套服务依次承载：固定改图（v1+）、[文生图与 ComfyUI](IMAGE_GENERATION.md)（v2+）、[语音合成与音频转写](AUDIO_FLOWS.md)（v3+）、[固定文生视频](VIDEO_FLOWS.md)（v4+）以及[看图问答与长图 OCR](VISION_FLOWS.md)（v5）。配合独立开关，还可开放 [Web 工作台](LOCAL_WEB.md)与[所有者持久选择](LOCAL_SELECTION.md)。
 
 ## 显式启动
 
-需要额外媒体协议时，可用重复的 `--provider-extension /absolute/entry.mjs` 在服务进程中显式加载可信扩展。注册实例随服务生命周期管理，启动本身不提交模型请求；harness 仍使用同一 Core 和原授权。见 [Provider 扩展](PROVIDER_EXTENSIONS.md)，不属于公开 npm 0.2.7。
-
-先准备新的专用根与已有的显式 Provider 配置，不迁移 DSH 或 v0 历史根：
+先准备专用数据根与私有供应商配置，再按需启用执行、连接授权或 MCP 服务：
 
 ```bash
-node bin/dsh-iris.js flow init --data-root /absolute/new-core
-node bin/dsh-iris.js execution init --data-root /absolute/new-core
-node bin/dsh-iris.js connection create --data-root /absolute/new-core \
+npx dsh-iris flow init --data-root /absolute/new-core
+npx dsh-iris execution init --vision --data-root /absolute/new-core
+
+npx dsh-iris connection create --data-root /absolute/new-core \
   --directory /absolute/new-mcp-pair --origin http://127.0.0.1:3182 \
   --label my-client --scopes read,create,execute,stop --capabilities image-edit
-node bin/dsh-iris.js api serve --data-root /absolute/new-core \
+
+npx dsh-iris api serve --data-root /absolute/new-core \
   --provider-config /absolute/providers.json --port 3182 \
   --token-file /absolute/new-owner-token.txt --allow-execution \
-  --connections-file /absolute/new-mcp-pair/server-grants.json
+  --connections-file /absolute/new-mcp-pair/server-grants.json --allow-mcp
 ```
 
-`--allow-execution` 同时开启零生成上传/创建与有限执行；不传时保持既有默认只读行为。服务需要已初始化的执行根和有效的显式配置：v1/v2支持各自的图片流程，v3加入音频，v4加入文生视频，beta.3的v5另加入看图/OCR并保留既有流程。配置静态校验、启动和连接握手不调用模型。每次明确继续至多调用一次 `flow.continue`：首次提交或检查/补交付原 Task，不持续轮询，不重提已有 Attempt；OCR一次执行可能按计划调用多块，见[调用预算](VISION_FLOWS.md#ocr-完成度与停止)。
+> 在本地项目安装 `@mokuyoaxis/dsh-iris@0.3.0` 时，`dsh-iris` 不会自动加入全局 `PATH`，请使用 `npx dsh-iris ...`；若从已执行 `npm ci` 的源码仓库运行，请将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。
 
-第二个执行 Host 无法取得同根 runner 租约；同根可另开只读页面。接收后服务自行收尾，关页或断开 harness 不撤销已接收操作。默认串行模式在 writer 正忙时明确拒绝新接收，不能把拒绝当成已经排队。收到前项的 queued/running 回执后，先读取原 Operation，等该次有限执行结束再提交另一项；依赖前项作品的步骤还须读取原 Run/Task，确认作品确实完成。
-
-连续提交遇到 `409 / IRIS_API_ROOT_BUSY` 时，保留原请求 UUID、Run 和输入，等待活动操作结束后按原 UUID 查询。只有核对原 Core/root、确认该请求没有受理记录且仍在授权范围内，才显式提交同 Key/输入；不自动重发、换 Key 或删除租约。`404 / IRIS_OPERATION_NOT_FOUND` 只表示本次查询在当前 Core 没有找到该 Operation；断线、超时或查询身份不确定时仍须报告受理未知，不能仅凭一个404另建任务。`403 / IRIS_CONNECTION_CAPABILITY_DENIED` 则应核对授权与服务开关，等待写者不会解决权限问题。
-
-beta.1可显式增加 `--scheduler-config /absolute/private/scheduling.json`，启用[有界媒体调度](MEDIA_SCHEDULING.md)：单根仍只有一个写者，网络等待可重叠，HTTP并发/RPS/远端未结束任务分别限额。短接收与结束事务不等待整次网络请求，原任务查询/下载不被新提交额度阻挡。未配置仍保持上述默认语义，不自动迁移或重提。
-
-也可使用 [连接中心](LOCAL_WEB.md#显式开启连接中心)在同一服务中提供页面、持久授权和 MCP。必须同时指定 `--allow-connection-management --connection-store`；需要执行时再显式添加 `--allow-execution --provider-config`，不会自动开启生成。默认 `web serve` 继续只读。连接管理目录单独持有租约，业务写入仍由这一个 Core runner 管理。
-
-媒体 API 的创建、执行和选择开关不依赖连接管理；`--allow-selection` 只允许 owner 在同 writer 中核对 Run 版本后保存选择，不启动 runner 或调用 Provider。执行开关不隐式开放选择，也不扩张 MCP 工具集。
+- **权限开关分离**：`--allow-execution` 开启创建与有限执行；`--allow-selection` 单独允许所有者保存图片选择；连接管理可使用动态的 `--allow-connection-management --connection-store <dir>`（见[连接中心](LOCAL_WEB.md#显式开启连接中心)）；需要额外媒体协议或有界并发时，可分别追加 `--provider-extension`（[Provider 扩展](PROVIDER_EXTENSIONS.md)）或 `--scheduler-config`（[有界媒体调度](MEDIA_SCHEDULING.md)）。
+- **单根单写者与串行语义**：同一物理数据根只允许一个执行写者（只读工作台可共存）。每次 `flow.continue` 至多执行一轮有限调用（首次提交或观察/补交付原 Task；OCR 按分块计划执行，见[调用预算](VISION_FLOWS.md#ocr-完成度与停止)）。在默认串行模式下，前一个 Operation 返回 `queued`/`running` 后应先等待其结束，再提交下一项。
+- **繁忙与拒绝处理**：若收到 `409 / IRIS_API_ROOT_BUSY`，保留原请求 UUID 与输入，待活跃操作结束后先按原 UUID 查询确认；`404 / IRIS_OPERATION_NOT_FOUND` 表示当前 Core 未查到对应记录，断线或超时后仍需核实而非直接新建任务；`403 / IRIS_CONNECTION_CAPABILITY_DENIED` 则应核对授权与服务开关。
 
 ## 接收、查询与停止
 
-仍使用回环 HTTP、Bearer、Host/Origin 校验；连接端还需身份/实例头与已协商权限，详见 [连接契约](CORE_CONNECTIONS.md)。以下路由仅在显式执行模式开放：
+以下控制路由位于 `/api/v0` 下，需开启执行服务（`--allow-execution` 或显式选定的插件执行服务），并遵循回环、`Host`/`Origin` 与连接[权限校验](CORE_CONNECTIONS.md)：
 
 | 路由 | 输入 | 行为 |
 |---|---|---|
-| POST `/api/v0/runs/:id/continue` | `Idempotency-Key` UUIDv4，JSON `{expectedRevision}` | 完整 Operation 持久提交后返回 202；同 Key/输入返回 200 与原记录 |
-| GET `/api/v0/operations/:id` | 原 ID | 读取持久投影，不联系 Provider |
-| GET `/api/v0/operations?key=…` | 原 Key | 丢失响应后接回，不执行 |
-| GET `/api/v0/runs/:id/operations` | `limit` 1–30、`cursor` | 有界原操作列表 |
-| POST `/api/v0/operations/:id/cancel` | JSON `{}` | 先中止本地等待，待终态落盘后返回 200；重复原 ID 接回现有终态 |
+| `POST /api/v0/runs/:id/continue` | `Idempotency-Key` UUIDv4，`{expectedRevision}` | 持久落盘 Operation 后返回 `202`；同 Key 同输入返回 `200` 与原记录 |
+| `GET /api/v0/operations/:id` | 原 Operation ID | 只读查询持久状态，不访问供应商 |
+| `GET /api/v0/operations?key=…` | 原请求 UUID | 丢失回包后按原 Key 查回 Operation |
+| `GET /api/v0/runs/:id/operations` | `limit` (1–30)、`cursor` | 分页查询该 Run 下的 Operation 列表（需 `--allow-execution`） |
+| `POST /api/v0/operations/:id/cancel` | `{}` | 中止本地等待并在终态落盘后返回 `200` |
 
-**只读连接与只读服务不同。** Operation 详情和原 Key 查询由媒体执行服务（`--allow-execution`）或显式选定的插件执行服务开放；Run 关联的 Operation 列表需要 `--allow-execution`。连接仅授 `read` 并选择对应读取工具即可，不需要 `execute`。关闭所有提供这些读取的执行服务后，相应路由也不再开放，客户端的 read 授权不能补开；已保存 Run/作品的读取按各自入口继续判断。插件执行服务不据此开放普通媒体执行。需要恢复时沿用原 Core/root 和已授权配置，不为通过查询而自动扩权或另启同根写者。
+> [!IMPORTANT]
+> **只读连接与执行服务的区别**：连接侧仅需 `read` 权限即可调用 Operation 详情与 `lookup` 接口，但服务端仍必须开启对应的媒体或插件执行服务以暴露这些读取路由；关闭执行服务后，客户端的 `read` 权限本身不会打开路由。
 
-停止不另消费一个请求 Key，也不返回尚未持久化的取消 202。响应丢失时查询原 Operation。`localStopped` 只证明本地操作已停止，`remoteCancellation: not_requested` 表示没有请求远端取消；保留 Task 受理、结果和已交付作品。Operation succeeded 表示该次有限调用返回，作品是否完成仍看 Run/Task。
-
-queued/running 不因 GET 或 MCP 重连而执行。显式启动服务取得 runner 所有权和 writer 后，将遗留活动记录标记 interrupted，原 Key 仍接回它。用户确认后用新 Key、当前 Run revision 继续原流程；原 Task 有 Attempt 时只检查/交付原任务，受理未知不能自动再生成。
-
-正常退出先本地中止并落盘，再释放租约。强杀后分别检查 runner 与业务 writer；需要回显实际 stale PID 才能恢复：
+- **本地停止边界**：`cancel` 返回的 `localStopped: true` 与 `remoteCancellation: not_requested` 表明仅中止了本地等待，未向供应商发起远端取消；已有 Task 受理与产物事实继续保留。`Operation` 的 `succeeded` 表示有限调用已返回，媒体本身是否完成以 Run / Task 记录为准。
+- **重启与租约恢复**：服务正常重启时会将遗留的 `queued`/`running` Operation 标记为 `interrupted`（可用原 Key 查回，需用户确认后发起新请求继续）。若服务遭遇强杀留下租约，先用只读检查确认失效 PID，再显式恢复：
 
 ```bash
-node bin/dsh-iris.js execution inspect --data-root /absolute/new-core
-node bin/dsh-iris.js execution recover-lease --data-root /absolute/new-core --confirm-stale-pid 12345
+npx dsh-iris execution inspect --data-root /absolute/new-core
+npx dsh-iris execution recover-lease --data-root /absolute/new-core --confirm-stale-pid 12345
+# 若业务 writer 租约也遗留，先用 doctor 核对 PID，再执行：
+npx dsh-iris runtime recover --data-root /absolute/new-core --confirm-stale-pid <PID>
 ```
 
-若业务 writer 也遗留，先用 `doctor --data-root /absolute/new-core --json` 核对，再用 `runtime recover --data-root /absolute/new-core --confirm-stale-pid 实际PID` 显式恢复它；不自动清锁、删除记录或抢活跃进程。PID 活跃、未知或证据损坏均拒绝恢复。原子提交/强杀验证不等于断电、Windows ACL 或共享存储耐久保证。
+## 正式 MCP 接入
 
-## 正式 MCP
-
-Core与桥分别管理生命周期：Core由用户明确启动，harness拥有stdio桥进程，HTTP网关复用同一Core。桥关闭先阻止新请求、取消本地网络等待并收尾初始化，不停止Core或撤销已受理Operation。SDK初始化、握手和关闭并发时保持终态；重复dispose共享结果，HTTP授权失效时释放原桥实例。检查命令与客户端预设见[MCP首次接入](MCP.md#首次接入与客户端预设)。
-
-本地服务启动失败或关闭时，会依次尝试释放HTTP、MCP、runner、应用与连接/Provider资源；某一步失败仍继续释放其余资源，再聚合报告具体阶段。snapshot的cleanupFailed表示释放失败，不能当成完全成功；不自动清锁或再次启动服务。
-
-Core 服务保持运行，在 harness 内配置下面的命令及参数：
+Core 服务保持运行，客户端按导出的配置连接即可（stdio 桥接或 `/mcp` HTTP 网关均复用同一 Core 实例，桥进程退出不会停止 Core 或取消已受理的 Operation）：
 
 ```bash
+# 源码仓库入口（项目内安装也可使用 npx dsh-iris mcp serve ...）
 node /absolute/iris/bin/dsh-iris.js mcp serve \
   --connection-file /absolute/new-mcp-pair/client.json \
   --scopes read,create,execute,stop
 ```
 
-不指定 scopes 时只请求 `read`。这是随候选 npm 包分发的正式 stdio 入口：使用官方 `@modelcontextprotocol/server` SDK 处理协议与 schema，薄桥仅调用同一个已授权 Core 服务，不另起业务写者、不经 Bash 转调 CLI。stdout 只写 MCP 消息，连接凭据只在私有文件与 HTTP 头中出现。
+Iris MCP 基于官方 `@modelcontextprotocol/server` 2.3.1 与 Zod 4.6.7 构建，同时兼容 `2025-11-25` 与 `2026-07-28` 协议规范。HTTP MCP 共享实例级 4 条活动消息并发预算（与媒体[调度器](MEDIA_SCHEDULING.md)相互独立），具体预设、工具分组与配置导出见[通用 MCP 指南](MCP.md)。
 
-原 image-edit 工具契约为 `iris_core_connection/models/runs/run/import_image/create_run/continue/operation/lookup/stop/image/connections`，完整授权为 12 项，只读为 8 项。image-generate 另提供 `iris_core_create_generation`；只选文生图完整为 11 项，两组同时选择为 13 项，旧授权不扩张。参数是真实 Run、revision、请求 UUID、模型、Prompt、图片字节与作品 ID；不会替换成固定提示词。图片读取返回原 MIME/Base64 字节，不生成缩略图冒充原图。inline 导入 Base64 最多 8 MiB 字符，Core 图片读取上限仍为 64 MiB。
+服务关闭或启动失败时，会依次有序释放 HTTP、MCP、Runner、应用运行时与网络/插件资源；若释放环节出现异常，`snapshot().cleanupFailed` 会如实反映该状态。
 
-MCP 调用取消或 EOF 只结束桥的本地请求；已经接收的 Operation 仍归 Core，重连按原 Key 查询。服务重启需显式 `iris_core_connection` 再握手；不会自动重试写调用。普通 EOF 断开连接，Core 离线时桥可关闭自身并记录远端断开未确认，不声称取消 Task。
+## DSH 可选共享连接桥
 
-采用官方 SDK 2.3.1 / Core 2.3.1（Apache-2.0）和 Zod 4.6.7（MIT），Node 22 的 Linux ARM64 路径已有本机验证。stdio/HTTP 的 2025-11-25 与 2026-07-28 已分别验收，另以独立已安装 Client SDK 2.0.0/2.2.0 复核，不把它外推为全部品牌客户端或实际 Agent 使用均验收。[SDK 官方资料](https://github.com/modelcontextprotocol/typescript-sdk)。
-
-需要标准 HTTP MCP 时，在上面的 API 启动命令增加 `--allow-mcp`，使用 `origin/mcp` 和该连接的 Bearer 凭据；默认不开放。stdio/HTTP 共用能力/工具范围，HTTP 配置导出只写入新的私有文件，具体命令见 [通用 MCP](MCP.md)。
-
-beta.1对 HTTP MCP 使用实例共享的4条活动消息预算，覆盖正文读取和媒体响应排空；兼容批次逐条计数、最多4条，繁忙返回429。单正文仍为9 MiB，媒体限额与已受理任务保持；它和[远端媒体调度](MEDIA_SCHEDULING.md)独立，详见[MCP HTTP](MCP.md#http填写-url-和认证)。
-
-## DSH 可选服务连接
-
-工作台可另显式增加 [供应商管理](PROVIDER_SETTINGS.md)与选择 [Panel](PANEL_EXTENSIONS.md)。这两者不扩大连接/MCP 权限：上游凭据留在 Core，普通 harness 不能读写供应商设置。
-
-使用同一个 `connection create`，将 harness 改为 `dsh`、输出改为新的独立目录。Core 的 `server-grants.json` 支持 1–32 个授权项；多连接时由操作者明确合并各 grants 数组，保留 UUID/secret 与 0600，随后显式启动服务读取它。连接配置不自动热重载。
-
-在你明确启动 DSH 时提供：
+如果你同时使用 DSH，且希望在保留原生 17 项媒体工具与 3 项 DSH Skill 的同时，把某一个独立 Core 数据根的授权工具也挂载进 DSH，可以使用 `--harness dsh` 生成连接对，并在启动 DSH 时注入环境变量：
 
 ```bash
 IRIS_CORE_CONNECTION_FILE=/absolute/dsh-pair/client.json \
-IRIS_CORE_SCOPES=read,create,execute,stop <your-existing-DSH-start-command>
+IRIS_CORE_SCOPES=read,create,execute,stop <your-dsh-start-command>
 ```
 
-首版为**新增共享 Flow 工具的可选连接模式**：原 17 项媒体工具、三项 DSH Skills 和原生 UI 保持；另注册与 MCP 相同的授权 `iris_core_*` 工具。图片通过真实 DSH attachment 服务交付。默认不设置此文件时，不连接服务、不新增工具。Core Skills 的 [显式安装器](CORE_SKILLS.md)继续独立，MCP 握手不替代 Skill 发现。
-
-此 DSH 原生共享桥仍限图片组；新 v3 语音/转写使用通用 MCP 或 Core Web。选择音频组（beta.1也包括视频组）会明确拒绝原生桥启动，避免注册尚无附件投影的工具；不影响原17项媒体工具的语音/转写。
-
-传统媒体工具继续使用原根；共享 Flow 仅使用连接所绑定的 Core 根。Core 离线时共享工具明确失败，不切回本地另生成。此模式尚未把整个旧媒体栈、浏览器/视觉/会话服务或 DSH UI 迁成远程 RPC。Core 连接中心现阶段创建通用 MCP 档案；DSH 原生服务授权仍由上述静态文件管理，不自动修改 DSH 设置。
+- Core 侧的 `server-grants.json` 支持 1–32 个授权条目，修改后需重启 Core 服务生效。
+- 当前 DSH 原生共享桥支持图片流程（`image-edit` / `image-generate`），图片结果直接通过 DSH attachment 服务投递；若连接配置中包含尚未适配附件投影的音频或视频组，共享桥启动时会明确拒绝（不会注册失效工具，也不影响 DSH 原生工具）。如需跨工作区使用音频、视频或视觉流程，请通过[通用 MCP](MCP.md) 或独立 [Core Web 工作台](LOCAL_WEB.md) 接入。
