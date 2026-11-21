@@ -84,9 +84,18 @@
       <div class="overview-section-heading"><div><h2>创作能力</h2><p class="muted">入口、配置与实测记录分别呈现。</p></div><button id="overview-refresh" class="quiet" type="button">刷新状态</button></div>
       <p id="overview-feedback" class="field-note" role="status" hidden></p>
       <div id="overview-capabilities" class="overview-capabilities"></div>
+      <section id="overview-inbox" class="overview-inbox card" aria-labelledby="overview-inbox-title" hidden>
+        <div class="overview-inbox-heading">
+          <div><p class="eyebrow">READ-ONLY INBOX</p><h2 id="overview-inbox-title">收件目录安全入库</h2><p id="overview-inbox-note" class="muted">直接从本机只读目录导入大图与音频（≤20 MiB），不经浏览器上传，也不修改原文件。</p></div>
+          <div class="overview-inbox-actions"><span id="overview-inbox-count" class="badge">只读目录</span><button id="overview-inbox-refresh" class="quiet" type="button">刷新目录</button></div>
+        </div>
+        <p id="overview-inbox-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+        <ul id="overview-inbox-list" class="inbox-file-list" aria-label="收件目录可导入文件"></ul>
+        <p id="overview-inbox-empty" class="field-note" hidden>当前收件目录顶层没有可导入的 PNG/JPEG/WebP 图片或受支持音频文件。</p>
+      </section>
       <details id="overview-tools" class="overview-tools card"><summary><span>更多 Core 工具 <small>现有入口与覆盖范围</small></span><span class="disclosure">展开</span></summary><div class="overview-tool-grid">
-        <article><h3>裁剪与图片差异</h3><p>CLI 可裁剪图片、保存差异热力图；创作页已有图片比较，独立工具面板待接入。</p><code>run crop · media diff</code></article>
-        <article><h3>视频抽帧</h3><p>CLI 可提取视频帧并保存为作品，需系统 ffmpeg / ffprobe；面板与 MCP 待接入。</p><code>media frames</code></article>
+        <article><h3>裁剪与图片差异</h3><p>CLI 与 MCP local-media 分组可裁剪图片、保存差异热力图；创作页已有图片比较，独立工具面板待接入。</p><code>run crop · media diff</code></article>
+        <article><h3>视频抽帧</h3><p>CLI 与 MCP local-media 分组可提取视频帧并保存为作品，需系统 ffmpeg / ffprobe；独立面板待接入。</p><code>media frames</code></article>
         <article><h3>HTML 截图</h3><p>CLI 使用显式指定的 Chromium，DSH 使用宿主浏览器；Core 面板与 MCP 待接入。</p><code>media html</code></article>
         <article><h3>提示词优化与组装</h3><p>共享核心与 DSH 泡泡已有实现，需对应文本模型服务；独立 Core 面板与 MCP 待接入。</p></article>
       </div></details>
@@ -150,7 +159,7 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
     </section>
     <section id="gallery-panel" hidden aria-labelledby="gallery-title">
       <div class="page-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h1 id="gallery-title">灵感，留在这里。</h1><p class="muted">每一次选择，都可以回到原来的创作。</p></div><button id="gallery-new" class="secondary" type="button">＋ 新建流程</button></div>
-      <div id="gallery-types" class="view-switch gallery-types" aria-label="作品类别" hidden><button type="button" data-gallery-kind="image" aria-pressed="true">图片</button><button type="button" data-gallery-kind="video" aria-pressed="false" hidden>视频</button><button type="button" data-gallery-kind="speech" aria-pressed="false">语音</button><button type="button" data-gallery-kind="transcribe" aria-pressed="false">转写</button><button type="button" data-gallery-kind="vision" aria-pressed="false" hidden>看图</button><button type="button" data-gallery-kind="ocr" aria-pressed="false" hidden>OCR</button></div>
+      <div id="gallery-types" class="view-switch gallery-types" aria-label="作品类别" hidden><button type="button" data-gallery-kind="image" aria-pressed="true">图片</button><button type="button" data-gallery-kind="video" aria-pressed="false" hidden>视频</button><button type="button" data-gallery-kind="speech" aria-pressed="false">语音</button><button type="button" data-gallery-kind="transcribe" aria-pressed="false">转写</button><button type="button" data-gallery-kind="vision" aria-pressed="false" hidden>看图</button><button type="button" data-gallery-kind="ocr" aria-pressed="false" hidden>OCR</button><button type="button" data-gallery-kind="locate" aria-pressed="false" hidden>定位</button><button type="button" data-gallery-kind="summarize" aria-pressed="false" hidden>摘要</button></div>
       <div class="gallery-toolbar"><div id="gallery-filters" class="view-switch" aria-label="作品筛选"><button type="button" data-filter="all" aria-pressed="true">全部 <span>0</span></button><button type="button" data-filter="selected" aria-pressed="false">已选择 <span>0</span></button><button type="button" data-filter="unselected" aria-pressed="false">未选择 <span>0</span></button></div><button id="gallery-refresh" class="quiet" type="button">刷新</button></div>
       <p id="gallery-feedback" class="muted" role="status" aria-live="polite"></p>
       <div id="gallery-grid" class="gallery-grid" aria-busy="false"></div>
@@ -288,6 +297,12 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
             <p id="image-help" class="field-note">仅支持静态图片，最大 20 MiB。</p>
             </div>
             <div id="audio-source-input" hidden><label for="audio-file" class="field-label">原音频</label><label class="file-button secondary" for="audio-file">选择音频<input id="audio-file" type="file" accept="audio/wav,audio/x-wav,audio/mpeg,audio/ogg,audio/flac,.wav,.mp3,.ogg,.flac"></label><p id="audio-file-name" class="field-note">WAV / MP3 / OGG / FLAC，最大20 MiB。</p><audio id="audio-input-preview" controls preload="metadata" hidden></audio></div>
+            <details id="inbox-picker" class="inbox-picker compact-details" hidden>
+              <summary><span>从收件目录导入 <small id="inbox-picker-summary">只读目录 · ≤20 MiB，免浏览器上传</small></span><span class="disclosure">展开</span></summary>
+              <div class="inbox-picker-bar"><span class="field-note">由本机 Core 直接导入，不修改或删除原文件。</span><button id="inbox-refresh" class="quiet inline-button" type="button">刷新</button></div>
+              <p id="inbox-picker-note" class="field-note" role="status" aria-live="polite" hidden></p>
+              <ul id="inbox-picker-list" class="inbox-file-list" aria-label="收件目录素材"></ul>
+            </details>
             <label id="model-label" for="model" class="field-label">图片模型 <small>配置候选</small></label><select id="model" required><option value="">读取模型…</option></select>
             <label id="prompt-label" for="edit-prompt" class="field-label">想改些什么？</label><textarea id="edit-prompt" rows="4" maxlength="12000" required placeholder="描述想保留的细节，以及想尝试的变化…"></textarea>
             <fieldset id="ocr-settings" hidden disabled><details class="compact-details"><summary><span>分块与调用预算</span><span class="disclosure">展开</span></summary>

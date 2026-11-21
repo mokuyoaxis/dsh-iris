@@ -9,6 +9,8 @@
 - 打磨通用 MCP 接口（P0）：`iris_core_runs` 支持在已授权范围内按 `kind` / `selection` 筛选；新增 `iris_core_run_operations` 按 `runId` 分页查回历史 Operation（旧版冻结连接清单 `LEGACY_BRIDGE_TOOLS_V0` 保持不扩权，服务端按逐工具授权校验）；收紧 MCP 工具注解 `openWorldHint` 为仅 `execute` 范围；`iris_core_operation` 支持可选有界只读等待 `waitMs`（0–10000 ms，响应取消与实时撤销，不占用 Core 读取并发槽）。
 - 新增 MCP `local-media` 本地媒体检视能力组（P1，零外部计费）：支持基于 Core `artifactId` 执行 `iris_core_crop`（局部裁剪）、`iris_core_pixel_diff`（像素对比指标与热力图）及 `iris_core_video_frames`（视频均匀抽帧，需宿主 `ffmpeg`/`ffprobe`），产物沉淀为派生 Core Artifact 并严格继承来源能力授权，不接受任意宿主路径。
 - 新增大文件安全入库方案（受控只读收件目录 `--inbox-dir` + MCP `inbox` 分组）：启动 `api serve` / `web serve` 时显式指定根外真实目录 `--inbox-dir` 后，获得 `inbox` 授权的连接可通过 `iris_core_inbox` 与 `iris_core_import_inbox_file` 按顶层文件名与稳定 UUID 将 ≤20 MiB 静态图片及（v3+ 根）音频直接导入 Core Artifact，绕开 MCP Base64 体积与 Token 瓶颈；采用 `O_NOFOLLOW`、`fstat` 体积上限、容器魔数校验、零路径暴露与私有目录防重叠守卫，绝不修改或删除原文件。
+- 新增 MCP `vision-locate`（`locate/v0` 视觉定位）与 `media-summarize`（`summarize/v0` 多模态视频/帧摘要）两个 v5 视觉能力组：定位输出含原图像素 `x1/y1/x2/y2` 与 `left/top/width/height`，可直接衔接 `iris_core_crop`；摘要自动将 1–20 张已授权 `video-frame` 或静态图片拼接为带时间戳的接触表并支持可选显式 `transcript`（不隐式触发 ASR 计费），严格保留独立能力授权与多来源引用保护。
+- 为 Core Web 工作台补充 `--inbox-dir` 只读收件目录可视化入口（总览页收件目录卡片与创作页收件目录折叠选择器，免浏览器上传且不暴露宿主路径），接入 `locate/v0` 与 `summarize/v0` 历史查看/作品筛选/JSON 下载，并在完整保留鸢尾六色配色与现有布局的前提下微调界面交互质感。
 
 ## [0.3.0] - 2026-11-16
 
