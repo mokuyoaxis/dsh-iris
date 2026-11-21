@@ -24,7 +24,7 @@ try {
   const cli = path.resolve('bin/dsh-iris.js'), client = stdioMcpClient(cli, pair.clientFile, 'read,create,execute,stop'); clients.push(client);
   const hello = await client.initialize(); assert.equal(hello.serverInfo.name, 'iris-core'); assert(hello.capabilities.tools);
   const tools = (await client.request('tools/list')).tools;
-  assert.equal(tools.length, 12); assert(tools.find(tool => tool.name === 'iris_core_continue').inputSchema.properties.expectedRevision);
+  assert.equal(tools.length, 13); assert(tools.find(tool => tool.name === 'iris_core_continue').inputSchema.properties.expectedRevision);
   const invalid = await client.call('iris_core_continue', { arbitraryCommand: 'generate' }); assert(invalid.isError);
   assert.deepEqual(readFlowEvents(dataRoot), []);
   const imported = parse(await client.call('iris_core_import_image', { key: key(), imageBase64: FLOW_SOURCE.toString('base64'), mediaType: 'image/png' }));
@@ -52,12 +52,12 @@ try {
   assert.deepEqual(readFlowEvents(dataRoot), events);
   assert.equal(fixture.calls.submit.length, 1);
   const reader = stdioMcpClient(cli, pair.clientFile); clients.push(reader); await reader.initialize();
-  assert.equal((await reader.request('tools/list')).tools.length, 8);
+  assert.equal((await reader.request('tools/list')).tools.length, 9);
   await assert.rejects(reader.call('iris_core_continue', input), { rpcCode: -32602 });
   assert.deepEqual(readFlowEvents(dataRoot), events);
   assert.equal((await reader.close()).status, 0);
   assert.equal((await next.close()).status, 0);
-  console.log('Official SDK MCP: real production CLI, legacy version negotiation, 12 finite schemas, actual parameters/HTTP/Core, original image bytes, restricted tools, EOF and cross-process durable replay OK');
+  console.log('Official SDK MCP: real production CLI, legacy version negotiation, 13 finite schemas, actual parameters/HTTP/Core, original image bytes, restricted tools, EOF and cross-process durable replay OK');
 } finally {
   for (const client of clients.reverse()) await client.kill();
   await api?.dispose(); await app.dispose();

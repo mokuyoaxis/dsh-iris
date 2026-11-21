@@ -12,8 +12,8 @@ Iris 的 MCP 层只负责协议适配与能力投递（基于官方 `@modelconte
 
 - **同一数据源，单一写者**：stdio 启动的是轻量级桥接进程，HTTP 复用同一服务上的 `/mcp` 端点；二者都不另建业务写者，也不会把请求转成 Shell 命令。
 - **能力与权限显式授权**：工具清单与描述统一来自 [Core 能力目录](PLUGINS.md#core-能力目录与授权)。每条连接仅能看到用户勾选的媒体分组、操作权限（`read` / `create` / `execute` / `stop`）和工具子集的交集；新增插件或升级版本均不会暗中扩大旧连接的权限。
-- **可恢复的执行回执**：在默认串行模式下，调用 `iris_core_continue` 返回 `queued` 或 `running` 后，应等待原 `Operation` 结束并检查 `iris_core_run` 的 Task 状态（其中 `errorSummary` 会提供诸如 `rate_limit / submit / 429` 的安全诊断摘要）。若遇到写者忙（`root_busy`）或响应丢失，应以原请求 UUID 调用 `iris_core_lookup` 核对，而不自动重发（详见 [接收、查询与停止](CORE_SERVICE.md#接收查询与停止)）。
-- **只读恢复边界**：只读连接在 Core 保持执行服务开启的前提下，仍可查询历史 `Operation` 与 `lookup` 原请求，无需额外授予 `execute` 权限。
+- **可恢复的执行回执**：在默认串行模式下，调用 `iris_core_continue` 返回 `queued` 或 `running` 后，可通过 `iris_core_operation`（支持可选 `waitMs` 0–10000 ms 有界只读等待，不阻塞 Core 读取槽位，也不触发重试）等待原 `Operation` 结束并检查 `iris_core_run` 的 Task 状态（其中 `errorSummary` 会提供诸如 `rate_limit / submit / 429` 的安全诊断摘要）。若遇到写者忙（`root_busy`）或响应丢失，应以原请求 UUID 调用 `iris_core_lookup` 核对，或按已知 `runId` 调用 `iris_core_run_operations` 分页查回该 Run 的历史 Operation，而不自动重发（详见 [接收、查询与停止](CORE_SERVICE.md#接收查询与停止)）。
+- **只读筛选、恢复与工具注解边界**：`iris_core_runs` 支持在已授权分组内按 `kind` / `selection` 筛选；只读连接在 Core 保持执行服务开启的前提下，仍可查询历史 `Operation`、`run_operations` 与 `lookup` 原请求，无需额外授予 `execute` 权限；MCP 工具注解中仅 `execute` 范围（`iris_core_continue` / `iris_core_plugin_call`）标注 `openWorldHint: true`，本地只读、建单与停止等待均标注 `openWorldHint: false`。
 
 ## 首次接入与客户端预设
 

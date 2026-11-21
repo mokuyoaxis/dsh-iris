@@ -4,7 +4,7 @@ import { presentFlow } from './view-model.js';
 export const DEMO_CONNECTION_TOOLS = Object.freeze([
   ['connection', 'read', false], ['models', 'read', true], ['runs', 'read', true], ['run', 'read', true],
   ['import_image', 'create', true], ['create_run', 'create', true], ['continue', 'execute', true],
-  ['operation', 'read', true], ['lookup', 'read', true], ['stop', 'stop', true], ['image', 'read', true], ['connections', 'read', false]
+  ['operation', 'read', true], ['lookup', 'read', true], ['run_operations', 'read', true], ['stop', 'stop', true], ['image', 'read', true], ['connections', 'read', false]
 ].map(([name, scope, image]) => Object.freeze({ name: 'iris_core_' + name, scope, image })));
 export function previewDraftTools(image, scopes) {
   return DEMO_CONNECTION_TOOLS.filter(tool => (!tool.image || image) && scopes.includes(tool.scope));

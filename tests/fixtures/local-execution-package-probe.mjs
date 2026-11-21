@@ -46,7 +46,7 @@ try {
   assert.equal(session.mcpEndpoint, session.origin + '/mcp');
   fs.writeFileSync(pair.clientFile, JSON.stringify({ ...config, origin: session.origin }) + '\n', { mode: 0o600 });
   const first = stdioMcpClient(cli, pair.clientFile, 'read,create,execute,stop'); clients.push(first); commands++;
-  await first.initialize(); assert.equal((await first.request('tools/list')).tools.length, 12);
+  await first.initialize(); assert.equal((await first.request('tools/list')).tools.length, 13);
   stage('stdio-initialized');
   const upload = parse(await first.call('iris_core_import_image', { key: key(), imageBase64: fs.readFileSync(imageFile).toString('base64'), mediaType: 'image/png' }));
   const flow = parse(await first.call('iris_core_create_run', { key: key(), sourceArtifactId: upload.artifact.artifactId,
@@ -92,7 +92,7 @@ try {
   assert.equal(httpConfig.url, session.mcpEndpoint); assert.equal(httpConfig.headers.Authorization, 'Bearer ' + config.accessToken);
   for (const version of ['2025-11-25', '2026-07-28']) {
     const http = httpMcpClient(session.origin, config.accessToken, { version }); await http.initialize();
-    assert.equal((await http.request('tools/list')).tools.length, 12);
+    assert.equal((await http.request('tools/list')).tools.length, 13);
     assert.equal(parse(await http.call('iris_core_lookup', { key: input.key })).operation.id, accepted.operation.id);
     assert.equal(parse(await http.call('iris_core_continue', input)).operation.id, accepted.operation.id);
     const original = (await http.call('iris_core_image', { artifactId: view.output.artifactId })).content.find(item => item.type === 'image');

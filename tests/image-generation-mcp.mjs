@@ -44,7 +44,7 @@ try {
     await client.initialize();
     const names = (await client.request('tools/list')).tools.map(tool => tool.name);
     assert(names.includes('iris_core_create_generation')); assert(!names.includes('iris_core_create_run')); assert(!names.includes('iris_core_import_image'));
-    assert.equal(names.length, 11);
+    assert.equal(names.length, 12);
     const key = crypto.randomUUID(), args = { key, modelRef: FLOW_MODEL, prompt: 'Generation over production ' + transport };
     const created = parse(await client.call('iris_core_create_generation', args));
     assert.equal(created.flow.recipe, 'image-generate/v0'); assert.equal(created.flow.source, null);

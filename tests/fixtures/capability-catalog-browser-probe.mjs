@@ -32,7 +32,7 @@ export async function verifyCapabilityCatalogBrowser({ out, dataRoot, cdp, evalu
     await click('#connection-new');
     await check('scope labels and feature defaults are supplied by Core instead of browser allowlists', "document.querySelectorAll('#connection-scopes input').length===4&&document.querySelector('#connection-scopes').textContent.includes('导入与创建')&&document.querySelector('#connection-image-options input[value=\"image-edit\"]').checked&&!document.querySelector('#connection-image-options input[value=\"image-generate\"]').checked");
     await click('#connection-tool-details>summary');
-    await check('declared business operations do not become MCP tools or checkboxes', "!document.querySelector('#connection-tools').textContent.includes('example.media')&&document.querySelectorAll('#connection-tools input').length===12");
+    await check('declared business operations do not become MCP tools or checkboxes', "!document.querySelector('#connection-tools').textContent.includes('example.media')&&document.querySelectorAll('#connection-tools input').length===13");
     await evaluate("document.querySelector('#connection-name').value='Catalog selection';document.querySelector('#connection-name').dispatchEvent(new Event('input',{bubbles:true}))");
     await click('#connection-save');
     await wait(() => evaluate("document.querySelectorAll('#connections-list .connection-item').length===1&&!document.querySelector('#connection-save').disabled"), 'catalog explicit grant');

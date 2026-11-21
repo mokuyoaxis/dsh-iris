@@ -95,7 +95,7 @@ try {
   assert.equal((await speech.remote.call('iris_core_audio', { artifactId: imported.structuredContent.artifact.artifactId })).isError, true);
   assert.equal((await speech.remote.call('iris_core_run', { runId: asrRun.id })).isError, true, 'speech grant cannot read a transcription');
   const imageOnly = await connection(['image-edit'], ['read']);
-  assert.equal((await imageOnly.remote.request('tools/list')).tools.length, 8);
+  assert.equal((await imageOnly.remote.request('tools/list')).tools.length, 9);
   assert.equal((await json('/api/v0/speeches', input, { token: imageOnly.token, key: uuid() })).status, 401);
   const visible = await asr.remote.call('iris_core_runs', {}); assert(visible.structuredContent.runs.every(run => run.recipe === 'transcribe/v0'));
   assert.equal(fixture.calls.submit.length, 2); assert.equal(fixture.preparation.length, 1);

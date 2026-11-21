@@ -70,7 +70,7 @@ try {
       assert.equal(content.includes(profile.accessToken), false);
       clientFile = entry.args[entry.args.indexOf('--connection-file') + 1]; assert.equal(entry.command, process.execPath);
       const remote = stdioMcpClient(cli, '', 'read', { launch: entry }); children.push(remote); await remote.initialize();
-      assert.equal((await remote.request('tools/list')).tools.length, 8);
+      assert.equal((await remote.request('tools/list')).tools.length, 9);
       const failure = await remote.call('iris_core_run', { runId: 'run_' + 'f'.repeat(24) });
       assert.equal(failure.isError, true); assert.equal(failure.structuredContent.error.code, 'IRIS_API_NOT_FOUND');
       assert.match(failure.structuredContent.error.requestId, /^[a-f0-9-]{36}$/);
@@ -81,7 +81,7 @@ try {
       assert.equal(entry.url, session.origin + '/mcp');
       const headers = entry.http_headers || entry.headers;
       const remote = httpMcpClient(session.origin, headers.Authorization.slice(7)); await remote.initialize();
-      assert.equal((await remote.request('tools/list')).tools.length, 8);
+      assert.equal((await remote.request('tools/list')).tools.length, 9);
     }
   }
   const after = JSON.parse(fs.readFileSync(path.join(directory, 'profiles', key + '.json')));
@@ -102,7 +102,7 @@ try {
 
   const status = await run('mcp', 'check', '--connection-file', clientFile); assert.equal(status.status, 0, status.stderr);
   const report = JSON.parse(status.stdout); assert.equal(report.ok, true); assert.equal(report.mediaTested, false); assert.equal(report.remoteDisconnect, 'confirmed');
-  assert.deepEqual(report.checks, ['configuration', 'transport', 'handshake', 'tool-selection']); assert.equal(report.tools.length, 8);
+  assert.deepEqual(report.checks, ['configuration', 'transport', 'handshake', 'tool-selection']); assert.equal(report.tools.length, 9);
   const excess = await run('mcp', 'check', '--connection-file', clientFile, '--scopes', 'read,execute');
   assert.equal(excess.status, 1); assert.equal(JSON.parse(excess.stdout).error.stage, 'authorization');
   const absent = await run('mcp', 'check', '--connection-file', path.join(root, 'not-found.json'));

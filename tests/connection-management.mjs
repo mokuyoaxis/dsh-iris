@@ -115,7 +115,7 @@ try {
   const restored = await list(); assert.equal(restored.filter(item => item.state === 'revoked').length, 4);
   assert(restored.filter(item => item.state === 'revoked').every(item => item.lastContact?.clientInfo && !item.instances.length));
   const firstConfig = await config(first.key); const stillWorks = httpMcpClient(session.origin, firstConfig.headers.Authorization.slice(7)); await stillWorks.initialize();
-  assert.equal((await stillWorks.request('tools/list')).tools.length, 8);
+  assert.equal((await stillWorks.request('tools/list')).tools.length, 9);
   assert.deepEqual(fs.readFileSync(pair.serverFile), staticBefore);
   // A revoked caller loses access, while the already accepted Operation keeps its original identity.
   const full = await ok('/connections', { ...profile('Explicit operation'), scopes: ['read', 'create', 'execute', 'stop'] });

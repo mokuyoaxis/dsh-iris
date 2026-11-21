@@ -48,7 +48,7 @@ try {
   await request('session'); await request('connection-management/catalog'); await record();
   assert(fs.readFileSync(file).equals(profileBytes)); assert.deepEqual(tree(), before);
   assert.deepEqual((await record()).instances, []);
-  checks.push(`owner GET-only setup inspection derives eight actual read tools and ${intersections} Core scope/group/tool intersections, changes no grant/business bytes and creates no handshake or declaration`);
+  checks.push(`owner GET-only setup inspection derives nine actual read tools and ${intersections} Core scope/group/tool intersections, changes no grant/business bytes and creates no handshake or declaration`);
 
   const exported = await request('connection-management/connections/' + key + '/export', { transport: 'stdio', format: 'entry' });
   const clientFile = exported.configuration.args[exported.configuration.args.indexOf('--connection-file') + 1];

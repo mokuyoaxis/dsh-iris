@@ -105,7 +105,7 @@ try {
   const limited = make({ availableScopes: ['read'] }); await limited.start();
   assert.equal(limited.listTemplates().length, 2); assert.deepEqual(fs.readFileSync(templateFile), templateBytes);
   const readSkill = limited.exportSkill(profile.key, {});
-  assert.deepEqual(readSkill.bundle.scopes, ['read']); assert.equal(readSkill.bundle.tools.length, 8); assert(!readSkill.preview.includes('iris_core_continue'));
+  assert.deepEqual(readSkill.bundle.scopes, ['read']); assert.equal(readSkill.bundle.tools.length, 9); assert(!readSkill.preview.includes('iris_core_continue'));
   const readExport = limited.exportConfig(profile.key, { templateId: imported.templateId }).configuration.mcpServers.iris;
   assert.equal(readExport.args[readExport.args.indexOf('--scopes') + 1], 'read');
   const zero = { key: uuid(), label: 'No tools', scopes: ['read'], capabilities: [], tools: [] }; limited.create(zero);
@@ -127,7 +127,7 @@ try {
   for (const [route, value] of [['/templates', undefined], ['/templates', template], ['/connections/' + profile.key + '/skill', {}]]) {
     assert.equal((await request(route, value, 'x'.repeat(43))).status, 401);
   }
-  assert.equal((await ok('/connections/' + profile.key + '/skill', {})).bundle.tools.length, 8);
+  assert.equal((await ok('/connections/' + profile.key + '/skill', {})).bundle.tools.length, 9);
   await api.dispose();
   api = createLocalReadApi({ dataRoot, allowConnectionManagement: true, connectionStore: directory, allowMcp: true }); services.push(api); session = await api.start();
   const runningCore = tree(dataRoot), delivered = await ok('/connections/' + profile.key + '/skill', {});

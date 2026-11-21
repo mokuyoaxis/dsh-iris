@@ -63,7 +63,7 @@ export async function verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate,
   const readStart = report.requests.length;
   await click('#connection-check');
   await wait(() => evaluate("document.querySelector('#connection-check-state').dataset.state==='passed'&&!document.querySelector('#connection-check').disabled"), 'read-only setup check');
-  await check('export receipt, Iris configuration check and absent client remain three separate facts', "document.querySelector('#connection-export-state').textContent==='当前配置已生成'&&document.querySelector('#connection-check-state').textContent==='Iris 端配置检查通过'&&document.querySelector('#connection-client-state').dataset.state==='waiting'&&document.querySelectorAll('#connection-check-tools>li').length===8");
+  await check('export receipt, Iris configuration check and absent client remain three separate facts', "document.querySelector('#connection-export-state').textContent==='当前配置已生成'&&document.querySelector('#connection-check-state').textContent==='Iris 端配置检查通过'&&document.querySelector('#connection-client-state').dataset.state==='waiting'&&document.querySelectorAll('#connection-check-tools>li').length===9");
   assert(report.requests.slice(readStart).filter(item => item.url.includes('/api/')).every(item => item.method === 'GET'));
   assert.equal(JSON.parse(fs.readFileSync(path.join(profiles, profile.connectionId + '.json'))).lastContact, null);
   const raw = await fetch(session.origin + '/api/v0/connection-management/connections', { headers: { Authorization: 'Bearer ' + session.accessToken } });
@@ -86,7 +86,7 @@ export async function verifyMcpOnboardingBrowser({ out, dataRoot, cdp, evaluate,
   }, 'actual client declaration checkpoint');
   await click('#connection-check');
   await wait(() => evaluate("document.querySelector('#connection-client-state').dataset.state==='observed'&&!document.querySelector('#connection-check').disabled"), 'actual MCP declaration');
-  await check('actual MCP client declaration and scope-filtered tools appear as escaped data without an online claim', "document.querySelector('#connection-client-evidence').textContent.includes('Setup <img src=x onerror=alert(1)>')&&!document.querySelector('#connection-client-evidence img')&&document.querySelector('#connection-client-evidence').textContent.includes('协商允许 8 个工具')&&!document.querySelector('#connection-client-evidence').textContent.includes('iris_core_continue')");
+  await check('actual MCP client declaration and scope-filtered tools appear as escaped data without an online claim', "document.querySelector('#connection-client-evidence').textContent.includes('Setup <img src=x onerror=alert(1)>')&&!document.querySelector('#connection-client-evidence img')&&document.querySelector('#connection-client-evidence').textContent.includes('协商允许 9 个工具')&&!document.querySelector('#connection-client-evidence').textContent.includes('iris_core_continue')");
   await check('refreshed client evidence, header badge and advanced facts agree; negotiated tool details stay folded', "document.querySelector('#connection-state').textContent==='使用过'&&document.querySelector('#connection-facts').textContent.includes('Setup <img src=x onerror=alert(1)>')&&[...document.querySelectorAll('#connection-client-evidence details')].every(n=>!n.open)");
   await click('#connection-check-tool-details>summary');
   await measure('onboarding-check-wide'); await capture('onboarding-check-wide');

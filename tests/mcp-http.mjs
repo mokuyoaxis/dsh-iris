@@ -6,7 +6,8 @@ import path from 'node:path';
 import { createApplicationRuntime } from '../lib/application-runtime.js';
 import { createLocalReadApi } from '../lib/local-api.js';
 import { createConnectionPair, readConnectionGrants } from '../lib/core-connections.js';
-import { LEGACY_BRIDGE_TOOLS_V0 as BRIDGE_TOOL_NAMES } from '../lib/core-bridge-selection.js';
+import { selectedBridgeTools } from '../lib/core-bridge-selection.js';
+const BRIDGE_TOOL_NAMES = selectedBridgeTools(['image-edit']);
 import { readCoreArtifactBytes } from '../lib/core-artifacts.js';
 import { FLOW_MODEL, FLOW_SOURCE, imageFlowFixture } from './fixtures/image-flow-fixture.mjs';
 import { stdioMcpClient } from './fixtures/mcp-client.mjs';
@@ -68,6 +69,7 @@ try {
     }
     assert.equal(terminal.state, 'succeeded');
     assert.equal(parse(await call('iris_core_lookup', { key: input.key })).operation.id, accepted.operation.id);
+    assert(parse(await call('iris_core_run_operations', { runId: created.flow.id })).operations.some(op => op.id === accepted.operation.id));
     let run = parse(await call('iris_core_run', { runId: created.flow.id }));
     if (run.status === 'running') {
       const originalTask = run.task.id;
@@ -88,12 +90,12 @@ try {
     submitted++; assert.equal(fixture.calls.submit.length, submitted);
     assert.deepEqual([...called].sort(), [...BRIDGE_TOOL_NAMES].sort(), 'every registered tool must be exercised');
     if (transport === 'stdio') assert.equal((await client.close()).status, 0);
-    console.log('PASS', transport, version, 'all 12 tools, actual parameters, durable Core, image bytes and original Key');
+    console.log('PASS', transport, version, 'all 13 tools, actual parameters, durable Core, image bytes and original Key');
   }
   for (let index = 1; index < 4; index++) {
     const client = httpMcpClient(started.origin, read(pairs[index].clientFile).accessToken, { version: '2026-07-28' });
     await client.initialize(); const names = (await client.request('tools/list')).tools.map(tool => tool.name);
-    assert.equal(names.length, [0, 8, 2, 0][index]);
+    assert.equal(names.length, [0, 9, 2, 0][index]);
     await assert.rejects(client.call('iris_core_continue', { key: key(), runId: 'run_' + 'a'.repeat(24), expectedRevision: 1 }), { rpcCode: -32602 });
   }
   for (const headers of [{}, { Authorization: 'Bearer ' + 'a'.repeat(43) }, { Authorization: 'Bearer ' + started.accessToken },
