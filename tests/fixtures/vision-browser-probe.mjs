@@ -114,6 +114,17 @@ export async function verifyVisionBrowser({ out, cdp, evaluate, click, wait, cho
     await click('#start-edit'); await status('OCR 部分完成'); assert.equal(posts, 4);
     const executedOcr = await read(createdOcrId); assert.equal(executedOcr.task.attemptCount, 1); assert.equal(executedOcr.ocr.skippedChunks, 2);
     await check('Web-created partial OCR remains a partial result with no automatic retry', "document.querySelector('#start-edit').disabled&&document.querySelector('#status-message').textContent.includes('未处理 2 块')&&!document.querySelector('#download').disabled");
+    await click('#media-tab');
+    await wait(() => evaluate("!document.querySelector('#gallery-panel').hidden&&!document.querySelector('#gallery-types').hidden"), 'v5 gallery visible');
+    await check('v5 gallery exposes vision and OCR category filters', "!document.querySelector('[data-gallery-kind=vision]').hidden&&!document.querySelector('[data-gallery-kind=ocr]').hidden");
+    await click('[data-gallery-kind=vision]');
+    await wait(() => evaluate("document.querySelectorAll('#gallery-grid [data-gallery-run]').length===2"), 'vision gallery cards');
+    await wait(() => evaluate("document.querySelector('#gallery-grid img:not([hidden])')?.naturalWidth===100"), 'vision gallery source thumbnail loaded');
+    await click('[data-gallery-kind=ocr]');
+    await wait(() => evaluate("document.querySelectorAll('#gallery-grid [data-gallery-run]').length===2&&document.querySelector('#gallery-grid').textContent.includes('图片文字识别')"), 'OCR gallery cards');
+    await click(`#gallery-grid [data-gallery-run="${createdOcrId}"]`);
+    await readyRun(createdOcrId);
+    assert.equal(posts, 4, 'browsing vision/OCR gallery and reopening a Run never invokes a model');
     session = await restart(root, config, ports, { allowExecution: false, allowLocalWrites: true });
     const draftToken = path.join(out, 'vision-draft-token'); writeLocalApiTokenFile(draftToken, session.accessToken, root);
     await login(draftToken, null, 'create-only');

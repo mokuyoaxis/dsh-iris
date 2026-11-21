@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 
-后续变更在此记录。
+- 补齐 v5 视觉/OCR 入口同步：Core 工作台“总览”与“作品”页接入看图问答与 OCR 分类/草稿入口（使用原图缩略预览），“模型服务 → 健康检测”接入 v5 视觉验证草稿，插件 Web 上下文与 TypeScript 类型同步 `session.vision` 与 `api.visionModels`，并补齐 CLI `--capabilities` 帮助文案。
 
 ## [0.3.0] - 2026-11-16
 

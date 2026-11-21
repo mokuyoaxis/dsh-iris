@@ -62,7 +62,7 @@ export async function verifyOverviewBrowser({ out, dataRoot, chosenRunId, tokenF
     await check('overview bookmark restores directly and uses the authenticated session', "location.hash==='#overview'&&document.querySelector('#overview-tab').getAttribute('aria-current')==='page'&&document.querySelector('#page-label').textContent==='总览'");
     await check('current candidate counts come from image/audio catalogues, not six declared uses', "document.querySelector('#overview-stats').textContent.includes('3 个')&&document.querySelector('#overview-stats').textContent.includes('0 个')&&document.querySelectorAll('[data-overview-create]:not(:disabled)').length===4");
     await check('saved model uses, selection policy and historical evidence remain separate facts', `${card('image')}.textContent.includes('1 个已标注 · 自动选择')&&${card('image')}.textContent.includes('1 通过 · 0 未通过')&&${card('tts')}.textContent.includes('0 通过 · 1 未通过')&&${card('transcribe')}.textContent.includes('尚无实测记录')`);
-    await check('v3 video names its root gate while music/vision name their existing CLI/DSH boundary', `${card('video')}.querySelector('.overview-entry').textContent==='需视频工作区'&&${card('video')}.textContent.includes('此工作区未接入视频流程')&&['music','vision'].every(id=>document.querySelector('[data-overview-capability="'+id+'"] .overview-entry').textContent==='CLI / DSH')&&${card('music')}.textContent.includes('1 个已标注')`);
+    await check('v3 video/vision name their root gates while music names its existing CLI/DSH boundary', `${card('video')}.querySelector('.overview-entry').textContent==='需视频工作区'&&${card('video')}.textContent.includes('此工作区未接入视频流程')&&${card('vision')}.querySelector('.overview-entry').textContent==='需视觉工作区'&&${card('vision')}.textContent.includes('此工作区未接入视觉流程')&&${card('music')}.querySelector('.overview-entry').textContent==='CLI / DSH'&&${card('music')}.textContent.includes('1 个已标注')`);
     await capture('overview-desktop'); await measure('overview-desktop');
     await click('[data-overview-capability="image"] summary');
     await click('#overview-refresh'); await wait(() => evaluate("!document.querySelector('#overview-refresh').disabled"), 'configured refresh');
@@ -135,6 +135,27 @@ export async function verifyOverviewBrowser({ out, dataRoot, chosenRunId, tokenF
     await login();
     await check('v4 read-only root reports video support without creation or management controls', `${card('video')}.querySelector('.overview-entry').textContent==='面板已接入'&&!document.querySelector('[data-overview-create]')&&!document.querySelector('[data-overview-configure]')`);
     assert.deepEqual(tree(videoRoot), readOnlyVideoBefore);
+    assert.equal(report.requests.filter(item => item.method === 'POST').length, 2);
+
+    const visionRoot = path.join(out, 'overview-vision-core'), visionApp = createApplicationRuntime({ dataRoot: visionRoot });
+    try { await visionApp.execute('flow.init', {}); await visionApp.execute('execution.init', { vision: true }); }
+    finally { await visionApp.dispose(); }
+    session = await restart(visionRoot, config, { allowExecution: true, allowSelection: true, allowProviderManagement: true, executionPorts: fixture });
+    const visionBefore = tree(visionRoot);
+    await login();
+    await check('v5 root exposes the actual vision and OCR entries and candidate', `${card('vision')}.querySelector('.overview-entry').textContent==='面板已接入'&&!document.querySelector('[data-overview-create="vision"]').disabled&&!document.querySelector('[data-overview-create="ocr"]').disabled&&${card('vision')}.textContent.includes('1 个当前候选')`);
+    await click('[data-overview-create="vision"]');
+    await check('vision overview shortcut opens the real draft form without starting a Task', "document.querySelector('[data-creation-mode=\"vision\"]').getAttribute('aria-pressed')==='true'&&document.querySelector('#input-summary').textContent==='写下想了解的图片信息'&&!location.hash");
+    await click('#overview-tab');
+    await click('[data-overview-create="ocr"]');
+    await check('OCR overview shortcut opens the real draft form without starting a Task', "document.querySelector('[data-creation-mode=\"ocr\"]').getAttribute('aria-pressed')==='true'&&document.querySelector('#input-summary').textContent==='保存原图与识别计划'&&!location.hash");
+    await click('#overview-tab');
+    assert.deepEqual(tree(visionRoot), visionBefore); assert.equal(fixture.calls.submit.length, 0);
+    session = await restart(visionRoot, config, { allowProviderManagement: false });
+    const readOnlyVisionBefore = tree(visionRoot);
+    await login();
+    await check('v5 read-only root reports vision support without creation or management controls', `${card('vision')}.querySelector('.overview-entry').textContent==='面板已接入'&&!document.querySelector('[data-overview-create]')&&!document.querySelector('[data-overview-configure]')`);
+    assert.deepEqual(tree(visionRoot), readOnlyVisionBefore);
     assert.equal(report.requests.filter(item => item.method === 'POST').length, 2);
     result.status = 'passed'; save();
   } finally { await app.dispose(); }

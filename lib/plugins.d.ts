@@ -237,6 +237,7 @@ export interface PluginWebSession {
   readonly readOnly: boolean;
   readonly audio: boolean;
   readonly video: boolean;
+  readonly vision: boolean;
   readonly providerManagement: boolean;
   readonly pluginExecution: boolean;
   readonly pluginOperations: readonly PluginDependency[];
@@ -275,6 +276,7 @@ export interface PluginWebApi {
   models(options?: PluginWebRequestOptions): Promise<JsonValue>;
   audioModels(options?: PluginWebRequestOptions): Promise<JsonValue>;
   videoModels(options?: PluginWebRequestOptions): Promise<JsonValue>;
+  visionModels(options?: PluginWebRequestOptions): Promise<JsonValue>;
   artifact(artifact: PluginArtifact, options?: PluginWebRequestOptions): Promise<Blob>;
   /** Only settings mounts in an explicitly enabled owner Provider-management session. */
   readonly providers?: {

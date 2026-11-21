@@ -57,6 +57,8 @@ export const settings: PluginSettingsModule<HTMLElement> = { async mount({ conta
   const current = theme.current(); container.dataset.theme = current.mode;
   const off = theme.subscribe(value => { container.dataset.theme = value.mode; });
   signal.throwIfAborted(); void session.operations;
+  const hasVision: boolean = session.vision; void hasVision;
+  if (session.vision) await api.visionModels();
   if (api.providers) await api.providers.read();
   if (api.pluginOperations) {
     await api.pluginOperations.catalog({ limit: '20' });

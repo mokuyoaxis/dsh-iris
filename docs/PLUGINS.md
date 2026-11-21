@@ -130,7 +130,7 @@ const selected = catalog.selectOperations(['example.library.count']);
 ## Web 贡献和生命周期
 
 - **声明与资源固定**：`pages` / `settings` 声明 `{id, version, title, entry, styles?}`，`renderers` 另声明精确 `mediaTypes` 数组。入口须为插件目录内的本地 JS/MJS（样式为 CSS，单文件 ≤8 MiB，插件合计 ≤16 MiB），激活前即由加载器固定字节并打包隔离。
-- **浏览器上下文 `mount(context)`**：模块导出 `mount(context)` 并可返回清理函数（或 Promise）。`context` 提供 `container`（Shadow DOM 隔离样式）、`signal`、`dependency`、`session`、`theme` 与受控 `api`（含 `runs`/`run`/`models`/`audioModels`/`videoModels`/`artifact`，开启供应商管理时的设置模块额外拥有 `api.providers`，开启业务执行时额外拥有 `api.pluginOperations`）；渲染器另附 `artifact` 对象。
+- **浏览器上下文 `mount(context)`**：模块导出 `mount(context)` 并可返回清理函数（或 Promise）。`context` 提供 `container`（Shadow DOM 隔离样式）、`signal`、`dependency`、`session`、`theme` 与受控 `api`（含 `runs`/`run`/`models`/`audioModels`/`videoModels`/`visionModels`/`artifact`，开启供应商管理时的设置模块额外拥有 `api.providers`，开启业务执行时额外拥有 `api.pluginOperations`）；渲染器另附 `artifact` 对象。
 - **卸载清理**：切换页面、折叠组件或退出登录时，宿主会触发 `signal` 中止并执行清理函数；插件需自行释放 Blob URL、事件监听与定时器。
 
 通过公开 SDK 装配带有 Web 贡献的独立工作台：

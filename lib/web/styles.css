@@ -560,7 +560,7 @@ audio { display:block; width:100%; max-width:100%; min-width:0; margin-block:10p
 .audio-result-icon { display:grid; place-items:center; flex-shrink:0; width:62px; height:62px; color:var(--accent); background:var(--tint); border-radius:17px; font:36px Georgia,serif; }
 .audio-result .field-label { margin-top:20px; }
 .transcript-result { max-height:420px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; line-height:1.9; padding:18px; border:1px solid var(--line); border-radius:10px; background:var(--soft); }
-.gallery-types { display:inline-flex; margin-bottom:18px; }
+.gallery-types { display:inline-flex; flex-wrap:wrap; max-width:100%; margin-bottom:18px; }
 .gallery-audio-cover { height:138px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px; color:var(--accent); background:var(--tint); }
 .gallery-audio-icon { font:40px Georgia,serif; }
 .gallery-audio .export-actions { margin-top:12px; gap:4px; }
