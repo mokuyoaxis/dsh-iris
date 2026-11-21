@@ -90,9 +90,9 @@ function usage() {
     '    Initialize a NEW v1 request container, v2 with --image-generation, v3 with --audio, v4 with --video, or v5 with --vision (all previous flows + vision/OCR). Existing roots are never migrated.',
     '  dsh-iris execution inspect --data-root <v1-flow-root>',
     '  dsh-iris execution recover-lease --data-root <v1-flow-root> --confirm-stale-pid <pid>',
-    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr,local-media|none>] [--tools <comma-separated-names|none>]',
     '  dsh-iris api serve ... --allow-execution --provider-config <absolute-path> [--connections-file <private-grants-file>]',
-    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr,local-media|none>] [--tools <comma-separated-names|none>]',
     '    Official SDK stdio bridge to an already running Core service. Read-only by default; stdout contains MCP messages only.',
     '  dsh-iris mcp capabilities',
     '  dsh-iris mcp presets',
@@ -372,7 +372,7 @@ async function main(args, providerRegistry) {
       flags(args.slice(2), []);
       const { BRIDGE_CAPABILITIES, BRIDGE_CONTROL_TOOLS } = await import('../lib/core-bridge-selection.js');
       console.log(JSON.stringify({ contractVersion: 0, capabilities: BRIDGE_CAPABILITIES, controlTools: BRIDGE_CONTROL_TOOLS,
-        implementedMedia: BRIDGE_CAPABILITIES.map(group => group.recipe), selectionDoesNotGenerate: true }, null, 2)); return 0;
+        implementedMedia: BRIDGE_CAPABILITIES.map(group => group.recipe).filter(Boolean), selectionDoesNotGenerate: true }, null, 2)); return 0;
     }
     if (!['serve', 'config', 'check'].includes(args[1])) throw new CliUsageError('mcp 支持 serve/config/check/capabilities/presets');
     const options = flags(args.slice(2), ['connection-file', 'scopes', 'capabilities', 'tools', ...(args[1] === 'config' ? ['transport', 'format', 'preset', 'output'] : [])]);

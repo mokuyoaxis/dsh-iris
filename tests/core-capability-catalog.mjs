@@ -24,13 +24,13 @@ const files = directory => Object.fromEntries(fs.readdirSync(directory, { recurs
   .map(name => [name, crypto.createHash('sha256').update(fs.readFileSync(path.join(directory, name))).digest('hex')]));
 try {
   const empty = createCoreCapabilityCatalog();
-  assert.equal(empty.snapshot().groups.length, 2); assert.equal(empty.snapshot({ audioEnabled: true }).groups.length, 4);
-  assert.equal(CORE_BRIDGE_TOOLS.length, 30); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 20);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).groups.length, 5);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).tools.length, 23);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).groups.length, 7);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).tools.length, 28);
-  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|run_operations/.test(name)));
+  assert.equal(empty.snapshot().groups.length, 3); assert.equal(empty.snapshot({ audioEnabled: true }).groups.length, 5);
+  assert.equal(CORE_BRIDGE_TOOLS.length, 33); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 23);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).groups.length, 6);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).tools.length, 26);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).groups.length, 8);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).tools.length, 31);
+  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|run_operations|crop|pixel_diff|video_frames/.test(name)));
   assert.equal(empty.snapshot().pluginTools.length, 2);
   assert(!selectedBridgeTools([]).includes('iris_core_plugin_call'), 'discovery does not select the new business tools');
   assert.deepEqual(empty.snapshot().plugins, []); assert.deepEqual(empty.selectOperations(), []);
@@ -109,7 +109,7 @@ try {
     const fullCatalog = await request('capabilities'); assert.equal(fullCatalog.status, 200);
     const managed = (await request('connection-management/catalog')).body;
     for (const field of ['groups', 'tools', 'scopeOptions', 'media', 'controlTools', 'plugins', 'contributions']) assert.deepEqual(managed[field], fullCatalog.body[field]);
-    assert.equal(managed.groups.length, version === 3 ? 4 : 2);
+    assert.equal(managed.groups.length, version === 3 ? 5 : 3);
     assert(!JSON.stringify(fullCatalog.body).includes(dataRoot)); assert(!JSON.stringify(fullCatalog.body).includes(session.accessToken));
     assert.equal((await request('capabilities', undefined, {})).status, 401);
     assert.equal((await request('capabilities?grant=all')).status, 400);

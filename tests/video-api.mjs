@@ -53,7 +53,7 @@ try {
   const status = await ok('/api/v0/session'); assert.equal(status.video, true); assert.equal(status.audio, true); assert(status.operations.includes('videos.create'));
   const models = await ok('/api/v0/video-models'); assert.deepEqual(models.models.map(model => model.modelRef), [VIDEO_MODEL]);
   assert(!JSON.stringify(models).includes('PRIVATE_KEY')); assert(!JSON.stringify(models).includes('aliyuncs'));
-  const catalog = await ok('/api/v0/connection-management/catalog'); assert.equal(catalog.groups.length, 5);
+  const catalog = await ok('/api/v0/connection-management/catalog'); assert.equal(catalog.groups.length, 6);
   assert.deepEqual(catalog.media.find(item => item.id === 'video').capabilities, ['video-generate']);
   const creationKey = uuid(), input = { modelRef: VIDEO_MODEL, prompt: 'A purple iris in the breeze', duration: 2 };
   const created = await ok('/api/v0/videos', input, { key: creationKey }); assert.equal(fixture.calls.submit.length, 0);

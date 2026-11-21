@@ -82,6 +82,7 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
 - `tts` / `transcribe`（需 v3+ 根）：[语音合成与音频转写](AUDIO_FLOWS.md)，支持音频块返回与纯文本转写结果读取。
 - `video-generate`（需 v4+ 根）：[固定文生视频](VIDEO_FLOWS.md)，通过标准 MCP `resource_link` 与 `resources/read` 读取 MP4/WebM（≤32 MiB）。
 - `vision` / `ocr`（需 v5 根）：[单图看图问答与长图分块 OCR](VISION_FLOWS.md)，保存问题/预算并在执行后读取文本与 JSON 报告（各限 1 MiB）。
+- `local-media`（任意 Core 根可用，零外部计费）：基于已有 Core `artifactId` 执行本地确定性裁剪（`iris_core_crop`）、像素对比热力图（`iris_core_pixel_diff`）与视频均匀抽帧（`iris_core_video_frames`，需宿主安装 `ffmpeg`/`ffprobe`），派生作品自动继承来源能力授权，不接受宿主任意路径。
 - `none`：关闭媒体流程工具，仅保留连接状态查询。
 
 **精细过滤**：通过 `--tools` 可进一步指定工具子集（`--tools none` 注册零工具）；通过 `--scopes` 组合 `read,create,execute,stop` 控制读写与执行权。服务端会在每次调用时校验连接授权，未授权的请求无法通过参数拼接绕过。
@@ -140,9 +141,10 @@ node bin/dsh-iris.js mcp config \
 | 语音合成（TTS）与音频转写 | 支持 | `tts` / `transcribe` 分组支持（v3+ 根） |
 | 文生视频 | 支持 | `video-generate` 分组支持（v4+ 根） |
 | 看图问答与长图 OCR | 支持 | `vision` / `ocr` 分组支持（v5 根） |
+| 裁剪 / 像素 diff / 视频抽帧（基于 `artifactId`） | 支持 | `local-media` 分组支持（零外部计费） |
 | 作品选择、导出至本机路径 | 支持 | 待接入（请用 Web 或 CLI） |
 | 图生视频 / S2V / 音乐生成 | 支持 | 待接入 |
-| 视觉定位、视频摘要、裁剪 / 像素 diff / 抽帧 / HTML 截图 | 支持 | 待接入 |
+| 视觉定位、视频摘要、HTML 截图 | 支持 | 待接入 |
 
 ## 错误定位与验证范围
 
