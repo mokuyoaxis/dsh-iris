@@ -1,6 +1,6 @@
-# Core 看图问答与长图 OCR（0.3.0）
+# Core 视觉流程：看图问答、OCR、视觉定位与多模态摘要（0.3.0）
 
-Iris 支持在独立 Core 工作台、Headless CLI 与通用 MCP 中创建并执行持久化的 **单图看图问答（`vision/v0`）** 与 **长图分块 OCR（`ocr/v0`）**，在执行后持久保留原图关联、识别文字与完整分块报告。
+Iris 支持在独立 Core 工作台、Headless CLI 与通用 MCP 中创建并执行持久化的 **单图看图问答（`vision/v0`）**、**长图分块 OCR（`ocr/v0`）**、**单图视觉定位（`locate/v0`）** 与 **多模态视频/帧摘要（`summarize/v0`）**，在执行后持久保留来源关联、结构化结果与纯文本摘要。
 
 ## 初始化视觉工作区
 
@@ -62,6 +62,13 @@ OCR 将 `recipe` 设为 `"ocr/v0"`，并可选传 `chunk_height`、`overlap`、`
 - **取消与超时**：主动取消或整体超时会立刻停止后续分块调度，**不会**交付未完成的部分正文；服务重启后也不会自动续跑或重做整张图。局部取消同样不保证远端停费，需重新识别时请明确新建 Run。
 - **跨块重叠边界去重**：相邻成功分块存在物理像素重叠时，Iris 默认按保守边界策略（`boundary-overlap/v0`）比对前块尾与后块头的唯一、无歧义匹配行（以及未换行连续段落的长边界子串），仅合并确认无歧义的重叠重复；遇到重复行或周期性边界歧义时保守保留原文。原始逐块文字与纵坐标仍完整保留在 OCR JSON 报告的 `chunks` 中，合并明细记于 `deduplication`，便于复核。`complete` 代表所有计划分块均已完成执行（历史验证基线见 [OCR 四场景验证记录](OCR_VALIDATION.md)）。
 
+## 视觉定位与多模态摘要
+
+在 v5 数据根中，除 `vision/v0` 与 `ocr/v0` 外，还支持以下两个持久化视觉流程（同样严格遵循“先创建任务、再显式执行”的计费纪律）：
+
+- **视觉定位（`locate/v0`，MCP `vision-locate` 分组）**：通过 `iris_core_create_locate`（HTTP `POST /api/v0/locates`）传入 `{sourceArtifactId, modelRef, target}` 保存定位任务；显式调用 `iris_core_continue` 执行后，模型在 EXIF 校正后的原图上返回归一化边界框，Core 自动校验并换算为原图像素坐标 `{contractVersion: 0, target, width, height, found, bbox?: {x1, y1, x2, y2, left, top, width, height}}` 持久化保存为 `application/json` Artifact。读取时调用 `iris_core_locate_result`（或查看 `iris_core_run` 的 `locate` 字段），`left/top/width/height` 可直接作为 `iris_core_crop` 的裁剪参数。
+- **多模态视频/帧摘要（`summarize/v0`，MCP `media-summarize` 分组）**：通过 `iris_core_create_summarize`（HTTP `POST /api/v0/summaries`）传入 `{frameArtifactIds, modelRef, question?, transcript?}`（1–20 张已授权的 `video-frame` 或静态 PNG/JPEG/WebP Artifact ID，全部经过逐项来源能力授权校验与引用删除保护）。显式执行时，Core 将帧按时间戳（若全部为 `video-frame`）或传入顺序自动拼接为单张带时间戳标注的接触表提交给视觉模型（附带显式传入的 `transcript` 文本，不隐式触发 ASR 计费），执行后通过 `iris_core_vision_text` 读取纯文本摘要。
+
 ## 有限 HTTP 入口
 
 以下接口挂载在 `/api/v0` 下，遵循工作台 Bearer、同源校验、根版本门禁与幂等规则：
@@ -71,8 +78,11 @@ OCR 将 `recipe` 设为 `"ocr/v0"`，并可选传 `chunk_height`、`overlap`、`
 | `GET/HEAD /api/v0/vision-models` | 只读列出已配置的视觉模型（`{modelRef, displayName}`） |
 | `POST /api/v0/visions` | `{sourceArtifactId, modelRef, question}` 创建看图 Run |
 | `POST /api/v0/ocrs` | `{sourceArtifactId, modelRef, chunkHeight?, overlap?, maxDimension?, maxInvocations?}` 创建 OCR Run |
-| `GET/HEAD /api/v0/artifacts/:id/vision-text` | 读取本能力流程的纯文本输出（≤1 MiB） |
+| `POST /api/v0/locates` | `{sourceArtifactId, modelRef, target}` 创建视觉定位 Run（`locate/v0`） |
+| `POST /api/v0/summaries` | `{frameArtifactIds, modelRef, question?, transcript?}` 创建多模态视频/帧摘要 Run（`summarize/v0`） |
+| `GET/HEAD /api/v0/artifacts/:id/vision-text` | 读取看图、OCR 与摘要流程的纯文本输出（≤1 MiB） |
 | `GET/HEAD /api/v0/artifacts/:id/ocr-report` | 读取 OCR 结构化 JSON 报告（≤1 MiB） |
-| `GET /api/v0/runs?kind=vision\|ocr` | 按视觉或 OCR 分类分页查看历史 Run |
+| `GET/HEAD /api/v0/artifacts/:id/locate-result` | 读取视觉定位结构化像素坐标 JSON（≤1 MiB） |
+| `GET /api/v0/runs?kind=vision\|ocr\|locate\|summarize` | 按视觉子流程分类分页查看历史 Run |
 
 复用既有的 Run/Operation `continue`、`lookup`、`stop` 与下载接口（详见 [Core 执行契约](CORE_SERVICE.md#接收查询与停止)）。

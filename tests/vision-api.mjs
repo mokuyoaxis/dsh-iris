@@ -57,8 +57,8 @@ try {
     allowConnectionManagement: true, connectionStore: path.join(root, 'connections') };
   api = createLocalReadApi(options); session = await api.start();
   assert.equal((await json('/api/v0/session')).vision, true);
-  const catalog = await json('/api/v0/connection-management/catalog'); assert.equal(catalog.groups.length, 8);
-  assert.deepEqual(catalog.media.find(item => item.id === 'vision').capabilities, ['vision', 'ocr']);
+  const catalog = await json('/api/v0/connection-management/catalog'); assert.equal(catalog.groups.length, 10);
+  assert.deepEqual(catalog.media.find(item => item.id === 'vision').capabilities, ['vision', 'ocr', 'vision-locate', 'media-summarize']);
   const vision = await grant(['vision']), ocr = await grant(['ocr']), legacy = await grant(['image-edit']);
   const tools = (await vision.request('tools/list')).tools.map(item => item.name);
   assert(tools.includes('iris_core_create_vision')); assert(!tools.includes('iris_core_create_ocr'));
