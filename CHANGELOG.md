@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 
+- 新增保守的 OCR 跨块边界重叠去重（`boundary-overlap/v0`）：仅在相邻成功分块存在物理像素重叠且边界匹配唯一无歧义时合并重复内容，遇到周期性/相邻重复行时保守保留原文；逐块原文继续保留在 `chunks` 中，合并明细记于 `deduplication` 并向后兼容旧版 OCR JSON 报告。
 - 补齐 v5 视觉/OCR 入口同步：Core 工作台“总览”与“作品”页接入看图问答与 OCR 分类/草稿入口（使用原图缩略预览），“模型服务 → 健康检测”接入 v5 视觉验证草稿，插件 Web 上下文与 TypeScript 类型同步 `session.vision` 与 `api.visionModels`，并补齐 CLI `--capabilities` 帮助文案。
 
 ## [0.3.0] - 2026-11-16
