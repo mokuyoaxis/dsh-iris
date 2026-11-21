@@ -8,6 +8,7 @@
 - 补齐 v5 视觉/OCR 入口同步：Core 工作台“总览”与“作品”页接入看图问答与 OCR 分类/草稿入口（使用原图缩略预览），“模型服务 → 健康检测”接入 v5 视觉验证草稿，插件 Web 上下文与 TypeScript 类型同步 `session.vision` 与 `api.visionModels`，并补齐 CLI `--capabilities` 帮助文案。
 - 打磨通用 MCP 接口（P0）：`iris_core_runs` 支持在已授权范围内按 `kind` / `selection` 筛选；新增 `iris_core_run_operations` 按 `runId` 分页查回历史 Operation（旧版冻结连接清单 `LEGACY_BRIDGE_TOOLS_V0` 保持不扩权，服务端按逐工具授权校验）；收紧 MCP 工具注解 `openWorldHint` 为仅 `execute` 范围；`iris_core_operation` 支持可选有界只读等待 `waitMs`（0–10000 ms，响应取消与实时撤销，不占用 Core 读取并发槽）。
 - 新增 MCP `local-media` 本地媒体检视能力组（P1，零外部计费）：支持基于 Core `artifactId` 执行 `iris_core_crop`（局部裁剪）、`iris_core_pixel_diff`（像素对比指标与热力图）及 `iris_core_video_frames`（视频均匀抽帧，需宿主 `ffmpeg`/`ffprobe`），产物沉淀为派生 Core Artifact 并严格继承来源能力授权，不接受任意宿主路径。
+- 新增大文件安全入库方案（受控只读收件目录 `--inbox-dir` + MCP `inbox` 分组）：启动 `api serve` / `web serve` 时显式指定根外真实目录 `--inbox-dir` 后，获得 `inbox` 授权的连接可通过 `iris_core_inbox` 与 `iris_core_import_inbox_file` 按顶层文件名与稳定 UUID 将 ≤20 MiB 静态图片及（v3+ 根）音频直接导入 Core Artifact，绕开 MCP Base64 体积与 Token 瓶颈；采用 `O_NOFOLLOW`、`fstat` 体积上限、容器魔数校验、零路径暴露与私有目录防重叠守卫，绝不修改或删除原文件。
 
 ## [0.3.0] - 2026-11-16
 

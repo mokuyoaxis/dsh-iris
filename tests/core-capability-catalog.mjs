@@ -25,12 +25,14 @@ const files = directory => Object.fromEntries(fs.readdirSync(directory, { recurs
 try {
   const empty = createCoreCapabilityCatalog();
   assert.equal(empty.snapshot().groups.length, 3); assert.equal(empty.snapshot({ audioEnabled: true }).groups.length, 5);
-  assert.equal(CORE_BRIDGE_TOOLS.length, 33); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 23);
+  assert.equal(CORE_BRIDGE_TOOLS.length, 35); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 23);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).groups.length, 6);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).tools.length, 26);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).groups.length, 8);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).tools.length, 31);
-  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|run_operations|crop|pixel_diff|video_frames/.test(name)));
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).groups.length, 9);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).tools.length, 33);
+  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|run_operations|crop|pixel_diff|video_frames|inbox/.test(name)));
   assert.equal(empty.snapshot().pluginTools.length, 2);
   assert(!selectedBridgeTools([]).includes('iris_core_plugin_call'), 'discovery does not select the new business tools');
   assert.deepEqual(empty.snapshot().plugins, []); assert.deepEqual(empty.selectOperations(), []);
