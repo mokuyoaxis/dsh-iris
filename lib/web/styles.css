@@ -609,6 +609,17 @@ audio { display:block; width:100%; max-width:100%; min-width:0; margin-block:10p
 .video-result { padding: clamp(16px, 3vw, 28px); }
 .video-result video, .gallery-audio video { display: block; width: 100%; max-height: 65vh; margin-block: 16px; border-radius: 16px; background: #16141c; object-fit: contain; }
 .video-result video[hidden], .gallery-audio video[hidden] { display: none; }
+.frame-settings { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,125px),1fr)); gap:8px; margin:12px 0; }
+.frame-settings label { display:grid; gap:4px; font-size:13px; }
+.frame-settings input, .frame-settings select { width:100%; min-width:0; }
+#video-frames .frame-results { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,145px),1fr)); gap:10px; padding:0; max-height:none; overflow:visible; list-style:none; }
+.frame-results > li { min-width:0; border:1px solid var(--line); border-radius:10px; padding:8px; }
+.frame-preview { width:100%; display:grid; gap:4px; padding:0; text-align:left; font-size:13px; }
+.frame-preview img { display:block; width:100%; aspect-ratio:16/9; object-fit:contain; border-radius:6px; background:var(--soft); }
+.frame-preview img[hidden] { display:none; }
+.frame-actions { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; padding-top:6px; font-size:13px; }
+.frame-actions label { display:flex; align-items:center; gap:4px; }
+.frame-actions input { margin:0; }
 /* Visual grounding SVG bbox overlay and zero-billing local crop workbench. */
 .locate-visual { display:grid; gap:12px; margin-top:14px; }
 .locate-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }

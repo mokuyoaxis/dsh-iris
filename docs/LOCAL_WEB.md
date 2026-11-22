@@ -12,9 +12,16 @@ Iris 的独立 Web 工作台（`web serve`）基于[本地 API](LOCAL_API.md) �
 - **能力总览**（`/#overview`）：集中展示六类媒体能力（图片、视频、语音、音乐、转写、视觉）的入口状态、当前去重候选数与历史流程数，并将裁剪、像素比对、视频抽帧、HTML 截图与提示词优化入口收纳在折叠区中。
 - **创作与流程**：支持文本生图、基于已有作品改图、ComfyUI API 图/模板工作流（含 LoRA 双权重、种子等声明参数）、语音合成、音频转写、文生视频，以及（v5 根下）看图问答、长图 OCR 与视觉定位任务编排。开启 `--inbox-dir` 时可直接从只读收件目录选取静态图片与（v3+ 根转写模式下）音频导入；视觉定位命中后会在画布与放大弹窗中按照片显示方向（EXIF 1–8）叠加定位框，并支持像素坐标微调与零计费本地一键裁剪接续；同时可浏览多模态摘要（`summarize/v0`）与视觉定位历史。高级参数与流程细节默认折叠；待执行的看图/OCR 任务会保持设置展开以便核对分块与预算。
 - **作品库**：按“全部 / 已选择 / 未选择”以及图片、语音、转写、视频分类展示当前工作区的作品与关联 Run，支持服务器端分页、原字节下载与多图比较（并排 / 叠图 / 放大）。
+
 - **模型服务与健康光谱**：将供应商配置、六类全局功能模型池与健康检测拆分管理。六色浅光谱直观区分未配置、待验证、近期成功、认证失败、429 冷却与额度耗尽；支持可选的轻量服务级保活（默认关闭，不跨重启保留）。
 - **网络出口与媒体调度**（按需启用）：配合 `--network-config` 与 `--allow-network-management` 管理出口节点、出口池及供应商绑定并运行进程内网络 Doctor（[网络工作台](NETWORK_WORKBENCH.md)）；配合 `--scheduler-config` 可在工作台显示远端容量、冷却与本地 HTTP 队列等待原因（[有界媒体调度](MEDIA_SCHEDULING.md)）。
 - **客户端与插件**：通过“客户端”页集中创建、导出和核对 MCP 连接；当通过 `--plugin-config` 装配插件时，工作台还可加载[组合插件页面/设置/预览器](PLUGINS.md#web-贡献和生命周期)或整套[替代 Panel](PANEL_EXTENSIONS.md)。
+
+### 从视频抽帧并创建摘要（0.3.2 源码）
+
+开启本地写入后，打开已保存视频的流程，展开结果中的“抽帧”。选择帧数（1–20）、目标宽度和 JPEG 或 PNG。抽帧在 Core 宿主用 `ffmpeg` 和 `ffprobe` 本地完成，生成的帧可以按时间查看和下载。
+
+在 v5 根中可勾选本次抽取的帧，再点击“用所选帧做摘要”。选择视觉模型后可附上问题或已有字幕，点击“保存摘要任务”。核对帧数和模型后可显式点击“开始摘要”，执行需要开启 Core 执行服务。保存、断线接回与刷新均只访问本地 Core。摘要使用所选视觉流程，字幕由用户提供，结果可下载为 UTF-8 文本。丢失保存响应时，工作台会按原 UUID 查回已保存的草稿。
 
 ## 启动与登录
 
@@ -115,7 +122,7 @@ node scripts/verify-local-web-browser.mjs \
 - 基础 / 连接与选择：`--connection-management`、`--allow-selection`
 - 流程与恢复：`--recovery`、`--creation`、`--mode-closure`
 - 供应商与面板：`--panel-c3`、`--provider-workbench`、`--plugin-panel`、`--panel-feedback`
-- 媒体与登录：`--overview`、`--image-generation`、`--comfyui`、`--video`、`--audio`、`--vision`、`--locate`、`--password-login`、`--login`
+- 媒体与登录：`--overview`、`--image-generation`、`--comfyui`、`--video`、`--audio`、`--vision`、`--locate`、`--summarize`、`--password-login`、`--login`
 
 </details>
 

@@ -20,6 +20,7 @@ import { verifyVideoBrowser } from '../tests/fixtures/video-browser-probe.mjs';
 import { verifyAudioBrowser } from '../tests/fixtures/audio-browser-probe.mjs';
 import { verifyVisionBrowser } from '../tests/fixtures/vision-browser-probe.mjs';
 import { verifyLocateBrowser } from '../tests/fixtures/locate-browser-probe.mjs';
+import { verifySummaryBrowser } from '../tests/fixtures/summary-browser-probe.mjs';
 import { verifyOverviewBrowser } from '../tests/fixtures/workbench-overview-browser-probe.mjs';
 import { verifyCapabilityCatalogBrowser } from '../tests/fixtures/capability-catalog-browser-probe.mjs';
 import { verifyMcpOnboardingBrowser } from '../tests/fixtures/mcp-onboarding-browser-probe.mjs';
@@ -34,7 +35,7 @@ import { verifyNetworkBrowser } from '../tests/fixtures/network-browser-probe.mj
 import { verifySchedulingBrowser } from '../tests/fixtures/scheduling-browser-probe.mjs';
 
 const args = process.argv.slice(2);
-const visionMode = args.slice(4).find(flag => flag === '--vision' || flag === '--locate');
+const visionMode = args.slice(4).find(flag => ['--vision', '--locate', '--summarize'].includes(flag));
 if (visionMode) {
   assert(args.slice(4).every(flag => ['--no-sandbox', visionMode].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
     visionMode + ' runs only its focused scenarios');
@@ -48,7 +49,7 @@ if (schedulingWorkbench) {
 }
 const networkWorkbench = args.includes('--network');
 assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection', '--recovery', '--creation', '--mode-closure', '--panel-c3', '--image-generation', '--comfyui', '--panel-feedback', '--login', '--password-login', '--provider-workbench', '--video', '--audio', '--overview', '--capability-catalog', '--mcp-onboarding', '--plugin-panel', '--plugin-business', '--plugin-status', '--plugin-starter', '--provider-credentials', '--network'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
-  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3|--image-generation|--comfyui|--panel-feedback|--login|--password-login|--provider-workbench|--video|--audio|--vision|--locate|--overview|--capability-catalog|--mcp-onboarding|--plugin-panel|--plugin-business|--plugin-status|--plugin-starter|--provider-credentials]');
+  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3|--image-generation|--comfyui|--panel-feedback|--login|--password-login|--provider-workbench|--video|--audio|--vision|--locate|--summarize|--overview|--capability-catalog|--mcp-onboarding|--plugin-panel|--plugin-business|--plugin-status|--plugin-starter|--provider-credentials]');
 const webLogin = args.includes('--login');
 const passwordLogin = args.includes('--password-login');
 const providerWorkbench = args.includes('--provider-workbench');
@@ -385,8 +386,8 @@ try {
       } });
     assert.deepEqual(report.browserErrors, [], 'video has no browser exceptions or CSP violations');
   } else if (visionMode) {
-    const verify = visionMode === '--locate' ? verifyLocateBrowser : verifyVisionBrowser;
-    await verify({ out, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads,
+    const verify = { '--locate': verifyLocateBrowser, '--summarize': verifySummaryBrowser, '--vision': verifyVisionBrowser }[visionMode];
+    await verify({ out, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads, pausedResponses,
       restart: async (root, providerConfigPath, executionPorts, modes) => {
         const port = Number(new URL(session.origin).port); await api.dispose();
         api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, providerConfigPath, allowExecution: true, executionPorts, ...modes });

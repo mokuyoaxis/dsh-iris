@@ -290,7 +290,7 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
         <summary><span>创作设置 <small id="input-summary">从一张图片开始</small></span><span class="disclosure">收起</span></summary>
         <form id="edit-form">
           <fieldset id="draft-fields">
-            <div id="creation-modes" class="view-switch creation-modes" aria-label="创作方式"><button type="button" data-creation-mode="generate" aria-pressed="false">生成图片</button><button type="button" data-creation-mode="edit" aria-pressed="true">修改图片</button><button type="button" data-creation-mode="video" aria-pressed="false" hidden>生成视频</button><button type="button" data-creation-mode="tts" aria-pressed="false" hidden>语音合成</button><button type="button" data-creation-mode="transcribe" aria-pressed="false" hidden>音频转写</button><button type="button" data-creation-mode="vision" aria-pressed="false" hidden>看图问答</button><button type="button" data-creation-mode="ocr" aria-pressed="false" hidden>图片文字识别</button><button type="button" data-creation-mode="locate" aria-pressed="false" hidden>视觉定位</button></div>
+            <div id="creation-modes" class="view-switch creation-modes" aria-label="创作方式"><button type="button" data-creation-mode="generate" aria-pressed="false">生成图片</button><button type="button" data-creation-mode="edit" aria-pressed="true">修改图片</button><button type="button" data-creation-mode="video" aria-pressed="false" hidden>生成视频</button><button type="button" data-creation-mode="tts" aria-pressed="false" hidden>语音合成</button><button type="button" data-creation-mode="transcribe" aria-pressed="false" hidden>音频转写</button><button type="button" data-creation-mode="vision" aria-pressed="false" hidden>看图问答</button><button type="button" data-creation-mode="ocr" aria-pressed="false" hidden>图片文字识别</button><button type="button" data-creation-mode="locate" aria-pressed="false" hidden>视觉定位</button><button type="button" data-creation-mode="summarize" aria-pressed="false" hidden>视频摘要</button></div>
             <div id="source-input">
             <label for="image-file" class="field-label">原图</label>
             <label id="image-drop" class="image-drop" for="image-file"><img id="input-preview" alt="待创作的原图" hidden><span><strong id="file-name">选择一张图片</strong><small>点击或拖入 PNG / JPEG / WebP</small></span><span class="upload-arrow" aria-hidden="true">↗</span><input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="image-help"></label>
@@ -305,6 +305,11 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
             </details>
             <label id="model-label" for="model" class="field-label">图片模型 <small>配置候选</small></label><select id="model" required><option value="">读取模型…</option></select>
             <label id="prompt-label" for="edit-prompt" class="field-label">想改些什么？</label><textarea id="edit-prompt" rows="4" maxlength="12000" required placeholder="描述想保留的细节，以及想尝试的变化…"></textarea>
+            <div id="summary-inputs" hidden>
+              <label for="summary-transcript" class="field-label">字幕或转写（可选）</label>
+              <textarea id="summary-transcript" rows="3" maxlength="6000"></textarea>
+              <p id="summary-frame-count" class="field-note"></p>
+            </div>
             <fieldset id="ocr-settings" hidden disabled><details class="compact-details"><summary><span>分块与调用预算</span><span class="disclosure">展开</span></summary>
               <label for="ocr-chunk-height" class="field-label">每块高度（像素）</label><input id="ocr-chunk-height" type="number" min="100" step="1" value="1200">
               <label for="ocr-overlap" class="field-label">相邻块重叠（像素）</label><input id="ocr-overlap" type="number" min="0" step="1" value="120">
@@ -387,7 +392,25 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
             <pre id="vision-text-result" class="transcript-result" hidden></pre>
             <p id="vision-result-note" class="field-note" role="status"></p>
           </section>
-          <section id="video-result" class="video-result" hidden aria-label="视频结果"><p class="eyebrow">MOTION</p><h3>让想法动起来</h3><video id="output-video" controls playsinline preload="metadata" hidden></video><p id="video-result-note" class="field-note" role="status">原视频会保存在当前工作区。</p></section>
+          <section id="video-result" class="video-result" hidden aria-label="视频结果">
+            <p class="eyebrow">MOTION</p><h3>让想法动起来</h3>
+            <video id="output-video" controls playsinline preload="metadata" hidden></video>
+            <p id="video-result-note" class="field-note" role="status">原视频会保存在当前工作区。</p>
+            <details id="video-frames" class="compact-details" hidden>
+              <summary><span>抽帧 <small>本地零计费</small></span><span class="disclosure">展开</span></summary>
+              <form id="video-frames-form">
+                <fieldset id="video-frames-fields" class="frame-settings">
+                  <label for="frame-limit">帧数<input id="frame-limit" type="number" min="1" max="20" step="1" value="6" required></label>
+                  <label for="frame-width">目标宽度（像素）<input id="frame-width" type="number" min="16" max="4096" step="1" value="480" required></label>
+                  <label for="frame-format">格式<select id="frame-format"><option value="jpeg">JPEG</option><option value="png">PNG</option></select></label>
+                </fieldset>
+                <button id="extract-frames" class="secondary" type="submit">提取帧</button>
+              </form>
+              <p id="frame-status" class="field-note" role="status"></p>
+              <ul id="frame-results" class="frame-results" aria-label="本次提取的视频帧"></ul>
+              <button id="summarize-frames" type="button" hidden disabled>用所选帧做摘要</button>
+            </details>
+          </section>
           <section id="audio-result" class="audio-result" hidden aria-label="音频与转写结果"><div class="audio-result-header"><span class="audio-result-icon" aria-hidden="true">♪</span><div><p class="eyebrow" id="audio-result-kind">AUDIO</p><h3 id="audio-result-title">原任务的作品</h3></div></div><div id="audio-source-result" hidden><p class="field-label">原音频</p><audio id="source-audio" controls preload="metadata"></audio></div><div id="audio-output-result" hidden><p class="field-label">合成语音</p><audio id="output-audio" controls preload="metadata"></audio></div><pre id="transcript-result" class="transcript-result" hidden></pre><p id="audio-result-note" class="field-note" role="status"></p></section>
           <div id="image-pair" class="image-pair">
             <figure id="source-card" class="image-card"><figcaption><span>原图</span><small id="source-selected" class="selected-label" hidden>已选择</small></figcaption><button id="source-preview" class="image-stage" type="button" aria-label="放大原图"><span id="source-placeholder" class="muted">读取中…</span><img id="source-image" alt="此流程保存的原图" hidden></button><p id="source-dimensions" class="image-dimensions"></p><button id="select-source" class="choice-button" type="button" aria-pressed="false" disabled>选择原图</button></figure>
