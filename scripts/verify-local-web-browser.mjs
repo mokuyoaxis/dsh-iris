@@ -19,6 +19,7 @@ import { verifyWebLoginBrowser } from '../tests/fixtures/web-login-browser-probe
 import { verifyVideoBrowser } from '../tests/fixtures/video-browser-probe.mjs';
 import { verifyAudioBrowser } from '../tests/fixtures/audio-browser-probe.mjs';
 import { verifyVisionBrowser } from '../tests/fixtures/vision-browser-probe.mjs';
+import { verifyLocateBrowser } from '../tests/fixtures/locate-browser-probe.mjs';
 import { verifyOverviewBrowser } from '../tests/fixtures/workbench-overview-browser-probe.mjs';
 import { verifyCapabilityCatalogBrowser } from '../tests/fixtures/capability-catalog-browser-probe.mjs';
 import { verifyMcpOnboardingBrowser } from '../tests/fixtures/mcp-onboarding-browser-probe.mjs';
@@ -33,11 +34,11 @@ import { verifyNetworkBrowser } from '../tests/fixtures/network-browser-probe.mj
 import { verifySchedulingBrowser } from '../tests/fixtures/scheduling-browser-probe.mjs';
 
 const args = process.argv.slice(2);
-const visionWorkbench = args.includes('--vision');
-if (visionWorkbench) {
-  assert(args.slice(4).every(flag => ['--no-sandbox', '--vision'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
-    '--vision runs only its focused scenarios');
-  args.splice(args.indexOf('--vision'), 1);
+const visionMode = args.slice(4).find(flag => flag === '--vision' || flag === '--locate');
+if (visionMode) {
+  assert(args.slice(4).every(flag => ['--no-sandbox', visionMode].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
+    visionMode + ' runs only its focused scenarios');
+  args.splice(args.indexOf(visionMode), 1);
 }
 const schedulingWorkbench = args.includes('--scheduling');
 if (schedulingWorkbench) {
@@ -47,7 +48,7 @@ if (schedulingWorkbench) {
 }
 const networkWorkbench = args.includes('--network');
 assert(args.length >= 4 && args.slice(4).every(flag => ['--no-sandbox', '--execution-root', '--connection-management', '--allow-selection', '--recovery', '--creation', '--mode-closure', '--panel-c3', '--image-generation', '--comfyui', '--panel-feedback', '--login', '--password-login', '--provider-workbench', '--video', '--audio', '--overview', '--capability-catalog', '--mcp-onboarding', '--plugin-panel', '--plugin-business', '--plugin-status', '--plugin-starter', '--provider-credentials', '--network'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
-  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3|--image-generation|--comfyui|--panel-feedback|--login|--password-login|--provider-workbench|--video|--audio|--overview|--capability-catalog|--mcp-onboarding|--plugin-panel|--plugin-business|--plugin-status|--plugin-starter|--provider-credentials]');
+  'Usage: --browser-executable <absolute-path> --output <new-absolute-directory> [--no-sandbox] [--execution-root] [--connection-management] [--allow-selection] [--recovery] [--creation] [--mode-closure|--panel-c3|--image-generation|--comfyui|--panel-feedback|--login|--password-login|--provider-workbench|--video|--audio|--vision|--locate|--overview|--capability-catalog|--mcp-onboarding|--plugin-panel|--plugin-business|--plugin-status|--plugin-starter|--provider-credentials]');
 const webLogin = args.includes('--login');
 const passwordLogin = args.includes('--password-login');
 const providerWorkbench = args.includes('--provider-workbench');
@@ -383,14 +384,15 @@ try {
         session = await api.start({ port }); return session;
       } });
     assert.deepEqual(report.browserErrors, [], 'video has no browser exceptions or CSP violations');
-  } else if (visionWorkbench) {
-    await verifyVisionBrowser({ out, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads,
+  } else if (visionMode) {
+    const verify = visionMode === '--locate' ? verifyLocateBrowser : verifyVisionBrowser;
+    await verify({ out, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads,
       restart: async (root, providerConfigPath, executionPorts, modes) => {
         const port = Number(new URL(session.origin).port); await api.dispose();
         api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, providerConfigPath, allowExecution: true, executionPorts, ...modes });
         session = await api.start({ port }); return session;
       } });
-    assert.deepEqual(report.browserErrors, [], 'vision has no browser exceptions or CSP violations');
+    assert.deepEqual(report.browserErrors, [], visionMode + ' has no browser exceptions or CSP violations');
   } else if (audio) {
     await verifyAudioBrowser({ out, tokenFile, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads, pausedResponses,
       restart: async (root, providerConfigPath, executionPorts, modes = {}) => {

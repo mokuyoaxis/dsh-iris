@@ -290,7 +290,7 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
         <summary><span>创作设置 <small id="input-summary">从一张图片开始</small></span><span class="disclosure">收起</span></summary>
         <form id="edit-form">
           <fieldset id="draft-fields">
-            <div id="creation-modes" class="view-switch creation-modes" aria-label="创作方式"><button type="button" data-creation-mode="generate" aria-pressed="false">生成图片</button><button type="button" data-creation-mode="edit" aria-pressed="true">修改图片</button><button type="button" data-creation-mode="video" aria-pressed="false" hidden>生成视频</button><button type="button" data-creation-mode="tts" aria-pressed="false" hidden>语音合成</button><button type="button" data-creation-mode="transcribe" aria-pressed="false" hidden>音频转写</button><button type="button" data-creation-mode="vision" aria-pressed="false" hidden>看图问答</button><button type="button" data-creation-mode="ocr" aria-pressed="false" hidden>图片文字识别</button></div>
+            <div id="creation-modes" class="view-switch creation-modes" aria-label="创作方式"><button type="button" data-creation-mode="generate" aria-pressed="false">生成图片</button><button type="button" data-creation-mode="edit" aria-pressed="true">修改图片</button><button type="button" data-creation-mode="video" aria-pressed="false" hidden>生成视频</button><button type="button" data-creation-mode="tts" aria-pressed="false" hidden>语音合成</button><button type="button" data-creation-mode="transcribe" aria-pressed="false" hidden>音频转写</button><button type="button" data-creation-mode="vision" aria-pressed="false" hidden>看图问答</button><button type="button" data-creation-mode="ocr" aria-pressed="false" hidden>图片文字识别</button><button type="button" data-creation-mode="locate" aria-pressed="false" hidden>视觉定位</button></div>
             <div id="source-input">
             <label for="image-file" class="field-label">原图</label>
             <label id="image-drop" class="image-drop" for="image-file"><img id="input-preview" alt="待创作的原图" hidden><span><strong id="file-name">选择一张图片</strong><small>点击或拖入 PNG / JPEG / WebP</small></span><span class="upload-arrow" aria-hidden="true">↗</span><input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="image-help"></label>
@@ -327,7 +327,66 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
         <div class="canvas-toolbar"><span class="canvas-label">创作画布</span><div id="view-modes" class="view-switch" aria-label="比较方式"><button type="button" data-view="pair" aria-pressed="true">并排</button><button type="button" data-view="overlay" aria-pressed="false" disabled>叠图</button></div><button id="refresh" class="quiet" type="button">刷新</button></div>
         <div id="viewer-empty" class="viewer-empty"><img id="draft-preview" alt="待改图的本地预览" hidden><span class="empty-mark" aria-hidden="true">✧</span><h2>从一张图片开始</h2><p class="muted">选好原图，写下想法。作品会保存在当前工作区。</p></div>
         <div id="run-view" hidden>
-          <section id="vision-result" class="audio-result" hidden aria-label="看图与OCR结果"><p class="eyebrow">VISION / OCR</p><h3>图片里的信息</h3><pre id="vision-text-result" class="transcript-result" hidden></pre><p id="vision-result-note" class="field-note" role="status"></p></section>
+          <section id="vision-result" class="audio-result" hidden aria-label="看图、OCR 与视觉定位结果">
+            <p id="vision-result-eyebrow" class="eyebrow">VISION / OCR</p>
+            <h3 id="vision-result-heading">图片里的信息</h3>
+            <div id="locate-visual" class="locate-visual" hidden>
+              <div class="locate-toolbar">
+                <span id="locate-badge" class="badge">等待定位</span>
+                <div id="locate-toggles" class="view-switch locate-toggles" aria-label="定位框显示" hidden>
+                  <button id="locate-toggle-box" type="button" aria-pressed="true">隐藏定位框</button>
+                  <button id="locate-toggle-scrim" type="button" aria-pressed="true">突出框内</button>
+                </div>
+              </div>
+              <button id="locate-stage-preview" class="image-stage locate-stage" type="button" aria-label="放大查看原图与定位框">
+                <span id="locate-source-placeholder" class="muted">读取原图中…</span>
+                <span id="locate-stage-frame" class="locate-stage-frame" hidden><img id="locate-source-image" alt="视觉定位原图"><svg id="locate-overlay" class="locate-overlay" aria-hidden="true" hidden></svg></span>
+              </button>
+              <p id="locate-dimensions" class="image-dimensions"></p>
+              <div id="locate-actions" class="locate-actions" hidden>
+                <button id="locate-crop-button" type="button" hidden>按定位框裁剪（零计费）</button>
+                <button id="locate-retry-target" class="secondary" type="button" hidden>用原图重新定位</button>
+              </div>
+              <details id="locate-crop-adjust" class="compact-details locate-crop-adjust" hidden>
+                <summary><span>微调裁剪区域 <small id="locate-crop-summary">像素坐标</small></span><span class="disclosure">展开</span></summary>
+                <div class="locate-crop-grid">
+                  <label for="locate-crop-left" class="locate-crop-field"><span>左边界 X</span><input id="locate-crop-left" type="number" min="0" step="1"></label>
+                  <label for="locate-crop-top" class="locate-crop-field"><span>上边界 Y</span><input id="locate-crop-top" type="number" min="0" step="1"></label>
+                  <label for="locate-crop-width" class="locate-crop-field"><span>宽度 W</span><input id="locate-crop-width" type="number" min="1" step="1"></label>
+                  <label for="locate-crop-height" class="locate-crop-field"><span>高度 H</span><input id="locate-crop-height" type="number" min="1" step="1"></label>
+                </div>
+                <div class="locate-crop-adjust-footer">
+                  <p class="field-note">使用原图像素坐标。紫色虚线预览裁剪区域，输入限定在原图边界内。</p>
+                  <button id="locate-crop-reset" class="quiet inline-button" type="button">重置为模型框</button>
+                </div>
+              </details>
+              <p id="locate-crop-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+              <section id="locate-crop-result" class="locate-crop-result" hidden aria-label="本地裁剪结果">
+                <div class="locate-crop-preview-row">
+                  <img id="locate-crop-image" alt="本地裁剪生成的图片">
+                  <div class="locate-crop-meta">
+                    <p class="eyebrow">LOCAL CROP · ZERO COST</p>
+                    <strong id="locate-crop-title">已保存本地裁剪图</strong>
+                    <p id="locate-crop-dimensions" class="field-note"></p>
+                    <div class="export-actions locate-crop-actions">
+                      <button id="locate-crop-reload" type="button" hidden>重新读取裁剪预览</button>
+                      <button id="locate-crop-download" type="button">下载裁剪 PNG</button>
+                      <button id="locate-crop-use-edit" class="secondary" type="button" data-locate-handoff="edit" hidden>用裁剪图改图</button>
+                      <button id="locate-crop-use-vision" class="secondary" type="button" data-locate-handoff="vision" hidden>用裁剪图看图</button>
+                      <button id="locate-crop-use-ocr" class="secondary" type="button" data-locate-handoff="ocr" hidden>用裁剪图 OCR</button>
+                      <button id="locate-crop-use-locate" class="secondary" type="button" data-locate-handoff="locate" hidden>用裁剪图再定位</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <details id="locate-json-details" class="compact-details locate-json-details" hidden>
+                <summary><span>原始定位 JSON</span><span class="disclosure">展开</span></summary>
+                <pre id="locate-json-result" class="transcript-result"></pre>
+              </details>
+            </div>
+            <pre id="vision-text-result" class="transcript-result" hidden></pre>
+            <p id="vision-result-note" class="field-note" role="status"></p>
+          </section>
           <section id="video-result" class="video-result" hidden aria-label="视频结果"><p class="eyebrow">MOTION</p><h3>让想法动起来</h3><video id="output-video" controls playsinline preload="metadata" hidden></video><p id="video-result-note" class="field-note" role="status">原视频会保存在当前工作区。</p></section>
           <section id="audio-result" class="audio-result" hidden aria-label="音频与转写结果"><div class="audio-result-header"><span class="audio-result-icon" aria-hidden="true">♪</span><div><p class="eyebrow" id="audio-result-kind">AUDIO</p><h3 id="audio-result-title">原任务的作品</h3></div></div><div id="audio-source-result" hidden><p class="field-label">原音频</p><audio id="source-audio" controls preload="metadata"></audio></div><div id="audio-output-result" hidden><p class="field-label">合成语音</p><audio id="output-audio" controls preload="metadata"></audio></div><pre id="transcript-result" class="transcript-result" hidden></pre><p id="audio-result-note" class="field-note" role="status"></p></section>
           <div id="image-pair" class="image-pair">
@@ -352,7 +411,7 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
     <footer>Iris · 本地创作，随时接续<span>面向 0.3 的 Core 工作台</span></footer>
   </main>
   </div></div>
-  <dialog id="image-dialog" aria-labelledby="image-dialog-title"><div class="section-heading"><h2 id="image-dialog-title">图片预览</h2><button id="close-image-dialog" class="quiet" type="button" aria-label="关闭图片预览">关闭</button></div><img id="expanded-image" alt="放大的作品"><p class="field-note">显示原始图片，不改变作品像素。</p></dialog>
+  <dialog id="image-dialog" aria-labelledby="image-dialog-title"><div class="section-heading"><h2 id="image-dialog-title">图片预览</h2><button id="close-image-dialog" class="quiet" type="button" aria-label="关闭图片预览">关闭</button></div><div class="dialog-stage-frame"><img id="expanded-image" alt="放大的作品"><svg id="expanded-overlay" class="locate-overlay" aria-hidden="true" hidden></svg></div><p class="field-note">显示原始图片，不改变作品像素。</p></dialog>
   <dialog id="appearance-dialog" class="appearance-dialog" aria-labelledby="appearance-title">
     <div class="section-heading"><h2 id="appearance-title">外观</h2><button id="appearance-close" class="quiet" type="button">关闭</button></div>
     <div class="iris-swatch" aria-label="鸢尾六色渐变"></div><p class="field-note">一点鸢尾色，留白给创作。设置仅保存在此浏览器。</p>
