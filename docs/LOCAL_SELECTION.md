@@ -13,7 +13,7 @@ node bin/dsh-iris.js web serve --data-root /absolute/path/to/flow-root \
 
 也可换用 `api serve`。默认不开启；`--allow-local-writes`、`--allow-execution` 和 `--allow-connection-management` 均不会隐式开启选择。创建和执行模式仍各自要求已初始化的请求区或 v1 执行根，见 [本地创建](LOCAL_CREATION.md)与 [Core 服务](CORE_SERVICE.md)。
 
-Token 文件须为根外新文件，权限沿用本地 API 约定。只有本次服务的 owner Token 能调用选择；连接凭据即使拥有全部 MCP 权限也不能调用，不新增 MCP scope 或工具。Bearer、精确 Host、同源 Origin 和禁止跨站请求的检查保持，见 [访问边界](LOCAL_API.md#身份与访问)。
+Token 文件须为根外新文件，权限沿用本地 API 约定。工作台 owner 使用本次服务的 Token。0.3.2 源码另提供 MCP 选择，服务同时需要开启本地写入，连接须显式授予 `create`、`iris_core_select_run` 和原 Run 对应的图片分组。[访问边界](LOCAL_API.md#身份与访问) · [MCP 选择](MCP.md#选择图片作品032-源码)
 
 ## 请求与版本门禁
 
@@ -27,7 +27,7 @@ Content-Type: application/json
 {"artifactId":"artifact_<24 lowercase hex>","expectedRevision":7}
 ```
 
-正文只接受这两个字段；`expectedRevision` 必须是正安全整数，JSON 上限 8 KiB。原图或结果须属于该 Run，且流程已完成比较。路径、URL、比较图和其他 Run 的作品均不能作为选择目标。
+owner 正文为 `{artifactId, expectedRevision}`。MCP 工具会提交 `{choice, expectedRevision}`，由服务将 `source` 或 `output` 解析为该 Run 的原图或生成结果。`expectedRevision` 必须是正安全整数，JSON 上限 8 KiB。改图流程还须完成比较。可选作品仅限该 Run 的原图或输出。
 
 版本核对和选择写入在同一个 Application writer 中完成，复用原子 Run 提交，不新建请求区、Operation 或选择收据，也不改 Run 格式。成功返回 `200` 和当前 FlowView：
 
@@ -45,7 +45,7 @@ Content-Type: application/json
 | 状态 | 含义 |
 |---|---|
 | 400 / 413 | 字段、类型、版本或请求格式无效 / 正文超限 |
-| 401 / 403 | 身份无效 / 访问边界不符或调用方不是 owner |
+| 401 / 403 | 身份无效 / 访问边界、连接权限、工具或原 Run 分组未获授权 |
 | 404 | 合法 Run ID 不存在 |
 | 405 | 未显式开启选择，或方法不支持 |
 | 409 `IRIS_API_RUN_CHANGED` | Run 版本已改变，先读取再决定 |

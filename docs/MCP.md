@@ -136,6 +136,12 @@ node bin/dsh-iris.js mcp config \
 - 执行时统一调用 `iris_core_plugin_call`（参数 `{ key, operationId, dependency, input }`），查询与恢复复用 `iris_core_operation` / `iris_core_lookup` / `iris_core_stop` / `iris_core_image`。
 - 若插件缺失或版本不匹配，历史记录与产物仍可读取，但不会跨版本自动重做中断操作（详见 [插件启动](PLUGIN_STARTUP.md)）。
 
+## 选择图片作品（0.3.2 源码）
+
+服务开启 `--allow-selection` 及本地写入后，可为连接显式勾选 `iris_core_select_run`。连接需要 `create` 权限及对应的 `image-edit` 或 `image-generate` 分组。使用 CLI 创建连接时，通过 `--tools` 显式加入该工具。
+
+先调用 `iris_core_run` 读取当前 `revision` 和可选作品，再用 `{ runId, expectedRevision, choice }` 保存明确的选择。`choice` 为 `source`（原图）或 `output`（生成结果）。响应丢失或遇到 `409 IRIS_API_RUN_CHANGED` 时，先查回同一 Run 的修订与已选作品。选择本身只写入 Core 的选定态。
+
 ## 功能覆盖矩阵
 
 | 能力 | Headless CLI / Core | 当前 MCP |
@@ -148,7 +154,8 @@ node bin/dsh-iris.js mcp config \
 | 视觉定位与多模态视频/帧摘要 | 支持 | `vision-locate` / `media-summarize` 分组支持（v5 根） |
 | 裁剪 / 像素 diff / 视频抽帧（基于 `artifactId`） | 支持 | `local-media` 分组支持（零外部计费） |
 | 大文件只读收件目录安全入库（≤20 MiB，免 Base64） | 支持（`--inbox-dir`） | `inbox` 分组支持（`iris_core_inbox` / `iris_core_import_inbox_file`） |
-| 作品选择、导出至本机路径 | 支持 | 待接入（请用 Web 或 CLI） |
+| 图片作品选择 | 支持 | 显式开启并授权 `iris_core_select_run`（0.3.2 源码） |
+| 导出至本机路径 | 支持 | 待接入（请用 Web 或 CLI） |
 | 图生视频 / S2V / 音乐生成 | 支持 | 待接入 |
 | 无头 HTML/SVG 截图（沙箱 CSP，零计费） | 支持 | `html-render` 分组支持（显式 `--browser-executable`） |
 

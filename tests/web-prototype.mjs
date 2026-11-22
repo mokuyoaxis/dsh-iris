@@ -10,6 +10,7 @@ import { createDemoTransport, DEMO_MODELS } from '../prototypes/workbench/demo-t
 import { startWorkbenchPreview } from '../scripts/preview-workbench.mjs';
 import { DEMO_CONNECTION_TOOLS, previewDraftTools } from '../prototypes/workbench/workspace-panels.js';
 import { bridgeToolsForScopes } from '../lib/core-bridge-tools.js';
+import { defaultBridgeTools } from '../lib/core-bridge-selection.js';
 import { useTempDshHome } from './test-env.js';
 
 const { root } = useTempDshHome('iris-web-prototype');
@@ -123,9 +124,11 @@ try {
   });
   assert.equal(badHost, 421);
   const head = await fetch(preview.origin, { method: 'HEAD' }); assert.equal(head.status, 200); assert.equal(await head.text(), '');
-  assert.deepEqual(DEMO_CONNECTION_TOOLS.map(tool => tool.name), bridgeToolsForScopes(['read', 'create', 'execute', 'stop'], ['image-edit']).map(tool => tool.name), 'the retained demo models the original editing scope');
+  assert.deepEqual(DEMO_CONNECTION_TOOLS.map(tool => tool.name), bridgeToolsForScopes(['read', 'create', 'execute', 'stop'],
+    ['image-edit'], defaultBridgeTools(['image-edit'])).map(tool => tool.name), 'the retained demo models the original editing scope');
   for (const image of [true, false]) for (const scopes of [['read'], ['read', 'create'], ['read', 'execute', 'stop'], ['read', 'create', 'execute', 'stop']]) {
-    assert.deepEqual(previewDraftTools(image, scopes).map(tool => tool.name), bridgeToolsForScopes(scopes, image ? ['image-edit'] : [], undefined).map(tool => tool.name));
+    const capabilities = image ? ['image-edit'] : [];
+    assert.deepEqual(previewDraftTools(image, scopes).map(tool => tool.name), bridgeToolsForScopes(scopes, capabilities, defaultBridgeTools(capabilities)).map(tool => tool.name));
   }
   console.log('web prototype: real Core projections, demo gates, cancellation and bounded static preview OK');
 } finally {

@@ -50,7 +50,7 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 
 会话附 `pluginExecution/pluginOperations` 和允许的 plugins.catalog/plugins.execute 等别名。工作台有内建业务记录页，插件缺失仍可查原作品。启动将遗留在途记录标为 interrupted，不自动重做；业务 succeeded 仅表示处理器返回及Core命令完成。详见[真实业务](CONTACT_SHEET.md)。
 
-下列 GET/HEAD 已有实现，Operation 路由需beta.1的显式执行模式；I4B 只含 images/runs 两个 POST，执行模式另含 continue/cancel，selection 需独立 `--allow-selection` 且仅限 owner。JSON 响应含 `contractVersion: 0`；列表最多 30 项，摘要不含 Prompt；创建 JSON 上限 64 KiB，执行/选择/连接 JSON 上限 8 KiB。未知/重复查询参数和带正文的只读请求拒绝。
+下列 GET/HEAD 已有实现。Operation 路由需 beta.1 的显式执行模式。I4B 提供 images/runs 两个 POST，执行模式另含 continue/cancel，selection 需独立 `--allow-selection`。JSON 响应含 `contractVersion: 0`。列表最多 30 项，摘要不含 Prompt。创建 JSON 上限 64 KiB，执行、选择与连接 JSON 上限 8 KiB。未知或重复查询参数和带正文的只读请求拒绝。
 
 | 方法与路径 | 输入 | 语义 |
 |---|---|---|
@@ -62,7 +62,7 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 | `POST /runs`（I4B） | `{sourceArtifactId, modelRef, prompt, size?}`、Idempotency-Key | 固定 `image-edit/v0` / `n=1`，只保存输入与身份，零生成请求；本地提交后 201，同 Key 接回 200 |
 | `GET /runs/:id` | 无 | 返回下述 FlowView；只读，不创建 Task、补交付或继续步骤 |
 | `POST /runs/:id/continue`（0.3 beta执行模式） | `{expectedRevision}`、Idempotency-Key | 持久接收后 202，同 Key 200；一次首次提交/观察/补交付/比较，不重提已有 Attempt |
-| `POST /runs/:id/selection`（0.3 beta选择模式） | `{artifactId, expectedRevision}` | 仅 owner；同 writer 核对版本并保存原图/结果选择，返回 200；过期版本 409，不触发生成或下载 |
+| `POST /runs/:id/selection` | owner 使用 `{artifactId, expectedRevision}`。0.3.2 源码中的 MCP 连接使用 `{choice, expectedRevision}` | 同一 writer 核对修订并保存选择，成功返回 200，过期修订返回 409。MCP 另需本地写入、`create` scope、明确的 `iris_core_select_run` 工具授权及该 Run 的图片分组 |
 | `GET /artifacts/:id/content` | 无 | 按已验证 Artifact ID 和清单读取该根内媒体字节，不接受 path/URL 参数；不写文件 |
 | `GET /runs/:id/download` | 无 | 返回已选择图片的原字节及受控附件名；未选择则冲突，不接受服务器输出路径 |
 | `GET /operations/:id`（0.3 beta执行模式） | 无 | 查询持久状态，不能借此继续操作；原 Key 查询和 Run 列表见服务指南 |

@@ -25,7 +25,11 @@ const files = directory => Object.fromEntries(fs.readdirSync(directory, { recurs
 try {
   const empty = createCoreCapabilityCatalog();
   assert.equal(empty.snapshot().groups.length, 3); assert.equal(empty.snapshot({ audioEnabled: true }).groups.length, 5);
-  assert.equal(CORE_BRIDGE_TOOLS.length, 39); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 23);
+  assert.equal(CORE_BRIDGE_TOOLS.length, 40); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 23);
+  assert(!empty.snapshot().tools.some(tool => tool.name === 'iris_core_select_run'));
+  const selectionCatalog = empty.snapshot({ selectionEnabled: true });
+  assert.deepEqual(selectionCatalog.groups.filter(group => group.tools.includes('iris_core_select_run')).map(group => group.id), ['image-edit', 'image-generate']);
+  assert.equal(selectionCatalog.tools.find(tool => tool.name === 'iris_core_select_run').scope, 'create');
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).groups.length, 6);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).tools.length, 26);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).groups.length, 10);
@@ -34,7 +38,7 @@ try {
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).tools.length, 36);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).groups.length, 12);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).tools.length, 37);
-  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|locate|summarize|run_operations|crop|pixel_diff|video_frames|inbox|render_html/.test(name)));
+  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|locate|summarize|select_run|run_operations|crop|pixel_diff|video_frames|inbox|render_html/.test(name)));
   assert.equal(empty.snapshot().pluginTools.length, 2);
   assert(!selectedBridgeTools([]).includes('iris_core_plugin_call'), 'discovery does not select the new business tools');
   assert.deepEqual(empty.snapshot().plugins, []); assert.deepEqual(empty.selectOperations(), []);
