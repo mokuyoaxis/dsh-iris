@@ -24,14 +24,14 @@ Iris 将媒体模型服务、创作流程与产物管理统一到一个本地工
 围绕同一套 Core 引擎，Iris 提供四种使用方式：**独立 Web 工作台**、**通用 MCP 服务**、**Headless CLI** 以及 **DSH 原生插件**。供应商凭据、任务状态与作品均由 Core 统一托管，客户端按你授予的权限获取能力。
 
 > [!NOTE]
-> 本文档对应 **Iris 0.3.0**（[发行说明](docs/releases/0.3.0.md) · [支持范围](docs/BETA_SCOPE.md)）。若从 0.2.7 或预发布版本升级，请先阅读[升级指南](docs/UPGRADING_0.3.md)；发布前验证请直接使用源码或本地打包归档。
+> 本文档对应 **Iris 0.3.1**（[发行说明](docs/releases/0.3.1.md) · [支持范围](docs/BETA_SCOPE.md)）。若从 0.2.7、预发布版本或 0.3.0 升级，请先阅读[升级指南](docs/UPGRADING_0.3.md)；发布前验证请直接使用源码或本地打包归档。
 
 | 你想做什么 | 推荐入口 | 说明 |
 |---|---|---|
-| 在独立网页中配置模型、创作与管理作品 | [Core 工作台快速开始](docs/CORE_QUICKSTART.md) | 0.3.0 独立工作台 |
+| 在独立网页中配置模型、创作与管理作品 | [Core 工作台快速开始](docs/CORE_QUICKSTART.md) | 0.3.1 独立工作台 |
 | 让其他 Agent 通过 MCP 共用媒体工作区 | [MCP 接入](docs/MCP.md) · [Agent 指导](docs/AGENT_CORE_QUICKSTART.md) | 支持 stdio 与 Streamable HTTP |
-| 在 DSH 对话中直接使用媒体工具与提示词优化 | [DSH 插件](#dsh-插件030) | 保留原生工具与生命周期 |
-| 在终端或脚本中生成媒体、查任务、导出作品 | [独立 CLI](#独立-cli030) | 无需启动 DSH |
+| 在 DSH 对话中直接使用媒体工具与提示词优化 | [DSH 插件](#dsh-插件031) | 保留原生工具与生命周期 |
+| 在终端或脚本中生成媒体、查任务、导出作品 | [独立 CLI](#独立-cli031) | 无需启动 DSH |
 
 ## 工作台预览
 
@@ -57,25 +57,25 @@ Iris 工作台采用明快简洁的界面与浅鸢尾配色，支持明暗主题
 
 ### 当前入口覆盖
 
-| 能力 | DSH / 独立 CLI（0.3.0） | Core Web / MCP（0.3.0） |
+| 能力 | DSH / 独立 CLI（0.3.1） | Core Web / MCP（0.3.1） |
 |---|---|---|
 | 图片生成、导入与编辑 | 可用 | 可用（文生图需支持生成的执行根） |
 | 语音合成、音频转写 | 可用 | v3 / v4 / v5 数据根可用 |
 | 文生视频 | 可用 | [v4 / v5 数据根可用](docs/VIDEO_FLOWS.md) |
-| 单图看图、长图 OCR、视觉定位与多模态摘要 | 可用 | [v5 数据根可用](docs/VISION_FLOWS.md)（当前源码已接入保守 OCR 跨块边界去重，0.3.0 基线见[质量验证](docs/OCR_VALIDATION.md)；定位与摘要已接入 MCP 与工作台历史查看） |
-| 本地检视（裁剪/像素对比/视频抽帧）、HTML 截图与只读收件目录 | CLI / DSH 可用 | 当前源码已接入 MCP `local-media` / `html-render`（`--browser-executable`）/ `inbox` 分组与工作台 `--inbox-dir` 入口 |
+| 单图看图、长图 OCR、视觉定位与多模态摘要 | 可用 | [v5 数据根可用](docs/VISION_FLOWS.md)（OCR 默认启用保守跨块边界去重 `boundary-overlap/v0`；Web 工作台支持视觉定位交互创建、EXIF 精确 SVG 叠框与一键零计费裁剪，摘要支持 MCP 与工作台历史查看） |
+| 本地检视（裁剪/像素对比/视频抽帧）、HTML 截图与只读收件目录 | CLI / DSH 可用 | MCP 支持 `local-media`、`html-render`（显式 `--browser-executable`）与 `inbox` 分组；工作台支持 `--inbox-dir` 收件目录导入与定位框一键裁剪 |
 | 图生视频、S2V、音乐 | 可用（取决于服务与本地依赖） | 模型服务可配置；Web/MCP 创作入口待接入 |
 | ComfyUI 工作流与开放参数 | 可用（需配置受支持的工作流） | 已实现（真实 GPU 推理待独立验收） |
 | 多图对照板插件 | 使用独立 Core 插件入口 | 显式启用后可用 |
 
 ## 快速开始
 
-### Core 工作台（0.3.0）
+### Core 工作台（0.3.1）
 
-为保证数据格式隔离，请为 0.3.0 工作台指定一个**新的私有目录**（已有旧工作区不会自动迁移）：
+为保证数据格式隔离，请为 0.3 工作台指定一个**新的私有目录**（已有旧工作区不会自动迁移；从 0.3.0 升级可直接沿用现有数据根）：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0
+npm install @mokuyoaxis/dsh-iris@0.3.1
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
@@ -92,7 +92,7 @@ npx dsh-iris web serve \
 ```
 
 > [!TIP]
-> 在源码仓库中开发时，运行 `npm ci` 安装锁定依赖，并将命令中的 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。`execution init --vision` 会初始化 v5 根，一次开启图片、语音/转写、文生视频与看图/OCR 流程。
+> 在源码仓库中开发时，运行 `npm ci` 安装锁定依赖，并将命令中的 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。`execution init --vision` 会初始化 v5 根，一次开启图片、语音/转写、文生视频与看图/OCR/定位/摘要流程。
 
 1. **首次登录**：在浏览器中打开终端输出的 **`loginUrl`** 设置访问口令，此后直接访问普通地址即可。登录状态默认在当前设备保留，刷新或正常重启服务后可继续使用。
 2. **配置模型服务**：在**模型服务**页面添加供应商、同步或填写模型并确认用途，在**功能模型池**设定策略，即可在**创作**页面生成作品。配置与目录读取均不产生费用，只有发起实际生成或执行才会调用上游服务。
@@ -100,12 +100,12 @@ npx dsh-iris web serve \
 
 更多登录、恢复、参数说明与 Agent 对话示例，请参阅 [Core 快速开始](docs/CORE_QUICKSTART.md) 与 [Agent Core 指导](docs/AGENT_CORE_QUICKSTART.md)。插件需通过[启动选择文件](docs/PLUGIN_STARTUP.md)显式启用。
 
-### DSH 插件（0.3.0）
+### DSH 插件（0.3.1）
 
 确认 `dsh --version` 属于[兼容矩阵](docs/DSH_COMPATIBILITY.md)中的受支持版本，且环境满足 Node.js ≥22.1.0 与 `pnpm`：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.1
 dsh web
 ```
 
@@ -120,12 +120,12 @@ dsh web
 
 完整操作见[用户指南](user_guide.md)，让 Agent 协助安装可使用 [Agent 简要 Prompt](docs/AGENT_QUICKSTART.md)。升级插件后，按正常流程重载插件后端并刷新客户端页面即可。
 
-### 独立 CLI（0.3.0）
+### 独立 CLI（0.3.1）
 
 无需 DSH，直接在任意项目中安装使用：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0
+npm install @mokuyoaxis/dsh-iris@0.3.1
 npx dsh-iris --help
 ```
 
@@ -170,7 +170,7 @@ npx dsh-iris --help
 | 工作台与接入 | [工作台登录](docs/WORKBENCH_LOGIN.md) · [Core Web 参考](docs/LOCAL_WEB.md) · [MCP 指南](docs/MCP.md) · [Core Skills](docs/CORE_SKILLS.md) |
 | 模型与业务流程 | [模型服务与健康光谱](docs/PROVIDER_SETTINGS.md) · [图片与 ComfyUI](docs/IMAGE_GENERATION.md) · [语音与转写](docs/AUDIO_FLOWS.md) · [任务语义](docs/TASK_SEMANTICS.md) |
 | 插件与扩展 | [插件契约](docs/PLUGINS.md) · [启动选择](docs/PLUGIN_STARTUP.md) · [Panel 与外观](docs/PANEL_EXTENSIONS.md) · [多图对照板](docs/CONTACT_SHEET.md) |
-| 版本与架构 | [0.3.0 发行说明](docs/releases/0.3.0.md) · [升级指南](docs/UPGRADING_0.3.md) · [0.2.7 历史发行](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构设计](docs/ARCHITECTURE.md) |
+| 版本与架构 | [0.3.1 发行说明](docs/releases/0.3.1.md) · [0.3.0 发行说明](docs/releases/0.3.0.md) · [升级指南](docs/UPGRADING_0.3.md) · [0.2.7 历史发行](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构设计](docs/ARCHITECTURE.md) |
 
 DSH 随包附带 [`iris-use`](.dsh/skills/iris-use/SKILL.md)、[`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) 与 [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md) 三项 Skill。
 

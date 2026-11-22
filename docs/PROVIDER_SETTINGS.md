@@ -1,4 +1,4 @@
-# Core 模型服务、功能池与健康光谱（0.3.0）
+# Core 模型服务、功能池与健康光谱（0.3.1）
 
 在独立 Core 工作台的 **模型服务** 中，你可以管理媒体供应商连接、环境变量凭据引用、模型用途、ComfyUI 工作流、六类全局功能模型池以及能力健康光谱。
 
@@ -16,11 +16,11 @@ npx dsh-iris web serve --data-root /absolute/existing-flow-root \
   --allow-provider-management
 ```
 
-> 若通过本地项目安装 `@mokuyoaxis/dsh-iris@0.3.0`，请保留示例中的 `npx dsh-iris`（命令不自动进入全局 `PATH`）；从源码仓库运行时改用 `node bin/dsh-iris.js`。
+> 若通过本地项目安装 `@mokuyoaxis/dsh-iris@0.3.1`，请保留示例中的 `npx dsh-iris`（命令不自动进入全局 `PATH`）；从源码仓库运行时改用 `node bin/dsh-iris.js`。
 
 - **权限独立**：`--allow-provider-management` 仅对工作台所有者开放模型服务配置，不隐含媒体执行（`--allow-execution`）、图片选择（`--allow-selection`）或 MCP 连接管理权限。
 - **网络与安全**：保存供应商即表示信任该端点及返回的媒体下载链接；远端地址建议使用 HTTPS，HTTP 仅建议用于本地网关或 ComfyUI。另可结合 [网络出口页](NETWORK_WORKBENCH.md) 为指定供应商绑定代理节点或有序出口池。
-- **各媒体入口的根版本**：改图与对照板需 v1+ 执行根；文生图需 v2+ 根（[文生图与 ComfyUI](IMAGE_GENERATION.md)）；TTS/转写需 v3+ 根（[音频流程](AUDIO_FLOWS.md)）；文生视频需 v4+ 根（[视频流程](VIDEO_FLOWS.md)）；看图与 OCR 需 v5 根（[视觉流程](VISION_FLOWS.md)）。
+- **各媒体入口的根版本**：改图与对照板需 v1+ 执行根；文生图需 v2+ 根（[文生图与 ComfyUI](IMAGE_GENERATION.md)）；TTS/转写需 v3+ 根（[音频流程](AUDIO_FLOWS.md)）；文生视频需 v4+ 根（[视频流程](VIDEO_FLOWS.md)）；看图、OCR、视觉定位与多模态摘要需 v5 根（[视觉流程](VISION_FLOWS.md)）。
 
 ## 配置流程
 

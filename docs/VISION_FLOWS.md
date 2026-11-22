@@ -1,4 +1,4 @@
-# Core 视觉流程：看图问答、OCR、视觉定位与多模态摘要（0.3.0）
+# Core 视觉流程：看图问答、OCR、视觉定位与多模态摘要（0.3.1）
 
 Iris 支持在独立 Core 工作台、Headless CLI 与通用 MCP 中创建并执行持久化的 **单图看图问答（`vision/v0`）**、**长图分块 OCR（`ocr/v0`）**、**单图视觉定位（`locate/v0`）** 与 **多模态视频/帧摘要（`summarize/v0`）**，在执行后持久保留来源关联、结构化结果与纯文本摘要。
 
@@ -15,7 +15,7 @@ npx dsh-iris web serve --data-root /absolute/new-vision-core \
   --allow-connection-management --connection-store /absolute/new-vision-connections --allow-mcp
 ```
 
-> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.0` 后请通过 `npx dsh-iris ...` 调用（全局 `PATH` 不含该命令）；从源码仓库运行请改用 `node bin/dsh-iris.js ...`。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.1` 后请通过 `npx dsh-iris ...` 调用（全局 `PATH` 不含该命令）；从源码仓库运行请改用 `node bin/dsh-iris.js ...`。
 
 - **模型与协议**：工作台从已确认 `vision` 用途及池策略的候选中选取明确的 `provider::model`（当前支持 OpenAI 兼容 Chat Completions 图片输入 SSE 协议，使用供应商的 `baseUrl` 而非生图专用的 `mediaBaseUrl`）。
 - **模型不存在隔离**：当上游明确返回“模型不存在”的 HTTP 404 时，Core 会持久记录该模型在当前连接上的不可用状态，后续请求（包括同一轮 OCR 的后续分块）将停止继续请求该模型，同时保留已完成部分的结果与安全错误摘要（需核对模型 ID 并显式实测后才可恢复）。
@@ -40,7 +40,7 @@ npx dsh-iris web serve --data-root /absolute/new-vision-core \
 
 ### 工作台与 CLI 用法
 
-- **Web 工作台**：在创作页选择“看图问答”或“图片文字识别”，上传图片并设置问题或分块参数，先点击“保存看图/OCR 任务”核对系统算出的实际分块计划与调用上限，确认后再点击“开始看图/开始识别”。结果支持纯文本查看与下载（将图片文字视为数据呈现，不按 HTML 渲染）。
+- **Web 工作台**：在创作页选择“看图问答”、“图片文字识别”或“视觉定位”，上传图片（或从 `--inbox-dir` 只读收件目录选取）并填写问题、分块参数或目标描述，先点击“保存看图/OCR/定位任务”核对计划，确认后再显式开始执行。视觉定位完成后，画布与放大弹窗会按照片显示方向（EXIF 1–8）绘制定位框与微调框，并支持像素坐标微调、零计费本地一键裁剪（裁剪回执与预览失败重试均复用同一产物，不重复生成）以及将裁剪结果一键送入改图/看图/OCR/再次定位；当远端受理状态未知时会隐藏快捷重定位入口以防误触发二次计费。结果文本按纯数据呈现，不按 HTML 渲染。
 - **Headless CLI**：在 v5 根通过 `flow create` 保存任务，再用 `flow continue` 执行：
 
 ```bash
@@ -83,6 +83,7 @@ OCR 将 `recipe` 设为 `"ocr/v0"`，并可选传 `chunk_height`、`overlap`、`
 | `GET/HEAD /api/v0/artifacts/:id/vision-text` | 读取看图、OCR 与摘要流程的纯文本输出（≤1 MiB） |
 | `GET/HEAD /api/v0/artifacts/:id/ocr-report` | 读取 OCR 结构化 JSON 报告（≤1 MiB） |
 | `GET/HEAD /api/v0/artifacts/:id/locate-result` | 读取视觉定位结构化像素坐标 JSON（≤1 MiB） |
+| `POST /api/v0/local-media/crop` | 零外部计费本地像素裁剪，接收 `{artifactId, left, top, width, height}` 并持久保存为新 PNG Artifact |
 | `GET /api/v0/runs?kind=vision\|ocr\|locate\|summarize` | 按视觉子流程分类分页查看历史 Run |
 
 复用既有的 Run/Operation `continue`、`lookup`、`stop` 与下载接口（详见 [Core 执行契约](CORE_SERVICE.md#接收查询与停止)）。

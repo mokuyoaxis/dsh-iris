@@ -4,13 +4,20 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-22
+
+0.3.1 在 0.3.0 基础上补齐保守 OCR 跨块去重、零计费本地媒体与无头 HTML 截图 MCP 能力组、`--inbox-dir` 只读大文件收件目录、持久视觉定位与多模态摘要，以及 Web 视觉定位 EXIF 精确叠框与一键裁剪闭环；零新增生产依赖，旧数据根与既有 MCP 授权不自动迁移或扩权。完整说明见[发行说明](docs/releases/0.3.1.md)，升级参考见[升级指南](docs/UPGRADING_0.3.md)。
+
+- 新增 Web 视觉定位框叠加、交互创建与一键零计费本地裁剪：创作页与总览新增 `视觉定位` 入口（严格遵守两步提交与身份恢复日志，`sessionStorage` 绝不保存目标文本）；主画布与放大弹窗采用严格符合 `style-src 'self'` CSP 的纯 SVG `viewBox` 叠框并支持 EXIF 1–8 显示方向投影、框/压暗切换、窄屏 200 字长目标换行；画布与任务状态栏文案同源，远端受理未知时提示可能已计费并隐藏重定位快捷入口；支持原图像素微调（紫色虚线实时预览）、零计费裁剪与预览失败同产物重试（工具栏刷新保留回执与微调选区），以及一键送入改图/看图/OCR/再定位；补充 5 项真实 Chromium `--locate` 专项检查并接入实际发布包验收。
+- 新增 MCP `html-render` 无头 HTML/SVG 截图能力组（零外部计费，默认关闭）：通过显式 `--browser-executable <Chromium 绝对路径>`（可选 `--browser-no-sandbox`）启用后，获授权连接可调用 `iris_core_render_html` 在无网络、无脚本的沙箱 CSP 环境下将 ≤1 MiB 自包含 HTML/SVG 渲染为持久 Core PNG Artifact，可配合 `iris_core_image`、`local-media` 与 `vision`/`vision-locate` 完成视觉自检，绝不自动扫描宿主浏览器。
 - 新增保守的 OCR 跨块边界重叠去重（`boundary-overlap/v0`）：仅在相邻成功分块存在物理像素重叠且边界匹配唯一无歧义时合并重复内容，遇到周期性/相邻重复行时保守保留原文；逐块原文继续保留在 `chunks` 中，合并明细记于 `deduplication` 并向后兼容旧版 OCR JSON 报告。
 - 补齐 v5 视觉/OCR 入口同步：Core 工作台“总览”与“作品”页接入看图问答与 OCR 分类/草稿入口（使用原图缩略预览），“模型服务 → 健康检测”接入 v5 视觉验证草稿，插件 Web 上下文与 TypeScript 类型同步 `session.vision` 与 `api.visionModels`，并补齐 CLI `--capabilities` 帮助文案。
 - 打磨通用 MCP 接口（P0）：`iris_core_runs` 支持在已授权范围内按 `kind` / `selection` 筛选；新增 `iris_core_run_operations` 按 `runId` 分页查回历史 Operation（旧版冻结连接清单 `LEGACY_BRIDGE_TOOLS_V0` 保持不扩权，服务端按逐工具授权校验）；收紧 MCP 工具注解 `openWorldHint` 为仅 `execute` 范围；`iris_core_operation` 支持可选有界只读等待 `waitMs`（0–10000 ms，响应取消与实时撤销，不占用 Core 读取并发槽）。
 - 新增 MCP `local-media` 本地媒体检视能力组（P1，零外部计费）：支持基于 Core `artifactId` 执行 `iris_core_crop`（局部裁剪）、`iris_core_pixel_diff`（像素对比指标与热力图）及 `iris_core_video_frames`（视频均匀抽帧，需宿主 `ffmpeg`/`ffprobe`），产物沉淀为派生 Core Artifact 并严格继承来源能力授权，不接受任意宿主路径。
-- 新增大文件安全入库方案（受控只读收件目录 `--inbox-dir` + MCP `inbox` 分组）：启动 `api serve` / `web serve` 时显式指定根外真实目录 `--inbox-dir` 后，获得 `inbox` 授权的连接可通过 `iris_core_inbox` 与 `iris_core_import_inbox_file` 按顶层文件名与稳定 UUID 将 ≤20 MiB 静态图片及（v3+ 根）音频直接导入 Core Artifact，绕开 MCP Base64 体积与 Token 瓶颈；采用 `O_NOFOLLOW`、`fstat` 体积上限、容器魔数校验、零路径暴露与私有目录防重叠守卫，绝不修改或删除原文件。
+- 新增大文件安全入库方案（受控只读收件目录 `--inbox-dir` + MCP `inbox` 分组）：启动 `api serve` / `web serve` 时显式指定根外真实目录 `--inbox-dir` 后，获得 `inbox` 授权的连接可通过 `iris_core_inbox` 与 `iris_core_import_inbox_file` 按顶层文件名与稳定 UUID 将 ≤20 MiB 静态图片及（v3+ 根）音频直接导入 Core Artifact，绕开 MCP Base64 体积与 Token 瓶颈；采用符号链接检查（平台提供时启用 `O_NOFOLLOW`）、`fstat` 体积上限、容器魔数校验、零路径暴露与私有目录防重叠守卫，绝不修改或删除原文件。
 - 新增 MCP `vision-locate`（`locate/v0` 视觉定位）与 `media-summarize`（`summarize/v0` 多模态视频/帧摘要）两个 v5 视觉能力组：定位输出含原图像素 `x1/y1/x2/y2` 与 `left/top/width/height`，可直接衔接 `iris_core_crop`；摘要自动将 1–20 张已授权 `video-frame` 或静态图片拼接为带时间戳的接触表并支持可选显式 `transcript`（不隐式触发 ASR 计费），严格保留独立能力授权与多来源引用保护。
 - 为 Core Web 工作台补充 `--inbox-dir` 只读收件目录可视化入口（总览页收件目录卡片与创作页收件目录折叠选择器，免浏览器上传且不暴露宿主路径），接入 `locate/v0` 与 `summarize/v0` 历史查看/作品筛选/JSON 下载，并在完整保留鸢尾六色配色与现有布局的前提下微调界面交互质感。
+- 加固边界与跨平台测试：修复同源双裁图生成差异热力图时菱形派生链被误判为循环的问题；修复横竖图混排接触表超格高/列间距宽上限与本地准备阶段失败错误归类；修复收件目录扫描被前置无效/空文件截断及前端读取失败重复请求；增强能力目录与收件目录路径跨平台（含 macOS 临时目录符号链接）测试断言。
 
 ## [0.3.0] - 2026-11-16
 
@@ -565,7 +572,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.7...v0.3.0
 [0.3.0-beta.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.2...v0.3.0-beta.3
 [0.3.0-beta.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.1...v0.3.0-beta.2

@@ -1,6 +1,6 @@
 # 给 AI Agent 的简要 Prompt
 
-本页提供交给 AI Agent 的快速指引，帮助它正确安装并操作 **Iris 0.3.0** 的 **DSH 原生插件**或 **Headless CLI**。如果你要接入的是独立 **Core Web 工作台与 MCP**，请改用 [Agent Core 指导](AGENT_CORE_QUICKSTART.md) 与 [Core 快速开始](CORE_QUICKSTART.md)。
+本页提供交给 AI Agent 的快速指引，帮助它正确安装并操作 **Iris 0.3.1** 的 **DSH 原生插件**或 **Headless CLI**。如果你要接入的是独立 **Core Web 工作台与 MCP**，请改用 [Agent Core 指导](AGENT_CORE_QUICKSTART.md) 与 [Core 快速开始](CORE_QUICKSTART.md)。
 
 > [!NOTE]
 > 安装前请确认目标版本已在 npm 发布；如果是从源码或本地归档测试，请直接指向源码或归档路径。从旧版升级请先阅读[升级指南](UPGRADING_0.3.md)。
@@ -11,9 +11,9 @@
 请根据本仓库 README，帮我安装并使用 Iris（@mokuyoaxis/dsh-iris）。
 
 1. 环境与版本检查
-- 先核对 Node.js 版本（0.3.0 要求 >=22.1.0）以及目标 DSH profile，运行 dsh --version 确认宿主版本。
-- 若 DSH 属于 docs/DSH_COMPATIBILITY.md 列出的 12 个支持版本，且 0.3.0 已发布，安装：
-  dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0
+- 先核对 Node.js 版本（0.3.1 要求 >=22.1.0）以及目标 DSH profile，运行 dsh --version 确认宿主版本。
+- 若 DSH 属于 docs/DSH_COMPATIBILITY.md 列出的 12 个支持版本，且 0.3.1 已发布，安装：
+  dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.1
   （如使用其他 profile，替换命令中的 web；安装或搜索时务必使用完整 scoped 包名 @mokuyoaxis/dsh-iris）。
 - 若 DSH 版本不在兼容矩阵中，先向我报告，不要自行升级宿主或绕过版本检查。
 - 若不使用 DSH 而直接用 CLI，请按 docs/HEADLESS_CLI.md 执行，切勿在旧格式数据根上初始化新执行格式或混用新旧版本写入同一目录。
@@ -35,9 +35,9 @@
 Help me install and use Iris (@mokuyoaxis/dsh-iris) based on this repository's README.
 
 1. Environment & Version Check
-- Check Node.js (>=22.1.0 required for 0.3.0) and the target DSH profile via `dsh --version`.
-- If the DSH version is one of the 12 supported versions in docs/DSH_COMPATIBILITY.md and 0.3.0 is published, install with:
-  dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0
+- Check Node.js (>=22.1.0 required for 0.3.1) and the target DSH profile via `dsh --version`.
+- If the DSH version is one of the 12 supported versions in docs/DSH_COMPATIBILITY.md and 0.3.1 is published, install with:
+  dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.1
   (Replace `web` with the target profile if needed, and always keep the full scoped name `@mokuyoaxis/dsh-iris`).
 - If the DSH version is outside the matrix, report it first—do not upgrade the host or bypass version checks.
 - For standalone CLI use without DSH, follow docs/HEADLESS_CLI.md and never mix legacy and new data-root formats.

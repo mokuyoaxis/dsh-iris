@@ -1,4 +1,4 @@
-# Core 语音合成与音频转写（0.3.0）
+# Core 语音合成与音频转写（0.3.1）
 
 Iris 的独立 Core 工作台与通用 MCP 支持持久化的 **语音合成（`speech/v0`）** 与 **音频转写（`transcribe/v0`）** 流程，与图片/视频流程共用同一套 Task/Attempt 存储与单根 Operation 调度器。
 
@@ -16,7 +16,7 @@ npx dsh-iris web serve --data-root /absolute/new-audio-core \
   --connection-store /absolute/new-audio-connections --allow-mcp
 ```
 
-> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.0` 时，`dsh-iris` 不会进入全局 `PATH`，请使用 `npx dsh-iris ...`；从源码仓库运行时请改用 `node bin/dsh-iris.js ...`。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.1` 时，`dsh-iris` 不会进入全局 `PATH`，请使用 `npx dsh-iris ...`；从源码仓库运行时请改用 `node bin/dsh-iris.js ...`。
 
 在 [模型服务](PROVIDER_SETTINGS.md) 中为已支持的供应商（内置沿用 DashScope 音频协议）确认 `tts` / `transcribe` 模型用途并选择池策略。浏览页面、读取目录与播放历史音频均不依赖写权限或产生供应商调用。
 

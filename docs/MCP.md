@@ -1,4 +1,4 @@
-# 通用 MCP 接入与能力选择（0.3.0）
+# 通用 MCP 接入与能力选择（0.3.1）
 
 通过 Iris 的通用 MCP 接口，任何支持 **stdio** 或 **Streamable HTTP** 的客户端都可以安全共用同一个 [Core 服务](CORE_SERVICE.md)。
 

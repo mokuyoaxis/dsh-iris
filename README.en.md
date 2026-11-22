@@ -24,14 +24,14 @@ Iris brings media model providers, creative workflows, and generated outputs int
 Built on a shared Core engine, Iris offers four entry points: a **standalone Web workbench**, a **generic MCP server**, a **headless CLI**, and a **native DSH plugin**. Core manages credentials, tasks, and artifacts, while you decide exactly which capabilities each client can access.
 
 > [!NOTE]
-> This documentation covers **Iris 0.3.0** ([release notes](docs/releases/0.3.0.md) · [scope & compatibility](docs/BETA_SCOPE.md)). If you are upgrading from 0.2.7 or a prerelease, read the [upgrade guide](docs/UPGRADING_0.3.md) first. Before a version is published to npm, run directly from source or a local package archive.
+> This documentation covers **Iris 0.3.1** ([release notes](docs/releases/0.3.1.md) · [scope & compatibility](docs/BETA_SCOPE.md)). If you are upgrading from 0.2.7, a prerelease, or 0.3.0, read the [upgrade guide](docs/UPGRADING_0.3.md) first. Before a version is published to npm, run directly from source or a local package archive.
 
 | What you want to do | Recommended entry | Availability |
 |---|---|---|
-| Configure models, create media, and manage works in a browser | [Core quickstart](docs/CORE_QUICKSTART.md) | 0.3.0 standalone workbench |
+| Configure models, create media, and manage works in a browser | [Core quickstart](docs/CORE_QUICKSTART.md) | 0.3.1 standalone workbench |
 | Share the media workspace with any MCP-compatible Agent | [MCP guide](docs/MCP.md) · [Agent guide](docs/AGENT_CORE_QUICKSTART.md) | stdio and Streamable HTTP |
-| Use media tools and prompt refinement directly inside DSH | [DSH plugin](#dsh-plugin-030) | Native tools and lifecycle |
-| Generate media, inspect tasks, and export artifacts from a terminal | [Standalone CLI](#standalone-cli-030) | No DSH required |
+| Use media tools and prompt refinement directly inside DSH | [DSH plugin](#dsh-plugin-031) | Native tools and lifecycle |
+| Generate media, inspect tasks, and export artifacts from a terminal | [Standalone CLI](#standalone-cli-031) | No DSH required |
 
 ## Workbench preview
 
@@ -57,25 +57,25 @@ The Iris workbench pairs a clean light interface with subtle iris accents, light
 
 ### Current entry-point coverage
 
-| Capability | DSH / standalone CLI (0.3.0) | Core Web / MCP (0.3.0) |
+| Capability | DSH / standalone CLI (0.3.1) | Core Web / MCP (0.3.1) |
 |---|---|---|
 | Image generation, import, and editing | Available | Available (text-to-image requires a generation-enabled root) |
 | Speech synthesis and transcription | Available | Available in v3 / v4 / v5 roots |
 | Text-to-video | Available | [Available in v4 / v5 roots](docs/VIDEO_FLOWS.md) |
-| Single-image vision, long-image OCR, visual grounding & media summary | Available | [Available in v5 roots](docs/VISION_FLOWS.md) (current source adds conservative OCR boundary deduplication; see [0.3.0 quality record](docs/OCR_VALIDATION.md); locate & summarize available via MCP and workbench history) |
-| Local media utilities (crop/diff/frames), HTML screenshots & read-only inbox import | CLI / DSH available | Current source adds MCP `local-media`, `html-render` (`--browser-executable`), `inbox` groups and workbench `--inbox-dir` UI |
+| Single-image vision, long-image OCR, visual grounding & media summary | Available | [Available in v5 roots](docs/VISION_FLOWS.md) (OCR enables conservative `boundary-overlap/v0` deduplication; Web workbench supports interactive visual grounding, EXIF-aware SVG overlays and one-click zero-cost cropping; summarize available via MCP and workbench history) |
+| Local media utilities (crop/diff/frames), HTML screenshots & read-only inbox import | CLI / DSH available | MCP provides `local-media`, `html-render` (explicit `--browser-executable`) and `inbox` groups; workbench provides `--inbox-dir` import UI and locate-box local cropping |
 | Image-to-video, S2V, and music | Available (depends on provider and local tools) | Configurable in services; Web/MCP creation entries pending |
 | ComfyUI workflows and exposed parameters | Available with a configured workflow | Implemented (live GPU inference pending verification) |
 | Contact-sheet plugin | Uses the Core plugin entry | Available when explicitly enabled |
 
 ## Quickstart
 
-### Core workbench (0.3.0)
+### Core workbench (0.3.1)
 
-Initialize a **new private directory** for the 0.3.0 workbench (existing workspaces are not migrated automatically):
+Initialize a **new private directory** for a fresh 0.3 workbench (older 0.2.x workspaces are not migrated automatically; existing 0.3.0 roots work as-is):
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0
+npm install @mokuyoaxis/dsh-iris@0.3.1
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
@@ -92,7 +92,7 @@ npx dsh-iris web serve \
 ```
 
 > [!TIP]
-> When running from a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. `execution init --vision` initializes a v5 root enabling image, speech/transcription, text-to-video, and vision/OCR flows.
+> When running from a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. `execution init --vision` initializes a v5 root enabling image, speech/transcription, text-to-video, and vision/OCR/locate/summarize flows.
 
 1. **Sign in**: Open the **`loginUrl`** printed in your terminal to set an access password, then bookmark the regular address. Devices stay remembered across refreshes and normal restarts.
 2. **Add providers**: Under **模型服务** (Model services), add your connection, sync or enter models, confirm their uses, and pick a policy in **功能模型池** (Function pools). Browsing configuration and model catalogs is always read-only; upstream charges only occur when you start a generation.
@@ -100,12 +100,12 @@ npx dsh-iris web serve \
 
 See the [Core quickstart](docs/CORE_QUICKSTART.md) and [Agent Core guide](docs/AGENT_CORE_QUICKSTART.md) for recovery details and ready-to-use Agent prompts. Plugins are enabled separately via a [startup selection file](docs/PLUGIN_STARTUP.md).
 
-### DSH plugin (0.3.0)
+### DSH plugin (0.3.1)
 
 Verify that `dsh --version` matches one of the 12 supported versions in the [compatibility matrix](docs/DSH_COMPATIBILITY.md), with Node.js ≥22.1.0 and `pnpm` on your PATH:
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.0
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.1
 dsh web
 ```
 
@@ -120,12 +120,12 @@ Use Iris to generate retro-rock background music and save it as an audio artifac
 
 See the [user guide](user_guide.md) for full details, or hand the [Agent quickstart prompt](docs/AGENT_QUICKSTART.md) to an Agent for assisted setup. After upgrading, reload the plugin backend and refresh the DSH client.
 
-### Standalone CLI (0.3.0)
+### Standalone CLI (0.3.1)
 
 Install directly in any project without DSH:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0
+npm install @mokuyoaxis/dsh-iris@0.3.1
 npx dsh-iris --help
 ```
 
@@ -170,7 +170,7 @@ Captured from an Android browser connected to DSH running inside Termux/PRoot De
 | Workbench & access | [Login](docs/WORKBENCH_LOGIN.md) · [Core Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Core Skills](docs/CORE_SKILLS.md) |
 | Models & workflows | [Providers, pools & spectrum](docs/PROVIDER_SETTINGS.md) · [Images / ComfyUI](docs/IMAGE_GENERATION.md) · [Speech / transcription](docs/AUDIO_FLOWS.md) · [Task semantics](docs/TASK_SEMANTICS.md) |
 | Extensions | [Plugin contract](docs/PLUGINS.md) · [Startup](docs/PLUGIN_STARTUP.md) · [Panel & themes](docs/PANEL_EXTENSIONS.md) · [Contact sheet](docs/CONTACT_SHEET.md) |
-| Releases & internals | [0.3.0 release notes](docs/releases/0.3.0.md) · [Upgrade guide](docs/UPGRADING_0.3.md) · [0.2.7 history](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
+| Releases & internals | [0.3.1 release notes](docs/releases/0.3.1.md) · [0.3.0 release notes](docs/releases/0.3.0.md) · [Upgrade guide](docs/UPGRADING_0.3.md) · [0.2.7 history](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
 
 The DSH package includes [`iris-use`](.dsh/skills/iris-use/SKILL.md), [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md), and [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md).
 

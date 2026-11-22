@@ -1,4 +1,4 @@
-# Headless CLI（0.3.0）
+# Headless CLI（0.3.1）
 
 `dsh-iris` CLI 支持在完全脱离 DSH 宿主的环境下运行，通过显式传入 `--data-root`（物理数据根绝对路径）与私有 `--provider-config`，完成本地媒体处理、多模态生成、视觉分析、任务恢复与数据维护。
 
@@ -8,11 +8,11 @@
 ## 安装与入口
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.0
+npm install @mokuyoaxis/dsh-iris@0.3.1
 npx dsh-iris --help
 ```
 
-项目内安装 `@mokuyoaxis/dsh-iris@0.3.0` 时，`dsh-iris` 不会自动加入全局 `PATH`，因此以下示例统一使用 `npx dsh-iris ...`；从已执行 `npm ci` 的源码仓库直接运行时，将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。要求 **Node.js ≥22.1.0**（若从旧版升级，请先阅读 [升级指南](UPGRADING_0.3.md)）。
+项目内安装 `@mokuyoaxis/dsh-iris@0.3.1` 时，`dsh-iris` 不会自动加入全局 `PATH`，因此以下示例统一使用 `npx dsh-iris ...`；从已执行 `npm ci` 的源码仓库直接运行时，将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。要求 **Node.js ≥22.1.0**（若从旧版升级，请先阅读 [升级指南](UPGRADING_0.3.md)）。
 
 ## 配置查询、网络与离线诊断
 

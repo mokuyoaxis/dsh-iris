@@ -1,6 +1,6 @@
 # Agent Quickstart · Core 与 MCP 接入指导
 
-This page provides a copy-paste prompt and behavioral reference for AI Agents setting up or operating **Iris 0.3.0** via the Core workbench and MCP. For DSH plugin or standalone CLI setup, see the [DSH/CLI Agent guide](AGENT_QUICKSTART.md); for manual setup steps, see the [Core quickstart](CORE_QUICKSTART.md).
+This page provides a copy-paste prompt and behavioral reference for AI Agents setting up or operating **Iris 0.3.1** via the Core workbench and MCP. For DSH plugin or standalone CLI setup, see the [DSH/CLI Agent guide](AGENT_QUICKSTART.md); for manual setup steps, see the [Core quickstart](CORE_QUICKSTART.md).
 
 ## Setup prompt · 交给 Agent 的接入指令
 
@@ -66,4 +66,4 @@ For ComfyUI workflows, confirm the workflow, source image, style/LoRA, and expos
 
 - **Core, MCP, and Vision/OCR flows**: Verified against real Core persistence, production stdio/HTTP MCP transports, and isolated real-model sessions (including DSH native plugin and Kimi MCP vision/OCR sessions covering image import, execution, and post-restart read-only recovery on a synthetic test image).
 - **Diagnostics and fresh-workspace walkthrough**: Post-beta.3 rejection diagnostics and fresh-workspace flows were verified with controlled providers, the DSH SDK, and packed Core/MCP consumers. Live paid-media generation and live ComfyUI GPU inference require separate environment verification.
-- **OCR overlap behavior**: In the [four-scene OCR check](OCR_VALIDATION.md), all chunks executed and completed accurately per chunk, but overlapping long-image chunks remain duplicated in the joined text. Treat `complete` as full chunk execution rather than deduplicated proofreading.
+- **OCR overlap behavior**: In the earlier [four-scene OCR check](OCR_VALIDATION.md), all chunks executed accurately per chunk while overlapping long-image boundaries remained duplicated. Iris 0.3.1 adds conservative deterministic cross-chunk overlap deduplication (`boundary-overlap/v0`, preserving raw per-chunk text in the OCR JSON report and passing controlled unit and Core tests); a live paid-model retest on the original 7-request long-image sample has not yet been re-run. Still treat `complete` as full chunk execution rather than proofread text.
