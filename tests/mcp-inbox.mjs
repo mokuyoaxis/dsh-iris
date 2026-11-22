@@ -9,7 +9,7 @@ import { createLocalReadApi } from '../lib/local-api.js';
 import { createConnectionPair } from '../lib/core-connections.js';
 import { LEGACY_BRIDGE_TOOLS_V0 } from '../lib/core-bridge-selection.js';
 import { readCoreArtifactBytes } from '../lib/core-artifacts.js';
-import { MAX_INBOX_FILE_BYTES } from '../lib/inbox-store.js';
+import { MAX_INBOX_FILE_BYTES, MAX_INBOX_SCAN_ENTRIES, listInboxFiles } from '../lib/inbox-store.js';
 import { createVisionProviderAdapter } from '../lib/vision-provider-adapter.js';
 import { FLOW_SOURCE } from './fixtures/image-flow-fixture.mjs';
 import { TRANSCRIBE_MODEL, audioFlowFixture } from './fixtures/audio-flow-fixture.mjs';
@@ -317,7 +317,52 @@ try {
   await roImport.arrayBuffer();
   await roCore.dispose();
 
-  // === 5. Real CLI api serve --inbox-dir startup & read check ===
+  // === 5. Scan filtering before cap: 500 .txt OR 500 empty .png files + 1 valid PNG MUST return the PNG (truncated: false); >500 valid PNGs sets truncated: true ===
+  const noisyInbox = path.join(root, 'noisy-inbox');
+  fs.mkdirSync(noisyInbox, { mode: 0o700 });
+  for (let i = 0; i < MAX_INBOX_SCAN_ENTRIES; i++) {
+    fs.writeFileSync(path.join(noisyInbox, String(i).padStart(4, '0') + '.txt'), 'noise', { mode: 0o600 });
+  }
+  fs.writeFileSync(path.join(noisyInbox, 'z-valid.png'), FLOW_SOURCE, { mode: 0o600 });
+  const noisyListed = listInboxFiles(noisyInbox, { audioEnabled: true, kind: 'all', limit: 30 });
+  assert.equal(noisyListed.truncated, false, '500 non-media files must not hide a valid image');
+  assert.equal(noisyListed.total, 1);
+  assert.deepEqual(noisyListed.files.map(f => f.name), ['z-valid.png']);
+
+  const emptyPngInbox = path.join(root, 'empty-png-inbox');
+  fs.mkdirSync(emptyPngInbox, { mode: 0o700 });
+  for (let i = 0; i < MAX_INBOX_SCAN_ENTRIES; i++) {
+    fs.writeFileSync(path.join(emptyPngInbox, 'a-' + String(i).padStart(4, '0') + '.png'), Buffer.alloc(0), { mode: 0o600 });
+  }
+  fs.writeFileSync(path.join(emptyPngInbox, 'z-valid.png'), FLOW_SOURCE, { mode: 0o600 });
+  const emptyPngListed = listInboxFiles(emptyPngInbox, { audioEnabled: true, kind: 'image', limit: 30 });
+  assert.equal(emptyPngListed.truncated, false, '500 empty PNGs must not hide a later valid image');
+  assert.equal(emptyPngListed.total, 1);
+  assert.deepEqual(emptyPngListed.files.map(f => f.name), ['z-valid.png']);
+
+  const exact500Inbox = path.join(root, 'exact-500-inbox');
+  fs.mkdirSync(exact500Inbox, { mode: 0o700 });
+  for (let i = 0; i < MAX_INBOX_SCAN_ENTRIES; i++) {
+    fs.writeFileSync(path.join(exact500Inbox, `img-${String(i).padStart(4, '0')}.png`), FLOW_SOURCE, { mode: 0o600 });
+  }
+  for (let i = 0; i < 10; i++) {
+    fs.writeFileSync(path.join(exact500Inbox, `z-empty-${i}.png`), Buffer.alloc(0), { mode: 0o600 });
+  }
+  const exact500Listed = listInboxFiles(exact500Inbox, { audioEnabled: false, kind: 'image', limit: 50 });
+  assert.equal(exact500Listed.truncated, false, 'trailing invalid files after 500 valid files must not mark truncated');
+  assert.equal(exact500Listed.total, MAX_INBOX_SCAN_ENTRIES);
+
+  const manyImagesInbox = path.join(root, 'many-images-inbox');
+  fs.mkdirSync(manyImagesInbox, { mode: 0o700 });
+  for (let i = 0; i < MAX_INBOX_SCAN_ENTRIES + 5; i++) {
+    fs.writeFileSync(path.join(manyImagesInbox, `img-${String(i).padStart(4, '0')}.png`), FLOW_SOURCE, { mode: 0o600 });
+  }
+  const cappedListed = listInboxFiles(manyImagesInbox, { audioEnabled: false, kind: 'image', limit: 50 });
+  assert.equal(cappedListed.truncated, true, '>500 valid media files must set truncated: true');
+  assert.equal(cappedListed.total, MAX_INBOX_SCAN_ENTRIES);
+  assert.equal(cappedListed.files.length, 50);
+
+  // === 6. Real CLI api serve --inbox-dir startup & read check ===
   await fullStdio.close();
   await api.dispose();
   const tokenFile = path.join(root, 'cli-owner.token');

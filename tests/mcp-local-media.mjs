@@ -133,6 +133,20 @@ try {
   const heatImg = await standaloneHttp.call('iris_core_image', { artifactId: diffed.artifact.artifactId });
   assert.equal(heatImg.content.find(b => b.type === 'image').mimeType, 'image/png');
 
+  // Diamond DAG provenance: two crops from the SAME source image -> pixel_diff -> reading heatmap MUST succeed (common ancestor is not a cycle!).
+  const cropLeft = parse(await standaloneHttp.call('iris_core_crop', { artifactId: idB, left: 0, top: 0, width: 20, height: 16 }));
+  const cropRight = parse(await standaloneHttp.call('iris_core_crop', { artifactId: idB, left: 36, top: 10, width: 20, height: 16 }));
+  const diamondDiff = parse(await standaloneHttp.call('iris_core_pixel_diff', { imageAArtifactId: cropLeft.artifact.artifactId, imageBArtifactId: cropRight.artifact.artifactId }));
+  const diamondHeat = await standaloneHttp.call('iris_core_image', { artifactId: diamondDiff.artifact.artifactId });
+  assert.equal(diamondHeat.isError, undefined, 'common ancestor diamond diff must be readable');
+  assert.equal(diamondHeat.content.find(b => b.type === 'image').mimeType, 'image/png');
+  // Direct ancestor + descendant diff (crop vs its own parent) also readable.
+  const sameSizeCrop = parse(await standaloneHttp.call('iris_core_crop', { artifactId: idB, left: 0, top: 0, width: 64, height: 48 }));
+  const ancestorDiff = parse(await standaloneHttp.call('iris_core_pixel_diff', { imageAArtifactId: sameSizeCrop.artifact.artifactId, imageBArtifactId: idB }));
+  const ancestorHeat = await standaloneHttp.call('iris_core_image', { artifactId: ancestorDiff.artifact.artifactId });
+  assert.equal(ancestorHeat.isError, undefined);
+  assert.equal(ancestorHeat.content.find(b => b.type === 'image').mimeType, 'image/png');
+
   // Out-of-bounds crop & forbidden host-path arguments rejected cleanly.
   const oob = await standaloneHttp.call('iris_core_crop', { artifactId: idB, left: 60, top: 0, width: 10, height: 10 });
   assert.equal(oob.isError, true);
@@ -269,6 +283,16 @@ try {
   const deniedReadDerived = await visionLocal.httpClient.call('iris_core_image', { artifactId: editCrop.artifact.artifactId });
   assert.equal(deniedReadDerived.isError, true);
   assert.equal(deniedReadDerived.structuredContent.error.code, 'IRIS_CONNECTION_CAPABILITY_DENIED');
+
+  // Bound diamond DAG provenance: two crops from editOutId -> pixel_diff -> editLocal reads OK, visionLocal still denied!
+  const editCrop2 = parse(await editLocal.httpClient.call('iris_core_crop', { artifactId: editOutId, left: 4, top: 4, width: 16, height: 16 }));
+  const editDiamondDiff = parse(await editLocal.httpClient.call('iris_core_pixel_diff', { imageAArtifactId: editCrop.artifact.artifactId, imageBArtifactId: editCrop2.artifact.artifactId }));
+  const editDiamondOk = await editLocal.httpClient.call('iris_core_image', { artifactId: editDiamondDiff.artifact.artifactId });
+  assert.equal(editDiamondOk.isError, undefined, 'authorized connection must read bound diamond heatmap');
+  assert.equal(editDiamondOk.content.find(b => b.type === 'image').mimeType, 'image/png');
+  const editDiamondDenied = await visionLocal.httpClient.call('iris_core_image', { artifactId: editDiamondDiff.artifact.artifactId });
+  assert.equal(editDiamondDenied.isError, true);
+  assert.equal(editDiamondDenied.structuredContent.error.code, 'IRIS_CONNECTION_CAPABILITY_DENIED');
 
   // Multi-parent diff provenance isolation: heatmap derived from (image-edit, vision) requires BOTH capabilities!
   const crossDiff = parse(await combinedLocal.httpClient.call('iris_core_pixel_diff', { imageAArtifactId: editOutId, imageBArtifactId: visSrc.id }));

@@ -43,6 +43,21 @@ const nineFrames = testFrames.concat(testFrames).concat([{
 const sheet9 = await summarize.buildContactSheet({ frames: nineFrames, cols: 3 });
 assert(sheet9.rows === 3 && sheet9.cols === 3, '9 帧 3 列 → 3 行', { rows: sheet9.rows, cols: sheet9.cols });
 
+// 横图 + 竖图 + 极端长图混排（不得因首图矮于后续竖图而越界失败）
+const mixedFrames = [
+  { buffer: await sharp({ create: { width: 400, height: 120, channels: 3, background: { r: 220, g: 40, b: 40 } } }).png().toBuffer(), atSec: 0, width: 400, height: 120 },
+  { buffer: await sharp({ create: { width: 120, height: 400, channels: 3, background: { r: 40, g: 220, b: 40 } } }).png().toBuffer(), atSec: 1, width: 120, height: 400 },
+  { buffer: await sharp({ create: { width: 60, height: 1800, channels: 3, background: { r: 40, g: 40, b: 220 } } }).png().toBuffer(), atSec: 2, width: 60, height: 1800 }
+];
+const mixedSheet = await summarize.buildContactSheet({ frames: mixedFrames, cols: 3, maxSheetWidth: 1024 });
+assert(mixedSheet.rows === 1 && mixedSheet.cols === 3, '混排 3 帧 1 行 3 列', mixedSheet);
+assert(mixedSheet.width <= 1024, '三列拼图总宽含列间距不得超过 maxSheetWidth', mixedSheet.width);
+const mixedMeta = await sharp(mixedSheet.buffer).metadata();
+assert(mixedMeta.format === 'png' && mixedMeta.width === mixedSheet.width && mixedMeta.height === mixedSheet.height, '混排拼图为有效 PNG');
+assert(mixedSheet.height > 200 && mixedSheet.height <= 600, '混排拼图高度容纳竖图且有界', mixedSheet.height);
+const narrowSheet = await summarize.buildContactSheet({ frames: mixedFrames, cols: 3, maxSheetWidth: 200 });
+assert(narrowSheet.width <= 200, '较窄 maxSheetWidth 同样不得超宽', narrowSheet.width);
+
 // 空帧报错
 try { await summarize.buildContactSheet({ frames: [] }); } catch (e) { var err = e; }
 assert(err && /没有可拼的帧/.test(err.message), '空帧报错', err && err.message);

@@ -16,15 +16,14 @@ Iris 的定位是本地优先、Agent 可控的多模态创作工作区：让用
 0.3 体系围绕独立工作台、通用 MCP 与显式插件契约持续演进：
 
 - **最小插件契约与真实业务闭环**：0.3.0 提供 [Core 插件贡献契约 v0](PLUGINS.md)、Provider 工厂上下文 v1、统一能力目录与默认工作台三处组合挂载（页面、设置、作品预览器）。内置[多图对照板](CONTACT_SHEET.md)及两套独立起手模板（业务/页面模板与万相 2.6 Provider 模板）已打通持久 Operation、原 UUID 恢复、Web 选择、MCP 调用与包外归档消费。当前冻结[最小兼容面](BETA_SCOPE.md#最小插件兼容面)，完整 SDK 与分发体验将根据实际插件开发者反馈继续演进。
-- **工作台与通用 MCP 覆盖深化**：[Core 工作台](LOCAL_WEB.md)与[通用 MCP](MCP.md) 已在 v1–v5 执行根上依次打通改图、文生图/ComfyUI、TTS/转写、[固定文生视频](VIDEO_FLOWS.md)与[看图/OCR](VISION_FLOWS.md)（含 8 种主流客户端预设、连接配置自检与连接专属 Skill）。后续将继续推进 Core 持久音乐流程与更多视频创作模式接入工作台及 MCP。
+- **工作台与通用 MCP 覆盖深化**：[Core 工作台](LOCAL_WEB.md)与[通用 MCP](MCP.md) 已在 v1–v5 执行根上依次打通改图、文生图/ComfyUI、TTS/转写、[固定文生视频](VIDEO_FLOWS.md)、[视觉流程](VISION_FLOWS.md)（看图问答、长图 OCR 及保守跨块边界去重 `boundary-overlap/v0`、视觉定位 `vision-locate`、多模态摘要 `media-summarize`）、本地媒体检视（`local-media`）与只读收件目录安全入库（`--inbox-dir` / `inbox` 分组及工作台可视化入口），并配套 8 种主流客户端预设、连接配置自检与连接专属 Skill。后续将继续推进 HTML 截图、作品选择/受控导出、Core 持久音乐流程与更多视频创作模式接入工作台及 MCP。
 - **真实环境与跨端验收**：将受控回放测试与真实供应商账号、真实 ComfyUI GPU 推理、移动端浏览器及不同 MCP 客户端的端到端验收分开记录、逐步扩充。
 
 ## 后续功能方向
 
 ### 后续演进计划
 
-- **OCR 跨块重叠去重**：在现有 [OCR 场景验证](OCR_VALIDATION.md) 基础上，针对重叠长图分块拼接后的重复行问题设计安全的边界去重策略，同时避免误删原文中有意的重复内容。
-- **创作体验与对比增强**：完善图片创作的原图/新版并排对比与多版本选择；在更多接口成熟后探索局部重绘（mask）、多参考图与连续多轮编辑。
+- **创作体验与对比增强**：完善图片创作的原图/新版并排对比、视觉定位框叠加与多版本选择；在更多接口成熟后探索局部重绘（mask）、多参考图与连续多轮编辑。
 - **更多协议与音视频衔接**：按实际需求评估原生 Gemini、Fal、Replicate 等协议适配，丰富音乐来源、可控参数以及“图片/视频素材 + 配乐/语音”的多步骤创作衔接（详见 [音乐生成](MUSIC.md)）。
 - **作品库组织与维护**：在现有分页、筛选与批量 ZIP 导出基础上，增加收藏、标签与搜索能力；为 Artifact 关系边补充 `retried-from` 重试谱系；在现有可恢复隔离/恢复基础上开放经确认的永久 `purge` 清理（见 [CLI 管理](CLI_MANAGEMENT.md) 与 [工作台作品管理](WORKBENCH_ARTIFACTS.md)）。
 - **提示词与文本模型端口解耦**：在既有纯核心提示词优化实现上补充共享 `prompt.optimize` Command 与 CLI 入口；进一步冻结中立的 TextModel Port，使通用文本模型（如 Ollama 或兼容文本端点）与媒体 Provider 目录解耦。
@@ -44,7 +43,7 @@ Iris 的定位是本地优先、Agent 可控的多模态创作工作区：让用
   - DSH 工作台与 Headless CLI 共用 Core 的可恢复隔离和恢复入口，legacy `outputs/` 的删除仍永久生效；操作时须区分作品来源（见 [CLI 管理](CLI_MANAGEMENT.md) 与 [工作台作品管理](WORKBENCH_ARTIFACTS.md)）；
   - 模型目录发现仅列出候选项，真实可用性需由用户确认用途并显式验证；
   - OpenAI `Responses` 生图目前仅支持同步单图，聊天改图仅支持单张静态来源图片；
-  - 长图 OCR 的 `complete` 状态表示分块执行覆盖完成，重叠块目前直接拼接尚未去重；
+  - 长图 OCR 的 `complete` 状态表示计划分块全部执行完成；当前源码默认启用保守的跨块边界重叠去重（`boundary-overlap/v0`），仅合并唯一无歧义的重叠边界，遇到周期性/重复行歧义时保守保留原文（各块原始输出完整留在 OCR JSON 报告中）；
   - 原生 Windows/WSL 的完整 DSH 宿主冒烟、真实 ComfyUI GPU 推理以及 Termux/PRoot 下的历史偶发 CLI 停顿问题仍在持续跟踪。
 
 ## 质量要求

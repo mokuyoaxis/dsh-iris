@@ -410,24 +410,47 @@ try {
     assert.equal((await locateOnly.http.call('iris_core_run', { runId: sumRun.id })).isError, true);
   }
 
-  // Static PNG frames (no video-frame metadata, default question, no transcript) via summarizeOnly.
+  // Static PNG frames with mixed landscape + portrait + square aspect ratios via full Core/MCP summarize/v0!
   const staticA = parse(await summarizeOnly.http.call('iris_core_import_image', {
-    key: uuid(), imageBase64: (await makePng(80, 60, () => [200, 40, 40])).toString('base64'), mediaType: 'image/png'
+    key: uuid(), imageBase64: (await makePng(240, 80, () => [200, 40, 40])).toString('base64'), mediaType: 'image/png'
   })).artifact;
   const staticB = parse(await summarizeOnly.stdio.call('iris_core_import_image', {
-    key: uuid(), imageBase64: (await makePng(80, 60, () => [40, 40, 200])).toString('base64'), mediaType: 'image/png'
+    key: uuid(), imageBase64: (await makePng(80, 240, () => [40, 40, 200])).toString('base64'), mediaType: 'image/png'
+  })).artifact;
+  const staticC = parse(await summarizeOnly.http.call('iris_core_import_image', {
+    key: uuid(), imageBase64: (await makePng(100, 100, () => [40, 200, 40])).toString('base64'), mediaType: 'image/png'
   })).artifact;
   const staticSumDraft = parse(await summarizeOnly.stdio.call('iris_core_create_summarize', {
-    key: uuid(), frameArtifactIds: [staticA.artifactId, staticB.artifactId], modelRef: 'vision-fixture::vision'
+    key: uuid(), frameArtifactIds: [staticA.artifactId, staticB.artifactId, staticC.artifactId], modelRef: 'vision-fixture::vision'
   }));
-  nextVisionAnswer = '先红后蓝的两帧静态图变化。';
+  nextVisionAnswer = '横红、竖蓝与方绿三帧静态图混排变化。';
   const staticSumOp = parse(await summarizeOnly.http.call('iris_core_continue', {
     key: uuid(), runId: staticSumDraft.flow.id, expectedRevision: staticSumDraft.flow.revision
   })).operation;
   assert.equal((await waitOperation(summarizeOnly.http, staticSumOp.id)).state, 'succeeded');
   const staticSumRun = parse(await summarizeOnly.http.call('iris_core_run', { runId: staticSumDraft.flow.id }));
   assert.equal(staticSumRun.status, 'ready');
-  assert.match(parse(await summarizeOnly.http.call('iris_core_vision_text', { artifactId: staticSumRun.output.artifactId })).text, /先红后蓝/);
+  assert.match(parse(await summarizeOnly.http.call('iris_core_vision_text', { artifactId: staticSumRun.output.artifactId })).text, /横红、竖蓝/);
+  // Verify local pre-request vision prepare error is NOT misclassified as network/unknown when 0 model calls occurred!
+  const { createVisionProviderAdapter } = await import('../lib/vision-provider-adapter.js');
+  let localFailFetches = 0;
+  const localFailAdapter = createVisionProviderAdapter(
+    { id: 'vision-prep-check', type: 'openai', baseUrl: 'https://vision-prep.invalid/v1', apiKey: 'SYNTHETIC_KEY' },
+    { fetchPort: async () => { localFailFetches++; throw new Error('must never be called'); } }
+  );
+  await assert.rejects(
+    localFailAdapter.operations.submit({
+      capability: 'vision', model: 'vision',
+      input: { recipe: 'summarize/v0', frames: [{ buffer: Buffer.from('not-a-valid-image'), atSec: 0, width: 100, height: 100 }] }
+    }),
+    error => {
+      assert.equal(localFailFetches, 0, 'prepare failure must not invoke provider');
+      assert.equal(error.stage, 'prepare');
+      assert.equal(error.category, 'invalid_request');
+      assert.equal(error.acceptance, 'not_accepted');
+      return true;
+    }
+  );
   // Static images bound to summarize/v0 are now isolated from unrelated capabilities.
   assert.equal((await visionOnly.http.call('iris_core_image', { artifactId: staticA.artifactId })).isError, true);
   assert.equal((await summarizeOnly.http.call('iris_core_image', { artifactId: staticA.artifactId })).isError, undefined);
@@ -466,7 +489,7 @@ try {
   const persistedLocate = await ownerJson('/api/v0/runs/' + locateRun.id);
   assert.deepEqual(persistedLocate.locate.bbox, locateRun.locate.bbox);
   const persistedSum = await ownerJson('/api/v0/runs/' + staticSumRun.id);
-  assert.equal(persistedSum.sources.length, 2);
+  assert.equal(persistedSum.sources.length, 3);
   assert.equal(providerCalls.length, callsBeforeRestart, 'restart never re-invokes vision provider');
 
   await providerRegistry.dispose();
