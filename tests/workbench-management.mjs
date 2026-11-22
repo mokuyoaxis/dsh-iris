@@ -4,8 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { useTempDshHome } from './test-env.js';
 import { createCoreRuntime } from '../lib/core-runtime.js';
 import { createCoreArtifact, inspectCoreArtifact } from '../lib/core-artifacts.js';
@@ -77,9 +78,12 @@ async function json(response, status = 200) {
   return value;
 }
 const coreItems = [fixture.generated, fixture.source, fixture.derived, fixture.webm].map(artifact => ({ source: 'core', id: artifact.id }));
-function cli(args) {
-  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../bin/dsh-iris.js', import.meta.url)), ...args, '--data-root', dataRoot], { encoding: 'utf8', timeout: 15000 });
-  assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout);
+const execFileAsync = promisify(execFile);
+async function cli(args) {
+  // Let the fixture server handle idle connection closure while the CLI runs.
+  const { stdout } = await execFileAsync(process.execPath, [fileURLToPath(new URL('../bin/dsh-iris.js', import.meta.url)), ...args, '--data-root', dataRoot],
+    { encoding: 'utf8', timeout: 15000 });
+  return JSON.parse(stdout);
 }
 try {
   const before = snapshot();
@@ -153,8 +157,8 @@ try {
   for (const id of selectionIds) assert.equal(inspectCoreArtifact(dataRoot, id).id, id);
   const removedTask = await json(await post('/iris/api/works/delete', { ...withTask, confirm_delete: true }));
   assert.throws(() => inspectCoreTask(dataRoot, fixture.task));
-  assert(cli(['core', 'transactions']).transactions.some(item => item.transactionId === removedTask.transactionId && item.state === 'committed'));
-  assert.equal(cli(['core', 'restore', removedTask.transactionId]).state, 'restored', '同一 Host 隔离事务可以由独立 CLI 恢复');
+  assert((await cli(['core', 'transactions'])).transactions.some(item => item.transactionId === removedTask.transactionId && item.state === 'committed'));
+  assert.equal((await cli(['core', 'restore', removedTask.transactionId])).state, 'restored', '同一 Host 隔离事务可以由独立 CLI 恢复');
   assert.equal((await json(await get('/iris/api/works/core/' + fixture.generated.id))).item.digest, fixture.generated.digest.value);
   assert.equal(inspectCoreTask(dataRoot, fixture.task).artifactIds[0], fixture.generated.id);
   const again = await json(await post('/iris/api/works/delete', { artifact_ids: [fixture.derived.id], confirm_delete: true }));
