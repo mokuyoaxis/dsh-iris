@@ -25,7 +25,9 @@ const files = directory => Object.fromEntries(fs.readdirSync(directory, { recurs
 try {
   const empty = createCoreCapabilityCatalog();
   assert.equal(empty.snapshot().groups.length, 3); assert.equal(empty.snapshot({ audioEnabled: true }).groups.length, 5);
-  assert.equal(CORE_BRIDGE_TOOLS.length, 40); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 23);
+  assert.equal(CORE_BRIDGE_TOOLS.length, 41); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 23);
+  assert(!empty.snapshot().tools.some(tool => tool.name === 'iris_core_export_outbox'));
+  assert.deepEqual(empty.snapshot({ outboxEnabled: true }).groups.find(group => group.id === 'outbox').tools, ['iris_core_export_outbox']);
   assert(!empty.snapshot().tools.some(tool => tool.name === 'iris_core_select_run'));
   const selectionCatalog = empty.snapshot({ selectionEnabled: true });
   assert.deepEqual(selectionCatalog.groups.filter(group => group.tools.includes('iris_core_select_run')).map(group => group.id), ['image-edit', 'image-generate']);

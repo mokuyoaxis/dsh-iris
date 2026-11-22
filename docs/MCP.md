@@ -87,6 +87,7 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
 - `local-media`（任意 Core 根可用，零外部计费）：基于已有 Core `artifactId` 执行本地确定性裁剪（`iris_core_crop`）、像素对比热力图（`iris_core_pixel_diff`）与视频均匀抽帧（`iris_core_video_frames`，需宿主安装 `ffmpeg`/`ffprobe`），派生作品自动继承来源能力授权，不接受宿主任意路径。
 - `inbox`（需启动 Core 时显式传入 `--inbox-dir <根外只读目录>`）：通过 `iris_core_inbox` 列出收件目录顶层符合格式的图片（≤20 MiB）与音频（v3+ 根，≤20 MiB），再用 `iris_core_import_inbox_file` 按文件名与稳定 UUID 直接入库为持久 Core Artifact，免除 LLM 参数传几 MB Base64；只读访问且拒绝子目录、隐藏文件、符号链接及与私有目录重叠的配置。
 - `html-render`（需启动 Core 时显式传入 `--browser-executable <Chromium 绝对路径>`，可选 `--browser-no-sandbox`；任意 Core 根可用，零外部计费）：通过 `iris_core_render_html` 在无网络、无脚本的沙箱 CSP 环境下将自包含 HTML/SVG（≤1 MiB）渲染为持久 Core PNG Artifact，可用 `iris_core_image` 读回，或与 `local-media`（裁剪/像素 diff）、`vision`/`vision-locate` 串联进行视觉自检；默认关闭且绝不自动扫描宿主浏览器。
+- `outbox`（0.3.2 源码）将已授权读取的 Core Artifact 写入所有者配置的目录。见[受控作品出件](#受控作品出件032-源码)。
 - `none`：关闭媒体流程工具，仅保留连接状态查询。
 
 **精细过滤**：通过 `--tools` 可进一步指定工具子集（`--tools none` 注册零工具）；通过 `--scopes` 组合 `read,create,execute,stop` 控制读写与执行权。服务端会在每次调用时校验连接授权，未授权的请求无法通过参数拼接绕过。
@@ -142,6 +143,14 @@ node bin/dsh-iris.js mcp config \
 
 先调用 `iris_core_run` 读取当前 `revision` 和可选作品，再用 `{ runId, expectedRevision, choice }` 保存明确的选择。`choice` 为 `source`（原图）或 `output`（生成结果）。响应丢失或遇到 `409 IRIS_API_RUN_CHANGED` 时，先查回同一 Run 的修订与已选作品。选择本身只写入 Core 的选定态。
 
+## 受控作品出件（0.3.2 源码）
+
+启动 `api serve` 或 `web serve` 时传入 `--outbox-dir <现有可写绝对目录>`，同时启用本地写入。连接需由所有者选中 `outbox` 分组、`create` scope 和 `iris_core_export_outbox` 工具，并且具备对该作品及其适用来源的读取授权。CLI 创建连接时用 `--tools` 明确列出出件工具及所需的读取工具。
+
+调用 `iris_core_export_outbox` 时传入 `{ key, artifactId, name }`。可从 Run 先读取选定作品 ID，也可直接使用已保存的裁图、热力图、帧或截图 ID。`name` 是与作品媒体类型匹配的顶层文件名。回执包含文件名、作品 ID、媒体类型、字节数及 SHA-256。整个操作由 Core 本地完成。
+
+断线后用同一个 UUID、作品 ID 和文件名接回原回执。`IRIS_OUTBOX_FILE_EXISTS` 表示已有同名项，须为新出件选新名字和 UUID。`IRIS_OUTBOX_UNCONFIRMED` 表示原落盘归属待核对，保留原 UUID 并请所有者在 Core 宿主核对文件。部署目录需支持同目录硬链接发布。具体错误码和进程中断接回见[出件路由](LOCAL_API_CONTRACT.md#受控出件032-源码)。
+
 ## 功能覆盖矩阵
 
 | 能力 | Headless CLI / Core | 当前 MCP |
@@ -155,7 +164,7 @@ node bin/dsh-iris.js mcp config \
 | 裁剪 / 像素 diff / 视频抽帧（基于 `artifactId`） | 支持 | `local-media` 分组支持（零外部计费） |
 | 大文件只读收件目录安全入库（≤20 MiB，免 Base64） | 支持（`--inbox-dir`） | `inbox` 分组支持（`iris_core_inbox` / `iris_core_import_inbox_file`） |
 | 图片作品选择 | 支持 | 显式开启并授权 `iris_core_select_run`（0.3.2 源码） |
-| 导出至本机路径 | 支持 | 待接入（请用 Web 或 CLI） |
+| 受控目录出件 | 支持（`--outbox-dir`） | 显式授权 `iris_core_export_outbox`（0.3.2 源码） |
 | 图生视频 / S2V / 音乐生成 | 支持 | 待接入 |
 | 无头 HTML/SVG 截图（沙箱 CSP，零计费） | 支持 | `html-render` 分组支持（显式 `--browser-executable`） |
 

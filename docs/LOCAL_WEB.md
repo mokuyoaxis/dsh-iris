@@ -62,6 +62,7 @@ npx dsh-iris web password reset --data-root /absolute/path/to/flow-root
 | `--allow-connection-management` | 开启“客户端”连接管理中心（需根外 `--connection-store`） |
 | `--allow-mcp` | 在同端口开放 `/mcp` Streamable HTTP 端点 |
 | `--inbox-dir <dir>` | 显式开放单层只读收件目录供工作台与已授权 MCP 连接选用静态图片（PNG/JPEG/WebP）与 v3+ 根音频（WAV/MP3/OGG/FLAC，工作台转写模式可选用；单件 ≤20 MiB，不跟随符号链接） |
+| `--outbox-dir <dir>` | 显式开放单层可写受控出件目录供获授权的 MCP `outbox` 连接原子落盘作品（需同时开启本地写入、目标文件系统支持同目录硬链接、绝不覆盖已有文件） |
 | `--browser-executable <path>` | 为已授权 `html-render` 的 MCP 连接显式指定无头 Chromium 可执行文件（默认关闭，不自动搜索宿主浏览器） |
 
 ## 显式开启连接中心

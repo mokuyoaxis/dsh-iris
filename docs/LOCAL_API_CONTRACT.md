@@ -74,6 +74,23 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 
 0.3 beta HTTP列表摘要保留 id/recipe/createdAt/modelRef/source，另投影 updatedAt、revision、output/selection 引用（无值为 null），不附 Prompt、Task、供应商绑定或路径；CLI/MCP 列表保持原语义。省略 selection 等于 all，未知/重复参数或不属于筛选结果的 cursor 返回400。图库封面使用 selection，否则 source。
 
+### 受控出件（0.3.2 源码）
+
+挂载 `--outbox-dir <现有可写绝对目录>` 后，`POST /api/v0/outbox/export` 接收单个小写 UUIDv4 `Idempotency-Key` 和最多 2 KiB 的 JSON `{ artifactId, name }`。请求需启用本地写入。连接另需 `outbox` 分组、`create` scope、明确的 `iris_core_export_outbox` 授权，以及读取该作品及派生来源的权限。
+
+启动时核对目录的物理身份，禁止出件目录自身为符号链接，且与数据根、收件目录、运行配置和凭据路径隔离。文件名只允许顶层安全裸名，UTF-8 最长 255 字节。扩展名须匹配已保存作品的媒体类型，支持常用图片、音视频、TXT 和 JSON。Core 将核验过的字节以 POSIX 0600 写入同目录暂存文件，完整同步后以硬链接原子创建最终名。部署的目标文件系统必须支持该操作。
+
+成功返回 `{ contractVersion: 0, name, artifactId, mediaType, bytes, sha256 }`，新请求返回 201，同 UUID 查回返回 200。出件回执具有原请求身份，外部取走文件后回执仍可读取。暂存阶段中断后，同 UUID 可在核对暂存文件身份后续接。最终名发布后、回执保存前中断时，Core 核对暂存链接与最终文件身份、字节数及 SHA-256，再确认原回执。若异常退出留下单写者租约，所有者先按[现有租约恢复流程](CORE_SERVICE.md)确认失效租约。
+
+| HTTP 状态与错误码 | 含义 |
+|---|---|
+| 404 `IRIS_API_NOT_FOUND` | 目录未配置或作品不存在 |
+| 405 `IRIS_API_READ_ONLY` / 403 `IRIS_CONNECTION_CAPABILITY_DENIED` | 本地写入关闭，或连接缺少工具、权限、分组或来源读取权 |
+| 400 `IRIS_OUTBOX_INPUT_INVALID` | 文件名不安全或扩展名不匹配 |
+| 409 `IRIS_OUTBOX_FILE_EXISTS` / `IRIS_OUTBOX_KEY_CONFLICT` | 同名项已存在，或同 UUID 绑定到其他作品或文件名 |
+| 409 `IRIS_OUTBOX_UNCONFIRMED` | 原落盘归属待核对，保留原 UUID 和现场 |
+| 503 `IRIS_OUTBOX_UNAVAILABLE` | 目录身份变化，或文件系统无法完成安全的写入及核对 |
+
 ## 4. FlowView 与操作反馈
 
 浏览器只消费白名单投影，不直接接收磁盘 Run、完整 Task、Attempt、Provider 错误对象或配置。完整详情是用户创作数据，需要认证；摘要不包含 Prompt。

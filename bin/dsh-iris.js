@@ -41,7 +41,7 @@ import { readNetworkConfig } from '../lib/network-config-service.js';
 import { readSchedulingPolicy } from '../lib/scheduling-policy.js';
 import { createMediaScheduler } from '../lib/media-scheduler.js';
 
-let cliNetworkConfigPath, cliNetworkManager, cliScheduler;
+let cliNetworkConfigPath, cliNetworkManager, cliScheduler, cliSchedulerConfigPath;
 function cliResolveNetwork({ provider, ...context }) {
   const requirement = context.networkRequirement || providerNetworkRequirement(provider);
   if (requirement === undefined && !cliScheduler) return undefined;
@@ -90,9 +90,11 @@ function usage() {
     '    Initialize a NEW v1 request container, v2 with --image-generation, v3 with --audio, v4 with --video, or v5 with --vision (all previous flows + vision/OCR). Existing roots are never migrated.',
     '  dsh-iris execution inspect --data-root <v1-flow-root>',
     '  dsh-iris execution recover-lease --data-root <v1-flow-root> --confirm-stale-pid <pid>',
-    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr,vision-locate,media-summarize,local-media,inbox,html-render|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr,vision-locate,media-summarize,local-media,inbox,html-render,outbox|none>] [--tools <comma-separated-names|none>]',
     '  dsh-iris api serve ... --allow-execution --provider-config <absolute-path> [--connections-file <private-grants-file>] [--inbox-dir <readonly-absolute-directory-outside-core>] [--browser-executable <absolute-chromium-path> [--browser-no-sandbox]]',
-    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr,vision-locate,media-summarize,local-media,inbox,html-render|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris api|web serve ... --allow-local-writes --outbox-dir <writable-absolute-directory-outside-core>',
+    '    Controlled Artifact export requires the outbox capability and an explicit export tool grant.',
+    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr,vision-locate,media-summarize,local-media,inbox,html-render,outbox|none>] [--tools <comma-separated-names|none>]',
     '    Official SDK stdio bridge to an already running Core service. Read-only by default; stdout contains MCP messages only.',
     '  dsh-iris mcp capabilities',
     '  dsh-iris mcp presets',
@@ -505,13 +507,14 @@ async function main(args, providerRegistry) {
     const allowExecution = executionFlags.length === 1, allowLocalWrites = localWriteFlags.length === 1 || allowExecution;
     const allowSelection = selectionFlags.length === 1;
     const allowConnectionManagement = managementFlags.length === 1;
-    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management', '--allow-provider-management', '--allow-network-management', '--browser-no-sandbox'].includes(value)), ['data-root', 'token-file', 'token-dir', 'auth-store', 'provider-config', 'port', 'connections-file', 'connection-store', 'panel', 'plugin-config', 'inbox-dir', 'browser-executable']);
+    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management', '--allow-provider-management', '--allow-network-management', '--browser-no-sandbox'].includes(value)), ['data-root', 'token-file', 'token-dir', 'auth-store', 'provider-config', 'port', 'connections-file', 'connection-store', 'panel', 'plugin-config', 'inbox-dir', 'outbox-dir', 'browser-executable']);
     const suppliedRoot = required(options['data-root'], 'data-root');
     const passwordMode = serveWorkbench && options['token-file'] === undefined && options['token-dir'] === undefined;
     if (!passwordMode && Boolean(options['token-file']) === Boolean(options['token-dir'])) throw new CliUsageError('请选择且只选择 --token-file 或 --token-dir');
     if (options['auth-store'] !== undefined && !passwordMode) throw new CliUsageError('auth-store 仅用于默认口令工作台；不能与 Token 参数或 api serve 混用');
     if (!path.isAbsolute(suppliedRoot) || !passwordMode && !path.isAbsolute(options['token-file'] || options['token-dir'])) throw new CliUsageError('data-root 与 token-file/token-dir 必须是绝对路径');
     if (options['inbox-dir'] !== undefined && !path.isAbsolute(options['inbox-dir'])) throw new CliUsageError('inbox-dir 必须是已存在的绝对目录路径');
+    if (options['outbox-dir'] !== undefined && !path.isAbsolute(options['outbox-dir'])) throw new CliUsageError('outbox-dir 必须是已存在的绝对目录路径');
     if (options['browser-executable'] !== undefined && !path.isAbsolute(options['browser-executable'])) throw new CliUsageError('browser-executable 必须是 Chromium 可执行文件的绝对路径');
     if (browserNoSandboxFlags.length === 1 && options['browser-executable'] === undefined) throw new CliUsageError('browser-no-sandbox 需要同时明确指定 --browser-executable');
     let tokenFile = options['token-file'];
@@ -528,6 +531,8 @@ async function main(args, providerRegistry) {
           networkManager: cliNetworkManager ||= createProviderNetworkManager({ networkConfigPath: cliNetworkConfigPath, scheduler: cliScheduler }), scheduler: cliScheduler } : {}),
         ...(passwordMode ? { workbenchAuth: { directory: authDirectory } } : {}),
         ...(options['inbox-dir'] !== undefined ? { inboxDir: options['inbox-dir'] } : {}),
+        ...(options['outbox-dir'] !== undefined ? { outboxDir: options['outbox-dir'],
+          privateConfigPaths: [options['token-file'], options['token-dir'], options['plugin-config'], cliSchedulerConfigPath] } : {}),
         ...(options['browser-executable'] !== undefined ? { browserExecutable: options['browser-executable'], browserNoSandbox: browserNoSandboxFlags.length === 1 } : {}),
         allowExecution, allowSelection, allowMcp: mcpFlags.length === 1, connectionsFile: options['connections-file'], allowConnectionManagement, connectionStore: options['connection-store'], providerRegistry,
         ...(launch ? { pluginRegistry: launch.registry, providerRegistry: launch.registry.providers, allowedOperations: launch.allowedOperations,
@@ -547,6 +552,7 @@ async function main(args, providerRegistry) {
         ...(providerFlags.length ? { providerManagement: true } : {}),
         ...(networkFlags.length ? { networkManagement: true } : {}),
         ...(options['inbox-dir'] !== undefined ? { inboxEnabled: true } : {}),
+        ...(api.snapshot().outboxEnabled ? { outboxEnabled: true } : {}),
         ...(options['browser-executable'] !== undefined ? { htmlRenderEnabled: true } : {}),
         ...(started.mcpEndpoint ? { mcpEndpoint: started.mcpEndpoint } : {}),
         message: passwordMode ? (started.authentication.configured ? '工作台已启动，打开 origin 用访问口令登录；记住设备后可跨正常重启继续使用。'
@@ -1107,14 +1113,13 @@ try {
     if (cliNetworkConfigPath !== undefined || !args[index + 1] || !path.isAbsolute(args[index + 1])) throw new CliUsageError('network-config 需要唯一、明确的绝对路径');
     cliNetworkConfigPath = args[index + 1]; args.splice(index, 2); index--;
   }
-  let schedulerFile;
   for (let index = 0; index < args.length; index++) {
     if (args[index] !== '--scheduler-config') continue;
     if (!['api', 'web'].includes(args[0]) || args[1] !== 'serve') throw new CliUsageError('scheduler-config 首片仅用于 api/web serve；单次 CLI 和 DSH 独立路径保持原行为');
-    if (schedulerFile !== undefined || !args[index + 1]) throw new CliUsageError('scheduler-config 需要唯一、明确的绝对路径');
-    schedulerFile = args[index + 1]; args.splice(index, 2); index--;
+    if (cliSchedulerConfigPath !== undefined || !args[index + 1]) throw new CliUsageError('scheduler-config 需要唯一、明确的绝对路径');
+    cliSchedulerConfigPath = args[index + 1]; args.splice(index, 2); index--;
   }
-  if (schedulerFile !== undefined) cliScheduler = createMediaScheduler(readSchedulingPolicy(schedulerFile));
+  if (cliSchedulerConfigPath !== undefined) cliScheduler = createMediaScheduler(readSchedulingPolicy(cliSchedulerConfigPath));
   try {
     if (entries.length && args.includes('--plugin-config')) throw new CliUsageError('--plugin-config 与 --provider-extension 不能混用；Provider 插件应通过同一插件装配实例加载');
     if (args.length && !args.includes('--help') && !args.includes('-h')) cliProviderRegistry = await loadProviderRegistry(entries);
