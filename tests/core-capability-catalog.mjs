@@ -25,14 +25,16 @@ const files = directory => Object.fromEntries(fs.readdirSync(directory, { recurs
 try {
   const empty = createCoreCapabilityCatalog();
   assert.equal(empty.snapshot().groups.length, 3); assert.equal(empty.snapshot({ audioEnabled: true }).groups.length, 5);
-  assert.equal(CORE_BRIDGE_TOOLS.length, 38); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 23);
+  assert.equal(CORE_BRIDGE_TOOLS.length, 39); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 23);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).groups.length, 6);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).tools.length, 26);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).groups.length, 10);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).tools.length, 34);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).groups.length, 11);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).tools.length, 36);
-  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|locate|summarize|run_operations|crop|pixel_diff|video_frames|inbox/.test(name)));
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).groups.length, 12);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).tools.length, 37);
+  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|locate|summarize|run_operations|crop|pixel_diff|video_frames|inbox|render_html/.test(name)));
   assert.equal(empty.snapshot().pluginTools.length, 2);
   assert(!selectedBridgeTools([]).includes('iris_core_plugin_call'), 'discovery does not select the new business tools');
   assert.deepEqual(empty.snapshot().plugins, []); assert.deepEqual(empty.selectOperations(), []);

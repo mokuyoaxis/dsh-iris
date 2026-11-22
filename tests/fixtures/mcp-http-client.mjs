@@ -1,5 +1,5 @@
 // Protocol test driver, not an implementation shipped to users.
-export function httpMcpClient(origin, token, { version = '2025-11-25', name = 'independent-http-test-driver' } = {}) {
+export function httpMcpClient(origin, token, { version = '2025-11-25', name = 'independent-http-test-driver', timeoutMs = 20000 } = {}) {
   let sequence = 0;
   async function send(method, params, notification = false) {
     const id = notification ? undefined : ++sequence;
@@ -11,7 +11,7 @@ export function httpMcpClient(origin, token, { version = '2025-11-25', name = 'i
       Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream',
       'MCP-Protocol-Version': version, ...(version === '2026-07-28' ? { 'Mcp-Method': method,
         ...(method === 'tools/call' ? { 'Mcp-Name': params.name } : method === 'resources/read' ? { 'Mcp-Name': params.uri } : {}) } : {})
-    }, body: JSON.stringify({ jsonrpc: '2.0', ...(notification ? {} : { id }), method, params }), signal: AbortSignal.timeout(20000) });
+    }, body: JSON.stringify({ jsonrpc: '2.0', ...(notification ? {} : { id }), method, params }), signal: AbortSignal.timeout(timeoutMs) });
     const text = await response.text();
     if (notification && response.status === 202) return;
     const messages = response.headers.get('content-type')?.startsWith('text/event-stream')

@@ -63,7 +63,7 @@ Iris 工作台采用明快简洁的界面与浅鸢尾配色，支持明暗主题
 | 语音合成、音频转写 | 可用 | v3 / v4 / v5 数据根可用 |
 | 文生视频 | 可用 | [v4 / v5 数据根可用](docs/VIDEO_FLOWS.md) |
 | 单图看图、长图 OCR、视觉定位与多模态摘要 | 可用 | [v5 数据根可用](docs/VISION_FLOWS.md)（当前源码已接入保守 OCR 跨块边界去重，0.3.0 基线见[质量验证](docs/OCR_VALIDATION.md)；定位与摘要已接入 MCP 与工作台历史查看） |
-| 本地检视（裁剪/像素对比/视频抽帧）与只读收件目录 | CLI / DSH 可用 | 当前源码已接入 MCP `local-media` / `inbox` 分组与工作台 `--inbox-dir` 入口 |
+| 本地检视（裁剪/像素对比/视频抽帧）、HTML 截图与只读收件目录 | CLI / DSH 可用 | 当前源码已接入 MCP `local-media` / `html-render`（`--browser-executable`）/ `inbox` 分组与工作台 `--inbox-dir` 入口 |
 | 图生视频、S2V、音乐 | 可用（取决于服务与本地依赖） | 模型服务可配置；Web/MCP 创作入口待接入 |
 | ComfyUI 工作流与开放参数 | 可用（需配置受支持的工作流） | 已实现（真实 GPU 推理待独立验收） |
 | 多图对照板插件 | 使用独立 Core 插件入口 | 显式启用后可用 |

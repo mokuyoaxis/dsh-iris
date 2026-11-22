@@ -86,6 +86,7 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
 - `media-summarize`（需 v5 根）：[多模态视频/帧摘要](VISION_FLOWS.md#视觉定位与多模态摘要)，将 1–20 张已授权的 `video-frame` 或静态图片 `artifactId` 自动拼成带时间戳标注的接触表，结合可选 `question` 与显式文本 `transcript` 创建持久 `summarize/v0` 流程（不隐式触发 ASR 计费），执行后通过 `iris_core_vision_text` 读取纯文本摘要。
 - `local-media`（任意 Core 根可用，零外部计费）：基于已有 Core `artifactId` 执行本地确定性裁剪（`iris_core_crop`）、像素对比热力图（`iris_core_pixel_diff`）与视频均匀抽帧（`iris_core_video_frames`，需宿主安装 `ffmpeg`/`ffprobe`），派生作品自动继承来源能力授权，不接受宿主任意路径。
 - `inbox`（需启动 Core 时显式传入 `--inbox-dir <根外只读目录>`）：通过 `iris_core_inbox` 列出收件目录顶层符合格式的图片（≤20 MiB）与音频（v3+ 根，≤20 MiB），再用 `iris_core_import_inbox_file` 按文件名与稳定 UUID 直接入库为持久 Core Artifact，免除 LLM 参数传几 MB Base64；只读访问且拒绝子目录、隐藏文件、符号链接及与私有目录重叠的配置。
+- `html-render`（需启动 Core 时显式传入 `--browser-executable <Chromium 绝对路径>`，可选 `--browser-no-sandbox`；任意 Core 根可用，零外部计费）：通过 `iris_core_render_html` 在无网络、无脚本的沙箱 CSP 环境下将自包含 HTML/SVG（≤1 MiB）渲染为持久 Core PNG Artifact，可用 `iris_core_image` 读回，或与 `local-media`（裁剪/像素 diff）、`vision`/`vision-locate` 串联进行视觉自检；默认关闭且绝不自动扫描宿主浏览器。
 - `none`：关闭媒体流程工具，仅保留连接状态查询。
 
 **精细过滤**：通过 `--tools` 可进一步指定工具子集（`--tools none` 注册零工具）；通过 `--scopes` 组合 `read,create,execute,stop` 控制读写与执行权。服务端会在每次调用时校验连接授权，未授权的请求无法通过参数拼接绕过。
@@ -149,7 +150,7 @@ node bin/dsh-iris.js mcp config \
 | 大文件只读收件目录安全入库（≤20 MiB，免 Base64） | 支持（`--inbox-dir`） | `inbox` 分组支持（`iris_core_inbox` / `iris_core_import_inbox_file`） |
 | 作品选择、导出至本机路径 | 支持 | 待接入（请用 Web 或 CLI） |
 | 图生视频 / S2V / 音乐生成 | 支持 | 待接入 |
-| HTML 截图 | 支持 | 待接入 |
+| 无头 HTML/SVG 截图（沙箱 CSP，零计费） | 支持 | `html-render` 分组支持（显式 `--browser-executable`） |
 
 ## 错误定位与验证范围
 

@@ -90,9 +90,9 @@ function usage() {
     '    Initialize a NEW v1 request container, v2 with --image-generation, v3 with --audio, v4 with --video, or v5 with --vision (all previous flows + vision/OCR). Existing roots are never migrated.',
     '  dsh-iris execution inspect --data-root <v1-flow-root>',
     '  dsh-iris execution recover-lease --data-root <v1-flow-root> --confirm-stale-pid <pid>',
-    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr,vision-locate,media-summarize,local-media,inbox|none>] [--tools <comma-separated-names|none>]',
-    '  dsh-iris api serve ... --allow-execution --provider-config <absolute-path> [--connections-file <private-grants-file>] [--inbox-dir <readonly-absolute-directory-outside-core>]',
-    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr,vision-locate,media-summarize,local-media,inbox|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris connection create --data-root <execution-flow-root> --directory <new-private-directory> --origin <http://127.0.0.1:port> --label <name> [--harness <generic|kimi|dsh>] [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr,vision-locate,media-summarize,local-media,inbox,html-render|none>] [--tools <comma-separated-names|none>]',
+    '  dsh-iris api serve ... --allow-execution --provider-config <absolute-path> [--connections-file <private-grants-file>] [--inbox-dir <readonly-absolute-directory-outside-core>] [--browser-executable <absolute-chromium-path> [--browser-no-sandbox]]',
+    '  dsh-iris mcp serve --connection-file <private-client-json> [--scopes <read,create,execute,stop>] [--capabilities <image-edit,image-generate,tts,transcribe,video-generate,vision,ocr,vision-locate,media-summarize,local-media,inbox,html-render|none>] [--tools <comma-separated-names|none>]',
     '    Official SDK stdio bridge to an already running Core service. Read-only by default; stdout contains MCP messages only.',
     '  dsh-iris mcp capabilities',
     '  dsh-iris mcp presets',
@@ -500,18 +500,20 @@ async function main(args, providerRegistry) {
       return 0;
     }
     if (args[1] !== 'serve') throw new CliUsageError(`不支持的 ${args[0]} 子命令`);
-    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes'), executionFlags = rest.filter(value => value === '--allow-execution'), selectionFlags = rest.filter(value => value === '--allow-selection'), mcpFlags = rest.filter(value => value === '--allow-mcp'), managementFlags = rest.filter(value => value === '--allow-connection-management'), providerFlags = rest.filter(value => value === '--allow-provider-management'), networkFlags = rest.filter(value => value === '--allow-network-management');
-    if (localWriteFlags.length > 1 || executionFlags.length > 1 || selectionFlags.length > 1 || mcpFlags.length > 1 || managementFlags.length > 1 || providerFlags.length > 1 || networkFlags.length > 1) throw new CliUsageError('写入/执行/选择/MCP/管理参数重复');
+    const rest = args.slice(2), localWriteFlags = rest.filter(value => value === '--allow-local-writes'), executionFlags = rest.filter(value => value === '--allow-execution'), selectionFlags = rest.filter(value => value === '--allow-selection'), mcpFlags = rest.filter(value => value === '--allow-mcp'), managementFlags = rest.filter(value => value === '--allow-connection-management'), providerFlags = rest.filter(value => value === '--allow-provider-management'), networkFlags = rest.filter(value => value === '--allow-network-management'), browserNoSandboxFlags = rest.filter(value => value === '--browser-no-sandbox');
+    if (localWriteFlags.length > 1 || executionFlags.length > 1 || selectionFlags.length > 1 || mcpFlags.length > 1 || managementFlags.length > 1 || providerFlags.length > 1 || networkFlags.length > 1 || browserNoSandboxFlags.length > 1) throw new CliUsageError('写入/执行/选择/MCP/管理/浏览器参数重复');
     const allowExecution = executionFlags.length === 1, allowLocalWrites = localWriteFlags.length === 1 || allowExecution;
     const allowSelection = selectionFlags.length === 1;
     const allowConnectionManagement = managementFlags.length === 1;
-    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management', '--allow-provider-management', '--allow-network-management'].includes(value)), ['data-root', 'token-file', 'token-dir', 'auth-store', 'provider-config', 'port', 'connections-file', 'connection-store', 'panel', 'plugin-config', 'inbox-dir']);
+    const options = flags(rest.filter(value => !['--allow-local-writes', '--allow-execution', '--allow-selection', '--allow-mcp', '--allow-connection-management', '--allow-provider-management', '--allow-network-management', '--browser-no-sandbox'].includes(value)), ['data-root', 'token-file', 'token-dir', 'auth-store', 'provider-config', 'port', 'connections-file', 'connection-store', 'panel', 'plugin-config', 'inbox-dir', 'browser-executable']);
     const suppliedRoot = required(options['data-root'], 'data-root');
     const passwordMode = serveWorkbench && options['token-file'] === undefined && options['token-dir'] === undefined;
     if (!passwordMode && Boolean(options['token-file']) === Boolean(options['token-dir'])) throw new CliUsageError('请选择且只选择 --token-file 或 --token-dir');
     if (options['auth-store'] !== undefined && !passwordMode) throw new CliUsageError('auth-store 仅用于默认口令工作台；不能与 Token 参数或 api serve 混用');
     if (!path.isAbsolute(suppliedRoot) || !passwordMode && !path.isAbsolute(options['token-file'] || options['token-dir'])) throw new CliUsageError('data-root 与 token-file/token-dir 必须是绝对路径');
     if (options['inbox-dir'] !== undefined && !path.isAbsolute(options['inbox-dir'])) throw new CliUsageError('inbox-dir 必须是已存在的绝对目录路径');
+    if (options['browser-executable'] !== undefined && !path.isAbsolute(options['browser-executable'])) throw new CliUsageError('browser-executable 必须是 Chromium 可执行文件的绝对路径');
+    if (browserNoSandboxFlags.length === 1 && options['browser-executable'] === undefined) throw new CliUsageError('browser-no-sandbox 需要同时明确指定 --browser-executable');
     let tokenFile = options['token-file'];
     if (options.port !== undefined && (!/^\d+$/.test(options.port) || Number(options.port) > 65535)) throw new CliUsageError('port 必须是 0–65535 的整数');
     // Pin the physical root for both the server and the outside-root credential check.
@@ -526,6 +528,7 @@ async function main(args, providerRegistry) {
           networkManager: cliNetworkManager ||= createProviderNetworkManager({ networkConfigPath: cliNetworkConfigPath, scheduler: cliScheduler }), scheduler: cliScheduler } : {}),
         ...(passwordMode ? { workbenchAuth: { directory: authDirectory } } : {}),
         ...(options['inbox-dir'] !== undefined ? { inboxDir: options['inbox-dir'] } : {}),
+        ...(options['browser-executable'] !== undefined ? { browserExecutable: options['browser-executable'], browserNoSandbox: browserNoSandboxFlags.length === 1 } : {}),
         allowExecution, allowSelection, allowMcp: mcpFlags.length === 1, connectionsFile: options['connections-file'], allowConnectionManagement, connectionStore: options['connection-store'], providerRegistry,
         ...(launch ? { pluginRegistry: launch.registry, providerRegistry: launch.registry.providers, allowedOperations: launch.allowedOperations,
           panelContributions: launch.panelContributions } : {}),
@@ -544,6 +547,7 @@ async function main(args, providerRegistry) {
         ...(providerFlags.length ? { providerManagement: true } : {}),
         ...(networkFlags.length ? { networkManagement: true } : {}),
         ...(options['inbox-dir'] !== undefined ? { inboxEnabled: true } : {}),
+        ...(options['browser-executable'] !== undefined ? { htmlRenderEnabled: true } : {}),
         ...(started.mcpEndpoint ? { mcpEndpoint: started.mcpEndpoint } : {}),
         message: passwordMode ? (started.authentication.configured ? '工作台已启动，打开 origin 用访问口令登录；记住设备后可跨正常重启继续使用。'
           : '首次使用请打开 loginUrl 设置访问口令；之后打开普通地址即可登录，无需 Token 文件。')

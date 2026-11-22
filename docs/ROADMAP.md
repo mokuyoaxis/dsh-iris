@@ -16,7 +16,7 @@ Iris 的定位是本地优先、Agent 可控的多模态创作工作区：让用
 0.3 体系围绕独立工作台、通用 MCP 与显式插件契约持续演进：
 
 - **最小插件契约与真实业务闭环**：0.3.0 提供 [Core 插件贡献契约 v0](PLUGINS.md)、Provider 工厂上下文 v1、统一能力目录与默认工作台三处组合挂载（页面、设置、作品预览器）。内置[多图对照板](CONTACT_SHEET.md)及两套独立起手模板（业务/页面模板与万相 2.6 Provider 模板）已打通持久 Operation、原 UUID 恢复、Web 选择、MCP 调用与包外归档消费。当前冻结[最小兼容面](BETA_SCOPE.md#最小插件兼容面)，完整 SDK 与分发体验将根据实际插件开发者反馈继续演进。
-- **工作台与通用 MCP 覆盖深化**：[Core 工作台](LOCAL_WEB.md)与[通用 MCP](MCP.md) 已在 v1–v5 执行根上依次打通改图、文生图/ComfyUI、TTS/转写、[固定文生视频](VIDEO_FLOWS.md)、[视觉流程](VISION_FLOWS.md)（看图问答、长图 OCR 及保守跨块边界去重 `boundary-overlap/v0`、视觉定位 `vision-locate`、多模态摘要 `media-summarize`）、本地媒体检视（`local-media`）与只读收件目录安全入库（`--inbox-dir` / `inbox` 分组及工作台可视化入口），并配套 8 种主流客户端预设、连接配置自检与连接专属 Skill。后续将继续推进 HTML 截图、作品选择/受控导出、Core 持久音乐流程与更多视频创作模式接入工作台及 MCP。
+- **工作台与通用 MCP 覆盖深化**：[Core 工作台](LOCAL_WEB.md)与[通用 MCP](MCP.md) 已在 v1–v5 执行根上依次打通改图、文生图/ComfyUI、TTS/转写、[固定文生视频](VIDEO_FLOWS.md)、[视觉流程](VISION_FLOWS.md)（看图问答、长图 OCR 及保守跨块边界去重 `boundary-overlap/v0`、视觉定位 `vision-locate`、多模态摘要 `media-summarize`）、本地媒体检视（`local-media`）、只读收件目录安全入库（`--inbox-dir` / `inbox` 分组及工作台可视化入口）以及无头 HTML/SVG 截图（`--browser-executable` / `html-render` 分组），并配套 8 种主流客户端预设、连接配置自检与连接专属 Skill。后续将继续推进作品选择/受控导出、Core 持久音乐流程与更多视频创作模式接入工作台及 MCP。
 - **真实环境与跨端验收**：将受控回放测试与真实供应商账号、真实 ComfyUI GPU 推理、移动端浏览器及不同 MCP 客户端的端到端验收分开记录、逐步扩充。
 
 ## 后续功能方向

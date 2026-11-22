@@ -63,7 +63,7 @@ The Iris workbench pairs a clean light interface with subtle iris accents, light
 | Speech synthesis and transcription | Available | Available in v3 / v4 / v5 roots |
 | Text-to-video | Available | [Available in v4 / v5 roots](docs/VIDEO_FLOWS.md) |
 | Single-image vision, long-image OCR, visual grounding & media summary | Available | [Available in v5 roots](docs/VISION_FLOWS.md) (current source adds conservative OCR boundary deduplication; see [0.3.0 quality record](docs/OCR_VALIDATION.md); locate & summarize available via MCP and workbench history) |
-| Local media utilities (crop/diff/frames) & read-only inbox import | CLI / DSH available | Current source adds MCP `local-media` / `inbox` groups and workbench `--inbox-dir` UI |
+| Local media utilities (crop/diff/frames), HTML screenshots & read-only inbox import | CLI / DSH available | Current source adds MCP `local-media`, `html-render` (`--browser-executable`), `inbox` groups and workbench `--inbox-dir` UI |
 | Image-to-video, S2V, and music | Available (depends on provider and local tools) | Configurable in services; Web/MCP creation entries pending |
 | ComfyUI workflows and exposed parameters | Available with a configured workflow | Implemented (live GPU inference pending verification) |
 | Contact-sheet plugin | Uses the Core plugin entry | Available when explicitly enabled |
