@@ -1,4 +1,4 @@
-# Core 模型服务、功能池与健康光谱（0.3.1）
+# Core 模型服务、功能池与健康光谱（0.3.2）
 
 在独立 Core 工作台的 **模型服务** 中，你可以管理媒体供应商连接、环境变量凭据引用、模型用途、ComfyUI 工作流、六类全局功能模型池以及能力健康光谱。
 
@@ -16,7 +16,7 @@ npx dsh-iris web serve --data-root /absolute/existing-flow-root \
   --allow-provider-management
 ```
 
-> 若通过本地项目安装 `@mokuyoaxis/dsh-iris@0.3.1`，请保留示例中的 `npx dsh-iris`（命令不自动进入全局 `PATH`）；从源码仓库运行时改用 `node bin/dsh-iris.js`。
+> 若通过本地项目安装 `@mokuyoaxis/dsh-iris@0.3.2`，请保留示例中的 `npx dsh-iris`（命令不自动进入全局 `PATH`）；从源码仓库运行时改用 `node bin/dsh-iris.js`。
 
 - **权限独立**：`--allow-provider-management` 仅对工作台所有者开放模型服务配置，不隐含媒体执行（`--allow-execution`）、图片选择（`--allow-selection`）或 MCP 连接管理权限。
 - **网络与安全**：保存供应商即表示信任该端点及返回的媒体下载链接；远端地址建议使用 HTTPS，HTTP 仅建议用于本地网关或 ComfyUI。另可结合 [网络出口页](NETWORK_WORKBENCH.md) 为指定供应商绑定代理节点或有序出口池。

@@ -62,7 +62,7 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 | `POST /runs`（I4B） | `{sourceArtifactId, modelRef, prompt, size?}`、Idempotency-Key | 固定 `image-edit/v0` / `n=1`，只保存输入与身份，零生成请求；本地提交后 201，同 Key 接回 200 |
 | `GET /runs/:id` | 无 | 返回下述 FlowView；只读，不创建 Task、补交付或继续步骤 |
 | `POST /runs/:id/continue`（0.3 beta执行模式） | `{expectedRevision}`、Idempotency-Key | 持久接收后 202，同 Key 200；一次首次提交/观察/补交付/比较，不重提已有 Attempt |
-| `POST /runs/:id/selection` | owner 使用 `{artifactId, expectedRevision}`。0.3.2 源码中的 MCP 连接使用 `{choice, expectedRevision}` | 同一 writer 核对修订并保存选择，成功返回 200，过期修订返回 409。MCP 另需本地写入、`create` scope、明确的 `iris_core_select_run` 工具授权及该 Run 的图片分组 |
+| `POST /runs/:id/selection` | owner 使用 `{artifactId, expectedRevision}`；0.3.2 中的 MCP 连接使用 `{choice, expectedRevision}` | 同一 writer 核对修订并保存选择，成功返回 200，过期修订返回 409。MCP 另需本地写入、`create` scope、明确的 `iris_core_select_run` 工具授权及该 Run 的图片分组 |
 | `GET /artifacts/:id/content` | 无 | 按已验证 Artifact ID 和清单读取该根内媒体字节，不接受 path/URL 参数；不写文件 |
 | `GET /runs/:id/download` | 无 | 返回已选择图片的原字节及受控附件名；未选择则冲突，不接受服务器输出路径 |
 | `GET /operations/:id`（0.3 beta执行模式） | 无 | 查询持久状态，不能借此继续操作；原 Key 查询和 Run 列表见服务指南 |
@@ -74,7 +74,7 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 
 0.3 beta HTTP列表摘要保留 id/recipe/createdAt/modelRef/source，另投影 updatedAt、revision、output/selection 引用（无值为 null），不附 Prompt、Task、供应商绑定或路径；CLI/MCP 列表保持原语义。省略 selection 等于 all，未知/重复参数或不属于筛选结果的 cursor 返回400。图库封面使用 selection，否则 source。
 
-### 受控出件（0.3.2 源码）
+### 受控出件（0.3.2）
 
 挂载 `--outbox-dir <现有可写绝对目录>` 后，`POST /api/v0/outbox/export` 接收单个小写 UUIDv4 `Idempotency-Key` 和最多 2 KiB 的 JSON `{ artifactId, name }`。请求需启用本地写入。连接另需 `outbox` 分组、`create` scope、明确的 `iris_core_export_outbox` 授权，以及读取该作品及派生来源的权限。
 
@@ -91,9 +91,9 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 | 409 `IRIS_OUTBOX_UNCONFIRMED` | 原落盘归属待核对，保留原 UUID 和现场 |
 | 503 `IRIS_OUTBOX_UNAVAILABLE` | 目录身份变化，或文件系统无法完成安全的写入及核对 |
 
-### 所有者只读作品目录、几何元数据与血缘（0.3.2 源码）
+### 所有者只读作品目录、几何元数据与血缘（0.3.2）
 
-为支持工作台「本地工具」与只读血缘视图，0.3.2 源码新增以下四个 **owner 专用只读** `GET/HEAD` 入口；非 owner 的 MCP 连接访问一律返回 `403 IRIS_CONNECTION_CAPABILITY_DENIED`，不扩大已有 MCP 授权面，也不迁移旧数据根：
+为支持工作台「本地工具」与只读血缘视图，0.3.2 新增以下四个 **owner 专用只读** `GET/HEAD` 入口；非 owner 的 MCP 连接访问一律返回 `403 IRIS_CONNECTION_CAPABILITY_DENIED`，不扩大已有 MCP 授权面，也不迁移旧数据根：
 
 | 方法与路径 | 输入 | 语义 |
 |---|---|---|

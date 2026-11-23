@@ -4,11 +4,11 @@ Iris 的定位是本地优先、Agent 可控的多模态创作工作区：让用
 
 ## 当前状态
 
-当前版本为 **Iris 0.3.1**（发布说明见 [0.3.1 发行说明](releases/0.3.1.md) 与 [0.3.0 历史发行](releases/0.3.0.md)，范围定义见 [支持范围](BETA_SCOPE.md)，升级指引见 [升级指南](UPGRADING_0.3.md)，历史版本对照保留于 [0.2.7 发行说明](releases/0.2.7.md)）。它以单个 npm 包 `@mokuyoaxis/dsh-iris` 同时提供 **独立 Core Web 工作台**、**通用 MCP（stdio / Streamable HTTP）**、**Headless CLI** 与 **DSH 原生插件**：
+当前版本为 **Iris 0.3.2**（发布说明见 [0.3.2 发行说明](releases/0.3.2.md)、[0.3.1 历史发行](releases/0.3.1.md) 与 [0.3.0 历史发行](releases/0.3.0.md)，范围定义见 [支持范围](BETA_SCOPE.md)，升级指引见 [升级指南](UPGRADING_0.3.md)，历史版本对照保留于 [0.2.7 发行说明](releases/0.2.7.md)）。它以单个 npm 包 `@mokuyoaxis/dsh-iris` 同时提供 **独立 Core Web 工作台**、**通用 MCP（stdio / Streamable HTTP）**、**Headless CLI** 与 **DSH 原生插件**：
 
-- **全链路媒体与视觉能力**：覆盖图片生成、持久图片导入与 Artifact 改图（含模型级图片协议与 DashScope 原生 Qwen 改图）、ComfyUI 工作流与开放标量参数、视频（t2v/i2v/S2V）、TTS 语音合成、音频转写、音乐生成，以及看图问答、长图 OCR（含保守跨块边界去重 `boundary-overlap/v0`）、目标定位（含工作台 EXIF 精确 SVG 叠框与零计费一键裁剪）与视频多模态摘要。
+- **全链路媒体与视觉能力**：覆盖图片生成、持久图片导入与 Artifact 改图（含模型级图片协议与 DashScope 原生 Qwen 改图）、ComfyUI 工作流与开放标量参数、视频（t2v/i2v/S2V 及工作台本地抽帧）、TTS 语音合成、音频转写、音乐生成，以及看图问答、长图 OCR（含已完成真机复测的保守跨块边界去重 `boundary-overlap/v0`）、目标定位（含工作台 EXIF 精确 SVG 叠框与零计费一键裁剪）与视频多模态摘要（含工作台抽帧创建）。
 - **模型池、凭据与网络/调度治理**：六类功能支持自动池、手动有序名单或停用（宿主默认视觉与新发现目录模型均需显式确认）；支持 DSH 连接引用与环境变量凭据引用（`apiKeyEnv`）、HTTP(S) 代理节点/有序出口池/供应商绑定、进程内网络 Doctor、有界并发调度及六色能力健康光谱。
-- **持久执行与恢复诊断**：单物理数据根单写者租约，持久记录 Run、Task、Attempt、Operation 与 Artifact 关系；支持同步结果缓存的交付恢复与可恢复回收区隔离。0.3.x 持续完善了 Core 拒绝请求时的 Agent 安全诊断、默认串行执行指引、只读连接查回历史 Operation（含 `run_operations` 分页与 `waitMs` 有界等待）以及未知受理防重提保护。
+- **持久执行与恢复诊断**：单物理数据根单写者租约，持久记录 Run、Task、Attempt、Operation 与 Artifact 关系，并在工作台提供只读来源/派生血缘视图；支持同步结果缓存的交付恢复与可恢复回收区隔离。0.3.x 持续完善了 Core 拒绝请求时的 Agent 安全诊断、默认串行执行指引、只读连接查回历史 Operation（含 `run_operations` 分页与 `waitMs` 有界等待）以及未知受理防重提保护。
 - **Agent Skills 与提示词优化**：随包提供 DSH 三项 Skill（`iris-use`、`iris-compose-media`、`iris-verify-ui`）、CLI 独立 `iris-core` Skill 与按连接权限生成的 MCP 专属 Skill；DSH 输入区提供支持忠实整理、改写表达与独立建议的 `🫧` 提示词优化器。
 
 ## 近期优先：插件契约与真实接入
@@ -16,16 +16,16 @@ Iris 的定位是本地优先、Agent 可控的多模态创作工作区：让用
 0.3 体系围绕独立工作台、通用 MCP 与显式插件契约持续演进：
 
 - **最小插件契约与真实业务闭环**：0.3 线提供 [Core 插件贡献契约 v0](PLUGINS.md)、Provider 工厂上下文 v1、统一能力目录与默认工作台三处组合挂载（页面、设置、作品预览器）。内置[多图对照板](CONTACT_SHEET.md)及两套独立起手模板（业务/页面模板与万相 2.6 Provider 模板）已打通持久 Operation、原 UUID 恢复、Web 选择、MCP 调用与包外归档消费。当前冻结[最小兼容面](BETA_SCOPE.md#最小插件兼容面)，完整 SDK 与分发体验将根据实际插件开发者反馈继续演进。
-- **工作台与通用 MCP 覆盖深化**：[Core 工作台](LOCAL_WEB.md)与[通用 MCP](MCP.md) 已在 v1–v5 执行根上依次打通改图、文生图/ComfyUI、TTS/转写、[固定文生视频](VIDEO_FLOWS.md)、[视觉流程](VISION_FLOWS.md)（看图问答、长图 OCR 及保守跨块边界去重 `boundary-overlap/v0`、视觉定位 `vision-locate` 与工作台 EXIF 叠框/零计费裁剪闭环、多模态摘要 `media-summarize`）、本地媒体检视（`local-media`）、只读收件目录安全入库（`--inbox-dir` / `inbox` 分组及工作台可视化入口）以及无头 HTML/SVG 截图（`--browser-executable` / `html-render` 分组），并配套 8 种主流客户端预设、连接配置自检与连接专属 Skill。
-- **下一阶段高优闭环（0.3.2 方向）**：
-  - **MCP 作品选择与受控出件**：评估接入 MCP 侧 `runs.select` 及与 `--inbox-dir` 对称的显式受控出件目录（`--outbox-dir`），在绝不接受任意宿主路径的前提下打通 Agent “入库 → 创作/定位/裁剪 → 选定 → 安全落盘”完整链路；
-  - **OCR 去重真实模型复测与跨端验收**：在授权付费调用时使用原 7 请求长图样本复测 `boundary-overlap/v0` 唯一全文 CER，并继续分开补充真实供应商账号、真实 ComfyUI GPU 推理、移动端浏览器及不同 MCP 客户端的端到端证据。
+- **工作台与通用 MCP 覆盖深化**：[Core 工作台](LOCAL_WEB.md)与[通用 MCP](MCP.md) 已在 v1–v5 执行根上打通改图、文生图/ComfyUI、TTS/转写、[固定文生视频](VIDEO_FLOWS.md)（含工作台抽帧与带入摘要草稿）、[视觉流程](VISION_FLOWS.md)（看图问答、长图 OCR 及保守去重 `boundary-overlap/v0`、视觉定位 `vision-locate`、多模态摘要 `media-summarize`）、零计费本地工具（工作台独立面板与 MCP `local-media` / 显式 `--browser-executable` `html-render`）、只读作品/流程血缘视图、只读收件目录（`--inbox-dir` / `inbox`）、显式 MCP 作品选择（`iris_core_select_run`）以及受控出件目录（`--outbox-dir` / `outbox`），并配套 8 种主流客户端预设、连接配置自检与连接专属 Skill。
+- **下一阶段评估重点**：
+  - **独立 Core 音视频与创作能力深化**：推进 Core 持久音乐流程与图生视频（i2v）/ S2V 接入工作台及 MCP，补齐 DSH/CLI 与 Core/Web/MCP 的能力剪刀差；
+  - **真实硬件、宿主与作品整理**：分开补充真实 ComfyUI GPU 推理、原生 Windows/WSL 完整 DSH 宿主装载与更多外部 MCP 客户端端到端证据，并按需求评估收藏、标签与可恢复归档。
 
 ## 后续功能方向
 
 ### 后续演进计划
 
-- **创作体验与本地工具面板**：将已有零计费本地能力（像素对比热力图、视频抽帧、无头 HTML/SVG 截图）逐步接入工作台独立面板；在更多上游接口成熟后探索多版本选择、局部重绘（mask）、多参考图与连续多轮编辑。
+- **创作体验进阶**：在现有零计费本地工具面板与视觉定位/摘要基础上，待更多上游接口成熟后探索多版本选择、局部重绘（mask）、多参考图与连续多轮编辑。
 - **更多协议与音视频衔接**：推进 Core 持久音乐流程与图生视频/S2V 接入工作台及 MCP；按实际需求评估原生 Gemini、Fal、Replicate 等协议适配，丰富“图片/视频素材 + 配乐/语音”的多步骤创作衔接（详见 [音乐生成](MUSIC.md)）。
 - **作品库组织与维护**：在现有分页、筛选与批量 ZIP 导出基础上，增加收藏、标签与搜索能力；为 Artifact 关系边补充 `retried-from` 重试谱系；在现有可恢复隔离/恢复基础上开放经确认的永久 `purge` 清理（见 [CLI 管理](CLI_MANAGEMENT.md) 与 [工作台作品管理](WORKBENCH_ARTIFACTS.md)）。
 - **提示词与文本模型端口解耦**：在既有纯核心提示词优化实现上补充共享 `prompt.optimize` Command 与 CLI 入口；进一步冻结中立的 TextModel Port，使通用文本模型（如 Ollama 或兼容文本端点）与媒体 Provider 目录解耦。
@@ -45,7 +45,7 @@ Iris 的定位是本地优先、Agent 可控的多模态创作工作区：让用
   - DSH 工作台与 Headless CLI 共用 Core 的可恢复隔离和恢复入口，legacy `outputs/` 的删除仍永久生效；操作时须区分作品来源（见 [CLI 管理](CLI_MANAGEMENT.md) 与 [工作台作品管理](WORKBENCH_ARTIFACTS.md)）；
   - 模型目录发现仅列出候选项，真实可用性需由用户确认用途并显式验证；
   - OpenAI `Responses` 生图目前仅支持同步单图，聊天改图仅支持单张静态来源图片；
-  - 长图 OCR 的 `complete` 状态表示计划分块全部执行完成；0.3.1 默认启用保守的跨块边界重叠去重（`boundary-overlap/v0`），仅合并唯一无歧义的重叠边界，遇到周期性/重复行歧义时保守保留原文（各块原始输出完整留在 OCR JSON 报告中；真实付费模型长图复测尚待单独执行）；
+  - 长图 OCR 的 `complete` 状态表示计划分块全部执行完成；`boundary-overlap/v0` 默认启用保守跨块边界重叠去重，已于 2026-11-23 在正式 `0.3.1` 归档上完成冻结重叠长图 4 次真实视觉 POST 复测（CER `12.93%` → `0%`，3/3 接缝合并），遇周期性/重复行歧义时仍保守保留原文且各块原始输出完整留在 OCR JSON 报告中（单样本结果不外推至任意复杂排版或自然重复文档）；
   - 原生 Windows/WSL 的完整 DSH 宿主冒烟、真实 ComfyUI GPU 推理以及 Termux/PRoot 下的历史偶发 CLI 停顿问题仍在持续跟踪。
 
 ## 质量要求

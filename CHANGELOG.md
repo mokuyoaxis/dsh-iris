@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-23
+
+0.3.2 在 0.3.1 基础上补齐 MCP 作品选择与受控出件闭环（`iris_core_select_run`、`--outbox-dir` / `iris_core_export_outbox`）、Web 视频抽帧与 `summarize/v0` 摘要交互创建、零计费本地工具面板（EXIF 对齐裁剪 / 像素对比热力图 / 显式 HTML 沙箱截图）与只读作品/流程血缘视图，并完成 `0.3.1` 长图 OCR 跨块去重（`boundary-overlap/v0`）的 4 次真实视觉 POST 复测；零新增生产依赖，旧数据根与既有 MCP 授权不自动迁移或扩权。完整说明见[发行说明](docs/releases/0.3.2.md)，升级参考见[升级指南](docs/UPGRADING_0.3.md)。
+
+- 新增 MCP 显式作品选择（`iris_core_select_run`）：服务开启 `--allow-selection` 与本地写入后，所有者可为具备 `create` scope 及对应 `image-edit` / `image-generate` 分组的连接显式勾选该工具（默认不勾选，旧版冻结 12 工具名单 `LEGACY_BRIDGE_TOOLS_V0` 不变），按 `{ runId, expectedRevision, choice: 'source' | 'output' }` 校验修订号并保存图片选定态。
+- 新增受控出件目录 `--outbox-dir` 与 MCP `outbox` 能力组（`iris_core_export_outbox`）。启动 `api serve` / `web serve` 时配置根外可写目录并开启本地写入，获授权连接可用 `{ key, artifactId, name }` 导出有权读取的作品。`name` 是顶层文件名。Core 在同目录暂存校验过的字节（POSIX 模式 `0600`），再通过硬链接原子创建最终文件。同名冲突返回 `IRIS_OUTBOX_FILE_EXISTS`。中断后可凭原 UUID 查回或接回回执，归属不明时返回 `IRIS_OUTBOX_UNCONFIRMED`。部署目录须支持同目录硬链接。
+- 新增 Web 视频抽帧与 `summarize/v0` 多模态摘要交互创建：在已保存视频流程中展开本地零计费抽帧（宿主 `ffmpeg`/`ffprobe`，1–20 帧、目标宽度、JPEG/PNG），支持按时间戳缩略图预览、放大与原字节下载，并在 v5 根勾选所选帧带入摘要草稿（附可选问题与显式字幕/转写，零隐式 ASR 调用）；断线丢失创建响应时按原 UUID 只读查回，刷新不重提，明确执行前零模型调用。
+- 新增 Web 零计费「本地工具」面板（`#tools-panel`）及 owner 专用只读几何/目录接口（`GET/HEAD /api/v0/artifacts`、`/artifacts/:id/meta`，非 owner MCP 连接返回 `403`）：
+  - **任意矩形裁剪**：基于 `imageGeometry`（含 APNG 与 4000 万像素守卫、EXIF 1–8 方向）在主画布与放大弹窗 `#expanded-overlay` 实时按显示方向投影选区，按原图像素坐标调用 `/api/v0/local-media/crop`，支持预览重试、下载、血缘查验与接续创作草稿；
+  - **双图差异热力图**：选取两张静态图片调用 `/api/v0/local-media/diff`（网格 1–64，修复细网格空单元格；最差区域 1–100），展示热力图 PNG、差异占比与非质量评分说明；
+  - **HTML / SVG 沙箱截图**：由 `--browser-executable` 与本地写入双门禁（未启用时显示说明且零请求），启用后在无网络/无脚本 CSP 无头沙箱中渲染 PNG，支持送入裁剪或创作草稿，退出登录自动清空源码区。
+- 新增只读作品与流程血缘视图：纯 Core 模块 `lib/core-lineage.js`（兼容旧记录元数据读取并严格以 `output/comparison/report` 区分产出角色）与 owner 专用只读 `GET/HEAD /api/v0/artifacts/:id/lineage`、`/runs/:id/lineage`；工作台在流程视图提供默认折叠懒加载的 `#run-lineage` 并在工具页提供内联血缘面板，支持多跳作品钻取（带返回栈）与上下游 Run 跳转，零磁盘格式迁移。
+- 补齐真实模型与发布验证记录：使用已发布的 `0.3.1` 归档在冻结重叠长图样本上执行 4 次真实 `qwen3.8-flash` 视觉 POST 复测，去重前原始拼接 CER `12.93%` → `boundary-overlap/v0` 最终保存正文 CER `0%`（3/3 接缝无歧义合并、重启原 UUID 只读查回零新增出站），同步更新 [OCR 场景验证](docs/OCR_VALIDATION.md) 与 [Agent Core 指导](docs/AGENT_CORE_QUICKSTART.md)；发布包 Chromium 回归扩展至 8 组（新增 `--summarize` 与 `--local-tools`），同步加固跨平台 CI 中的 FFmpeg 准备、outbox 故障路径归一化与异步 CLI 测试等待。
+
 ## [0.3.1] - 2026-11-22
 
 0.3.1 在 0.3.0 基础上补齐保守 OCR 跨块去重、零计费本地媒体与无头 HTML 截图 MCP 能力组、`--inbox-dir` 只读大文件收件目录、持久视觉定位与多模态摘要，以及 Web 视觉定位 EXIF 精确叠框与一键裁剪闭环；零新增生产依赖，旧数据根与既有 MCP 授权不自动迁移或扩权。完整说明见[发行说明](docs/releases/0.3.1.md)，升级参考见[升级指南](docs/UPGRADING_0.3.md)。
@@ -572,7 +586,8 @@ Iris 0.2.0 要求 Node.js ≥ 22.0.0，DSH 插件仅支持 `0.2.0-rc.2`；旧宿
 - 上传采用流式限额、临时 `.part` 文件和原子落盘，失败时会清理未完成文件。
 - 修改状态的路由拒绝明确的跨站请求，媒体文件继续使用随机能力令牌访问。
 
-[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.2.7...v0.3.0
 [0.3.0-beta.3]: https://github.com/mokuyoaxis/dsh-iris/compare/v0.3.0-beta.2...v0.3.0-beta.3

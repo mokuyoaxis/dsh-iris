@@ -2,6 +2,16 @@
 
 Iris与DSH的版本号独立。安装前运行 `dsh --version`，并核对要安装的Iris版本；发布状态见 [README](../README.md)。
 
+## Iris 0.3.2
+
+0.3.2 沿用与 0.3.0 / 0.3.1 相同的 12 个准确 DSH 版本声明与最低 Node.js **22.1.0** 要求，不改变 DSH 插件工具集或宿主兼容范围；新增的 MCP 作品选择（`iris_core_select_run`）、受控出件目录（`--outbox-dir` / `outbox`）、Web 视频抽帧摘要创建、零计费「本地工具」面板与只读作品/流程血缘视图均位于独立 Core/Web/MCP 路径且按显式开关与授权生效。正式版本已发行后可固定安装：
+
+```bash
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.2
+```
+
+发布准备期间使用源码或本地候选包，不把版本号当作已发行证据。从 0.3.0 / 0.3.1 升级无需迁移数据根，详见[0.3.2 发行说明](releases/0.3.2.md)与[升级指南](UPGRADING_0.3.md)。
+
 ## Iris 0.3.1
 
 0.3.1 沿用与 0.3.0 相同的 12 个准确 DSH 版本声明与最低 Node.js **22.1.0** 要求，不改变 DSH 插件工具集或宿主兼容范围；新增的 Web 视觉定位框叠加与交互裁剪、保守 OCR 边界去重以及 MCP `vision-locate` / `media-summarize` / `local-media` / `inbox` / `html-render` 能力组均位于独立 Core/Web/MCP 路径且按显式授权生效。正式版本已发行后可固定安装：
@@ -74,10 +84,10 @@ alpha.1发布时稳定通道为0.2.7。沿用声明不代表本次alpha重新实
 
 ## 安装与升级
 
-在上述12个准确版本的宿主中，正式0.3.1已发行后固定安装该版本；历史环境可以继续固定0.3.0或0.2.7和对应数据根：
+在上述12个准确版本的宿主中，正式0.3.2已发行后固定安装该版本；历史环境可以继续固定0.3.1、0.3.0或0.2.7和对应数据根：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.1
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.2
 ```
 
 使用其他profile时替换 `web`。更新后检查服务端装载、刷新Web客户端，并查看Iris工作台的 [宿主诊断](HOST_DOCTOR.md)。alpha.3及之后的DSH改善了插件更新与热加载，但仍以实际装载结果为准。

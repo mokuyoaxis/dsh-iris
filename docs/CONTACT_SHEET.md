@@ -1,4 +1,4 @@
-# 多图对照板：真实插件业务（0.3.1）
+# 多图对照板：真实插件业务（0.3.2）
 
 `@mokuyoaxis/dsh-iris/contact-sheet` 是随 Iris 0.3.x 附带的内置业务插件示例：完全基于[公开插件 SDK](PLUGINS.md) 与 `sharp` 构建，可将当前 Core 工作区中已有的多张图片拼合为一张新的 PNG 对照板并保存为持久作品（离线运行，不依赖任何模型供应商）。
 
@@ -14,7 +14,7 @@ npx dsh-iris artifact import --data-root /absolute/new-core --input '{"image_pat
 npx dsh-iris artifact import --data-root /absolute/new-core --input '{"image_path":"/absolute/second.png"}'
 ```
 
-> 在本地项目中安装 `@mokuyoaxis/dsh-iris@0.3.1` 时，`dsh-iris` 不会自动加入全局 `PATH`，请使用 `npx dsh-iris ...`；从源码仓库运行时请改用 `node bin/dsh-iris.js ...`。
+> 在本地项目中安装 `@mokuyoaxis/dsh-iris@0.3.2` 时，`dsh-iris` 不会自动加入全局 `PATH`，请使用 `npx dsh-iris ...`；从源码仓库运行时请改用 `node bin/dsh-iris.js ...`。
 
 保存启动配置 `/absolute/startup.json`，随后检查并启动工作台（对照板无需媒体 `--allow-execution` 或供应商配置）：
 

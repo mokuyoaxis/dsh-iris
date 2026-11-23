@@ -1,4 +1,4 @@
-# Core 文生视频（0.3.1）
+# Core 文生视频（0.3.2）
 
 Iris 支持在独立 Core 工作台、Headless CLI 与通用 MCP 中保存并执行持久化的 **文生视频（`video-generate/v0`）** 流程。
 
@@ -20,7 +20,7 @@ npx dsh-iris web serve --data-root /absolute/new-video-core \
   --allow-connection-management --allow-mcp
 ```
 
-> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.1` 时，`dsh-iris` 不会自动写入全局 `PATH`，请使用 `npx dsh-iris ...`；若在源码仓库中运行，请改用 `node bin/dsh-iris.js ...`。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.2` 时，`dsh-iris` 不会自动写入全局 `PATH`，请使用 `npx dsh-iris ...`；若在源码仓库中运行，请改用 `node bin/dsh-iris.js ...`。
 
 Iris 会按已知的 `t2v`/`i2v`/`s2v`/`r2v` 输入家族区分模型，固定文生视频流程会主动拒绝已知非 `t2v` 模型（未标注家族的兼容 ID 仍沿用既有候选路径）。
 

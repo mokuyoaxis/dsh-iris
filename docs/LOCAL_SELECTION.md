@@ -13,7 +13,7 @@ node bin/dsh-iris.js web serve --data-root /absolute/path/to/flow-root \
 
 也可换用 `api serve`。默认不开启；`--allow-local-writes`、`--allow-execution` 和 `--allow-connection-management` 均不会隐式开启选择。创建和执行模式仍各自要求已初始化的请求区或 v1 执行根，见 [本地创建](LOCAL_CREATION.md)与 [Core 服务](CORE_SERVICE.md)。
 
-Token 文件须为根外新文件，权限沿用本地 API 约定。工作台 owner 使用本次服务的 Token。0.3.2 源码另提供 MCP 选择，服务同时需要开启本地写入，连接须显式授予 `create`、`iris_core_select_run` 和原 Run 对应的图片分组。[访问边界](LOCAL_API.md#身份与访问) · [MCP 选择](MCP.md#选择图片作品032-源码)
+Token 文件须为根外新文件，权限沿用本地 API 约定。工作台 owner 使用本次服务的 Token。0.3.2 另提供 MCP 选择，服务同时需要开启本地写入，连接须显式授予 `create`、`iris_core_select_run` 和原 Run 对应的图片分组。[访问边界](LOCAL_API.md#身份与访问) · [MCP 选择](MCP.md#选择图片作品032)
 
 ## 请求与版本门禁
 

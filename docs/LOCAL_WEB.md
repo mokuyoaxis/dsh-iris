@@ -1,4 +1,4 @@
-# 本地 Core 工作台（0.3.1）
+# 本地 Core 工作台（0.3.2）
 
 Iris 的独立 Web 工作台（`web serve`）基于[本地 API](LOCAL_API.md) 构建，无需启动 DSH，即可在浏览器中完成模型服务管理、媒体创作、作品管理、网络配置与 MCP 客户端授权。
 
@@ -17,13 +17,13 @@ Iris 的独立 Web 工作台（`web serve`）基于[本地 API](LOCAL_API.md) �
 - **网络出口与媒体调度**（按需启用）：配合 `--network-config` 与 `--allow-network-management` 管理出口节点、出口池及供应商绑定并运行进程内网络 Doctor（[网络工作台](NETWORK_WORKBENCH.md)）；配合 `--scheduler-config` 可在工作台显示远端容量、冷却与本地 HTTP 队列等待原因（[有界媒体调度](MEDIA_SCHEDULING.md)）。
 - **客户端与插件**：通过“客户端”页集中创建、导出和核对 MCP 连接；当通过 `--plugin-config` 装配插件时，工作台还可加载[组合插件页面/设置/预览器](PLUGINS.md#web-贡献和生命周期)或整套[替代 Panel](PANEL_EXTENSIONS.md)。
 
-### 从视频抽帧并创建摘要（0.3.2 源码）
+### 从视频抽帧并创建摘要（0.3.2）
 
 开启本地写入后，打开已保存视频的流程，展开结果中的“抽帧”。选择帧数（1–20）、目标宽度和 JPEG 或 PNG。抽帧在 Core 宿主用 `ffmpeg` 和 `ffprobe` 本地完成，生成的帧可以按时间查看和下载。
 
 在 v5 根中可勾选本次抽取的帧，再点击“用所选帧做摘要”。选择视觉模型后可附上问题或已有字幕，点击“保存摘要任务”。核对帧数和模型后可显式点击“开始摘要”，执行需要开启 Core 执行服务。保存、断线接回与刷新均只访问本地 Core。摘要使用所选视觉流程，字幕由用户提供，结果可下载为 UTF-8 文本。丢失保存响应时，工作台会按原 UUID 查回已保存的草稿。
 
-### 零计费本地工具与只读作品血缘（0.3.2 源码）
+### 零计费本地工具与只读作品血缘（0.3.2）
 
 - **本地工具页（侧栏「本地工具」或总览折叠入口）**：在同源工作台内提供三项零模型计费的确定性工具（写入操作均需显式开启 `--allow-local-writes`，只读模式隐藏提交入口但仍可预览原图几何）：
   - **任意矩形裁剪**支持分页选择工作区的 PNG/JPEG/WebP 静态图片，也可以从血缘直接打开较早的作品。画布与放大弹窗按 EXIF 方向（1–8）投影选区框，按原图像素坐标裁剪并保存 PNG。预览失败时可重读已保存的图片，也可下载或带入改图、看图、OCR 和定位草稿。
@@ -40,7 +40,7 @@ npx dsh-iris flow list --data-root /absolute/path/to/flow-root
 npx dsh-iris web serve --data-root /absolute/path/to/flow-root --port 4173
 ```
 
-> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.1` 时，`dsh-iris` 不会自动加入全局 `PATH`，请使用 `npx dsh-iris ...`；若从已执行 `npm ci` 的源码仓库运行，请将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.2` 时，`dsh-iris` 不会自动加入全局 `PATH`，请使用 `npx dsh-iris ...`；若从已执行 `npm ci` 的源码仓库运行，请将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。
 
 服务默认仅监听 `127.0.0.1`（不指定 `--port` 时使用随机端口），请在浏览器中打开终端输出的完整地址。
 

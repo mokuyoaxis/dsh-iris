@@ -23,6 +23,6 @@ GitHub允许[重跑失败或指定任务](https://docs.github.com/en/actions/how
 
 `tests/release-publication.mjs` 使用受控命令和虚拟时间覆盖延迟、超时、认证/网络失败、摘要不符、回执失败与受理未知。`tests/release-publication-cli.mjs` 在POSIX运行实际工作流Shell及prepare/publish/verify CLI，仅替换外部gh/npm命令与本地提交查询；Windows仍运行独立的元数据和发布状态测试。模拟不证明GitHub编排、真实OIDC、npm Token、注册表可见性或平台CI已成功。
 
-候选还需同一源码的完整测试、实际npm归档消费者与公共类型、Chromium六组场景（总览、凭据、视频、调度、视觉、视觉定位），以及最终提交的Ubuntu/Windows最低/当前Node22 CI。真实账号/GPU另列，不拿旧发行或受控服务结果代替。本页流程从0.3.0-beta.2使用，历史实发结果见[beta.2发行说明](releases/0.3.0-beta.2.md)与[0.3.0发行说明](releases/0.3.0.md)，本轮范围见[0.3.1发行说明](releases/0.3.1.md)与[升级指南](UPGRADING_0.3.md)。
+候选还需同一源码的完整测试、实际npm归档消费者与公共类型、Chromium八组场景（总览、凭据、视频、调度、视觉、视觉定位、摘要、本地工具），以及最终提交的Ubuntu/Windows最低/当前Node22 CI。真实账号/GPU另列，不拿旧发行或受控服务结果代替。本页流程从0.3.0-beta.2使用，历史实发结果见[beta.2发行说明](releases/0.3.0-beta.2.md)、[0.3.0发行说明](releases/0.3.0.md)与[0.3.1发行说明](releases/0.3.1.md)，本轮范围见[0.3.2发行说明](releases/0.3.2.md)与[升级指南](UPGRADING_0.3.md)。
 
-0.3.x正式版（含0.3.0与0.3.1）的元数据应为`NPM_DIST_TAG=latest`、`RELEASE_PRERELEASE=false`。本地准备、测试或main推送均不代表已发布；正式tag需绑定通过检查的准确提交。推tag前重新核对远端版本/tag、归档与授权，推tag后核对独立发布确认及同一包的integrity，不把旧版本的渠道/归档当作新版本证据。
+0.3.x正式版（含0.3.0、0.3.1与0.3.2）的元数据应为`NPM_DIST_TAG=latest`、`RELEASE_PRERELEASE=false`。本地准备、测试或main推送均不代表已发布；正式tag需绑定通过检查的准确提交。推tag前重新核对远端版本/tag、归档与授权，推tag后核对独立发布确认及同一包的integrity，不把旧版本的渠道/归档当作新版本证据。

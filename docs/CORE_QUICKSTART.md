@@ -1,13 +1,13 @@
 # Core Workbench Quickstart · 从零启动工作台
 
-This guide walks through setting up the **Iris 0.3.1** standalone Core workbench from scratch. If you are using DSH or the standalone CLI instead, see the [DSH User Guide](../user_guide.md) or [Headless CLI](HEADLESS_CLI.md); if you are upgrading from an older release, check the [upgrade guide](UPGRADING_0.3.md) first.
+This guide walks through setting up the **Iris 0.3.2** standalone Core workbench from scratch. If you are using DSH or the standalone CLI instead, see the [DSH User Guide](../user_guide.md) or [Headless CLI](HEADLESS_CLI.md); if you are upgrading from an older release, check the [upgrade guide](UPGRADING_0.3.md) first.
 
 > [!NOTE]
 > Choose a **new private directory** under your home folder on a filesystem that supports hard links (on Termux/PRoot, use the Linux home directory rather than Android shared storage). Existing workspaces are never modified or migrated automatically.
 
 ## Start a new workspace · 新建工作区
 
-Iris requires **Node.js ≥22.1.0**. Install `@mokuyoaxis/dsh-iris@0.3.1` (or run `npm ci` inside a source checkout and replace `npx dsh-iris` with `node bin/dsh-iris.js`):
+Iris requires **Node.js ≥22.1.0**. Install `@mokuyoaxis/dsh-iris@0.3.2` (or run `npm ci` inside a source checkout and replace `npx dsh-iris` with `node bin/dsh-iris.js`):
 
 ```bash
 IRIS_PREVIEW="$HOME/.iris/preview"
@@ -37,7 +37,7 @@ npx dsh-iris web serve \
 | `--allow-connection-management` | Create, edit, revoke, and delete MCP client grants |
 | `--allow-mcp` | Expose the `/mcp` Streamable HTTP endpoint alongside stdio |
 
-The server binds to `127.0.0.1` and stays in the foreground (stop it cleanly with `Ctrl+C`). Only one execution writer may own a given data root at a time. Optional flags such as `--inbox-dir` (read-only inbox for ≤20 MiB static images and, on v3+ roots, audio) and `--browser-executable` (explicit headless Chromium path for MCP `html-render`) remain disabled unless passed explicitly. To launch a read-only gallery instead, omit the write and management flags—see the [Core Web reference](LOCAL_WEB.md).
+The server binds to `127.0.0.1` and stays in the foreground (stop it cleanly with `Ctrl+C`). Only one execution writer may own a given data root at a time. Optional flags such as `--inbox-dir` (read-only inbox for ≤20 MiB static images and, on v3+ roots, audio), `--outbox-dir` (controlled writable outbox directory for authorized MCP `outbox` clients; requires same-directory hard-link support), and `--browser-executable` (explicit headless Chromium path for Web Local Tools HTML screenshots and MCP `html-render`) remain disabled unless passed explicitly. To launch a read-only gallery instead, omit the write and management flags—see the [Core Web reference](LOCAL_WEB.md).
 
 > [!TIP]
 > If a read-only MCP connection needs to look up or recover historical Operations, keep the Core execution service running—read grants on the connection authorize access, while the execution service provides the lookup routes. See [Core operation recovery](CORE_SERVICE.md#接收查询与停止).
