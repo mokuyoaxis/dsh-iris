@@ -231,12 +231,13 @@ try {
     assert.deepEqual(fs.readFileSync(untouched), different);
   }
 
+  const failed = { ...defaultInput, key: uuid(), name: 'write-fails.png' };
+  const failedTarget = path.join(fs.realpathSync.native(outboxDir), failed.name);
   const actualLink = fs.linkSync;
   fs.linkSync = (source, target) => {
-    if (target === final('write-fails.png')) throw Object.assign(new Error('fixture failure'), { code: 'ENOSPC' });
+    if (target === failedTarget) throw Object.assign(new Error('fixture failure'), { code: 'ENOSPC' });
     return actualLink(source, target);
   };
-  const failed = { ...defaultInput, key: uuid(), name: 'write-fails.png' };
   try { assertCode(await write(failed), 503, 'IRIS_OUTBOX_UNAVAILABLE'); }
   finally { fs.linkSync = actualLink; }
   assert(!fs.existsSync(final(failed.name)));
