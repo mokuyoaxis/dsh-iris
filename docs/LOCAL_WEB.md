@@ -23,6 +23,14 @@ Iris 的独立 Web 工作台（`web serve`）基于[本地 API](LOCAL_API.md) �
 
 在 v5 根中可勾选本次抽取的帧，再点击“用所选帧做摘要”。选择视觉模型后可附上问题或已有字幕，点击“保存摘要任务”。核对帧数和模型后可显式点击“开始摘要”，执行需要开启 Core 执行服务。保存、断线接回与刷新均只访问本地 Core。摘要使用所选视觉流程，字幕由用户提供，结果可下载为 UTF-8 文本。丢失保存响应时，工作台会按原 UUID 查回已保存的草稿。
 
+### 零计费本地工具与只读作品血缘（0.3.2 源码）
+
+- **本地工具页（侧栏「本地工具」或总览折叠入口）**：在同源工作台内提供三项零模型计费的确定性工具（写入操作均需显式开启 `--allow-local-writes`，只读模式隐藏提交入口但仍可预览原图几何）：
+  - **任意矩形裁剪**支持分页选择工作区的 PNG/JPEG/WebP 静态图片，也可以从血缘直接打开较早的作品。画布与放大弹窗按 EXIF 方向（1–8）投影选区框，按原图像素坐标裁剪并保存 PNG。预览失败时可重读已保存的图片，也可下载或带入改图、看图、OCR 和定位草稿。
+  - **双图差异热力图**允许选择两张工作区图片、配置网格（1–64）与最差区域数（1–100），按两张图的原始像素方向生成灰度热力图 PNG 和差异占比。浏览器缩略图按 EXIF 显示，结果会标出实际参与对比的两张来源图片。像素差异只描述图片变化，不代表质量评分。
+  - **HTML / SVG 沙箱截图（显式启用）**：仅当启动 `web serve` 同时指定 `--browser-executable <Chromium 绝对路径>` 与本地写入开关时开放；未启用时显示配置提示且不发起请求。渲染在无网络、无脚本的严格 CSP 无头沙箱中单并发执行，结果 PNG 可直接下载、查血缘或送入裁剪/创作草稿；退出登录会清空源码输入区。
+- **只读来源与派生血缘**：在流程详情上方新增默认折叠的「来源与派生血缘」区块（展开时才发起只读 `GET`），基于已有 `Artifact.relations` 与 `FlowRun` 引用展示上游流程、上游来源作品、直接派生作品（如裁剪图、热力图、视频帧）与下游关联流程，支持逐跳检视单件作品血缘并点击直达上下游流程，不迁移或改写任何已有磁盘记录。
+
 ## 启动与登录
 
 启动前需要一个已初始化的专用 Flow / 执行数据根（切勿将 DSH 的常规 `core-v0` 目录当作独立 Flow 根）：
@@ -70,7 +78,7 @@ npx dsh-iris web password reset --data-root /absolute/path/to/flow-root
 | `--allow-mcp` | 在同端口开放 `/mcp` Streamable HTTP 端点 |
 | `--inbox-dir <dir>` | 显式开放单层只读收件目录供工作台与已授权 MCP 连接选用静态图片（PNG/JPEG/WebP）与 v3+ 根音频（WAV/MP3/OGG/FLAC，工作台转写模式可选用；单件 ≤20 MiB，不跟随符号链接） |
 | `--outbox-dir <dir>` | 显式开放单层可写受控出件目录供获授权的 MCP `outbox` 连接原子落盘作品（需同时开启本地写入、目标文件系统支持同目录硬链接、绝不覆盖已有文件） |
-| `--browser-executable <path>` | 为已授权 `html-render` 的 MCP 连接显式指定无头 Chromium 可执行文件（默认关闭，不自动搜索宿主浏览器） |
+| `--browser-executable <path>` | 为工作台「本地工具」HTML 截图与已授权 `html-render` 的 MCP 连接显式指定无头 Chromium 可执行文件（默认关闭，不自动搜索宿主浏览器） |
 
 ## 显式开启连接中心
 
@@ -122,7 +130,7 @@ node scripts/verify-local-web-browser.mjs \
 - 基础 / 连接与选择：`--connection-management`、`--allow-selection`
 - 流程与恢复：`--recovery`、`--creation`、`--mode-closure`
 - 供应商与面板：`--panel-c3`、`--provider-workbench`、`--plugin-panel`、`--panel-feedback`
-- 媒体与登录：`--overview`、`--image-generation`、`--comfyui`、`--video`、`--audio`、`--vision`、`--locate`、`--summarize`、`--password-login`、`--login`
+- 媒体与登录：`--overview`、`--image-generation`、`--comfyui`、`--video`、`--audio`、`--vision`、`--locate`、`--summarize`、`--local-tools`、`--password-login`、`--login`
 
 </details>
 

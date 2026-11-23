@@ -33,6 +33,7 @@ import { verifyPluginStatusBrowser } from '../tests/fixtures/plugin-status-brows
 import { verifyPluginStarterBrowser } from '../tests/fixtures/plugin-starter-browser-probe.mjs';
 import { verifyNetworkBrowser } from '../tests/fixtures/network-browser-probe.mjs';
 import { verifySchedulingBrowser } from '../tests/fixtures/scheduling-browser-probe.mjs';
+import { verifyLocalToolsBrowser } from '../tests/fixtures/local-tools-browser-probe.mjs';
 
 const args = process.argv.slice(2);
 const visionMode = args.slice(4).find(flag => ['--vision', '--locate', '--summarize'].includes(flag));
@@ -40,6 +41,12 @@ if (visionMode) {
   assert(args.slice(4).every(flag => ['--no-sandbox', visionMode].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
     visionMode + ' runs only its focused scenarios');
   args.splice(args.indexOf(visionMode), 1);
+}
+const localTools = args.includes('--local-tools');
+if (localTools) {
+  assert(args.slice(4).every(flag => ['--no-sandbox', '--local-tools'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
+    '--local-tools runs only its focused scenarios');
+  args.splice(args.indexOf('--local-tools'), 1);
 }
 const schedulingWorkbench = args.includes('--scheduling');
 if (schedulingWorkbench) {
@@ -114,8 +121,8 @@ const pending = new Map(), pausedResponses = [], profile = path.join(out, 'brows
 fs.mkdirSync(downloads, { mode: 0o700 });
 const browserLog = fs.createWriteStream(path.join(out, 'browser.log'), { mode: 0o600 });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-async function wait(check, label) {
-  const deadline = Date.now() + 12000;
+async function wait(check, label, timeoutMs = 12000) {
+  const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) { if (await check()) return; await sleep(80); }
   throw new Error('Timed out: ' + label);
 }
@@ -385,6 +392,14 @@ try {
         session = await api.start({ port }); return session;
       } });
     assert.deepEqual(report.browserErrors, [], 'video has no browser exceptions or CSP violations');
+  } else if (localTools) {
+    await verifyLocalToolsBrowser({ out, executable, noSandbox: report.noSandbox, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads, pausedResponses,
+      restart: async (root, modes = {}) => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ dataRoot: root, serveWorkbench: true, ...modes });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], '--local-tools has no browser exceptions or CSP violations');
   } else if (visionMode) {
     const verify = { '--locate': verifyLocateBrowser, '--summarize': verifySummaryBrowser, '--vision': verifyVisionBrowser }[visionMode];
     await verify({ out, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads, pausedResponses,

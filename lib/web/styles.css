@@ -661,3 +661,49 @@ audio { display:block; width:100%; max-width:100%; min-width:0; margin-block:10p
   .locate-crop-preview-row img { width:100%; max-height:200px; }
   .locate-crop-actions button { flex:1 1 auto; }
 }
+/* Local Tools & Read-Only Lineage */
+.overview-tool-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.overview-tool-actions button { min-height:34px; padding:4px 10px; font-size:12px; }
+.tools-panel { display:grid; gap:14px; }
+.tools-tabs { display:flex; flex-wrap:wrap; gap:6px; width:fit-content; max-width:100%; }
+.tool-card { display:grid; gap:12px; min-width:0; }
+.tool-card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; }
+.tool-card-head h2 { margin:0; font-size:18px; }
+.tool-picker-row { display:grid; gap:6px; min-width:0; }
+.tool-picker-row select, .tool-diff-grid select, .tool-html-options input, .tool-html-input { width:100%; max-width:100%; min-width:0; }
+.tool-crop-controls { display:grid; gap:10px; padding-top:4px; }
+.tool-diff-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.tool-diff-slot { display:grid; gap:8px; padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--panel-2); min-width:0; }
+.tool-diff-thumb { width:100%; height:150px; object-fit:contain; border-radius:8px; background:var(--stage); border:1px solid var(--line); }
+.tool-diff-options, .tool-html-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.tool-diff-result, .tool-html-result { display:grid; gap:10px; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--panel-2); }
+.tool-heatmap-button { width:100%; max-height:340px; padding:8px; border:1px solid var(--line); border-radius:10px; background:var(--stage); display:grid; place-items:center; cursor:zoom-in; }
+.tool-heatmap-button img { max-width:100%; max-height:316px; object-fit:contain; display:block; }
+.tool-regions-list { margin:0; padding-left:18px; display:grid; gap:4px; font-size:13px; font-variant-numeric:tabular-nums; }
+.tool-html-input { font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace; min-height:150px; resize:vertical; }
+.tool-html-check { display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; }
+.tool-html-check input { width:auto; margin:0; }
+.tool-lineage-panel { display:grid; gap:10px; }
+.run-lineage { margin-top:12px; }
+.lineage-toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+.lineage-toolbar .field-note { margin:0; flex:1 1 200px; }
+.lineage-body { display:grid; gap:12px; }
+.lineage-artifact-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-2); }
+.lineage-artifact-header strong { display:block; font-size:13px; overflow-wrap:anywhere; }
+.lineage-artifact-header .field-note { margin:4px 0 0; overflow-wrap:anywhere; }
+.lineage-group { display:grid; gap:8px; }
+.lineage-group h4 { margin:0; font-size:13px; font-weight:600; color:var(--ink); }
+.lineage-list { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+.lineage-row { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--panel); min-width:0; }
+.lineage-meta { display:grid; gap:4px; flex:1 1 180px; min-width:0; }
+.lineage-meta .field-note { margin:0; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.lineage-title-row { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.lineage-rel { font-size:12px; color:var(--muted); }
+.lineage-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.lineage-actions button { min-height:34px; padding:4px 10px; font-size:12px; }
+@media (max-width:640px) {
+  .tool-diff-grid, .tool-diff-options, .tool-html-options { grid-template-columns:1fr; }
+  .lineage-row { align-items:flex-start; }
+  .lineage-actions { width:100%; }
+  .lineage-actions button { flex:1 1 auto; }
+}

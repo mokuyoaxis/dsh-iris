@@ -26,6 +26,7 @@
       <button id="overview-tab" class="nav-item" type="button" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg> 总览</button>
       <button id="studio-tab" class="nav-item" type="button" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 4 5 5M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15z"/></svg> 创作</button>
       <button id="media-tab" class="nav-item" type="button" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="8" r="1"/></svg> 作品</button>
+      <button id="tools-tab" class="nav-item" type="button" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2v14a2 2 0 0 0 2 2h14M18 22V8a2 2 0 0 0-2-2H2"/></svg> 本地工具</button>
       <button id="connections-tab" class="nav-item" type="button" aria-current="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8m-4-5v5m-4-13 2 2-2 2m5 0h3"/></svg> 客户端 <span id="connections-count" class="count">0</span></button>
       <button id="providers-tab" class="nav-item" type="button" aria-current="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="7" rx="2"/><rect x="4" y="14" width="16" height="7" rx="2"/><path d="M8 6.5h.01M8 17.5h.01M12 6.5h4m-4 11h4"/></svg> 模型服务</button>
       <button id="network-tab" class="nav-item" type="button" aria-current="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 8v4M5 16v-4h14v4"/></svg> 网络出口</button>
@@ -94,9 +95,9 @@
         <p id="overview-inbox-empty" class="field-note" hidden>当前收件目录顶层没有可导入的 PNG/JPEG/WebP 图片或受支持音频文件。</p>
       </section>
       <details id="overview-tools" class="overview-tools card"><summary><span>更多 Core 工具 <small>现有入口与覆盖范围</small></span><span class="disclosure">展开</span></summary><div class="overview-tool-grid">
-        <article><h3>裁剪与图片差异</h3><p>CLI 与 MCP local-media 分组可裁剪图片、保存差异热力图；创作页已有图片比较，独立工具面板待接入。</p><code>run crop · media diff</code></article>
-        <article><h3>视频抽帧</h3><p>CLI 与 MCP local-media 分组可提取视频帧并保存为作品，需系统 ffmpeg / ffprobe；独立面板待接入。</p><code>media frames</code></article>
-        <article><h3>HTML 截图</h3><p>CLI 使用显式指定的 Chromium，DSH 使用宿主浏览器；Core 面板与 MCP 待接入。</p><code>media html</code></article>
+        <article><h3>裁剪与图片差异</h3><p>工作台「本地工具」面板支持 EXIF 方向对齐的任意裁剪与双图差异热力图（零计费）；CLI 与 MCP local-media 分组也支持。</p><div class="overview-tool-actions"><button class="quiet" type="button" data-local-tool="crop">打开裁剪</button><button class="quiet" type="button" data-local-tool="diff">图片差异</button></div><code>run crop · media diff</code></article>
+        <article><h3>视频抽帧</h3><p>视频作品流程已支持本地抽帧并带入摘要草稿，需系统 ffmpeg / ffprobe；CLI 与 MCP local-media 分组也支持。</p><code>media frames</code></article>
+        <article><h3>HTML 截图</h3><p>工作台「本地工具」面板支持无网络/无脚本沙箱 HTML 截图（启动时需显式指定 Chromium 与本地写入开关），DSH 使用宿主浏览器。</p><div class="overview-tool-actions"><button class="quiet" type="button" data-local-tool="html">打开 HTML 截图</button></div><code>media html</code></article>
         <article><h3>提示词优化与组装</h3><p>共享核心与 DSH 泡泡已有实现，需对应文本模型服务；独立 Core 面板与 MCP 待接入。</p></article>
       </div></details>
       <details id="overview-notes" class="overview-notes"><summary><span>这些状态如何判断</span><span class="disclosure">展开</span></summary><p>模型候选来自当前工作区配置，标注用途不等于接口可调用。历史实测仅表示记录时的结果；打开或刷新总览不会测试模型、同步远端目录或提交媒体任务。</p><p>作品页展示当前工作区的流程及其关联作品，不会自动汇入其他数据根或旧 DSH 工作区。</p></details>
@@ -165,6 +166,177 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
       <div id="gallery-grid" class="gallery-grid" aria-busy="false"></div>
       <div id="gallery-empty" class="empty-collection" hidden><span aria-hidden="true">✧</span><h2>留一点空间给下一次灵感</h2><p class="muted">这里还没有符合筛选的流程。已有作品和选择仍保留在原工作区。</p></div>
       <button id="gallery-more" class="secondary" type="button" hidden>加载更多作品</button>
+    </section>
+    <section id="tools-panel" class="tools-panel" hidden aria-labelledby="tools-title">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">ZERO-COST LOCAL TOOLS</p>
+          <h1 id="tools-title">本地工具</h1>
+          <p class="muted">本机确定性处理与沙箱渲染，不发起外部模型调用或计费。</p>
+        </div>
+        <button id="tools-refresh" class="quiet" type="button">刷新作品目录</button>
+      </div>
+      <p id="tools-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+      <button id="tools-more" class="quiet inline-button" type="button" hidden disabled>加载更多图片</button>
+      <div id="local-tools-tabs" class="view-switch tools-tabs" aria-label="本地工具切换">
+        <button type="button" data-local-tool-tab="crop" aria-pressed="true">任意裁剪</button>
+        <button type="button" data-local-tool-tab="diff" aria-pressed="false">双图差异</button>
+        <button type="button" data-local-tool-tab="html" aria-pressed="false">HTML 截图</button>
+      </div>
+      <section id="tool-crop-section" class="card tool-card" aria-label="本地任意裁剪">
+        <div class="tool-card-head">
+          <div>
+            <h2>任意矩形裁剪</h2>
+            <p class="field-note">按原图像素坐标裁剪为 PNG 并保存在当前工作区，画布自动按 EXIF 方向投影选区。</p>
+          </div>
+          <span id="tool-crop-badge" class="badge">选择图片开始</span>
+        </div>
+        <div class="tool-picker-row">
+          <label for="tool-crop-select" class="field-label">选择工作区图片</label>
+          <select id="tool-crop-select"></select>
+        </div>
+        <div id="tool-crop-toggles" class="view-switch locate-toggles" aria-label="裁剪框显示" hidden>
+          <button id="tool-crop-toggle-box" type="button" aria-pressed="true">隐藏选区框</button>
+          <button id="tool-crop-toggle-scrim" type="button" aria-pressed="true">突出选区内</button>
+        </div>
+        <button id="tool-crop-stage-preview" class="image-stage locate-stage" type="button" aria-label="放大查看裁剪原图与选区">
+          <span id="tool-crop-placeholder" class="muted">从上方选择一张静态图片，即可按原图像素坐标实时预览并裁剪。</span>
+          <span id="tool-crop-stage-frame" class="locate-stage-frame" hidden><img id="tool-crop-image" alt="待裁剪的工作区原图"><svg id="tool-crop-overlay" class="locate-overlay" aria-hidden="true" hidden></svg></span>
+        </button>
+        <p id="tool-crop-dimensions" class="image-dimensions"></p>
+        <p id="tool-crop-readonly-note" class="field-note" hidden>当前工作台处于只读模式，可预览原图几何与选区坐标；开启 --allow-local-writes 后可保存裁剪图。</p>
+        <div id="tool-crop-controls" class="tool-crop-controls" hidden>
+          <div class="locate-crop-grid">
+            <label for="tool-crop-left" class="locate-crop-field"><span>左边界 X</span><input id="tool-crop-left" type="number" min="0" step="1"></label>
+            <label for="tool-crop-top" class="locate-crop-field"><span>上边界 Y</span><input id="tool-crop-top" type="number" min="0" step="1"></label>
+            <label for="tool-crop-width" class="locate-crop-field"><span>宽度 W</span><input id="tool-crop-width" type="number" min="1" step="1"></label>
+            <label for="tool-crop-height" class="locate-crop-field"><span>高度 H</span><input id="tool-crop-height" type="number" min="1" step="1"></label>
+          </div>
+          <div class="export-actions">
+            <button id="tool-crop-submit" type="button">按选区裁剪（零计费）</button>
+            <button id="tool-crop-reset" class="quiet" type="button">重置为全图</button>
+          </div>
+        </div>
+        <p id="tool-crop-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+        <section id="tool-crop-result" class="locate-crop-result" hidden aria-label="本地裁剪结果">
+          <div class="locate-crop-preview-row">
+            <img id="tool-crop-result-image" alt="本地裁剪结果预览">
+            <div class="locate-crop-meta">
+              <p class="eyebrow">LOCAL CROP · ZERO COST</p>
+              <strong>已保存本地裁剪图</strong>
+              <p id="tool-crop-result-meta" class="field-note"></p>
+              <div class="export-actions locate-crop-actions">
+                <button id="tool-crop-reload" type="button" hidden>重新读取裁剪预览</button>
+                <button id="tool-crop-download" type="button">下载裁剪 PNG</button>
+                <button id="tool-crop-lineage" class="quiet" type="button">查看血缘</button>
+                <button class="secondary" type="button" data-tool-handoff="edit" hidden>用裁剪图改图</button>
+                <button class="secondary" type="button" data-tool-handoff="vision" hidden>用裁剪图看图</button>
+                <button class="secondary" type="button" data-tool-handoff="ocr" hidden>用裁剪图 OCR</button>
+                <button class="secondary" type="button" data-tool-handoff="locate" hidden>用裁剪图定位</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+      <section id="tool-diff-section" class="card tool-card" hidden aria-label="本地双图差异热力图">
+        <div class="tool-card-head">
+          <div>
+            <h2>双图差异热力图</h2>
+            <p class="field-note">逐像素比对两张工作区图片，生成归一化灰度热力图与差异最大的网格区域。</p>
+          </div>
+          <span class="badge">本地确定性比对</span>
+        </div>
+        <form id="tool-diff-form">
+          <div class="tool-diff-grid">
+            <div class="tool-diff-slot">
+              <label for="tool-diff-a" class="field-label">图片 A</label>
+              <select id="tool-diff-a" required></select>
+              <img id="tool-diff-preview-a" class="tool-diff-thumb" alt="对比图片 A 预览" hidden>
+              <p id="tool-diff-note-a" class="field-note">未选择图片</p>
+            </div>
+            <div class="tool-diff-slot">
+              <label for="tool-diff-b" class="field-label">图片 B</label>
+              <select id="tool-diff-b" required></select>
+              <img id="tool-diff-preview-b" class="tool-diff-thumb" alt="对比图片 B 预览" hidden>
+              <p id="tool-diff-note-b" class="field-note">未选择图片</p>
+            </div>
+          </div>
+          <div class="tool-diff-options">
+            <label for="tool-diff-grid" class="field-label">网格划分（1–64）<input id="tool-diff-grid" type="number" min="1" max="64" step="1" value="8"></label>
+            <label for="tool-diff-regions-limit" class="field-label">展示最差区域数（1–100）<input id="tool-diff-regions-limit" type="number" min="1" max="100" step="1" value="3"></label>
+          </div>
+          <p id="tool-diff-readonly-note" class="field-note" hidden>当前工作台处于只读模式；开启 --allow-local-writes 后可生成并保存像素差异热力图。</p>
+          <div class="export-actions">
+            <button id="tool-diff-submit" type="submit" disabled>生成像素对比热力图（零计费）</button>
+          </div>
+        </form>
+        <p id="tool-diff-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+        <section id="tool-diff-result" class="tool-diff-result" hidden aria-label="像素差异热力图结果">
+          <p class="eyebrow">PIXEL DIFF · ZERO COST</p>
+          <p id="tool-diff-summary" class="field-note"></p>
+          <p id="tool-diff-sources" class="field-note"></p>
+          <button id="tool-diff-heatmap-button" class="tool-heatmap-button" type="button" aria-label="放大查看像素差异热力图">
+            <img id="tool-diff-heatmap" alt="像素差异热力图">
+          </button>
+          <div class="export-actions">
+            <button id="tool-diff-reload" type="button" hidden>重新读取热力图</button>
+            <button id="tool-diff-download" type="button">下载热力图 PNG</button>
+            <button id="tool-diff-lineage" class="quiet" type="button">查看血缘</button>
+          </div>
+          <div>
+            <h3>差异最显著区域</h3>
+            <ol id="tool-diff-regions" class="tool-regions-list"></ol>
+            <p id="tool-diff-regions-empty" class="field-note" hidden>未返回局部区域排行。</p>
+          </div>
+          <p class="field-note">像素差异只描述图片变化，不代表质量评分。</p>
+        </section>
+      </section>
+      <section id="tool-html-section" class="card tool-card" hidden aria-label="无头 HTML/SVG 沙箱截图">
+        <div class="tool-card-head">
+          <div>
+            <h2>HTML / SVG 沙箱截图</h2>
+            <p class="field-note">在本机无头 Chromium 的严格 CSP 沙箱中渲染 PNG（禁外网、禁脚本、单并发、零计费）。</p>
+          </div>
+          <span class="badge">显式启用</span>
+        </div>
+        <p id="tool-html-unavailable" class="field-note" hidden></p>
+        <form id="tool-html-form" hidden>
+          <label for="tool-html-input" class="field-label">HTML 或 SVG 源码（UTF-8 ≤ 1 MiB）</label>
+          <textarea id="tool-html-input" class="tool-html-input" rows="7" required spellcheck="false" placeholder="例如：&lt;div style=&quot;padding:24px;font:600 28px sans-serif&quot;&gt;Hello Iris&lt;/div&gt;"></textarea>
+          <div class="tool-html-options">
+            <label for="tool-html-width" class="field-label">视口宽度（1–4096）<input id="tool-html-width" type="number" min="1" max="4096" step="1" value="1280"></label>
+            <label for="tool-html-height" class="field-label">视口高度（1–4096）<input id="tool-html-height" type="number" min="1" max="4096" step="1" value="720"></label>
+          </div>
+          <label for="tool-html-fullpage" class="tool-html-check"><input id="tool-html-fullpage" type="checkbox" checked><span>按整页内容高度截全图（fullPage）</span></label>
+          <div class="export-actions">
+            <button id="tool-html-submit" type="submit" disabled>本地渲染 PNG（零计费）</button>
+          </div>
+        </form>
+        <p id="tool-html-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+        <section id="tool-html-result" class="tool-html-result" hidden aria-label="HTML 沙箱截图结果">
+          <p class="eyebrow">SANDBOX HTML RENDER · ZERO COST</p>
+          <p id="tool-html-meta" class="field-note"></p>
+          <button id="tool-html-preview-button" class="tool-heatmap-button" type="button" aria-label="放大查看 HTML 截图">
+            <img id="tool-html-preview" alt="HTML 沙箱渲染截图预览">
+          </button>
+          <div class="export-actions locate-crop-actions">
+            <button id="tool-html-reload" type="button" hidden>重新读取截图预览</button>
+            <button id="tool-html-download" type="button">下载截图 PNG</button>
+            <button id="tool-html-lineage" class="quiet" type="button">查看血缘</button>
+            <button class="secondary" type="button" data-tool-handoff="crop" hidden>去裁剪</button>
+            <button class="secondary" type="button" data-tool-handoff="edit" hidden>用截图改图</button>
+            <button class="secondary" type="button" data-tool-handoff="vision" hidden>用截图看图</button>
+            <button class="secondary" type="button" data-tool-handoff="ocr" hidden>用截图 OCR</button>
+            <button class="secondary" type="button" data-tool-handoff="locate" hidden>用截图定位</button>
+          </div>
+        </section>
+      </section>
+      <section id="tool-lineage-panel" class="card tool-lineage-panel" hidden aria-label="作品来源与派生血缘">
+        <p class="eyebrow">ARTIFACT LINEAGE · READ-ONLY</p>
+        <button id="tool-lineage-close" class="quiet inline-button" type="button">关闭血缘</button>
+        <p id="tool-lineage-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+        <div id="tool-lineage-body" class="lineage-body"></div>
+      </section>
     </section>
     <section id="connections-panel" hidden aria-label="连接中心">
       <div class="page-heading management-heading"><div><h1>客户端连接</h1><p class="muted">让你的编程助手，通过 MCP 使用 Iris。</p></div><div class="page-actions"><button id="connections-refresh" class="quiet" type="button">刷新</button><button id="connection-new" class="secondary" type="button">＋ 新建连接</button></div></div>
@@ -426,6 +598,12 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
           <p id="operation-note" class="field-note" hidden></p>
           <div class="result-actions"><p id="selection-feedback" role="status" aria-live="polite">选择喜欢的版本，再保存到设备。</p><button id="download" type="button" disabled>下载已选作品</button></div>
           <div class="reuse-actions"><button id="reuse-selected" class="quiet" type="button" disabled>用已选作品新建</button><span id="run-meta" class="meta"></span></div>
+          <details id="run-lineage" class="compact-details run-lineage" hidden>
+            <summary><span>来源与派生血缘 <small id="run-lineage-summary">只读关系</small></span><span class="disclosure">展开</span></summary>
+            <div class="lineage-toolbar"><p class="field-note">基于已有作品关系与流程引用的只读视图；展开时才读取，不修改记录。</p><button id="run-lineage-refresh" class="quiet inline-button" type="button">刷新血缘</button></div>
+            <p id="run-lineage-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+            <div id="run-lineage-body" class="lineage-body"></div>
+          </details>
           <details id="run-details" class="run-details"><summary><span>流程详情</span><span class="disclosure">展开</span></summary><section class="prompt-section" aria-labelledby="prompt-title"><h3 id="prompt-title">修改要求</h3><p id="prompt"></p></section><section id="run-parameters" class="comfy-record" hidden><h3>本次记录的工作流参数</h3><dl id="run-parameter-values"></dl><p class="field-note">来自此流程的输入快照；未记录的输入沿用当时模板。</p></section><dl id="run-facts"></dl><p class="muted">像素差异只描述图片变化，不代表质量评分。</p></details>
         </div>
       </section>
