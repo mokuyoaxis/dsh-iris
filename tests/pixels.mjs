@@ -104,6 +104,9 @@ assert(rightHalf.length >= 2, '最差区域在右半', half.worstRegions.slice(0
 const SMALL = await sharp({ create: { width: 5, height: 5, channels: 3, background: { r: 255, g: 0, b: 0 } } }).png().toBuffer();
 const sized = await pixelDiff({ inputA: RED, inputB: SMALL });
 assert(sized.width === 5 && sized.height === 5, '尺寸归一化到较小者', sized.width + 'x' + sized.height);
+const fineGrid = await pixelDiff({ inputA: RED, inputB: SMALL, grid: 64, topRegions: 100 });
+assert(fineGrid.worstRegions.length === 25 && fineGrid.worstRegions.every(({ row, col }) => row < 5 && col < 5),
+  '网格比图片细时只返回有像素的区域', fineGrid.worstRegions);
 
 // alpha 忽略：4 通道图 vs 3 通道图
 const SPLIT_WITH_ALPHA = await sharp(SPLIT_PNG).ensureAlpha(0).png().toBuffer();

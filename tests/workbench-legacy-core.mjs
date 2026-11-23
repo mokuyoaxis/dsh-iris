@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createCoreRuntime } from '../lib/core-runtime.js';
 import { createCoreArtifact, inspectCoreArtifact, listCoreArtifactMetadata } from '../lib/core-artifacts.js';
+import { listWorkspaceArtifacts } from '../lib/core-lineage.js';
 import { createDshRuntime } from '../lib/dsh-core-adapter.js';
 import { workbenchArtifacts } from '../lib/workbench-artifacts.js';
 import { useTempDshHome } from './test-env.js';
@@ -33,6 +34,7 @@ try {
   const metadata = listCoreArtifactMetadata(dataRoot);
   assert.equal(metadata.dropped, 0, 'readable early records are not corruption');
   assert.equal(metadata.legacySkipped, 1); assert.equal(metadata.artifacts.length, 1);
+  assert.deepEqual(new Set(listWorkspaceArtifacts(dataRoot).artifacts.map(item => item.artifactId)), new Set([id, current.id]));
   const page = await workbenchArtifacts({ source: 'core' }, { core });
   assert.equal(page.droppedCore, 0); assert.equal(page.legacyCoreSkipped, 1); assert.equal(page.items[0].id, current.id);
   const snapshot = await core.coreSnapshotForDsh({ limit: 6 });

@@ -91,6 +91,17 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 | 409 `IRIS_OUTBOX_UNCONFIRMED` | 原落盘归属待核对，保留原 UUID 和现场 |
 | 503 `IRIS_OUTBOX_UNAVAILABLE` | 目录身份变化，或文件系统无法完成安全的写入及核对 |
 
+### 所有者只读作品目录、几何元数据与血缘（0.3.2 源码）
+
+为支持工作台「本地工具」与只读血缘视图，0.3.2 源码新增以下四个 **owner 专用只读** `GET/HEAD` 入口；非 owner 的 MCP 连接访问一律返回 `403 IRIS_CONNECTION_CAPABILITY_DENIED`，不扩大已有 MCP 授权面，也不迁移旧数据根：
+
+| 方法与路径 | 输入 | 语义 |
+|---|---|---|
+| `GET/HEAD /artifacts` | `kind=image\|all`、`limit=1..50`、`offset=0..999999` | 按创建时间倒序返回作品摘要，用 `nextOffset` 续页。`kind=image` 按清单筛选 ≤20 MiB 的 PNG/JPEG/WebP 候选图片，包括仍可读取的旧版作品记录 |
+| `GET/HEAD /artifacts/:id/meta` | 无 | 返回作品基础元数据。≤20 MiB 的 PNG/JPEG/WebP 候选图片会核对实际格式、静态编码和 4000 万像素上限。通过后附带 `image: { width, height, orientation }`（原始编码像素与 EXIF 方向 1–8）。校验失败返回 `415 IRIS_API_MEDIA_UNSUPPORTED` |
+| `GET/HEAD /artifacts/:id/lineage` | 无 | 基于已有 `Artifact.relations` 与 `FlowRun` 引用投影该作品的上游来源、直接派生作品与关联流程（各上限 50 项） |
+| `GET/HEAD /runs/:id/lineage` | 无 | 返回本流程引用的作品及其角色，最多各列出 50 项上游流程、上游来源作品、直接派生作品和下游流程。流程间的上下游由产物、对比图或报告的生产与消费关系确定 |
+
 ## 4. FlowView 与操作反馈
 
 浏览器只消费白名单投影，不直接接收磁盘 Run、完整 Task、Attempt、Provider 错误对象或配置。完整详情是用户创作数据，需要认证；摘要不包含 Prompt。
