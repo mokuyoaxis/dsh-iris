@@ -194,17 +194,22 @@ export async function verifyLocalToolsBrowser({ out, executable, noSandbox, cdp,
   await waitFor('Run 1 lineage rendered', `document.querySelector('#run-lineage').open&&document.querySelector('#run-lineage-body').textContent.includes(${JSON.stringify(editRun2.id)})&&document.querySelector('#run-lineage-body').textContent.includes(${JSON.stringify(diffId)})`);
 
   // Drill into the diff heatmap artifact lineage from Run 1 -> verify both parent artifacts appear -> click back!
+  const backButton = '#run-lineage-body [data-lineage-back="true"]';
+  const downstreamButton = `#run-lineage-body [data-lineage-run="${editRun2.id}"]`;
   await click(`#run-lineage-body [data-lineage-artifact="${diffId}"]`);
-  await waitFor('artifact drill-down rendered', `document.querySelector('#run-lineage-body').textContent.includes(${JSON.stringify(sourceA.id)})&&document.querySelector('#run-lineage-body').textContent.includes(${JSON.stringify(editRun1.output.artifactId)})`);
-  await click('#run-lineage-body [data-lineage-back="true"]');
-  await waitFor('back to Run 1 lineage', `document.querySelector('#run-lineage-body').textContent.includes(${JSON.stringify(editRun2.id)})`);
+  await waitFor('artifact drill-down rendered', `Boolean(document.querySelector(${JSON.stringify(backButton)}))&&document.querySelector('#run-lineage-body .lineage-artifact-header strong')?.textContent.endsWith(${JSON.stringify(diffId)})`);
+  const parents = await evalFn(() => [...document.querySelectorAll('#run-lineage-body .lineage-group:first-of-type [data-lineage-artifact]')]
+    .map(button => button.dataset.lineageArtifact));
+  assert.deepEqual(new Set(parents), new Set([sourceA.id, editRun1.output.artifactId]));
+  await click(backButton);
+  await waitFor('back to Run 1 lineage', `!document.querySelector(${JSON.stringify(backButton)})&&Boolean(document.querySelector(${JSON.stringify(downstreamButton)}))`);
 
   // Jump directly to downstream Run 2 via lineage button and expand Run 2's lineage to verify upstream Run 1!
   await cdp('Fetch.enable', { patterns: [responsePattern(session, artifactContent(sourceA.id))] });
   await click(`#run-lineage-body [data-lineage-preview="${sourceA.id}"]`);
   await wait(() => pausedResponses.length > 0, 'held original Run lineage preview');
   const previewRequest = pausedResponses.shift();
-  await click(`#run-lineage-body [data-lineage-run="${editRun2.id}"]`);
+  await click(downstreamButton);
   try { await cdp('Fetch.continueRequest', { requestId: previewRequest }); }
   catch (error) { assert.match(error.message, /Invalid [Ii]nterception[Ii]d/); }
   await cdp('Fetch.disable');
