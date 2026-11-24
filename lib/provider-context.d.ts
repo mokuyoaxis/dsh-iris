@@ -42,11 +42,21 @@ export interface ProviderOperationContext {
   readonly attempt?: Readonly<{ id: string; ordinal: number; providerId: string; model: string }>;
 }
 export interface ProviderImageInput { readonly bytes: Uint8Array; readonly mediaType: string; }
+export interface ProviderMediaInput { readonly bytes: Uint8Array; readonly mediaType: string; readonly filename?: string; }
 export interface ProviderSubmitRequest {
   readonly capability: ProviderCapability;
   /** Raw supplier model ID, never providerId::modelId. */
   readonly model: string;
-  readonly input: Readonly<Record<string, unknown> & { image?: ProviderImageInput }>;
+  readonly input: Readonly<Record<string, unknown> & {
+    image?: ProviderImageInput;
+    firstFrame?: ProviderMediaInput;
+    audio?: ProviderMediaInput;
+    imgDataUrl?: string;
+    audioUrl?: string;
+    resolution?: string;
+    duration?: number;
+    timeoutMs?: number;
+  }>;
   readonly signal?: AbortSignal;
   readonly timeoutMs?: number;
 }

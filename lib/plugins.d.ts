@@ -4,7 +4,7 @@ export { PROVIDER_FACTORY_CONTEXT_VERSION } from './provider-context.js';
 export type { ProviderCapability, ProviderMethod, ProviderOperations, ProviderConnection, ProviderFactoryContext, ProviderNetwork,
   ProviderErrorRecord, ProviderStage, ProviderAcceptance, ProviderErrorCategory, ProviderOperationContext, ProviderSubmitRequest,
   ProviderSubmissionResult, ProviderRemoteRequest, ProviderPollResult, ProviderCancelResult, ProviderDownloadRequest,
-  ProviderDiscoveryRequest, ProviderDiscoveryResult, ProviderArtifact, ProviderImageInput } from './provider-context.js';
+  ProviderDiscoveryRequest, ProviderDiscoveryResult, ProviderArtifact, ProviderImageInput, ProviderMediaInput } from './provider-context.js';
 export class ProviderContractError extends Error {
   constructor(message: string, details?: Partial<ProviderErrorRecord>);
   readonly stage: ProviderErrorRecord['stage'];
@@ -20,9 +20,11 @@ export class ProviderContractError extends Error {
 }
 export type JsonValue = null | boolean | number | string | readonly JsonValue[] | { readonly [key: string]: JsonValue };
 export type PluginKind = 'providers' | 'operations' | 'pages' | 'renderers' | 'settings';
+export type PluginMediaKind = 'image' | 'audio' | 'video' | 'text' | 'json';
 export const PLUGIN_CONTRACT_VERSION: 0;
 export const PLUGIN_KINDS: readonly PluginKind[];
-export type PluginCoreCommand = 'artifact.inspect' | 'artifact.read' | 'artifact.list' | 'task.inspect' | 'task.list' | 'artifact.import';
+export const PLUGIN_MEDIA_KINDS: readonly PluginMediaKind[];
+export type PluginCoreCommand = 'artifact.inspect' | 'artifact.read' | 'artifact.list' | 'artifact.lineage' | 'task.inspect' | 'task.list' | 'artifact.import';
 export const PLUGIN_CORE_COMMANDS: Readonly<Record<PluginCoreCommand, 'reader' | 'writer'>>;
 export class PluginContractError extends Error { constructor(code: string, message: string); readonly code: string; }
 export interface PluginDependency {
@@ -39,11 +41,21 @@ export interface ProviderContribution extends Contribution {
   readonly capabilities: readonly ('image-gen' | 'video-gen' | 'tts' | 'music-gen' | 'transcribe')[];
   readonly configuration?: readonly { key: 'baseUrl' | 'mediaBaseUrl' | 'apiKey'; label: string; type: 'url' | 'secret'; required?: boolean; advanced?: boolean }[];
 }
+export interface OperationUiHint {
+  readonly category?: 'local-tool' | 'transform';
+  readonly summary?: string;
+}
 export interface OperationContribution extends Contribution {
   readonly mode: 'reader' | 'writer';
   readonly commands: readonly PluginCoreCommand[];
   /** Top-level string or string-array input fields containing source Artifact IDs. Bound at acceptance. */
   readonly artifactInputs?: readonly string[];
+  /** Optional explicit per-field multimodal media kinds. Omitted fields default to legacy 8 MiB static images. */
+  readonly artifactInputTypes?: Readonly<Record<string, readonly PluginMediaKind[]>>;
+  /** Optional explicit multimodal output kinds allowed via artifact.import({ media_type, bytes }). */
+  readonly artifactOutputKinds?: readonly PluginMediaKind[];
+  /** Optional declarative hint for host-owned workbench Schema forms. */
+  readonly ui?: OperationUiHint;
   /** Closed root object; supported JSON Schema subset documented in PLUGINS.md. */
   readonly inputSchema: { readonly type: 'object'; readonly additionalProperties: false; readonly [key: string]: JsonValue };
 }
@@ -95,11 +107,23 @@ export type ProviderAdapter = Readonly<Omit<ProviderAdapterInput, 'contractVersi
 }>;
 export function defineProviderAdapter(input: ProviderAdapterInput): ProviderAdapter;
 export function normalizeMediaEndpoint(value: string): string;
+export type VideoMode = 't2v' | 'i2v' | 's2v';
+export interface ScalarParameterDescriptor {
+  readonly id: string;
+  readonly label?: string;
+  readonly type: 'string' | 'number' | 'integer' | 'boolean';
+  readonly default?: string | number | boolean;
+  readonly min?: number;
+  readonly max?: number;
+  readonly choices?: readonly (string | number)[];
+}
 export interface ProviderImplementation {
   normalizeEndpoint(value: string): string;
   createAdapter(provider: Readonly<ProviderConnection>, context: Readonly<ProviderFactoryContext>): ProviderAdapter;
   supportsModel?(input: { provider: Record<string, unknown>; modelId: string; capability: string; checkEndpoint?: boolean }): boolean;
   supportsImageEdit?(modelId: string): boolean;
+  supportsVideoMode?(modelId: string, mode: VideoMode): boolean;
+  modelParameters?(input: { provider: Record<string, unknown>; modelId: string; capability: string }): readonly ScalarParameterDescriptor[];
 }
 export interface PluginActivationContext {
   readonly coreVersion: string;
@@ -142,7 +166,10 @@ export interface CorePluginRegistry {
 export function createCorePluginRegistry(options?: { plugins?: CorePlugin[]; coreVersion?: string }): Promise<CorePluginRegistry>;
 export function loadCorePluginRegistry(options?: { entries?: string[]; coreVersion?: string }): Promise<CorePluginRegistry>;
 export type CoreCapabilityScope = 'read' | 'create' | 'execute' | 'stop';
-export type CoreBridgeCapability = 'image-edit' | 'image-generate' | 'tts' | 'transcribe' | 'video-generate' | 'vision' | 'ocr';
+export type CoreBridgeCapability = 'image-edit' | 'image-generate' | 'tts' | 'transcribe' | 'music'
+  | 'video-generate' | 'video-i2v' | 'video-s2v'
+  | 'vision' | 'ocr' | 'vision-locate' | 'media-summarize'
+  | 'local-media' | 'inbox' | 'html-render' | 'outbox';
 export interface ContributionAccess {
   readonly local: 'requires-configuration' | 'requires-grant' | 'descriptor-only' | 'unavailable';
   readonly web: 'via-media-flow' | 'via-operation' | 'not-exposed' | 'durable-operation-required' | 'not-mounted' | 'available-in-panel' | 'unavailable';
@@ -160,8 +187,9 @@ export interface CoreCapabilitySnapshot {
   readonly scopeOptions: readonly { readonly id: CoreCapabilityScope; readonly title: string }[];
   readonly controlTools: readonly string[];
   readonly groups: readonly {
-    readonly id: CoreBridgeCapability; readonly recipe: string; readonly title: string; readonly label: string; readonly shortTitle: string;
-    readonly media: string; readonly requiresAudio?: boolean; readonly requiresVideo?: boolean; readonly requiresVision?: boolean; readonly tools: readonly string[];
+    readonly id: CoreBridgeCapability; readonly recipe?: string; readonly title: string; readonly label: string; readonly shortTitle: string;
+    readonly media: string; readonly requiresAudio?: boolean; readonly requiresVideo?: boolean; readonly requiresVision?: boolean;
+    readonly requiresInbox?: boolean; readonly requiresHtmlRender?: boolean; readonly requiresOutbox?: boolean; readonly tools: readonly string[];
   }[];
   readonly tools: readonly { readonly name: string; readonly scope: CoreCapabilityScope; readonly description: string }[];
   readonly pluginTools: CoreCapabilitySnapshot['tools'];
@@ -178,7 +206,11 @@ export interface CoreCapabilitySnapshot {
   };
 }
 export interface CoreCapabilityCatalog {
-  snapshot(options?: { audioEnabled?: boolean; videoEnabled?: boolean; visionEnabled?: boolean; panelContributions?: PluginPanelSelection; allowedOperations?: readonly string[] }): CoreCapabilitySnapshot;
+  snapshot(options?: {
+    audioEnabled?: boolean; videoEnabled?: boolean; visionEnabled?: boolean;
+    inboxEnabled?: boolean; outboxEnabled?: boolean; htmlRenderEnabled?: boolean; selectionEnabled?: boolean;
+    panelContributions?: PluginPanelSelection; allowedOperations?: readonly string[];
+  }): CoreCapabilitySnapshot;
   /** Validate an explicit local selection. Does not invoke, persist a grant or enable MCP/Web. */
   selectOperations(ids?: readonly string[]): readonly (OperationContribution & CatalogContribution)[];
 }
@@ -236,8 +268,12 @@ export interface PluginWebSession {
   readonly operations: readonly string[];
   readonly readOnly: boolean;
   readonly audio: boolean;
+  readonly music: boolean;
   readonly video: boolean;
   readonly vision: boolean;
+  readonly inbox: boolean;
+  readonly outbox: boolean;
+  readonly htmlRender: boolean;
   readonly providerManagement: boolean;
   readonly pluginExecution: boolean;
   readonly pluginOperations: readonly PluginDependency[];
@@ -275,8 +311,13 @@ export interface PluginWebApi {
   run(id: string, options?: PluginWebRequestOptions): Promise<JsonValue>;
   models(options?: PluginWebRequestOptions): Promise<JsonValue>;
   audioModels(options?: PluginWebRequestOptions): Promise<JsonValue>;
-  videoModels(options?: PluginWebRequestOptions): Promise<JsonValue>;
+  musicModels(options?: PluginWebRequestOptions): Promise<JsonValue>;
+  videoModels(query?: Readonly<Record<string, string>>, options?: PluginWebRequestOptions): Promise<JsonValue>;
   visionModels(options?: PluginWebRequestOptions): Promise<JsonValue>;
+  artifacts(query?: Readonly<Record<string, string>>, options?: PluginWebRequestOptions): Promise<JsonValue>;
+  artifactMeta(id: string, options?: PluginWebRequestOptions): Promise<JsonValue>;
+  artifactLineage(id: string, options?: PluginWebRequestOptions): Promise<JsonValue>;
+  runLineage(id: string, options?: PluginWebRequestOptions): Promise<JsonValue>;
   artifact(artifact: PluginArtifact, options?: PluginWebRequestOptions): Promise<Blob>;
   /** Only settings mounts in an explicitly enabled owner Provider-management session. */
   readonly providers?: {
@@ -293,6 +334,19 @@ export interface PluginWebApi {
     stop(id: string, options?: PluginWebRequestOptions): Promise<JsonValue>;
   };
 }
+export interface PluginWebHost {
+  openRun(runId: string): void;
+  openArtifactLineage(artifactId: string): void;
+  sendToStudio(draft?: {
+    readonly mode?: 'edit' | 'generate' | 'video' | 'video-i2v' | 'video-s2v' | 'tts' | 'transcribe' | 'music' | 'vision' | 'ocr' | 'locate' | 'summarize';
+    readonly artifactId?: string;
+    readonly audioArtifactId?: string;
+    readonly modelRef?: string;
+    readonly prompt?: string;
+    readonly label?: string;
+  }): void;
+  sendToLocalTool(tool: 'crop' | 'diff' | 'html' | 'plugins', options?: { readonly artifactId?: string; readonly secondArtifactId?: string }): void;
+}
 /** Same-origin trusted modules; Shadow DOM is a style boundary, not a security sandbox. */
 export interface PluginWebContext<Container = unknown> {
   readonly container: Container;
@@ -300,6 +354,7 @@ export interface PluginWebContext<Container = unknown> {
   readonly dependency: PluginDependency;
   readonly session: PluginWebSession;
   readonly api: PluginWebApi;
+  readonly host?: PluginWebHost;
   readonly theme: { current(): PluginTheme; subscribe(listener: (theme: PluginTheme) => void): () => void };
 }
 export interface PluginPageModule<Container = unknown> { mount(context: PluginWebContext<Container>): void | (() => void) | Promise<void | (() => void)>; }
