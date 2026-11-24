@@ -25,7 +25,7 @@ const files = directory => Object.fromEntries(fs.readdirSync(directory, { recurs
 try {
   const empty = createCoreCapabilityCatalog();
   assert.equal(empty.snapshot().groups.length, 3); assert.equal(empty.snapshot({ audioEnabled: true }).groups.length, 6);
-  assert.equal(CORE_BRIDGE_TOOLS.length, 45); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 25);
+  assert.equal(CORE_BRIDGE_TOOLS.length, 46); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 26);
   assert(!empty.snapshot().tools.some(tool => tool.name === 'iris_core_export_outbox'));
   assert.deepEqual(empty.snapshot({ outboxEnabled: true }).groups.find(group => group.id === 'outbox').tools, ['iris_core_export_outbox']);
   assert(!empty.snapshot().tools.some(tool => tool.name === 'iris_core_select_run'));
@@ -33,14 +33,14 @@ try {
   assert.deepEqual(selectionCatalog.groups.filter(group => group.tools.includes('iris_core_select_run')).map(group => group.id), ['image-edit', 'image-generate']);
   assert.equal(selectionCatalog.tools.find(tool => tool.name === 'iris_core_select_run').scope, 'create');
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).groups.length, 9);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).tools.length, 30);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).tools.length, 31);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).groups.length, 13);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).tools.length, 38);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).tools.length, 39);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).groups.length, 14);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).tools.length, 40);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).tools.length, 41);
   assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).groups.length, 15);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).tools.length, 41);
-  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|locate|summarize|select_run|run_operations|crop|pixel_diff|video_frames|inbox|render_html|music|video_i2v|video_s2v/.test(name)));
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).tools.length, 42);
+  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|locate|summarize|select_run|run_operations|crop|pixel_diff|video_frames|mux_video_audio|inbox|render_html|music|video_i2v|video_s2v/.test(name)));
   assert.equal(empty.snapshot().pluginTools.length, 2);
   assert(!selectedBridgeTools([]).includes('iris_core_plugin_call'), 'discovery does not select the new business tools');
   assert.deepEqual(empty.snapshot().plugins, []); assert.deepEqual(empty.selectOperations(), []);

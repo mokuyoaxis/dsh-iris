@@ -145,6 +145,7 @@ function usage() {
     '  dsh-iris run crop --data-root <absolute-path> --input <json>',
     '  dsh-iris media diff --data-root <absolute-path> --input <json>',
     '  dsh-iris media frames --data-root <absolute-path> --input <json>',
+    '  dsh-iris media mux --data-root <absolute-path> --input <json>',
     '  dsh-iris media html --data-root <absolute-path> --input <json> --browser-executable <absolute-path> [--browser-no-sandbox <true|false>] [--output <absolute-path>]',
     '  dsh-iris run image --data-root <absolute-path> --provider-config <absolute-path> --input <json>',
     '  dsh-iris run video --data-root <absolute-path> --provider-config <absolute-path> --input <json>',
@@ -804,10 +805,10 @@ async function main(args, providerRegistry) {
     return 0;
   }
 
-  if (args[0] === 'media' && ['diff', 'frames'].includes(args[1])) {
+  if (args[0] === 'media' && ['diff', 'frames', 'mux'].includes(args[1])) {
     const options = flags(args.slice(2), ['data-root', 'input']);
     const input = jsonInput(options.input);
-    const command = args[1] === 'diff' ? 'media.diff' : 'media.frames';
+    const command = args[1] === 'diff' ? 'media.diff' : args[1] === 'mux' ? 'media.mux' : 'media.frames';
     const result = args[1] === 'diff'
       ? await withApplication(options['data-root'], application => application.execute(command, input, { signal: cliAbortController.signal }))
       : await withRuntime('writer', options['data-root'], commands => commands.execute(command, input));

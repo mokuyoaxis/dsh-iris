@@ -80,11 +80,11 @@ try {
   children.push(standaloneStdio);
   await standaloneStdio.initialize();
 
-  // Verify exact tool set (7 tools, zero flow/billing tools) & annotations.
-  const expectedStandalone = ['iris_core_connection', 'iris_core_connections', 'iris_core_crop', 'iris_core_image', 'iris_core_import_image', 'iris_core_pixel_diff', 'iris_core_video_frames'];
+  // Verify exact tool set (8 tools, zero flow/billing tools) & annotations.
+  const expectedStandalone = ['iris_core_connection', 'iris_core_connections', 'iris_core_crop', 'iris_core_image', 'iris_core_import_image', 'iris_core_mux_video_audio', 'iris_core_pixel_diff', 'iris_core_video_frames'];
   for (const listed of [(await standaloneHttp.request('tools/list')).tools, (await standaloneStdio.request('tools/list')).tools]) {
     assert.deepEqual(listed.map(t => t.name).sort(), expectedStandalone);
-    for (const name of ['iris_core_crop', 'iris_core_pixel_diff', 'iris_core_video_frames']) {
+    for (const name of ['iris_core_crop', 'iris_core_mux_video_audio', 'iris_core_pixel_diff', 'iris_core_video_frames']) {
       const tool = listed.find(t => t.name === name);
       assert.deepEqual(tool.annotations, { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }, name + ' annotations');
     }
@@ -316,7 +316,7 @@ try {
   // Legacy frozen connection never gets local-media tools.
   const legacyClient = httpMcpClient(v5Session.origin, JSON.parse(fs.readFileSync(legacyPair.clientFile, 'utf8')).accessToken, { version: '2026-07-28' });
   await legacyClient.initialize();
-  assert(!(await legacyClient.request('tools/list')).tools.some(t => ['iris_core_crop', 'iris_core_pixel_diff', 'iris_core_video_frames'].includes(t.name)));
+  assert(!(await legacyClient.request('tools/list')).tools.some(t => ['iris_core_crop', 'iris_core_mux_video_audio', 'iris_core_pixel_diff', 'iris_core_video_frames'].includes(t.name)));
 
   // Real ffmpeg video frame extraction -> image read -> vision Run creation closed loop (both HTTP and stdio).
   if (ffmpegAvailable()) {
