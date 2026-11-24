@@ -707,3 +707,15 @@ audio { display:block; width:100%; max-width:100%; min-width:0; margin-block:10p
   .lineage-actions { width:100%; }
   .lineage-actions button { flex:1 1 auto; }
 }
+/* Music informed retry banner and Host-owned Plugin Op Auto Form (strict style-src 'self'). */
+.music-retry-banner { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:8px 12px; margin-bottom:10px; border:1px solid color-mix(in srgb,var(--purple) 30%,var(--line)); border-radius:9px; background:var(--tint); font-size:12px; }
+.plugin-op-fields { display:grid; gap:12px; margin-bottom:12px; }
+.plugin-op-field { display:grid; gap:6px; min-width:0; }
+.plugin-op-field input, .plugin-op-field select, .plugin-op-field textarea { width:100%; max-width:100%; min-width:0; }
+.plugin-op-checklist { display:grid; gap:6px; max-height:220px; overflow:auto; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel-2); }
+.plugin-op-check-item { display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; }
+.plugin-op-check-item input { width:auto; margin:0; }
+.plugin-op-artifacts { display:grid; gap:12px; }
+.plugin-op-artifact-card { display:grid; gap:8px; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel); min-width:0; }
+.plugin-op-artifact-card strong { font-size:13px; overflow-wrap:anywhere; }
+.plugin-op-artifact-card video { width:100%; max-height:360px; border-radius:8px; background:#16141c; }
