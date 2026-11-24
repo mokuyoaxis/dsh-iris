@@ -1,13 +1,19 @@
 import {
   definePlugin, defineProviderAdapter, PluginContractError, createCorePluginRegistry, createCorePluginHost, createCoreCapabilityCatalog, createCorePluginWorkbench,
-  type PluginDependency, type PluginKind, type PluginPageModule, type PluginRendererModule, type PluginSettingsModule, type PluginPanelSelection, type JsonValue
+  PLUGIN_MEDIA_KINDS,
+  type PluginDependency, type PluginKind, type PluginMediaKind, type PluginPageModule, type PluginRendererModule, type PluginSettingsModule, type PluginPanelSelection, type JsonValue
 } from '@mokuyoaxis/dsh-iris/plugins';
 import contactSheet from '@mokuyoaxis/dsh-iris/contact-sheet';
 
+const mediaKind: PluginMediaKind = PLUGIN_MEDIA_KINDS[0];
+void mediaKind;
+
 const plugin = definePlugin({
   manifest: { contractVersion: 0, id: 'example.types', version: '1.0.0', compatibility: { min: '0.3.0-alpha.1', maxExclusive: '0.4.0' }, contributions: {
-    operations: [{ id: 'list', version: '1.0.0', title: 'List', mode: 'reader', commands: ['artifact.list'],
-      inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['image', 'audio'] } }, additionalProperties: false } }]
+    operations: [{ id: 'list', version: '1.0.0', title: 'List', mode: 'reader', commands: ['artifact.list', 'artifact.lineage'],
+      artifactInputs: ['audioId'], artifactInputTypes: { audioId: ['audio', 'text'] }, artifactOutputKinds: ['json'],
+      ui: { category: 'local-tool', summary: 'Inspect artifacts and lineage' },
+      inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['image', 'audio'] }, audioId: { type: 'string' } }, additionalProperties: false } }]
   } },
   activate({ onDispose, plugin: identity }) {
     onDispose(async () => { void identity.version; });
@@ -53,12 +59,25 @@ export const page: PluginPageModule<HTMLElement> = { mount({ container, signal }
 export const renderer: PluginRendererModule<HTMLElement> = { mount({ container, artifact }) {
   container.textContent = artifact.id;
 } };
-export const settings: PluginSettingsModule<HTMLElement> = { async mount({ container, api, session, theme, signal }) {
+export const settings: PluginSettingsModule<HTMLElement> = { async mount({ container, api, host, session, theme, signal }) {
   const current = theme.current(); container.dataset.theme = current.mode;
   const off = theme.subscribe(value => { container.dataset.theme = value.mode; });
   signal.throwIfAborted(); void session.operations;
-  const hasVision: boolean = session.vision; void hasVision;
+  const hasVision: boolean = session.vision; const hasMusic: boolean = session.music; void hasVision; void hasMusic;
   if (session.vision) await api.visionModels();
+  if (session.music) await api.musicModels();
+  await api.videoModels({ mode: 'i2v' });
+  await api.artifacts({ kind: 'audio', limit: '10' });
+  await api.artifactMeta('artifact_0123456789abcdef01234567');
+  await api.artifactLineage('artifact_0123456789abcdef01234567');
+  await api.runLineage('run_0123456789abcdef01234567');
+  if (host) {
+    host.openRun('run_0123456789abcdef01234567');
+    host.openArtifactLineage('artifact_0123456789abcdef01234567');
+    host.sendToStudio({ mode: 'video-i2v', artifactId: 'artifact_0123456789abcdef01234567' });
+    host.sendToLocalTool('plugins');
+    host.sendToLocalTool('crop', { artifactId: 'artifact_0123456789abcdef01234567' });
+  }
   if (api.providers) await api.providers.read();
   if (api.pluginOperations) {
     await api.pluginOperations.catalog({ limit: '20' });

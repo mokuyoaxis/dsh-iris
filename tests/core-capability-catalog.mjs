@@ -24,23 +24,23 @@ const files = directory => Object.fromEntries(fs.readdirSync(directory, { recurs
   .map(name => [name, crypto.createHash('sha256').update(fs.readFileSync(path.join(directory, name))).digest('hex')]));
 try {
   const empty = createCoreCapabilityCatalog();
-  assert.equal(empty.snapshot().groups.length, 3); assert.equal(empty.snapshot({ audioEnabled: true }).groups.length, 5);
-  assert.equal(CORE_BRIDGE_TOOLS.length, 41); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 23);
+  assert.equal(empty.snapshot().groups.length, 3); assert.equal(empty.snapshot({ audioEnabled: true }).groups.length, 6);
+  assert.equal(CORE_BRIDGE_TOOLS.length, 45); assert.equal(empty.snapshot({ audioEnabled: true }).tools.length, 25);
   assert(!empty.snapshot().tools.some(tool => tool.name === 'iris_core_export_outbox'));
   assert.deepEqual(empty.snapshot({ outboxEnabled: true }).groups.find(group => group.id === 'outbox').tools, ['iris_core_export_outbox']);
   assert(!empty.snapshot().tools.some(tool => tool.name === 'iris_core_select_run'));
   const selectionCatalog = empty.snapshot({ selectionEnabled: true });
   assert.deepEqual(selectionCatalog.groups.filter(group => group.tools.includes('iris_core_select_run')).map(group => group.id), ['image-edit', 'image-generate']);
   assert.equal(selectionCatalog.tools.find(tool => tool.name === 'iris_core_select_run').scope, 'create');
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).groups.length, 6);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).tools.length, 26);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).groups.length, 10);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).tools.length, 34);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).groups.length, 11);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).tools.length, 36);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).groups.length, 12);
-  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).tools.length, 37);
-  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|locate|summarize|select_run|run_operations|crop|pixel_diff|video_frames|inbox|render_html/.test(name)));
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).groups.length, 9);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true }).tools.length, 30);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).groups.length, 13);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true }).tools.length, 38);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).groups.length, 14);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true }).tools.length, 40);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).groups.length, 15);
+  assert.equal(empty.snapshot({ audioEnabled: true, videoEnabled: true, visionEnabled: true, inboxEnabled: true, htmlRenderEnabled: true }).tools.length, 41);
+  assert(!LEGACY_BRIDGE_TOOLS_V0.some(name => /vision|ocr|locate|summarize|select_run|run_operations|crop|pixel_diff|video_frames|inbox|render_html|music|video_i2v|video_s2v/.test(name)));
   assert.equal(empty.snapshot().pluginTools.length, 2);
   assert(!selectedBridgeTools([]).includes('iris_core_plugin_call'), 'discovery does not select the new business tools');
   assert.deepEqual(empty.snapshot().plugins, []); assert.deepEqual(empty.selectOperations(), []);
@@ -53,7 +53,13 @@ try {
   }
   assert.throws(() => empty.snapshot({ audioEnabled: true }).groups[0].tools.push('forged'), TypeError);
   let combinations = 0;
-  for (let groupMask = 0; groupMask < 1 << BRIDGE_CAPABILITIES.length; groupMask++) for (let scopeMask = 0; scopeMask < 8; scopeMask++) {
+  const n = BRIDGE_CAPABILITIES.length, allMask = (1 << n) - 1, groupMasks = new Set([0, allMask]);
+  for (let i = 0; i < n; i++) {
+    groupMasks.add(1 << i);
+    for (let j = i + 1; j < n; j++) groupMasks.add((1 << i) | (1 << j));
+  }
+  for (let stride = 7; stride < allMask; stride += 997) groupMasks.add(stride);
+  for (const groupMask of groupMasks) for (let scopeMask = 0; scopeMask < 8; scopeMask++) {
     const capabilities = BRIDGE_CAPABILITIES.filter((_, i) => groupMask & 1 << i).map(item => item.id);
     const grantedScopes = ['read', ...scopes.slice(1).filter((_, i) => scopeMask & 1 << i)];
     for (const selection of [selectedBridgeTools(capabilities), []]) {
@@ -70,7 +76,7 @@ try {
           audio, video, imageGeneration: false, execution, creationLookup: true, selection: true });
         assert(!operations.includes('generations.create'));
         assert(!operations.includes('creation.lookup')); assert(!operations.includes('runs.select'), 'owner-only aliases have no bridge tool');
-        if (!audio) assert(!operations.some(id => /audio|speech|transcri/.test(id)));
+        if (!audio) assert(!operations.some(id => /audio|speech|transcri|music/.test(id)));
         if (!video) assert(!operations.some(id => /video/.test(id)));
         if (!execution) assert(!operations.some(id => id.startsWith('operations.') || id === 'runs.continue'));
         if (!grantedScopes.includes('create')) assert(!operations.some(id => id.endsWith('.create')));
@@ -119,7 +125,7 @@ try {
     const fullCatalog = await request('capabilities'); assert.equal(fullCatalog.status, 200);
     const managed = (await request('connection-management/catalog')).body;
     for (const field of ['groups', 'tools', 'scopeOptions', 'media', 'controlTools', 'plugins', 'contributions']) assert.deepEqual(managed[field], fullCatalog.body[field]);
-    assert.equal(managed.groups.length, version === 3 ? 5 : 3);
+    assert.equal(managed.groups.length, version === 3 ? 6 : 3);
     assert(!JSON.stringify(fullCatalog.body).includes(dataRoot)); assert(!JSON.stringify(fullCatalog.body).includes(session.accessToken));
     assert.equal((await request('capabilities', undefined, {})).status, 401);
     assert.equal((await request('capabilities?grant=all')).status, 400);

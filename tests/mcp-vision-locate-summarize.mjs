@@ -195,7 +195,7 @@ try {
 
   // Verify catalog exposes both new v5 groups under media: 'vision'.
   const catalog = await ownerJson('/api/v0/connection-management/catalog');
-  assert.equal(catalog.groups.length, 10);
+  assert.equal(catalog.groups.length, 13);
   assert.deepEqual(catalog.media.find(m => m.id === 'vision').capabilities, ['vision', 'ocr', 'vision-locate', 'media-summarize']);
 
   const locateOnly = await createMcpClients('Locate only', ['vision-locate']);

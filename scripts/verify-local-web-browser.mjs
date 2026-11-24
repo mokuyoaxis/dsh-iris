@@ -34,6 +34,7 @@ import { verifyPluginStarterBrowser } from '../tests/fixtures/plugin-starter-bro
 import { verifyNetworkBrowser } from '../tests/fixtures/network-browser-probe.mjs';
 import { verifySchedulingBrowser } from '../tests/fixtures/scheduling-browser-probe.mjs';
 import { verifyLocalToolsBrowser } from '../tests/fixtures/local-tools-browser-probe.mjs';
+import { verifyV033Browser } from '../tests/fixtures/v033-browser-probe.mjs';
 
 const args = process.argv.slice(2);
 const visionMode = args.slice(4).find(flag => ['--vision', '--locate', '--summarize'].includes(flag));
@@ -47,6 +48,12 @@ if (localTools) {
   assert(args.slice(4).every(flag => ['--no-sandbox', '--local-tools'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
     '--local-tools runs only its focused scenarios');
   args.splice(args.indexOf('--local-tools'), 1);
+}
+const v033Mode = args.includes('--v033');
+if (v033Mode) {
+  assert(args.slice(4).every(flag => ['--no-sandbox', '--v033'].includes(flag)) && new Set(args.slice(4)).size === args.slice(4).length,
+    '--v033 runs only its focused scenarios');
+  args.splice(args.indexOf('--v033'), 1);
 }
 const schedulingWorkbench = args.includes('--scheduling');
 if (schedulingWorkbench) {
@@ -392,6 +399,14 @@ try {
         session = await api.start({ port }); return session;
       } });
     assert.deepEqual(report.browserErrors, [], 'video has no browser exceptions or CSP violations');
+  } else if (v033Mode) {
+    await verifyV033Browser({ out, cdp, evaluate, click, wait, chooseToken, report, save, dimensions, measure, capture,
+      restart: async options => {
+        const port = Number(new URL(session.origin).port); await api.dispose();
+        api = createLocalReadApi({ serveWorkbench: true, ...options });
+        session = await api.start({ port }); return session;
+      } });
+    assert.deepEqual(report.browserErrors, [], '--v033 has no browser exceptions or CSP violations');
   } else if (localTools) {
     await verifyLocalToolsBrowser({ out, executable, noSandbox: report.noSandbox, cdp, evaluate, click, wait, chooseToken, readyRun, report, save, dimensions, measure, capture, downloads, pausedResponses,
       restart: async (root, modes = {}) => {

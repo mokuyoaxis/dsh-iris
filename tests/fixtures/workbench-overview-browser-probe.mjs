@@ -60,14 +60,14 @@ export async function verifyOverviewBrowser({ out, dataRoot, chosenRunId, tokenF
     const before = tree(root), originalConfig = fs.readFileSync(config);
     await dimensions(1440, 1000); await login();
     await check('overview bookmark restores directly and uses the authenticated session', "location.hash==='#overview'&&document.querySelector('#overview-tab').getAttribute('aria-current')==='page'&&document.querySelector('#page-label').textContent==='总览'");
-    await check('current candidate counts come from image/audio catalogues, not six declared uses', "document.querySelector('#overview-stats').textContent.includes('3 个')&&document.querySelector('#overview-stats').textContent.includes('0 个')&&document.querySelectorAll('[data-overview-create]:not(:disabled)').length===4");
+    await check('current candidate counts come from image/audio/music catalogues, not six declared uses', "document.querySelector('#overview-stats').textContent.includes('4 个')&&document.querySelector('#overview-stats').textContent.includes('0 个')&&document.querySelectorAll('[data-overview-create]:not(:disabled)').length===5");
     await check('saved model uses, selection policy and historical evidence remain separate facts', `${card('image')}.textContent.includes('1 个已标注 · 自动选择')&&${card('image')}.textContent.includes('1 通过 · 0 未通过')&&${card('tts')}.textContent.includes('0 通过 · 1 未通过')&&${card('transcribe')}.textContent.includes('尚无实测记录')`);
-    await check('v3 video/vision name their root gates while music names its existing CLI/DSH boundary', `${card('video')}.querySelector('.overview-entry').textContent==='需视频工作区'&&${card('video')}.textContent.includes('此工作区未接入视频流程')&&${card('vision')}.querySelector('.overview-entry').textContent==='需视觉工作区'&&${card('vision')}.textContent.includes('此工作区未接入视觉流程')&&${card('music')}.querySelector('.overview-entry').textContent==='CLI / DSH'&&${card('music')}.textContent.includes('1 个已标注')`);
+    await check('v3 video/vision name their root gates while music is connected on v3+', `${card('video')}.querySelector('.overview-entry').textContent==='需视频工作区'&&${card('video')}.textContent.includes('此工作区未接入视频流程')&&${card('vision')}.querySelector('.overview-entry').textContent==='需视觉工作区'&&${card('vision')}.textContent.includes('此工作区未接入视觉流程')&&${card('music')}.querySelector('.overview-entry').textContent==='面板已接入'&&${card('music')}.textContent.includes('1 个已标注')&&${card('music')}.textContent.includes('1 个当前候选')`);
     await capture('overview-desktop'); await measure('overview-desktop');
     await click('[data-overview-capability="image"] summary');
     await click('#overview-refresh'); await wait(() => evaluate("!document.querySelector('#overview-refresh').disabled"), 'configured refresh');
     await check('refresh retains expanded evidence and performs no new test', `${card('image')}.querySelector('details').open&&${card('image')}.textContent.includes('最近实测记录')`);
-    for (const [mode, title] of [['generate', '从一句想法开始'], ['edit', '从一张图片开始'], ['tts', '让文字有声音'], ['transcribe', '把声音留下来']]) {
+    for (const [mode, title] of [['generate', '从一句想法开始'], ['edit', '从一张图片开始'], ['tts', '让文字有声音'], ['music', '让旋律留下来'], ['transcribe', '把声音留下来']]) {
       await click('[data-overview-create="' + mode + '"]');
       await check(mode + ' shortcut opens its real form without submission', `!document.querySelector('#workspace').hidden&&document.querySelector('#viewer-empty h2').textContent===${JSON.stringify(title)}&&document.querySelector('[data-creation-mode="${mode}"]').getAttribute('aria-pressed')==='true'&&!location.hash`);
       await click('#overview-tab');
@@ -87,7 +87,7 @@ export async function verifyOverviewBrowser({ out, dataRoot, chosenRunId, tokenF
     await wait(() => evaluate("document.querySelector('#providers-feedback').textContent.startsWith('已保存')&&!document.querySelector('#provider-save').disabled"), 'provider name saved');
     await click('#provider-cancel'); await click('[data-provider-section="pools"]');
     await field('#provider-assignments [data-function="tts"]', 'disabled'); await click('#provider-pool-save');
-    await wait(() => evaluate("document.querySelector('#providers-feedback').textContent.startsWith('已保存')&&!document.querySelector('#provider-pool-fields').disabled&&document.querySelector('#model-summary').textContent==='2 个候选'"), 'explicit disabled TTS policy');
+    await wait(() => evaluate("document.querySelector('#providers-feedback').textContent.startsWith('已保存')&&!document.querySelector('#provider-pool-fields').disabled&&document.querySelector('#model-summary').textContent==='3 个候选'"), 'explicit disabled TTS policy');
     await click('#overview-tab');
     await check('explicit provider save updates the overview without reloading or making health claims', `${card('tts')}.textContent.includes('功能已停用')&&${card('tts')}.textContent.includes('0 个当前候选')&&document.querySelector('[data-overview-create="tts"]').disabled&&${card('tts')}.textContent.includes('0 通过 · 1 未通过')`);
     const savedConfig = fs.readFileSync(config);

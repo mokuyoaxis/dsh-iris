@@ -51,10 +51,11 @@ try {
     allowConnectionManagement: true, connectionStore: path.join(root, 'connections'), allowMcp: true, executionPorts: fixture };
   api = createLocalReadApi(options); services.push(api); session = await api.start();
   const status = await ok('/api/v0/session'); assert.equal(status.video, true); assert.equal(status.audio, true); assert(status.operations.includes('videos.create'));
-  const models = await ok('/api/v0/video-models'); assert.deepEqual(models.models.map(model => model.modelRef), [VIDEO_MODEL]);
+  const models = await ok('/api/v0/video-models'); assert.deepEqual(models.models.map(model => model.modelRef), [VIDEO_MODEL, 'video-fixture::wan-s2v', 'video-fixture::wan2.6-i2v']);
+  const t2vModels = await ok('/api/v0/video-models?mode=t2v'); assert.deepEqual(t2vModels.models.map(model => model.modelRef), [VIDEO_MODEL]);
   assert(!JSON.stringify(models).includes('PRIVATE_KEY')); assert(!JSON.stringify(models).includes('aliyuncs'));
-  const catalog = await ok('/api/v0/connection-management/catalog'); assert.equal(catalog.groups.length, 6);
-  assert.deepEqual(catalog.media.find(item => item.id === 'video').capabilities, ['video-generate']);
+  const catalog = await ok('/api/v0/connection-management/catalog'); assert.equal(catalog.groups.length, 9);
+  assert.deepEqual(catalog.media.find(item => item.id === 'video').capabilities, ['video-generate', 'video-i2v', 'video-s2v']);
   const creationKey = uuid(), input = { modelRef: VIDEO_MODEL, prompt: 'A purple iris in the breeze', duration: 2 };
   const created = await ok('/api/v0/videos', input, { key: creationKey }); assert.equal(fixture.calls.submit.length, 0);
   assert.equal((await ok('/api/v0/videos', input, { key: creationKey })).flow.id, created.flow.id);

@@ -54,7 +54,7 @@ try {
   const status = await ok('/api/v0/session'); assert.equal(status.audio, true); assert(status.operations.includes('speeches.create'));
   const models = await ok('/api/v0/audio-models'); assert.deepEqual(models.models.map(model => model.capability).sort(), ['transcribe', 'tts']);
   assert(!JSON.stringify(models).includes('AUDIO_PRIVATE_KEY_MARKER')); assert(!JSON.stringify(models).includes('aliyuncs.com'));
-  const catalog = await ok('/api/v0/connection-management/catalog'); assert.equal(catalog.groups.length, 5);
+  const catalog = await ok('/api/v0/connection-management/catalog'); assert.equal(catalog.groups.length, 6);
   assert.deepEqual(catalog.media.find(item => item.id === 'tts').capabilities, ['tts']);
   const input = { modelRef: SPEECH_MODEL, text: 'Hello Iris', voice: 'Cherry' }, creationKey = uuid();
   const created = await ok('/api/v0/speeches', input, { key: creationKey });

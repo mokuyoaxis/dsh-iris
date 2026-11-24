@@ -27,7 +27,8 @@ try {
   const html = fs.readFileSync(new URL('../lib/web/index.html', import.meta.url), 'utf8');
   const localToolsJs = fs.readFileSync(new URL('../lib/web/local-tools.js', import.meta.url), 'utf8');
   const lineageJs = fs.readFileSync(new URL('../lib/web/lineage.js', import.meta.url), 'utf8');
-  for (const [name, src] of [['local-tools.js', localToolsJs], ['lineage.js', lineageJs]]) {
+  const pluginOpFormJs = fs.readFileSync(new URL('../lib/web/plugin-op-form.js', import.meta.url), 'utf8');
+  for (const [name, src] of [['local-tools.js', localToolsJs], ['lineage.js', lineageJs], ['plugin-op-form.js', pluginOpFormJs]]) {
     assert(!src.includes('innerHTML'), name + ' must never use innerHTML');
     assert(!src.includes('.style.'), name + ' must never mutate inline styles');
     for (const match of src.matchAll(/\$\('#([a-z0-9-]+)'\)/g)) {

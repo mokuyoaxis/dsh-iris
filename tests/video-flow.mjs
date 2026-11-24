@@ -7,7 +7,6 @@ import { createApplicationRuntime } from '../lib/application-runtime.js';
 import { createOperationRunner } from '../lib/operation-runner.js';
 import { readOperation } from '../lib/operation-store.js';
 import { readCoreArtifactBytes } from '../lib/core-artifacts.js';
-import { normalizeVideoFlowInput } from '../lib/video-flow-input.js';
 import { VIDEO_MODEL, VIDEO_MP4, VIDEO_WEBM, videoFlowFixture } from './fixtures/video-flow-fixture.mjs';
 import { AUDIO_WAV, SPEECH_MODEL, audioFlowFixture } from './fixtures/audio-flow-fixture.mjs';
 import { FLOW_SOURCE, FLOW_MODEL, imageFlowFixture } from './fixtures/image-flow-fixture.mjs';
@@ -29,8 +28,8 @@ try {
       const sample = await setup(uuid()); await sample.app.execute('creation.video', { key: uuid(), value });
     });
   }
-  assert.throws(() => normalizeVideoFlowInput({ model_ref: 'video-fixture::wan-s2v', prompt: 'no' }));
   const sample = await setup('normal'), key = uuid();
+  await assert.rejects(sample.app.execute('creation.video', { key: uuid(), value: { ...input, modelRef: 'video-fixture::wan-s2v' } }), { code: 'IRIS_VIDEO_FLOW_INPUT_INVALID' });
   const created = await sample.app.execute('creation.video', { key, value: input });
   assert.equal(created.flow.run.schemaVersion, 4); assert.equal(created.flow.run.recipe, 'video-generate/v0');
   assert.equal(created.flow.run.input.prompt, input.prompt.trim()); assert.equal(created.flow.status, 'not_started');

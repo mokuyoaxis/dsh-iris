@@ -65,7 +65,8 @@ try {
   const mixed = ['wan2.6-t2v', 'wan2.6-i2v', 'wan2.2-s2v', 'wan2.6-r2v'].map(model => ({ adapter, model: 'a::' + model }));
   assert.deepEqual(videoTaskCandidates(mixed, { videoMode: 'i2v' }).map(value => value.model), ['a::wan2.6-i2v']);
   assert.deepEqual(videoTaskCandidates(mixed, { videoMode: 't2v' }).map(value => value.model), ['a::wan2.6-t2v']);
-  assert.throws(() => normalizeVideoFlowInput({ model_ref: 'a::wan2.2-s2v', prompt: 'unsupported stored shape' }), { code: 'IRIS_VIDEO_FLOW_INPUT_INVALID' });
+  assert.throws(() => normalizeVideoFlowInput({ model_ref: 'a::wan2.2-s2v', prompt: 'unsupported stored shape', audio_path: audio }), { code: 'IRIS_VIDEO_FLOW_INPUT_INVALID' });
+  assert.equal(videoModelSupportsMode('wan2.2-s2v', 't2v'), false, 'default s2v family does not support t2v without explicit plugin supportsVideoMode override');
   assert.equal(normalizeVideoFlowInput({ model_ref: 'a::wan2.6-i2v', prompt: 'historical input' }).model_ref, 'a::wan2.6-i2v', 'record normalization must keep historical fields readable; new Flow admission is tested separately');
   assert(videoModelSupportsMode('compatible-video-v1', 't2v')); assert(videoModelSupportsMode('compatible-video-v1', 'i2v'));
   for (const [input, modelRef, expectedImage] of [

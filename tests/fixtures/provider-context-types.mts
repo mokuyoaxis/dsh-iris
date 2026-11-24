@@ -11,6 +11,11 @@ function adapter(provider: Readonly<ProviderConnection>, context: Readonly<Provi
     },
     async submit({ model, input, signal }) {
       void input.prompt;
+      void input.firstFrame?.mediaType;
+      void input.audio?.filename;
+      void input.resolution;
+      void input.duration;
+      void input.timeoutMs;
       await context.network.fetch('https://fixture.invalid/' + model, { signal });
       return { kind: 'accepted', remoteTaskId: 'original-id' };
     },
@@ -32,8 +37,13 @@ function adapter(provider: Readonly<ProviderConnection>, context: Readonly<Provi
     unsupported: { poll: 'example', cancel: 'example', download: 'example' } });
 }
 definePlugin({ manifest: { contractVersion: 0, id: 'example.types', version: '1.0.0', compatibility: { min: '0.3.0-alpha.1', maxExclusive: '0.4.0' },
-  contributions: { providers: [{ id: 'images', version: '1.0.0', title: 'Example', capabilities: ['image-gen'] }] } },
-  activate: () => ({ providers: { images: { normalizeEndpoint: normalizeMediaEndpoint, createAdapter: adapter } } }) });
+  contributions: { providers: [{ id: 'images', version: '1.0.0', title: 'Example', capabilities: ['image-gen', 'video-gen'] }] } },
+  activate: () => ({ providers: { images: {
+    normalizeEndpoint: normalizeMediaEndpoint,
+    supportsVideoMode: (_modelId, mode) => mode === 'i2v',
+    modelParameters: () => [{ id: 'resolution', type: 'string', label: 'Resolution', choices: ['720P', '1080P'] }],
+    createAdapter: adapter
+  } } }) });
 const error = new ProviderContractError('Rejected', { stage: 'prepare', category: 'invalid_request', acceptance: 'not_accepted' });
 const record: ProviderErrorRecord = error.toJSON(); void record;
 // @ts-expect-error Submission must state the remote identity or a definite completed/acceptance outcome.
