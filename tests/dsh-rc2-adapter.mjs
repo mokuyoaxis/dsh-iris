@@ -86,7 +86,7 @@ for (const kind of ['error', 'aborted']) {
 const missing = createDshHostAdapter({ get: name => name === 'llm' ? services.llm : undefined }, { version: '0.2.0-rc.2' });
 assert(!missing.ports.visionModel && missing.unavailable.visionModel.kind === 'unavailable');
 
-for (const version of ['0.1.2-rc.1', '0.1.5-rc.1', '0.1.7-rc.2', '0.2.1-alpha.4', 'unknown']) {
+for (const version of ['0.1.2-rc.1', '0.1.5-rc.1', '0.1.7-rc.2', '0.2.1-alpha.4', '0.2.1-rc.5', '0.2.2-rc.5', 'unknown']) {
   const older = createDshHostAdapter({ get: name => services[name] }, { version });
   finishKind = 'stop';
   assert.equal(await older.ports.visionModel.analyze({ question: 'q', ref: found }), 'fixture answer');

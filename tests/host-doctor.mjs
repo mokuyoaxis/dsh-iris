@@ -61,10 +61,15 @@ assert(!JSON.stringify(healthy).includes('Host Doctor 不得调用端口'), '报
 assert(formatDoctorReport(healthy).includes('Iris Doctor ' + version + ' · host'), '文本报告应复用统一格式');
 for (const [dshVersion, expected] of [
   ...['0.1.2-rc.1', '0.1.5-rc.1', '0.1.5-rc.2', '0.1.5-rc.3', '0.1.7-rc.1', '0.1.7-rc.2',
-    '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1', '0.2.1-alpha.2', '0.2.1-alpha.3', '0.2.1-alpha.4']
+    '0.2.0-rc.1', '0.2.0-rc.2',
+    '0.2.1-alpha.1', '0.2.1-alpha.2', '0.2.1-alpha.3', '0.2.1-alpha.4', '0.2.1-alpha.5',
+    '0.2.1-rc.1', '0.2.1-rc.2', '0.2.1-rc.3', '0.2.1-rc.4', '0.2.1-rc.5',
+    '0.2.2-alpha.2', '0.2.2-alpha.3',
+    '0.2.2-rc.1', '0.2.2-rc.2', '0.2.2-rc.3', '0.2.2-rc.4', '0.2.2-rc.5']
     .flatMap(value => [[value, 'ok'], [value + '+fixture', 'ok']]),
   ...['0.1.0-rc.8', '0.1.1-rc.2', '0.1.2-rc.9', '0.1.2', '0.1.5-alpha.2', '0.1.5-rc.4',
-    '0.1.7-rc.3', '0.2.0-rc.3', '0.2.0', '0.2.1-alpha.5', '0.2.1'].map(value => [value, 'error'])
+    '0.1.7-rc.3', '0.2.0-rc.3', '0.2.0', '0.2.1-alpha.6', '0.2.1-rc.6', '0.2.1',
+    '0.2.2-alpha.1', '0.2.2-rc.6', '0.2.2', '0.2.3-alpha.1', '0.2.3-alpha.2'].map(value => [value, 'error'])
 ]) {
   const report = hostDoctor(defineHostAdapter({ id: 'deepseek-harness', version: dshVersion, ports: fullPorts }),
     evidence, { packageVersion: version });

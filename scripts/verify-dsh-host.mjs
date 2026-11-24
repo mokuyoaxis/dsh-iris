@@ -81,8 +81,55 @@ try {
     return fiber;
   };
   await mount(LocalAttachmentStore, { dshHome: process.env.DSH_HOME });
+  // DSH 0.2.3+ SystemPrompt 声明注入 sessionProjections；按真实声明探测挂载官方服务。
+  if (Array.isArray(SystemPrompt.inject) && SystemPrompt.inject.includes('sessionProjections')) {
+    const { SessionProjectionRegistry } = await load('@deepseek-ai/dsh-session-projection');
+    await mount(SessionProjectionRegistry, {});
+  }
   await mount(SystemPrompt, {});
   await mount(ToolRuntime, {});
+  // DSH 0.2.2+ 将工具执行拆分至插件化 executor（官方 NativeToolExecutor 或 dsh-tools/pipeline）。
+  if (typeof ctx.get('tools')?.setExecutor === 'function') {
+    let executorMounted = false;
+    try {
+      const nativeMod = await load('@deepseek-ai/dsh-tool-executor-native');
+      const NativeExecutor = nativeMod.NativeToolExecutor || nativeMod.default;
+      if (NativeExecutor) {
+        await mount(NativeExecutor, {});
+        executorMounted = true;
+        report.toolExecutor = 'dsh-tool-executor-native';
+      }
+    } catch (_) { /* 最小 SDK 夹具未装独立 native executor 时复用 dsh-tools/pipeline */ }
+    if (!executorMounted) {
+      const { ToolExecutionPipeline, executeToolBatch } = await load('@deepseek-ai/dsh-tools/pipeline');
+      const { projectToolSchema } = await load('@deepseek-ai/dsh-tools');
+      await mount({
+        inject: ['tools'],
+        apply(scope) {
+          const pipeline = new ToolExecutionPipeline(scope);
+          scope.get('tools').setExecutor({
+            describe: (tools) => ({ schemas: tools.map(tool => projectToolSchema(tool, true)) }),
+            execute: (input) => executeToolBatch(input, pipeline, () => 4)
+          });
+        }
+      });
+      report.toolExecutor = 'dsh-tools/pipeline';
+    }
+  } else {
+    report.toolExecutor = 'builtin';
+  }
+  const execTool = async ({ callId, name, arguments: args, agent, signal }) => {
+    const tools = ctx.get('tools');
+    if (typeof tools.setExecutor === 'function') {
+      const batch = await tools.execute({
+        calls: [{ type: 'tool-call', id: callId, name, arguments: JSON.stringify(args ?? {}) }],
+        agent,
+        signal
+      });
+      return batch.results[0].result;
+    }
+    return tools.execute({ callId, name, arguments: args, agent, signal });
+  };
   await mount(SkillRegistry, {});
   await mount(LlmRuntime, {});
   const defaultFiber = await mount(AgentDefaultModelConfig, { provider: 'rc2-fixture', model: 'fixture-vision' });
@@ -285,7 +332,7 @@ try {
     assert.deepEqual(fs.readFileSync(uploaded.path), source, '导入保留上传源文件');
     assert(!JSON.stringify(imported).includes(work), '导入结果不暴露宿主路径');
     for (const arguments_ of [{ image_path: uploaded.path }, { attachment_id: ref.attachmentId }]) {
-      const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_import_image', arguments: arguments_,
+      const result = await execTool({ callId: crypto.randomUUID(), name: 'iris_import_image', arguments: arguments_,
         agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
       assert.equal(result.isError, false, JSON.stringify(result));
       const text = result.content.find(block => block.type === 'text').text;
@@ -304,7 +351,7 @@ try {
       ['iris_look_at_image', { image_path: input, question: 'fixture' }],
       ['iris_relook_attachment', { attachment_id: ref.attachmentId, question: 'fixture' }]
     ]) {
-      const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name, arguments: arguments_,
+      const result = await execTool({ callId: crypto.randomUUID(), name, arguments: arguments_,
         agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
       assert.equal(result.isError, false, JSON.stringify(result));
       assert(result.content.some(block => block.type === 'text' && block.text.includes('fixture answer')));
@@ -329,7 +376,7 @@ try {
   fs.writeFileSync(ocrInput, ocrSource);
   await check('M4 actual Agent OCR and WebServer OCR preserve zero overlap and per-block bytes', async () => {
     const before = modelCalls;
-    const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_long_ocr',
+    const result = await execTool({ callId: crypto.randomUUID(), name: 'iris_long_ocr',
       arguments: { image_path: ocrInput, chunk_height: 100, overlap: 0 },
       agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
     assert.equal(result.isError, false, JSON.stringify(result));
@@ -368,7 +415,7 @@ try {
   await check('M4 actual Agent and WebServer locate retain original pixel bbox and bytes', async () => {
     const before = modelCalls;
     const input = path.join(work, 'vision-input.png');
-    const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_locate',
+    const result = await execTool({ callId: crypto.randomUUID(), name: 'iris_locate',
       arguments: { image_path: input, target: 'red region' }, agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
     assert.equal(result.isError, false); assert(result.content.some(block => block.text?.includes('bbox (1,1,5,4) / 8x6')));
     const response = await fetch(allowedOrigin + '/iris/api/actions/locate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -398,7 +445,7 @@ try {
         ['iris_locate', 'locate', { artifact_id: image.id, target: 'red region' }],
         ['iris_long_ocr', 'ocr', { artifact_id: screenshot.id, chunk_height: 100, overlap: 0 }]
       ]) {
-        const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name, arguments: input,
+        const result = await execTool({ callId: crypto.randomUUID(), name, arguments: input,
           agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
         assert.equal(result.isError, false, JSON.stringify(result));
         assert(result.content.some(block => block.text?.includes(input.artifact_id)));
@@ -500,7 +547,7 @@ try {
     assert.equal(spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=c=red:size=160x100:rate=12:duration=2',
       '-pix_fmt', 'yuv420p', video], { encoding: 'utf8' }).status, 0);
     const before = modelCalls;
-    const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_media_summarize',
+    const result = await execTool({ callId: crypto.randomUUID(), name: 'iris_media_summarize',
       arguments: { video_path: video, max_frames: 3, transcribe: false }, agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
     assert.equal(result.isError, false);
     const published = result.content.find(block => block.type === 'image').attachment;
@@ -515,7 +562,7 @@ try {
   });
   await check('Core frame Artifacts feed actual Agent and WebServer summaries without ffmpeg or Core writes', async () => {
     const video = path.join(work, 'summary.mp4');
-    const extracted = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_video_frames',
+    const extracted = await execTool({ callId: crypto.randomUUID(), name: 'iris_video_frames',
       arguments: { video_path: video, max_frames: 3 }, agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
     assert.equal(extracted.isError, false);
     const idsText = extracted.content.find(block => block.text?.includes('frame_artifact_ids:')).text;
@@ -528,7 +575,7 @@ try {
     fs.renameSync(video, video + '.unavailable'); process.env.PATH = emptyPath;
     try {
       const input = { frame_artifact_ids: [...ids].reverse(), transcribe_text: '已有转写文字' };
-      const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_media_summarize',
+      const result = await execTool({ callId: crypto.randomUUID(), name: 'iris_media_summarize',
         arguments: input, agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
       assert.equal(result.isError, false); assert(result.content.some(block => block.text?.includes('已选帧')));
       const displayed = result.content.find(block => block.type === 'image').attachment;
@@ -583,7 +630,7 @@ try {
   await check('actual tool dispatch reaches Core diff and publishes a real DSH image', async () => {
     const other = path.join(work, 'other.png');
     await sharp({ create: { width: 8, height: 6, channels: 3, background: '#0000ff' } }).png().toFile(other);
-    const result = await ctx.get('tools').execute({
+    const result = await execTool({
       callId: crypto.randomUUID(), name: 'iris_pixel_diff',
       arguments: { attachment_a_id: ref.attachmentId, image_b_path: other },
       agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal
@@ -620,7 +667,7 @@ try {
       return originalFetch(input, options);
     };
     try {
-      const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_generate_music',
+      const result = await execTool({ callId: crypto.randomUUID(), name: 'iris_generate_music',
         arguments: { prompt: 'offline compatibility fixture', model, retry_502: 0 },
         agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
       assert.equal(result.isError, false, JSON.stringify(result));
@@ -670,7 +717,7 @@ try {
       return originalFetch(input, options);
     };
     try {
-      const result = await ctx.get('tools').execute({ callId: crypto.randomUUID(), name: 'iris_edit_image',
+      const result = await execTool({ callId: crypto.randomUUID(), name: 'iris_edit_image',
         arguments: { source_artifact_id: sourceArtifact.id, prompt: 'change red to green', model },
         agent: { ctx, session: { id: 'fixture' } }, signal: new AbortController().signal });
       assert.equal(result.isError, false, JSON.stringify(result));
