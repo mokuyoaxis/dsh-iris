@@ -105,7 +105,7 @@
       </section>
       <details id="overview-tools" class="overview-tools card"><summary><span>更多 Core 工具 <small>现有入口与覆盖范围</small></span><span class="disclosure">展开</span></summary><div class="overview-tool-grid">
         <article><h3>裁剪与图片差异</h3><p>工作台「本地工具」面板支持 EXIF 方向对齐的任意裁剪与双图差异热力图（零计费）；CLI 与 MCP local-media 分组也支持。</p><div class="overview-tool-actions"><button class="quiet" type="button" data-local-tool="crop">打开裁剪</button><button class="quiet" type="button" data-local-tool="diff">图片差异</button></div><code>run crop · media diff</code></article>
-        <article><h3>视频抽帧</h3><p>视频作品流程已支持本地抽帧并带入摘要草稿，需系统 ffmpeg / ffprobe；CLI 与 MCP local-media 分组也支持。</p><code>media frames</code></article>
+        <article><h3>视频抽帧与合轨</h3><p>视频流程支持本地均匀抽帧、一键提取尾帧直连图生视频/摘要，工作台「本地工具」亦支持视频与音乐/语音零计费合轨（均需系统 ffmpeg / ffprobe）；CLI 与 MCP local-media 分组也支持。</p><div class="overview-tool-actions"><button class="quiet" type="button" data-local-tool="mux">音视频合轨</button></div><code>media frames · media mux</code></article>
         <article><h3>HTML 截图</h3><p>工作台「本地工具」面板支持无网络/无脚本沙箱 HTML 截图（启动时需显式指定 Chromium 与本地写入开关），DSH 使用宿主浏览器。</p><div class="overview-tool-actions"><button class="quiet" type="button" data-local-tool="html">打开 HTML 截图</button></div><code>media html</code></article>
         <article><h3>提示词优化与组装</h3><p>共享核心与 DSH 泡泡已有实现，需对应文本模型服务；独立 Core 面板与 MCP 待接入。</p></article>
       </div></details>
@@ -170,7 +170,7 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
     <section id="gallery-panel" hidden aria-labelledby="gallery-title">
       <div class="page-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h1 id="gallery-title">灵感，留在这里。</h1><p class="muted">每一次选择，都可以回到原来的创作。</p></div><button id="gallery-new" class="secondary" type="button">＋ 新建流程</button></div>
       <div id="gallery-types" class="view-switch gallery-types" aria-label="作品类别" hidden><button type="button" data-gallery-kind="image" aria-pressed="true">图片</button><button type="button" data-gallery-kind="video" aria-pressed="false" hidden>视频</button><button type="button" data-gallery-kind="speech" aria-pressed="false">语音</button><button type="button" data-gallery-kind="transcribe" aria-pressed="false">转写</button><button type="button" data-gallery-kind="music" aria-pressed="false" hidden>音乐</button><button type="button" data-gallery-kind="vision" aria-pressed="false" hidden>看图</button><button type="button" data-gallery-kind="ocr" aria-pressed="false" hidden>OCR</button><button type="button" data-gallery-kind="locate" aria-pressed="false" hidden>定位</button><button type="button" data-gallery-kind="summarize" aria-pressed="false" hidden>摘要</button></div>
-      <div class="gallery-toolbar"><div id="gallery-filters" class="view-switch" aria-label="作品筛选"><button type="button" data-filter="all" aria-pressed="true">全部 <span>0</span></button><button type="button" data-filter="selected" aria-pressed="false">已选择 <span>0</span></button><button type="button" data-filter="unselected" aria-pressed="false">未选择 <span>0</span></button></div><button id="gallery-refresh" class="quiet" type="button">刷新</button></div>
+      <div class="gallery-toolbar"><div id="gallery-filters" class="view-switch" aria-label="作品筛选"><button type="button" data-filter="all" aria-pressed="true">全部 <span>0</span></button><button type="button" data-filter="selected" aria-pressed="false">已选择 <span>0</span></button><button type="button" data-filter="unselected" aria-pressed="false">未选择 <span>0</span></button></div><input id="gallery-search" class="gallery-search" type="search" placeholder="快筛已加载流程（模型 / 类型 / ID）" aria-label="快筛已加载流程"><button id="gallery-refresh" class="quiet" type="button">刷新</button></div>
       <p id="gallery-feedback" class="muted" role="status" aria-live="polite"></p>
       <div id="gallery-grid" class="gallery-grid" aria-busy="false"></div>
       <div id="gallery-empty" class="empty-collection" hidden><span aria-hidden="true">✧</span><h2>留一点空间给下一次灵感</h2><p class="muted">这里还没有符合筛选的流程。已有作品和选择仍保留在原工作区。</p></div>
@@ -190,6 +190,7 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
       <div id="local-tools-tabs" class="view-switch tools-tabs" aria-label="本地工具切换">
         <button type="button" data-local-tool-tab="crop" aria-pressed="true">任意裁剪</button>
         <button type="button" data-local-tool-tab="diff" aria-pressed="false">双图差异</button>
+        <button type="button" data-local-tool-tab="mux" aria-pressed="false" hidden>音视频合轨</button>
         <button type="button" data-local-tool-tab="html" aria-pressed="false">HTML 截图</button>
         <button type="button" data-local-tool-tab="plugins" aria-pressed="false" hidden>扩展业务</button>
       </div>
@@ -239,12 +240,14 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
                 <button id="tool-crop-reload" type="button" hidden>重新读取裁剪预览</button>
                 <button id="tool-crop-download" type="button">下载裁剪 PNG</button>
                 <button id="tool-crop-lineage" class="quiet" type="button">查看血缘</button>
+                <button id="tool-crop-copy-id" class="quiet copy-id-button" type="button">复制 ID</button>
                 <button class="secondary" type="button" data-tool-handoff="edit" hidden>用裁剪图改图</button>
                 <button class="secondary" type="button" data-tool-handoff="video-i2v" hidden>用裁剪图图生视频</button>
                 <button class="secondary" type="button" data-tool-handoff="vision" hidden>用裁剪图看图</button>
                 <button class="secondary" type="button" data-tool-handoff="ocr" hidden>用裁剪图 OCR</button>
                 <button class="secondary" type="button" data-tool-handoff="locate" hidden>用裁剪图定位</button>
               </div>
+              <div id="tool-crop-outbox"></div>
             </div>
           </div>
         </section>
@@ -293,13 +296,62 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
             <button id="tool-diff-reload" type="button" hidden>重新读取热力图</button>
             <button id="tool-diff-download" type="button">下载热力图 PNG</button>
             <button id="tool-diff-lineage" class="quiet" type="button">查看血缘</button>
+            <button id="tool-diff-copy-id" class="quiet copy-id-button" type="button">复制 ID</button>
           </div>
+          <div id="tool-diff-outbox"></div>
           <div>
             <h3>差异最显著区域</h3>
             <ol id="tool-diff-regions" class="tool-regions-list"></ol>
             <p id="tool-diff-regions-empty" class="field-note" hidden>未返回局部区域排行。</p>
           </div>
           <p class="field-note">像素差异只描述图片变化，不代表质量评分。</p>
+        </section>
+      </section>
+      <section id="tool-mux-section" class="card tool-card" hidden aria-label="本地零计费音视频合轨">
+        <div class="tool-card-head">
+          <div>
+            <h2>音视频合轨</h2>
+            <p class="field-note">将工作区中的视频作品与音乐或语音作品合成为带音轨 MP4（≤32 MiB），自动写入双来源血缘，需宿主 ffmpeg / ffprobe（零模型计费）。</p>
+          </div>
+          <span class="badge">本地合成</span>
+        </div>
+        <form id="tool-mux-form">
+          <div class="tool-diff-grid">
+            <div class="tool-diff-slot">
+              <label for="tool-mux-video" class="field-label">视频作品（MP4 / WebM）</label>
+              <select id="tool-mux-video" required></select>
+              <video id="tool-mux-video-preview" class="tool-mux-preview" controls playsinline preload="metadata" hidden></video>
+              <p id="tool-mux-video-note" class="field-note">未选择视频</p>
+            </div>
+            <div class="tool-diff-slot">
+              <label for="tool-mux-audio" class="field-label">音频 / 音乐作品（WAV / MP3 / OGG / FLAC）</label>
+              <select id="tool-mux-audio" required></select>
+              <audio id="tool-mux-audio-preview" class="tool-mux-audio-preview" controls preload="metadata" hidden></audio>
+              <p id="tool-mux-audio-note" class="field-note">未选择音频</p>
+            </div>
+          </div>
+          <div class="tool-mux-options">
+            <label for="tool-mux-fit" class="field-label">时长策略<select id="tool-mux-fit"><option value="shortest">按较短流截齐（shortest）</option><option value="loop_audio">循环音频至视频结束（loop_audio）</option><option value="pad_silence">保留完整视频、音轨后静音（pad_silence）</option></select></label>
+            <label for="tool-mux-mode" class="field-label">音轨处理<select id="tool-mux-mode"><option value="replace">替换原音轨（replace）</option><option value="mix">与原音轨混音（mix）</option></select></label>
+            <label for="tool-mux-volume" class="field-label">新增音轨音量（0.1–2.0）<input id="tool-mux-volume" type="number" min="0.1" max="2" step="0.1" value="1"></label>
+          </div>
+          <p id="tool-mux-readonly-note" class="field-note" hidden>当前工作台处于只读模式；开启 --allow-local-writes 后可执行本地音视频合轨。</p>
+          <div class="export-actions">
+            <button id="tool-mux-submit" type="submit" disabled>合并为带音轨 MP4（零计费）</button>
+          </div>
+        </form>
+        <p id="tool-mux-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+        <section id="tool-mux-result" class="tool-diff-result" hidden aria-label="本地音视频合轨结果">
+          <p class="eyebrow">LOCAL MUX · ZERO COST</p>
+          <p id="tool-mux-meta" class="field-note"></p>
+          <video id="tool-mux-output" class="tool-mux-output" controls playsinline preload="metadata"></video>
+          <div class="export-actions">
+            <button id="tool-mux-reload" type="button" hidden>重新读取合轨视频</button>
+            <button id="tool-mux-download" type="button">下载合轨 MP4</button>
+            <button id="tool-mux-lineage" class="quiet" type="button">查看双源血缘</button>
+            <button id="tool-mux-copy-id" class="quiet copy-id-button" type="button">复制 ID</button>
+          </div>
+          <div id="tool-mux-outbox"></div>
         </section>
       </section>
       <section id="tool-html-section" class="card tool-card" hidden aria-label="无头 HTML/SVG 沙箱截图">
@@ -334,6 +386,7 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
             <button id="tool-html-reload" type="button" hidden>重新读取截图预览</button>
             <button id="tool-html-download" type="button">下载截图 PNG</button>
             <button id="tool-html-lineage" class="quiet" type="button">查看血缘</button>
+            <button id="tool-html-copy-id" class="quiet copy-id-button" type="button">复制 ID</button>
             <button class="secondary" type="button" data-tool-handoff="crop" hidden>去裁剪</button>
             <button class="secondary" type="button" data-tool-handoff="edit" hidden>用截图改图</button>
             <button class="secondary" type="button" data-tool-handoff="video-i2v" hidden>用截图图生视频</button>
@@ -341,6 +394,7 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
             <button class="secondary" type="button" data-tool-handoff="ocr" hidden>用截图 OCR</button>
             <button class="secondary" type="button" data-tool-handoff="locate" hidden>用截图定位</button>
           </div>
+          <div id="tool-html-outbox"></div>
         </section>
       </section>
       <section id="tool-plugins-section" class="card tool-card" hidden aria-label="插件扩展业务自动表单">
@@ -503,7 +557,12 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
         <summary><span>创作设置 <small id="input-summary">从一张图片开始</small></span><span class="disclosure">收起</span></summary>
         <form id="edit-form">
           <fieldset id="draft-fields">
-            <div id="creation-modes" class="view-switch creation-modes" aria-label="创作方式"><button type="button" data-creation-mode="generate" aria-pressed="false">生成图片</button><button type="button" data-creation-mode="edit" aria-pressed="true">修改图片</button><button type="button" data-creation-mode="video" aria-pressed="false" hidden>生成视频</button><button type="button" data-creation-mode="video-i2v" aria-pressed="false" hidden>图生视频</button><button type="button" data-creation-mode="video-s2v" aria-pressed="false" hidden>数字人视频</button><button type="button" data-creation-mode="tts" aria-pressed="false" hidden>语音合成</button><button type="button" data-creation-mode="transcribe" aria-pressed="false" hidden>音频转写</button><button type="button" data-creation-mode="music" aria-pressed="false" hidden>生成音乐</button><button type="button" data-creation-mode="vision" aria-pressed="false" hidden>看图问答</button><button type="button" data-creation-mode="ocr" aria-pressed="false" hidden>图片文字识别</button><button type="button" data-creation-mode="locate" aria-pressed="false" hidden>视觉定位</button><button type="button" data-creation-mode="summarize" aria-pressed="false" hidden>视频摘要</button></div>
+            <div id="creation-modes" class="creation-modes-grouped" aria-label="创作方式">
+              <div class="creation-mode-group" data-mode-group="image"><span class="creation-mode-label">图片</span><div class="view-switch creation-modes"><button type="button" data-creation-mode="generate" aria-pressed="false">生成图片</button><button type="button" data-creation-mode="edit" aria-pressed="true">修改图片</button></div></div>
+              <div class="creation-mode-group" data-mode-group="video" hidden><span class="creation-mode-label">视频</span><div class="view-switch creation-modes"><button type="button" data-creation-mode="video" aria-pressed="false" hidden>生成视频</button><button type="button" data-creation-mode="video-i2v" aria-pressed="false" hidden>图生视频</button><button type="button" data-creation-mode="video-s2v" aria-pressed="false" hidden>数字人视频</button></div></div>
+              <div class="creation-mode-group" data-mode-group="audio" hidden><span class="creation-mode-label">音频与音乐</span><div class="view-switch creation-modes"><button type="button" data-creation-mode="tts" aria-pressed="false" hidden>语音合成</button><button type="button" data-creation-mode="transcribe" aria-pressed="false" hidden>音频转写</button><button type="button" data-creation-mode="music" aria-pressed="false" hidden>生成音乐</button></div></div>
+              <div class="creation-mode-group" data-mode-group="vision" hidden><span class="creation-mode-label">视觉</span><div class="view-switch creation-modes"><button type="button" data-creation-mode="vision" aria-pressed="false" hidden>看图问答</button><button type="button" data-creation-mode="ocr" aria-pressed="false" hidden>图片文字识别</button><button type="button" data-creation-mode="locate" aria-pressed="false" hidden>视觉定位</button><button type="button" data-creation-mode="summarize" aria-pressed="false" hidden>视频摘要</button></div></div>
+            </div>
             <div id="music-retry-banner" class="music-retry-banner" hidden><span id="music-retry-text"></span><button id="music-retry-clear" class="quiet inline-button" type="button">清除关联</button></div>
             <div id="source-input">
             <label id="source-input-label" for="image-file" class="field-label">原图</label>
@@ -609,6 +668,16 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
           </section>
           <section id="video-result" class="video-result" hidden aria-label="视频结果">
             <p class="eyebrow">MOTION</p><h3>让想法动起来</h3>
+            <div id="video-sources-preview" class="video-sources-preview" hidden>
+              <div id="video-source-image-wrap" class="video-source-item" hidden>
+                <span class="field-label">首帧来源</span>
+                <button id="video-source-image-btn" class="video-source-thumb-btn quiet" type="button" aria-label="放大查看首帧图片"><img id="video-source-image" alt="此视频流程的首帧图片"></button>
+              </div>
+              <div id="video-source-audio-wrap" class="video-source-item" hidden>
+                <span class="field-label">驱动音频</span>
+                <audio id="video-source-audio" controls preload="metadata"></audio>
+              </div>
+            </div>
             <video id="output-video" controls playsinline preload="metadata" hidden></video>
             <p id="video-result-note" class="field-note" role="status">原视频会保存在当前工作区。</p>
             <details id="video-frames" class="compact-details" hidden>
@@ -619,7 +688,10 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
                   <label for="frame-width">目标宽度（像素）<input id="frame-width" type="number" min="16" max="4096" step="1" value="480" required></label>
                   <label for="frame-format">格式<select id="frame-format"><option value="jpeg">JPEG</option><option value="png">PNG</option></select></label>
                 </fieldset>
-                <button id="extract-frames" class="secondary" type="submit">提取帧</button>
+                <div class="export-actions">
+                  <button id="extract-frames" class="secondary" type="submit">提取帧</button>
+                  <button id="extract-last-frame" class="secondary" type="button">提取尾帧（续拍首帧）</button>
+                </div>
               </form>
               <p id="frame-status" class="field-note" role="status"></p>
               <ul id="frame-results" class="frame-results" aria-label="本次提取的视频帧"></ul>
@@ -640,7 +712,8 @@ dsh-iris network catalog create --network-config /private/network-v2.json --prov
           <div class="run-heading"><div><h2 id="status-title"></h2><p id="status-message" class="muted"></p></div><div class="operation-actions"><button id="retry-operation" class="secondary" type="button" hidden>重试原操作</button><button id="stop-operation" class="secondary" type="button" hidden>停止等待</button></div></div>
           <p id="operation-note" class="field-note" hidden></p>
           <div class="result-actions"><p id="selection-feedback" role="status" aria-live="polite">选择喜欢的版本，再保存到设备。</p><button id="download" type="button" disabled>下载已选作品</button></div>
-          <div class="reuse-actions"><button id="reuse-selected" class="quiet" type="button" disabled>用已选作品新建</button><button id="retry-music-draft" class="secondary" type="button" hidden>带原描述新建重试草稿</button><span id="run-meta" class="meta"></span></div>
+          <div id="run-outbox-export" class="run-outbox-export"></div>
+          <div class="reuse-actions"><button id="reuse-selected" class="quiet" type="button" disabled>用已选作品新建</button><button class="quiet" type="button" data-reuse-image="video-i2v" hidden>图生视频</button><button class="quiet" type="button" data-reuse-image="video-s2v" hidden>数字人首帧</button><button class="quiet" type="button" data-reuse-image="vision" hidden>看图</button><button class="quiet" type="button" data-reuse-image="ocr" hidden>OCR</button><button class="quiet" type="button" data-reuse-image="locate" hidden>定位</button><button id="reuse-selected-crop" class="quiet" type="button" hidden>去裁剪</button><button id="reuse-audio-s2v" class="quiet" type="button" hidden>作为数字人音频</button><button id="reuse-audio-mux" class="quiet" type="button" hidden>音视频合轨</button><button id="reuse-audio-transcribe" class="quiet" type="button" hidden>转写此音频</button><button id="reuse-video-mux" class="quiet" type="button" hidden>音视频合轨</button><button id="retry-music-draft" class="secondary" type="button" hidden>带原描述新建重试草稿</button><span id="run-meta" class="meta"></span></div>
           <details id="run-lineage" class="compact-details run-lineage" hidden>
             <summary><span>来源与派生血缘 <small id="run-lineage-summary">只读关系</small></span><span class="disclosure">展开</span></summary>
             <div class="lineage-toolbar"><p class="field-note">基于已有作品关系与流程引用的只读视图；展开时才读取，不修改记录。</p><button id="run-lineage-refresh" class="quiet inline-button" type="button">刷新血缘</button></div>

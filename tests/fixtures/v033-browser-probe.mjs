@@ -3,8 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { createApplicationRuntime } from '../../lib/application-runtime.js';
+import { createCoreArtifact } from '../../lib/core-artifacts.js';
 import { writeLocalApiTokenFile } from '../../lib/local-api.js';
+import { ffmpegAvailable } from '../../lib/media-probe.js';
 import { definePlugin, createCorePluginRegistry } from '../../lib/plugins.js';
 import { FLOW_SOURCE } from './image-flow-fixture.mjs';
 import { AUDIO_WAV } from './audio-flow-fixture.mjs';
@@ -131,6 +134,14 @@ export async function verifyV033Browser({ out, cdp, evaluate, click, wait, choos
     await app.execute('execution.init', { video: true });
     await app.execute('artifact.import', { image_bytes: FLOW_SOURCE });
     const seededAudio = (await app.execute('creation.audio', { key: crypto.randomUUID(), bytes: AUDIO_WAV, mediaType: 'audio/wav' })).artifact;
+    let seededVideo = null;
+    if (ffmpegAvailable()) {
+      const sampleMp4 = path.join(out, 'v033-sample.mp4');
+      const gen = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=c=purple:s=160x120:d=1.2:r=10', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-y', sampleMp4], { encoding: 'utf8' });
+      assert.equal(gen.status, 0, gen.stderr || 'sample mp4 generation failed');
+      seededVideo = await app.run('writer', rt => rt.run('execute', ({ dataRoot: r }) =>
+        createCoreArtifact(r, { bytes: fs.readFileSync(sampleMp4), mediaType: 'video/mp4', kind: 'generated-video' })));
+    }
 
     const session = await restart({
       dataRoot: root, providerConfigPath: config, allowExecution: true, allowSelection: true,
@@ -145,18 +156,19 @@ export async function verifyV033Browser({ out, cdp, evaluate, click, wait, choos
     await wait(() => evaluate("document.body.classList.contains('connected')&&!document.querySelector('#overview-panel').hidden"), 'v033 overview connected');
     await wait(() => evaluate("!document.querySelector('#overview-outbox').hidden&&document.querySelector('#overview-outbox-list').children.length===1"), 'outbox overview rendered');
 
-    // 1. Overview outbox status (zero host path!) + video 3 modes + music card connected
-    await check('overview shows controlled outbox bare filename with zero host paths', `document.querySelector('#overview-outbox-list').textContent.includes('demo-export.png')&&!document.querySelector('#overview-outbox').textContent.includes('.staging-hidden')&&!document.querySelector('#overview-outbox').textContent.includes(${JSON.stringify(outboxDir)})`);
+    // 1. Overview outbox status (zero host path, accurate bytes & timestamp!) + video 3 modes + music card connected
+    await check('overview shows controlled outbox bare filename, size and zero host paths', `document.querySelector('#overview-outbox-list').textContent.includes('demo-export.png')&&/(?:B|KiB|MiB)/.test(document.querySelector('#overview-outbox-list').textContent)&&!document.querySelector('#overview-outbox').textContent.includes('.staging-hidden')&&!document.querySelector('#overview-outbox').textContent.includes(${JSON.stringify(outboxDir)})`);
     await check('overview exposes video t2v/i2v/s2v and music creation shortcuts', "['video','video-i2v','video-s2v','music'].every(m=>!document.querySelector('[data-overview-create=\"'+m+'\"]').disabled)");
 
-    // 2. Video i2v & s2v creation forms + model mode filtering
+    // 2. Grouped creation modes + Video i2v & s2v creation forms + model mode filtering
     await click('[data-overview-create="video-i2v"]');
+    await check('creation modes are organized into semantic media groups', "['image','video','audio'].every(g=>!document.querySelector('.creation-mode-group[data-mode-group=\"'+g+'\"]').hidden)&&document.querySelector('.creation-mode-group[data-mode-group=\"vision\"]').hidden");
     await check('video-i2v filters models to i2v-capable, makes prompt optional and shows resolution', "document.querySelector('[data-creation-mode=\"video-i2v\"]').getAttribute('aria-pressed')==='true'&&!document.querySelector('#edit-prompt').required&&!document.querySelector('#source-input').hidden&&document.querySelector('#audio-source-input').hidden&&!document.querySelector('#video-resolution-field').hidden&&[...document.querySelector('#model').options].map(o=>o.value).filter(Boolean).join(',')==='dash::wan2.6-i2v'");
 
     await click('[data-creation-mode="video-s2v"]');
     await check('video-s2v filters models to s2v-capable, hides prompt and shows both image and audio inputs', "document.querySelector('[data-creation-mode=\"video-s2v\"]').getAttribute('aria-pressed')==='true'&&document.querySelector('#edit-prompt').hidden&&!document.querySelector('#source-input').hidden&&!document.querySelector('#audio-source-input').hidden&&[...document.querySelector('#model').options].map(o=>o.value).filter(Boolean).join(',')==='dash::wan2.2-s2v'");
 
-    // 3. Music creation -> controlled HTTP 502 (single submission!) -> informed retry button -> ready audio + retried-from lineage!
+    // 3. Music creation -> controlled HTTP 502 (single submission!) -> informed retry button -> ready audio + retried-from lineage + Web outbox export + cross-mode reuse!
     await click('[data-creation-mode="music"]');
     await field('#model', 'music-box::piano-v1');
     await field('#edit-prompt', 'Gentle rain acoustic piano');
@@ -174,7 +186,31 @@ export async function verifyV033Browser({ out, cdp, evaluate, click, wait, choos
     await wait(() => evaluate("!document.querySelector('#audio-output-result').hidden&&document.querySelector('#output-audio').src.startsWith('blob:')"), 'music audio preview loaded');
     await click('#run-lineage > summary');
     await wait(() => evaluate(`document.querySelector('#run-lineage-body').textContent.includes(${JSON.stringify(failedRunId)})&&document.querySelector('#run-lineage-body').textContent.includes('重试自')`), 'music retried-from lineage displayed');
+    // Verify Copy ID buttons rendered in Run Details & Lineage
+    await click('#run-details > summary');
+    await check('run details and lineage provide one-click Copy ID controls', "document.querySelectorAll('#run-facts .copy-id-button').length>=2&&document.querySelectorAll('#run-lineage-body .copy-id-button').length>=1");
+    // Verify Web-initiated Outbox Export right from the music Run!
+    await wait(() => evaluate("!document.querySelector('#run-outbox-export .outbox-export-control').hidden"), 'run outbox export control visible');
+    await click('#run-outbox-export [data-outbox-trigger]');
+    await field('#run-outbox-export [data-outbox-filename]', 'piano-web-export.wav');
+    await click('#run-outbox-export [data-outbox-submit]');
+    await wait(() => evaluate("document.querySelector('#run-outbox-export .outbox-export-form .field-note')?.textContent.includes('已安全落盘到出件目录：piano-web-export.wav')"), 'music exported to outbox from web');
+    assert.ok(fs.existsSync(path.join(outboxDir, 'piano-web-export.wav')), 'piano-web-export.wav published to outbox');
     await capture('v033-music-ready');
+    // Verify cross-mode handoff from music output into video-s2v draft!
+    await check('music run exposes cross-mode handoff buttons for s2v and mux', "!document.querySelector('#reuse-audio-s2v').hidden&&!document.querySelector('#reuse-audio-mux').hidden");
+    await click('#reuse-audio-s2v');
+    await wait(() => evaluate("document.querySelector('[data-creation-mode=\"video-s2v\"]').getAttribute('aria-pressed')==='true'&&document.querySelector('#audio-file-name').textContent.includes('生成音乐')"), 'music handoff opens s2v draft with audio prefilled');
+
+    // Verify Gallery quick search filter on music runs
+    await click('#media-tab');
+    await wait(() => evaluate("!document.querySelector('#gallery-panel').hidden"), 'gallery panel visible');
+    await click('[data-gallery-kind="music"]');
+    await wait(() => evaluate("document.querySelectorAll('#gallery-grid .gallery-card').length>=2"), 'gallery loaded music cards');
+    await field('#gallery-search', 'no-such-model-xyz');
+    await check('gallery quick search filters cards client-side', "[...document.querySelectorAll('#gallery-grid .gallery-card')].every(c=>c.hidden)&&!document.querySelector('#gallery-empty').hidden");
+    await field('#gallery-search', '');
+    await click('#studio-tab');
 
     // Also verify Issue #4 in real Chromium: unknown acceptance music run carries duplicate-billing warning into the retry draft!
     musicMode = 'drop';
@@ -188,8 +224,29 @@ export async function verifyV033Browser({ out, cdp, evaluate, click, wait, choos
     await click('#retry-music-draft');
     await check('retrying unknown-acceptance music run displays explicit duplicate-billing warning', "!document.querySelector('#music-retry-banner').hidden&&document.querySelector('#music-retry-banner').classList.contains('error')&&document.querySelector('#music-retry-text').textContent.includes('可能产生重复计费')");
 
-    // 4. Host-Owned Schema Auto Form (zero plugin frontend code!) under strict style-src 'self' CSP!
+    // 4. Local Tools: Zero-cost Video + Audio Mux (when ffmpeg available) + Host-Owned Schema Auto Form under strict style-src 'self' CSP!
     await click('#tools-tab');
+    if (seededVideo) {
+      await wait(() => evaluate("!document.querySelector('[data-local-tool-tab=\"mux\"]').hidden"), 'local mux tab visible on v4 root');
+      await click('[data-local-tool-tab="mux"]');
+      await wait(() => evaluate(`Boolean(document.querySelector('#tool-mux-video option[value="${seededVideo.id}"]'))&&Boolean(document.querySelector('#tool-mux-audio option[value="${seededAudio.id}"]'))`), 'mux video & audio pickers populated');
+      await field('#tool-mux-video', seededVideo.id);
+      await field('#tool-mux-audio', seededAudio.id);
+      await field('#tool-mux-fit', 'loop_audio');
+      await click('#tool-mux-submit');
+      await wait(() => evaluate("!document.querySelector('#tool-mux-result').hidden&&document.querySelector('#tool-mux-output').src.startsWith('blob:')"), 'local mux produced playable MP4');
+      await click('#tool-mux-lineage');
+      await wait(() => evaluate(`!document.querySelector('#tool-lineage-panel').hidden&&document.querySelector('#tool-lineage-body').textContent.includes(${JSON.stringify(seededVideo.id)})&&document.querySelector('#tool-lineage-body').textContent.includes(${JSON.stringify(seededAudio.id)})`), 'muxed MP4 displays dual video+audio lineage');
+      await click('#tool-mux-outbox [data-outbox-trigger]');
+      await field('#tool-mux-outbox [data-outbox-filename]', 'browser-mux.mp4');
+      await click('#tool-mux-outbox [data-outbox-submit]');
+      await wait(() => evaluate("document.querySelector('#tool-mux-outbox .outbox-export-form .field-note')?.textContent.includes('已安全落盘到出件目录：browser-mux.mp4')"), 'muxed MP4 exported to outbox from Local Tools');
+      assert.ok(fs.existsSync(path.join(outboxDir, 'browser-mux.mp4')), 'browser-mux.mp4 published to outbox');
+      await measure('v033-local-mux-desktop');
+      await capture('v033-local-mux-desktop');
+      await click('#tool-lineage-close');
+    }
+
     await wait(() => evaluate("!document.querySelector('[data-local-tool-tab=\"plugins\"]').hidden"), 'plugin auto-form tab visible');
     await click('[data-local-tool-tab="plugins"]');
     await wait(() => evaluate(`Boolean(document.querySelector('#tool-plugin-op-fields select[data-plugin-field="audioId"] option[value="${seededAudio.id}"]'))`), 'multimodal audio artifact picker populated');
@@ -211,7 +268,7 @@ export async function verifyV033Browser({ out, cdp, evaluate, click, wait, choos
     await field('#tool-plugin-op-fields [data-plugin-field="options"]', '{"tag":"empty","weight":1}');
     await click('#tool-plugin-op-submit');
     await wait(() => evaluate("(()=>{const text=document.querySelector('#tool-plugin-op-artifacts .plugin-op-artifact-card pre')?.textContent||'';if(!text)return false;const data=JSON.parse(text);return data.options?.tag==='empty'&&Array.isArray(data.tags)&&data.tags.length===0;})()"), 'auto-form accepts required empty array []');
-    await click('#tool-plugin-op-artifacts .plugin-op-artifact-card button:last-of-type');
+    await click('#tool-plugin-op-artifacts .plugin-op-artifact-card [data-plugin-lineage]');
     await wait(() => evaluate(`!document.querySelector('#tool-lineage-panel').hidden&&document.querySelector('#tool-lineage-body').textContent.includes(${JSON.stringify(seededAudio.id)})`), 'auto-form artifact lineage opens inline');
     await measure('v033-plugin-autoform-desktop');
     await capture('v033-plugin-autoform-desktop');

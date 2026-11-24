@@ -28,7 +28,13 @@ try {
   const localToolsJs = fs.readFileSync(new URL('../lib/web/local-tools.js', import.meta.url), 'utf8');
   const lineageJs = fs.readFileSync(new URL('../lib/web/lineage.js', import.meta.url), 'utf8');
   const pluginOpFormJs = fs.readFileSync(new URL('../lib/web/plugin-op-form.js', import.meta.url), 'utf8');
-  for (const [name, src] of [['local-tools.js', localToolsJs], ['lineage.js', lineageJs], ['plugin-op-form.js', pluginOpFormJs]]) {
+  const outboxExportJs = fs.readFileSync(new URL('../lib/web/outbox-export.js', import.meta.url), 'utf8');
+  const clipboardJs = fs.readFileSync(new URL('../lib/web/clipboard.js', import.meta.url), 'utf8');
+  const videoFramesJs = fs.readFileSync(new URL('../lib/web/video-frames.js', import.meta.url), 'utf8');
+  for (const [name, src] of [
+    ['local-tools.js', localToolsJs], ['lineage.js', lineageJs], ['plugin-op-form.js', pluginOpFormJs],
+    ['outbox-export.js', outboxExportJs], ['clipboard.js', clipboardJs], ['video-frames.js', videoFramesJs]
+  ]) {
     assert(!src.includes('innerHTML'), name + ' must never use innerHTML');
     assert(!src.includes('.style.'), name + ' must never mutate inline styles');
     for (const match of src.matchAll(/\$\('#([a-z0-9-]+)'\)/g)) {
@@ -36,6 +42,14 @@ try {
       assert(html.includes(`id="${id}"`), `${name} references #${id} missing from index.html`);
     }
   }
+  const { suggestedOutboxName, validateOutboxFilename } = await import('../lib/web/outbox-export.js');
+  const sampleId = 'artifact_' + 'a'.repeat(24);
+  assert.equal(suggestedOutboxName(sampleId, 'video/mp4'), `iris-${sampleId}.mp4`);
+  assert.equal(validateOutboxFilename('clip.mp4', 'video/mp4'), '');
+  assert.equal(validateOutboxFilename('photo.jpeg', 'image/jpeg'), '');
+  assert.notEqual(validateOutboxFilename('../escape.mp4', 'video/mp4'), '');
+  assert.notEqual(validateOutboxFilename('wrong.png', 'video/mp4'), '');
+  assert.notEqual(validateOutboxFilename('CON.mp4', 'video/mp4'), '');
 
   // 2. Seed static images and unsupported candidates with otherwise readable metadata.
   await app.execute('flow.init', {});

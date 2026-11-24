@@ -129,4 +129,38 @@ try {
   for (const wait of pending) wait.resolve(); await Promise.all(inFlight);
   assert.equal(started.length, count);
 } finally { globalThis.fetch = nativeFetch; }
-console.log('PASS Web recovery: bounded private tab storage, corruption/capacity/denial, root/origin binding, coalesced clicks, original-Key retry, stale isolation, capability/error retention and independent stop/priority reads');
+
+// video-s2v-create persists both sourceArtifactId (artifactId) and audioArtifactId for lost-receipt recovery.
+{
+  const audioId = 'artifact_' + 'd'.repeat(24);
+  const s2vDisk = storage();
+  let failS2v = true;
+  const s2vClient = createMediaClient({
+    client: {
+      async createVideoS2v(value, { key }) {
+        if (failS2v) throw new TypeError('lost s2v receipt');
+        return {
+          contractVersion: 0,
+          flow: {
+            contractVersion: 0, id: runId, recipe: 'video-s2v/v0', revision: 1,
+            source: null, sources: [{ artifactId: value.sourceArtifactId }, { artifactId: value.audioArtifactId }],
+            output: null, selection: null
+          }
+        };
+      }
+    },
+    session: { contractVersion: 0, rootId, operations: ['videos-s2v.create', 'creation.lookup'] },
+    origin,
+    getStorage: () => s2vDisk
+  });
+  await assert.rejects(s2vClient.createVideoS2v({ modelRef: 'p::s2v', sourceArtifactId: artifactId, audioArtifactId: audioId }), /lost s2v receipt/);
+  const savedAction = s2vClient.snapshot().actions[0];
+  assert.equal(savedAction.kind, 'video-s2v-create');
+  assert.equal(savedAction.artifactId, artifactId);
+  assert.equal(savedAction.audioArtifactId, audioId);
+  failS2v = false;
+  await s2vClient.retry(savedAction.id, { modelRef: 'p::s2v', sourceArtifactId: artifactId, audioArtifactId: audioId });
+  assert.deepEqual(s2vClient.snapshot().actions, []);
+  s2vClient.close();
+}
+console.log('PASS Web recovery: bounded private tab storage, corruption/capacity/denial, root/origin binding, coalesced clicks, original-Key retry, stale isolation, capability/error retention, independent stop/priority reads and video-s2v dual-source recovery');
