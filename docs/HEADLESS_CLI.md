@@ -1,4 +1,4 @@
-# Headless CLI（0.3.2）
+# Headless CLI（0.3.3）
 
 `dsh-iris` CLI 支持在完全脱离 DSH 宿主的环境下运行，通过显式传入 `--data-root`（物理数据根绝对路径）与私有 `--provider-config`，完成本地媒体处理、多模态生成、视觉分析、任务恢复与数据维护。
 
@@ -47,10 +47,15 @@ npx dsh-iris media diff \
   --data-root /absolute/path/to/iris-data \
   --input '{"image_a_path":"/absolute/path/a.png","image_b_path":"/absolute/path/b.png","grid":8,"top_regions":3}'
 
-# 视频抽帧（最多 20 帧，支持 jpeg/png；支持 video_path 或 artifact_id）
+# 视频抽帧或一键取尾帧（mode: uniform | last，最多 20 帧，支持 jpeg/png；支持 video_path 或 artifact_id）
 npx dsh-iris media frames \
   --data-root /absolute/path/to/iris-data \
-  --input '{"video_path":"/absolute/path/clip.mp4","max_frames":8,"target_width":640,"format":"jpeg","quality":85}'
+  --input '{"video_path":"/absolute/path/clip.mp4","mode":"last","target_width":640,"format":"png"}'
+
+# 本地音视频合轨（基于已有视频与音频 Core Artifact 合成 ≤32 MiB MP4，自动写入双 derived-from 血缘边）
+npx dsh-iris media mux \
+  --data-root /absolute/path/to/iris-data \
+  --input '{"video_artifact_id":"artifact_0123456789abcdef01234567","audio_artifact_id":"artifact_fedcba9876543210fedcba98","audio_fit":"loop_audio","audio_mode":"replace","audio_volume":1.0}'
 ```
 
 本地输入文件路径绝不会写入 Artifact Manifest 或命令返回结果；S2V、HTML 截图（`media html`）、批量检查与配置维护命令详见 [CLI 管理参考](CLI_MANAGEMENT.md)。

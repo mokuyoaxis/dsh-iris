@@ -16,7 +16,7 @@ Iris 的定位是本地优先、Agent 可控的多模态创作工作区：让用
 0.3 体系围绕独立工作台、通用 MCP 与显式插件契约持续演进：
 
 - **最小插件契约与多模态生态就绪**：0.3 线提供 [Core 插件贡献契约 v0](PLUGINS.md)、Provider 工厂上下文 v1（含 `supportsVideoMode` / `modelParameters` 与多模态 `ProviderMediaInput`）、统一能力目录、多模态业务输入/产出（`artifactInputTypes` / `artifactOutputKinds` / `artifact.lineage`）、宿主托管 Schema 自动表单（零前端代码即可在「本地工具 → 扩展业务」运行）以及工作台组合挂载（页面、设置、预览器及 `context.host` 导航联动）。内置[多图对照板](CONTACT_SHEET.md)及两套独立起手模板已打通持久 Operation、原 UUID 恢复、Web 选择、MCP 调用与包外归档消费。当前冻结[最小兼容面](BETA_SCOPE.md#最小插件兼容面)，完整 SDK 与分发体验将根据实际插件开发者反馈继续演进。
-- **工作台与通用 MCP 覆盖深化**：[Core 工作台](LOCAL_WEB.md)与[通用 MCP](MCP.md) 已在 v1–v5 执行根上打通改图、文生图/ComfyUI、TTS/转写、[持久音乐生成](MUSIC.md)（`music/v0` 及 `retried-from` 重试血缘）、[三类视频流程](VIDEO_FLOWS.md)（文生/图生/数字人视频及工作台抽帧带入摘要草稿）、[视觉流程](VISION_FLOWS.md)（看图问答、长图 OCR 及保守去重 `boundary-overlap/v0`、视觉定位 `vision-locate`、多模态摘要 `media-summarize`）、零计费本地工具（工作台独立面板含宿主插件自动表单、MCP `local-media` / 显式 `--browser-executable` `html-render`）、只读作品/流程血缘视图、只读收件目录（`--inbox-dir` / `inbox`）、显式 MCP 作品选择（`iris_core_select_run`）以及受控出件目录（`--outbox-dir` / `outbox` 及总览出件列表），并配套 8 种主流客户端预设、连接配置自检与连接专属 Skill。
+- **工作台与通用 MCP 覆盖深化**：[Core 工作台](LOCAL_WEB.md)与[通用 MCP](MCP.md) 已在 v1–v5 执行根上打通改图、文生图/ComfyUI、TTS/转写、[持久音乐生成](MUSIC.md)（`music/v0` 及 `retried-from` 重试血缘）、[三类视频流程](VIDEO_FLOWS.md)（文生/图生/数字人视频、首帧与音频预览、本地抽帧/一键取尾帧及跨模式接续草稿）、[视觉流程](VISION_FLOWS.md)（看图问答、长图 OCR 及保守去重 `boundary-overlap/v0`、视觉定位 `vision-locate`、多模态摘要 `media-summarize`）、零计费本地工具（工作台独立面板含 EXIF 裁剪、双图热力图、本地 `ffmpeg` 音视频合轨、HTML 沙箱截图与宿主插件自动表单；MCP `local-media` 含 `iris_core_mux_video_audio` / `html-render`）、只读作品/流程血缘视图与一键复制 ID、作品库快速筛选、只读收件目录（`--inbox-dir` / `inbox`）、显式 MCP 作品选择（`iris_core_select_run`）以及受控出件目录（`--outbox-dir` / `outbox`、Web 内联落盘与总览出件列表），并配套 8 种主流客户端预设、连接配置自检与连接专属 Skill。
 - **下一阶段评估重点**：
   - **真实硬件、宿主与作品整理**：分开补充真实 ComfyUI GPU 推理、原生 Windows/WSL 完整 DSH 宿主装载与更多外部 MCP 客户端端到端证据，并按需求评估收藏、标签与可恢复归档。
 
@@ -39,7 +39,7 @@ Iris 的定位是本地优先、Agent 可控的多模态创作工作区：让用
 ## 兼容性与限制
 
 - **Node.js 与基础依赖**：Iris 0.3.x 要求 **Node.js ≥22.1.0**（0.2.x 历史版本最低为 22.0.0；DSH 宿主要求更高版本时以宿主为准）。图片处理依赖 `sharp`；视频文件抽帧依赖 `ffmpeg` 与 `ffprobe`（复用已有 Core 帧做摘要时无需这两个工具）；独立 CLI 与 MCP `html-render` HTML 截图需显式指定 Chromium 可执行文件。
-- **DSH 宿主兼容矩阵**：DSH 原生插件继续支持 [兼容矩阵](DSH_COMPATIBILITY.md) 中列出的 12 个准确版本，宿主差异收敛在 Adapter 与客户端桥接层。
+- **DSH 宿主兼容矩阵**：DSH 原生插件在 0.3.3 中扩展至 [兼容矩阵](DSH_COMPATIBILITY.md) 列出的 **25 个准确版本**（覆盖 `0.1.2-rc.1` 至 `0.2.2-rc.5`，含当前 `latest`），宿主差异收敛在 Adapter 与客户端桥接层；`0.2.3-alpha.*` 留待完整宿主认证验收后再评估。
 - **已知范围限制**：
   - DSH 工作台与 Headless CLI 共用 Core 的可恢复隔离和恢复入口，legacy `outputs/` 的删除仍永久生效；操作时须区分作品来源（见 [CLI 管理](CLI_MANAGEMENT.md) 与 [工作台作品管理](WORKBENCH_ARTIFACTS.md)）；
   - 模型目录发现仅列出候选项，真实可用性需由用户确认用途并显式验证；

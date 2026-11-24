@@ -74,9 +74,16 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 
 0.3 beta HTTP列表摘要保留 id/recipe/createdAt/modelRef/source，另投影 updatedAt、revision、output/selection 引用（无值为 null），不附 Prompt、Task、供应商绑定或路径；CLI/MCP 列表保持原语义。省略 selection 等于 all，未知/重复参数或不属于筛选结果的 cursor 返回400。图库封面使用 selection，否则 source。
 
-### 受控出件（0.3.2）
+### 受控出件（0.3.2 / 0.3.3）
 
-挂载 `--outbox-dir <现有可写绝对目录>` 后，`POST /api/v0/outbox/export` 接收单个小写 UUIDv4 `Idempotency-Key` 和最多 2 KiB 的 JSON `{ artifactId, name }`。请求需启用本地写入。连接另需 `outbox` 分组、`create` scope、明确的 `iris_core_export_outbox` 授权，以及读取该作品及派生来源的权限。
+挂载 `--outbox-dir <现有可写绝对目录>` 后，`POST /api/v0/outbox/export` 接收单个小写 UUIDv4 `Idempotency-Key` 和最多 2 KiB 的 JSON `{ artifactId, name }`。请求需启用本地写入。工作台 owner 在 `GET /api/v0/session` 中看到 `outbox: true` 且 `operations` 含 `outbox.export` 时，可直接经此入口将作品落盘到受控出件目录（同时 `GET/HEAD /api/v0/outbox/files` 仅向 owner 返回脱敏文件摘要）。MCP 连接另需 `outbox` 分组、`create` scope、明确的 `iris_core_export_outbox` 授权，以及读取该作品及派生来源的权限。
+
+### 本地零计费媒体工具扩展（0.3.3）
+
+在已有 `POST /api/v0/local-media/crop`、`diff` 与 `frames` 基础上，0.3.3 补充两项受控本地媒体能力（同样要求 `--allow-local-writes`、单写者租约与来源能力校验，零模型计费）：
+
+- **`POST /api/v0/local-media/frames`**：新增可选参数 `mode: "uniform" | "last"`（默认 `"uniform"`）；传入 `"last"` 时使用 `ffmpeg` 末尾定位提取单张尾帧（保留 `derived-from` 血缘边，自动继承来源视频能力授权）。
+- **`POST /api/v0/local-media/mux`**：接收 `{ videoArtifactId, audioArtifactId, audioFit?: "shortest" | "loop_audio" | "pad_silence", audioMode?: "replace" | "mix", audioVolume?: 0.1..2.0 }`（JSON 上限 8 KiB），使用宿主 `ffmpeg`/`ffprobe` 合成带音轨的 H.264/AAC MP4 作品（`kind: "muxed-video"`，上限 **32 MiB**，60s 超时）并原子记录指向视频与音频的双 `derived-from` 血缘边；超限返回 `413 IRIS_LOCAL_MEDIA_TOO_LARGE`，超时返回 `504`。MCP 连接须授权 `local-media` 分组、`create` scope、`iris_core_mux_video_audio` 工具，且同时拥有来源视频与音频的读取权限。
 
 启动时核对目录的物理身份，禁止出件目录自身为符号链接，且与数据根、收件目录、运行配置和凭据路径隔离。文件名只允许顶层安全裸名，UTF-8 最长 255 字节。扩展名须匹配已保存作品的媒体类型，支持常用图片、音视频、TXT 和 JSON。Core 将核验过的字节以 POSIX 0600 写入同目录暂存文件，完整同步后以硬链接原子创建最终名。部署的目标文件系统必须支持该操作。
 

@@ -1,4 +1,4 @@
-# 通用 MCP 接入与能力选择（0.3.2）
+# 通用 MCP 接入与能力选择（0.3.3）
 
 通过 Iris 的通用 MCP 接口，任何支持 **stdio** 或 **Streamable HTTP** 的客户端都可以安全共用同一个 [Core 服务](CORE_SERVICE.md)。
 
@@ -84,7 +84,7 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
 - `vision` / `ocr`（需 v5 根）：[单图看图问答与长图分块 OCR](VISION_FLOWS.md)，保存问题/预算并在执行后读取文本与 JSON 报告（各限 1 MiB）。
 - `vision-locate`（需 v5 根）：[单图视觉定位](VISION_FLOWS.md#视觉定位与多模态摘要)，针对已有静态图片 `artifactId` 与自然语言目标创建持久 `locate/v0` 流程，执行后通过 `iris_core_locate_result` 读取原图像素坐标（`x1, y1, x2, y2` 及 `left, top, width, height`），可直接衔接 `local-media` 的 `iris_core_crop` 裁剪验证。
 - `media-summarize`（需 v5 根）：[多模态视频/帧摘要](VISION_FLOWS.md#视觉定位与多模态摘要)，将 1–20 张已授权的 `video-frame` 或静态图片 `artifactId` 自动拼成带时间戳标注的接触表，结合可选 `question` 与显式文本 `transcript` 创建持久 `summarize/v0` 流程（不隐式触发 ASR 计费），执行后通过 `iris_core_vision_text` 读取纯文本摘要。
-- `local-media`（任意 Core 根可用，零外部计费）：基于已有 Core `artifactId` 执行本地确定性裁剪（`iris_core_crop`）、像素对比热力图（`iris_core_pixel_diff`）与视频均匀抽帧（`iris_core_video_frames`，需宿主安装 `ffmpeg`/`ffprobe`），派生作品自动继承来源能力授权，不接受宿主任意路径。
+- `local-media`（任意 Core 根可用，零外部计费）：基于已有 Core `artifactId` 执行本地确定性裁剪（`iris_core_crop`）、像素对比热力图（`iris_core_pixel_diff`）、视频抽帧/尾帧提取（`iris_core_video_frames`，支持 `mode: "uniform" | "last"`）与本地音视频合轨（`iris_core_mux_video_audio`，将 MP4/WebM 视频与音频/音乐合成为 ≤32 MiB 带音轨 MP4 并写入双 `derived-from` 血缘边；抽帧与合轨需宿主安装 `ffmpeg`/`ffprobe`），派生作品自动继承来源能力授权，不接受宿主任意路径。
 - `inbox`（需启动 Core 时显式传入 `--inbox-dir <根外只读目录>`）：通过 `iris_core_inbox` 列出收件目录顶层符合格式的图片（≤20 MiB）与音频（v3+ 根，≤20 MiB），再用 `iris_core_import_inbox_file` 按文件名与稳定 UUID 直接入库为持久 Core Artifact，免除 LLM 参数传几 MB Base64；只读访问且拒绝子目录、隐藏文件、符号链接及与私有目录重叠的配置。
 - `html-render`（需启动 Core 时显式传入 `--browser-executable <Chromium 绝对路径>`，可选 `--browser-no-sandbox`；任意 Core 根可用，零外部计费）：通过 `iris_core_render_html` 在无网络、无脚本的沙箱 CSP 环境下将自包含 HTML/SVG（≤1 MiB）渲染为持久 Core PNG Artifact，可用 `iris_core_image` 读回，或与 `local-media`（裁剪/像素 diff）、`vision`/`vision-locate` 串联进行视觉自检；默认关闭且绝不自动扫描宿主浏览器。
 - `outbox`（0.3.2）将已授权读取的 Core Artifact 写入所有者配置的目录。见[受控作品出件](#受控作品出件032)。
@@ -162,7 +162,7 @@ node bin/dsh-iris.js mcp config \
 | 音乐生成（`music/v0`，含 `retriedFromRunId` 血缘） | 支持 | `music` 分组支持（v3+ 根） |
 | 看图问答与长图 OCR | 支持 | `vision` / `ocr` 分组支持（v5 根） |
 | 视觉定位与多模态视频/帧摘要 | 支持 | `vision-locate` / `media-summarize` 分组支持（v5 根） |
-| 裁剪 / 像素 diff / 视频抽帧（基于 `artifactId`） | 支持 | `local-media` 分组支持（零外部计费） |
+| 裁剪 / 像素 diff / 视频抽帧与尾帧 / 音视频合轨（基于 `artifactId`） | 支持 | `local-media` 分组支持（零外部计费） |
 | 大文件只读收件目录安全入库（≤20 MiB，免 Base64） | 支持（`--inbox-dir`） | `inbox` 分组支持（`iris_core_inbox` / `iris_core_import_inbox_file`） |
 | 图片作品选择 | 支持 | 显式开启并授权 `iris_core_select_run`（0.3.2） |
 | 受控目录出件 | 支持（`--outbox-dir`） | 显式授权 `iris_core_export_outbox`（0.3.2） |

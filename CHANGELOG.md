@@ -4,6 +4,18 @@
 
 ## [Unreleased]
 
+准备中的 **Iris 0.3.3** 在 0.3.2 基础上接入核心多模态流程闭环（持久音乐 `music/v0`、图生视频 `video-i2v/v0`、数字人视频 `video-s2v/v0` 与多模态插件自动表单）、零计费本地桥接（视频尾帧提取 `mode: "last"`、本地 `ffmpeg` 音视频合轨 `media mux`、Web 内联受控出件落盘与跨模式一键接续草稿）、DSH 宿主兼容范围扩充至 25 个实测版本，以及工作台多项体验维护与边界修复；零新增生产依赖，旧数据根与既有 MCP 连接不自动迁移或扩权。
+
+- 新增持久音乐流程（`music/v0`）、图生视频（`video-i2v/v0`）与数字人视频（`video-s2v/v0`）在 Core Web / HTTP API / CLI / MCP 中的完整闭环（分别对应 `music` / `video-i2v` / `video-s2v` 独立授权分组，支持自定义 Provider 通过 `supportsVideoMode` 声明模式、DashScope 图生视频精确传递 `parameters.resolution` 与 `retried-from` 知情重试血缘）。
+- 新增多模态插件扩展与宿主托管自动表单：插件支持声明 `artifactInputTypes`、`artifactOutputKinds` 与 `artifact.lineage`，工作台「本地工具 → 扩展业务」零前端渲染原生控件（保留布尔枚举、必填空数组 `[]`、精确字符串数组与嵌套 JSON 对象，支持轮询暂停后跨业务保留原 Key 核对与血缘/出件联动）。
+- 新增零计费本地工作流桥接：
+  - 视频抽帧新增 `mode: "uniform" | "last"`（一键提取尾帧）与逐帧接续图生视频/改图/数字人/本地裁剪/血缘；
+  - 新增本地 `ffmpeg` 音视频合轨（`media.mux`、`POST /api/v0/local-media/mux`、CLI `dsh-iris media mux`、MCP `local-media` 分组 `iris_core_mux_video_audio`、Web「本地工具 → 音视频合轨」），支持 `shortest`/`loop_audio`/`pad_silence`、`replace`/`mix` 与音量调节，自动写入双 `derived-from` 血缘边（≤32 MiB MP4）；
+  - 开放 Web 端受控出件落盘（`outbox.export`，复用 `--outbox-dir` 原子硬链接落盘与原 UUID 幂等）并在结果页、本地工具与插件产物中提供内联落盘入口；
+  - 打通跨模式一键接续草稿（总览收件目录 → 创作草稿、图片 → 改图/图生视频/数字人/裁剪、音频/音乐 → 数字人/音视频合轨/转写、视频 → 抽帧/合轨）。
+- 扩充 DSH 原生插件兼容范围：经官方发布 SDK 实测新增 13 个准确版本（`0.2.1-alpha.5`、`0.2.1-rc.1`–`rc.5`、`0.2.2-alpha.2`–`alpha.3`、`0.2.2-rc.1`–`rc.5`，各 35/35 通过），兼容清单扩展至 25 个准确版本（`0.2.3-alpha.*` 因 WebServer 新增默认 fail-closed Peer 认证模型与更高 Node 要求暂不纳入）；`scripts/verify-dsh-host.mjs` 同步兼容 `0.2.2+` 工具执行器管线。
+- 工作台体验维护与修复：12 项创作模式按图片/视频/音频与音乐/视觉语义分组；已保存 `video-i2v`/`video-s2v` 流程同屏展示首帧缩略图与驱动音频播放器；修复 `video-s2v-create` 双源恢复日志与模式切换保留草稿；作品库视频区分 `T2V`/`I2V`/`S2V` 徽标、延迟加载首帧封面并新增客户端快速筛选框；Run 事实、血缘节点、本地工具与插件产物全面补齐一键「复制 ID」；修复总览出件列表字段错位（`bytes`/`updatedAt`）。
+
 ## [0.3.2] - 2026-11-23
 
 0.3.2 在 0.3.1 基础上补齐 MCP 作品选择与受控出件闭环（`iris_core_select_run`、`--outbox-dir` / `iris_core_export_outbox`）、Web 视频抽帧与 `summarize/v0` 摘要交互创建、零计费本地工具面板（EXIF 对齐裁剪 / 像素对比热力图 / 显式 HTML 沙箱截图）与只读作品/流程血缘视图，并完成 `0.3.1` 长图 OCR 跨块去重（`boundary-overlap/v0`）的 4 次真实视觉 POST 复测；零新增生产依赖，旧数据根与既有 MCP 授权不自动迁移或扩权。完整说明见[发行说明](docs/releases/0.3.2.md)，升级参考见[升级指南](docs/UPGRADING_0.3.md)。
