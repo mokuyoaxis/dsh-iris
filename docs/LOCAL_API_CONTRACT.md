@@ -12,7 +12,7 @@
 
 0.3 beta的 [Core 音频流程](AUDIO_FLOWS.md)另在新 v3 根增加 `/audio-models`、`/audio`、`/speeches`、`/transcriptions`、作品 `/audio` 和 `/text`，以及 Run 类别筛选。音频与图片共用原 runner/Task/Key；现有图片 `/content` 保持图片类型限制。播放/下载最多64 MiB音频或1 MiB文本，输入音频最多20 MiB且核对容器/MIME，不接收任意路径/URL。下方 I4A/I4B 表继续描述已发布图片切片，不能据此把音频入口用于旧根。
 
-**beta.1**另在显式新v4根增加[固定文生视频](VIDEO_FLOWS.md)的 `/video-models`、`/videos` 与作品 `/video`，读取MP4/WebM最多32 MiB，先核对metadata再读取；与图片/音频共用原Operation与授权边界，旧根不自动升级。
+**beta.1 / 0.3.3**在显式新v4+根提供[视频流程](VIDEO_FLOWS.md)的 `/video-models`（支持可选 `?mode=t2v|i2v|s2v`）、`/videos`（`video-generate/v0`）、`/videos/i2v`（`video-i2v/v0`）、`/videos/s2v`（`video-s2v/v0`）与作品 `/video`（MP4/WebM ≤32 MiB）；在 v3+ 根提供[持久音乐流程](MUSIC.md)的 `/music-models` 与 `/music`（`music/v0`，单次提交不自动重试 502，支持 `retriedFromRunId` 血缘链接）；同时开放 owner 专用 `GET/HEAD /api/v0/outbox/files`（仅列常规裸名/大小/时间，不含宿主机路径）与 `GET/HEAD /api/v0/artifacts/:id/json`（读取 ≤1 MiB 插件 JSON 产物）。旧根不自动升级。
 
 源码另有 owner 专用只读 `GET/HEAD /api/v0/capabilities`：返回 `contractVersion:0,state,scopeOptions,controlTools,groups,tools,media,plugins,contributions`，装配插件时附 Core 版本及准确贡献依赖。无模型密钥、数据根或可加载脚本路径；无凭据401，连接凭据403，未知查询参数400。此完整目录不表示当前用户授权或媒体健康。连接管理目录复用同一投影并另附 availableScopes/defaults 等服务选项；`session.operations` 由 Core 的 Web 映射和实际根版本、开关、授权交集生成。详情见 [插件目录](PLUGINS.md#core-能力目录与授权)，不改变已发布 I4A/I4B 的契约范围。
 
@@ -97,7 +97,7 @@ Bearer、Host/Origin 与 CSP 是不同边界，不能相互替代。静态预览
 
 | 方法与路径 | 输入 | 语义 |
 |---|---|---|
-| `GET/HEAD /artifacts` | `kind=image\|all`、`limit=1..50`、`offset=0..999999` | 按创建时间倒序返回作品摘要，用 `nextOffset` 续页。`kind=image` 按清单筛选 ≤20 MiB 的 PNG/JPEG/WebP 候选图片，包括仍可读取的旧版作品记录 |
+| `GET/HEAD /artifacts` | `kind=image\|audio\|video\|text\|json\|all`、`limit=1..50`、`offset=0..999999` | 按创建时间倒序返回作品摘要，用 `nextOffset` 续页。支持按图片、音频、视频、纯文本、JSON 或全部筛选 |
 | `GET/HEAD /artifacts/:id/meta` | 无 | 返回作品基础元数据。≤20 MiB 的 PNG/JPEG/WebP 候选图片会核对实际格式、静态编码和 4000 万像素上限。通过后附带 `image: { width, height, orientation }`（原始编码像素与 EXIF 方向 1–8）。校验失败返回 `415 IRIS_API_MEDIA_UNSUPPORTED` |
 | `GET/HEAD /artifacts/:id/lineage` | 无 | 基于已有 `Artifact.relations` 与 `FlowRun` 引用投影该作品的上游来源、直接派生作品与关联流程（各上限 50 项） |
 | `GET/HEAD /runs/:id/lineage` | 无 | 返回本流程引用的作品及其角色，最多各列出 50 项上游流程、上游来源作品、直接派生作品和下游流程。流程间的上下游由产物、对比图或报告的生产与消费关系确定 |

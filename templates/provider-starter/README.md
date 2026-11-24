@@ -41,5 +41,6 @@ npm run setup -- \
 - **异步生图与轮询**：通过 `POST /api/v1/services/aigc/image-generation/generation`（携带 `X-DashScope-Async: enable`、`messages` 文本、`n` 与可选 `width*height`）提交；缺少任务 ID 或响应异常时记为 **unknown acceptance**，绝不自动重提。轮询仅请求原 `/api/v1/tasks/{task_id}`。
 - **安全下载与边界**：API 请求拒绝重定向，签名 CDN 下载通过 Core 借出的网络端口跟随重定向且不附带 API `Authorization` 头；下载 PNG 上限 8 MiB（JSON 上限 1 MiB），错误记录自动脱敏。
 - **生命周期归属**：适配器不自建定时器、队列或网络池，所有请求统一使用 Core 传入的 `context.network.fetch` 并在对应方法内 `await` 完成。
+- **扩展多模态协议（0.3.3+）**：如需在自定义 Provider 中接入图生视频（`i2v`）、数字人视频（`s2v`）或自定义音乐协议（`music-gen`），可额外实现可选的 `supportsVideoMode?(modelId, mode)` 与 `modelParameters?(modelId)` 钩子；Core 会在 `ProviderSubmitRequest.input` 中通过 `ProviderMediaInput`（`firstFrame`、`audio`、`imgDataUrl`、`audioUrl`、`resolution`、`duration`、`timeoutMs`）透传受控媒体输入。
 
 上述协议行为基于 2026-11-03 核对的官方[万相文生图 API v2](https://help.aliyun.com/zh/model-studio/text-to-image-v2-api-reference)与[模型列表 API](https://help.aliyun.com/zh/model-studio/list-models) 实现；正式上线前请结合自己的真实账号与地域环境完成实测。

@@ -79,8 +79,8 @@ node bin/dsh-iris.js api serve --data-root /absolute/new-core \
 
 - `image-edit`：图片导入、固定编辑流程、原图与结果读取。
 - `image-generate`：独立文生图创建（含可选的 ComfyUI `workflowParameters` 标量参数）。
-- `tts` / `transcribe`（需 v3+ 根）：[语音合成与音频转写](AUDIO_FLOWS.md)，支持音频块返回与纯文本转写结果读取。
-- `video-generate`（需 v4+ 根）：[固定文生视频](VIDEO_FLOWS.md)，通过标准 MCP `resource_link` 与 `resources/read` 读取 MP4/WebM（≤32 MiB）。
+- `tts` / `transcribe` / `music`（需 v3+ 根）：[语音合成与音频转写](AUDIO_FLOWS.md)及[持久音乐生成](MUSIC.md)，支持音频块返回（`iris_core_audio`）、音乐候选查询（`iris_core_music_models`）、严格单次提交的音乐创建（`iris_core_create_music`，可选 `retriedFromRunId`）与纯文本转写结果读取。
+- `video-generate` / `video-i2v` / `video-s2v`（需 v4+ 根）：[文生视频、图生视频与数字人视频](VIDEO_FLOWS.md)，三个独立授权分组分别开放 `iris_core_create_video`、`iris_core_create_video_i2v` 与 `iris_core_create_video_s2v`，共用 `iris_core_video_models`（支持 `mode` 过滤）并通过标准 MCP `resource_link` 与 `resources/read` 读取 MP4/WebM（≤32 MiB）。
 - `vision` / `ocr`（需 v5 根）：[单图看图问答与长图分块 OCR](VISION_FLOWS.md)，保存问题/预算并在执行后读取文本与 JSON 报告（各限 1 MiB）。
 - `vision-locate`（需 v5 根）：[单图视觉定位](VISION_FLOWS.md#视觉定位与多模态摘要)，针对已有静态图片 `artifactId` 与自然语言目标创建持久 `locate/v0` 流程，执行后通过 `iris_core_locate_result` 读取原图像素坐标（`x1, y1, x2, y2` 及 `left, top, width, height`），可直接衔接 `local-media` 的 `iris_core_crop` 裁剪验证。
 - `media-summarize`（需 v5 根）：[多模态视频/帧摘要](VISION_FLOWS.md#视觉定位与多模态摘要)，将 1–20 张已授权的 `video-frame` 或静态图片 `artifactId` 自动拼成带时间戳标注的接触表，结合可选 `question` 与显式文本 `transcript` 创建持久 `summarize/v0` 流程（不隐式触发 ASR 计费），执行后通过 `iris_core_vision_text` 读取纯文本摘要。
@@ -158,14 +158,14 @@ node bin/dsh-iris.js mcp config \
 | 静态图片导入、原图读取、固定改图 Flow | 支持 | `image-edit` 分组支持 |
 | 独立文生图（含 ComfyUI 开放标量参数） | 支持 | `image-generate` 分组支持（v2+ 根） |
 | 语音合成（TTS）与音频转写 | 支持 | `tts` / `transcribe` 分组支持（v3+ 根） |
-| 文生视频 | 支持 | `video-generate` 分组支持（v4+ 根） |
+| 文生视频 / 图生视频（i2v） / 数字人视频（s2v） | 支持 | `video-generate` / `video-i2v` / `video-s2v` 分组独立支持（v4+ 根） |
+| 音乐生成（`music/v0`，含 `retriedFromRunId` 血缘） | 支持 | `music` 分组支持（v3+ 根） |
 | 看图问答与长图 OCR | 支持 | `vision` / `ocr` 分组支持（v5 根） |
 | 视觉定位与多模态视频/帧摘要 | 支持 | `vision-locate` / `media-summarize` 分组支持（v5 根） |
 | 裁剪 / 像素 diff / 视频抽帧（基于 `artifactId`） | 支持 | `local-media` 分组支持（零外部计费） |
 | 大文件只读收件目录安全入库（≤20 MiB，免 Base64） | 支持（`--inbox-dir`） | `inbox` 分组支持（`iris_core_inbox` / `iris_core_import_inbox_file`） |
 | 图片作品选择 | 支持 | 显式开启并授权 `iris_core_select_run`（0.3.2） |
 | 受控目录出件 | 支持（`--outbox-dir`） | 显式授权 `iris_core_export_outbox`（0.3.2） |
-| 图生视频 / S2V / 音乐生成 | 支持 | 待接入 |
 | 无头 HTML/SVG 截图（沙箱 CSP，零计费） | 支持 | `html-render` 分组支持（显式 `--browser-executable`） |
 
 ## 错误定位与验证范围

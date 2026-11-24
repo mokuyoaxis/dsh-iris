@@ -19,7 +19,15 @@ Iris 0.2.3 提供独立音乐生成能力。配置音乐模型后，可以通过
 
 配置文件中的 `musicProtocol` 使用现有标识 `gemini-web-music`，以兼容已有配置；这个标识不要求供应商或模型必须命名为 Gemini。
 
-Core 供应商页与 DSH 统一显示“Chat Completions（内嵌音频）”。模型音乐协议必须明确选择，“未指定”不会沿用供应商默认；选择协议本身也不表示该模型已经实测通过。Core 新工作台目前可配置音乐用途，音乐创作入口仍使用下方 DSH/CLI。
+Core 供应商页与 DSH 统一显示“Chat Completions（内嵌音频）”。模型音乐协议必须明确选择，“未指定”不会沿用供应商默认；选择协议本身也不表示该模型已经实测通过。第三方 Provider 插件也可注册支持 `music-gen` 能力的自定义协议。在 **v3 及以上** 执行根中，独立 Core Web 工作台、Headless Flow 与通用 MCP 已直接接入持久化音乐流程 `music/v0`。
+
+## Core 持久音乐流程（Web / MCP / Flow）
+
+在 v3+ 执行根中，Iris 提供严格单次提交的 `music/v0` 持久流程（无需升级数据根版本）：
+
+- **HTTP 路由**：`GET/HEAD /api/v0/music-models`（列出已配置音乐候选与协议）、`POST /api/v0/music`（保存音乐 Run，接受 `{ modelRef, prompt, timeoutMs?, retriedFromRunId? }` 与 `Idempotency-Key`，绝不触发生成），产物复用 `/api/v0/artifacts/:id/audio` 与 `/api/v0/runs/:id/download`。
+- **MCP `music` 分组**：在连接中心显式勾选 `music` 分组后开放 `iris_core_music_models`、`iris_core_create_music` 与 `iris_core_audio`（已有连接绝不静默扩权）。
+- **严格单次有限提交与知情重试血缘**：与 legacy CLI `run music` 不同，Core `music/v0` 的每一次 `continue` 至多向 Provider 提交 **1 次**（不暗中循环重试 HTTP 502），确保 1 Run = 1 Task = 1 次可追溯计费事件。如需基于失败或已完成的音乐 Run 重试，可在工作台点击「带原描述新建重试草稿」或在创建时传入 `retriedFromRunId`，新 Run 与其产物将通过 `retried-from` 关系边与原记录链接并呈现在只读血缘视图中。
 
 ## 通过 DSH 或工作台生成
 

@@ -69,6 +69,7 @@ export default definePlugin({
     return { providers: { images: { normalizeEndpoint: endpoint,
       supportsModel: ({ modelId, capability }) => modelId === SUPPORTED_MODEL && capability === 'image-gen',
       supportsImageEdit: () => false,
+      supportsVideoMode: () => false,
       createAdapter(provider, context) {
         if (context?.contractVersion !== 1 || typeof context.network?.fetch !== 'function') {
           throw failure('Core must supply Provider factory context v1.', 'validate', 'not_accepted', 'invalid_request');

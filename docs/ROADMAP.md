@@ -15,10 +15,9 @@ Iris 的定位是本地优先、Agent 可控的多模态创作工作区：让用
 
 0.3 体系围绕独立工作台、通用 MCP 与显式插件契约持续演进：
 
-- **最小插件契约与真实业务闭环**：0.3 线提供 [Core 插件贡献契约 v0](PLUGINS.md)、Provider 工厂上下文 v1、统一能力目录与默认工作台三处组合挂载（页面、设置、作品预览器）。内置[多图对照板](CONTACT_SHEET.md)及两套独立起手模板（业务/页面模板与万相 2.6 Provider 模板）已打通持久 Operation、原 UUID 恢复、Web 选择、MCP 调用与包外归档消费。当前冻结[最小兼容面](BETA_SCOPE.md#最小插件兼容面)，完整 SDK 与分发体验将根据实际插件开发者反馈继续演进。
-- **工作台与通用 MCP 覆盖深化**：[Core 工作台](LOCAL_WEB.md)与[通用 MCP](MCP.md) 已在 v1–v5 执行根上打通改图、文生图/ComfyUI、TTS/转写、[固定文生视频](VIDEO_FLOWS.md)（含工作台抽帧与带入摘要草稿）、[视觉流程](VISION_FLOWS.md)（看图问答、长图 OCR 及保守去重 `boundary-overlap/v0`、视觉定位 `vision-locate`、多模态摘要 `media-summarize`）、零计费本地工具（工作台独立面板与 MCP `local-media` / 显式 `--browser-executable` `html-render`）、只读作品/流程血缘视图、只读收件目录（`--inbox-dir` / `inbox`）、显式 MCP 作品选择（`iris_core_select_run`）以及受控出件目录（`--outbox-dir` / `outbox`），并配套 8 种主流客户端预设、连接配置自检与连接专属 Skill。
+- **最小插件契约与多模态生态就绪**：0.3 线提供 [Core 插件贡献契约 v0](PLUGINS.md)、Provider 工厂上下文 v1（含 `supportsVideoMode` / `modelParameters` 与多模态 `ProviderMediaInput`）、统一能力目录、多模态业务输入/产出（`artifactInputTypes` / `artifactOutputKinds` / `artifact.lineage`）、宿主托管 Schema 自动表单（零前端代码即可在「本地工具 → 扩展业务」运行）以及工作台组合挂载（页面、设置、预览器及 `context.host` 导航联动）。内置[多图对照板](CONTACT_SHEET.md)及两套独立起手模板已打通持久 Operation、原 UUID 恢复、Web 选择、MCP 调用与包外归档消费。当前冻结[最小兼容面](BETA_SCOPE.md#最小插件兼容面)，完整 SDK 与分发体验将根据实际插件开发者反馈继续演进。
+- **工作台与通用 MCP 覆盖深化**：[Core 工作台](LOCAL_WEB.md)与[通用 MCP](MCP.md) 已在 v1–v5 执行根上打通改图、文生图/ComfyUI、TTS/转写、[持久音乐生成](MUSIC.md)（`music/v0` 及 `retried-from` 重试血缘）、[三类视频流程](VIDEO_FLOWS.md)（文生/图生/数字人视频及工作台抽帧带入摘要草稿）、[视觉流程](VISION_FLOWS.md)（看图问答、长图 OCR 及保守去重 `boundary-overlap/v0`、视觉定位 `vision-locate`、多模态摘要 `media-summarize`）、零计费本地工具（工作台独立面板含宿主插件自动表单、MCP `local-media` / 显式 `--browser-executable` `html-render`）、只读作品/流程血缘视图、只读收件目录（`--inbox-dir` / `inbox`）、显式 MCP 作品选择（`iris_core_select_run`）以及受控出件目录（`--outbox-dir` / `outbox` 及总览出件列表），并配套 8 种主流客户端预设、连接配置自检与连接专属 Skill。
 - **下一阶段评估重点**：
-  - **独立 Core 音视频与创作能力深化**：推进 Core 持久音乐流程与图生视频（i2v）/ S2V 接入工作台及 MCP，补齐 DSH/CLI 与 Core/Web/MCP 的能力剪刀差；
   - **真实硬件、宿主与作品整理**：分开补充真实 ComfyUI GPU 推理、原生 Windows/WSL 完整 DSH 宿主装载与更多外部 MCP 客户端端到端证据，并按需求评估收藏、标签与可恢复归档。
 
 ## 后续功能方向

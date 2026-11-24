@@ -103,15 +103,20 @@ const selected = catalog.selectOperations(['example.library.count']);
 
 ## 业务操作
 
-- **有限 Core 命令**：`commands` 可从 `artifact.inspect`、`artifact.read`（≤8 MiB PNG/JPEG/WebP）、`artifact.list`、`task.inspect`、`task.list` 及写者专用的 `artifact.import` 中按需声明；`reader` 模式禁止声明写命令。
-- **来源输入绑定（`artifactInputs`）**：若业务需要读取图片，可在清单中声明顶层字符串或字符串数组字段（如 `['artifactIds']`）。连接被授予该业务后，可浏览同数据根内符合条件的图片，但仅能读取本次明确绑定传入的来源，不会授予其他业务的调用或历史权限。
+- **有限 Core 命令**：`commands` 可从 `artifact.inspect`、`artifact.read`、`artifact.list`、`artifact.lineage`、`task.inspect`、`task.list` 及写者专用的 `artifact.import` 中按需声明；`reader` 模式禁止声明写命令。
+- **多模态来源输入与产出（0.3.3+）**：
+  - `artifactInputs` 声明顶层字符串或字符串数组作品 ID 字段。未声明 `artifactInputTypes` 的旧插件保持默认仅限 ≤8 MiB 静态图片（零静默扩权）。
+  - 新插件可通过可选的 `artifactInputTypes` 为每个输入字段声明允许的媒体类型（`image` / `audio` / `video` / `text` / `json`，由公开常量 `PLUGIN_MEDIA_KINDS` 导出），并通过可选的 `artifactOutputKinds` 声明预期的输出媒体类型（同 `PLUGIN_MEDIA_KINDS`，持久化入库时自动归类为 `plugin-image` / `plugin-audio` / `plugin-video` / `plugin-text` / `plugin-json`）。
+  - 声明对应类型后，`artifact.read` 返回 `{ artifact, mediaType, bytesBase64, ...(imageBase64?) }`，有界读取上限按类型区分（图片 ≤20 MiB、音频 ≤20 MiB、视频 ≤32 MiB、文本/JSON ≤1 MiB；未声明 `artifactInputTypes` 的旧插件仍保持图片 ≤8 MiB）；`artifact.import` 严格接受 `{ image_bytes }` 或 `{ media_type, bytes }`（拒绝路径或额外字段），自动核验容器字节与 UTF-8/JSON 合法性，并由 Core 自动归类为 `plugin-*` 作品类型与写入 `derived-from` 血缘边。
+  - `artifact.lineage` 为只读命令，返回单件作品的上下游派生与关联流程血缘。
+- **宿主托管自动表单（`ui` 提示）**：业务可声明可选 `ui: { category?, summary? }`。即使插件不编写任何前端页面代码，只要服务端在 `--plugin-config` 的 `operations` 中启用该业务，工作台「本地工具 → 扩展业务」也会基于其封闭 `inputSchema` 与 `artifactInputTypes` 自动渲染 CSP 安全的原生表单，支持多模态作品选择、UUID 幂等提交与产物预览/血缘查看。
 - **封闭 JSON Schema**：支持 `type`、`title`、`description`、`properties`、`required`、`additionalProperties`（必须为 `false`）、`items`、`anyOf`、`enum`、`const`、数字上下界 / `multipleOf`、字符串长度 / `pattern` 与数组长度；不支持 `$ref`、默认值与隐式类型转换。
 - **执行与持久差异**：`createCorePluginHost().call()` 为本地直接调用；而通过工作台或 CLI 开启 `allowedOperations` 后，调用进入单根持久 runner，记录 `plugin.execute` 与请求 UUID，支持中断查回（详见[多图对照板](CONTACT_SHEET.md)）。
 
 ## Provider 贡献
 
-- **清单与工厂上下文 v1**：声明 `{id, version, title, capabilities, configuration?}`，并在 `activate` 中实现 `normalizeEndpoint` 与 `createAdapter(provider, context)`（`PROVIDER_FACTORY_CONTEXT_VERSION === 1`）。
-- **Core 托管网络与凭据**：`context` 传入只读的 `{contractVersion: 1, network: {fetch}, modelId?}`，并已解析好当次凭据。插件仅在方法执行期间借用 `context.network.fetch`，无需自建队列、调度或存储索引（完整规范见 [Provider 最小契约](PROVIDER_PLUGIN_CONTRACT.md)与 [Provider Adapter 契约](PROVIDER_ADAPTER_CONTRACT.md)）。
+- **清单与工厂上下文 v1**：声明 `{id, version, title, capabilities, configuration?}`，并在 `activate` 中实现 `normalizeEndpoint` 与 `createAdapter(provider, context)`（`PROVIDER_FACTORY_CONTEXT_VERSION === 1`）。可按需实现可选钩子 `supportsModel`、`supportsImageEdit`、`supportsVideoMode?(modelId, mode)`（声明 `t2v` / `i2v` / `s2v` 支持）与 `modelParameters?({ provider, modelId, capability })`（声明模型开放标量参数）。
+- **Core 托管网络、多模态输入与凭据**：`context` 传入只读的 `{contractVersion: 1, network: {fetch}, modelId?}`，并已解析好当次凭据。多模态提交时，Core 通过 `ProviderSubmitRequest.input` 传入受控的 `ProviderMediaInput`（`firstFrame`、`audio`、`imgDataUrl`、`audioUrl`、`resolution`、`duration`、`timeoutMs`）。插件仅在方法执行期间借用 `context.network.fetch`，无需自建队列、调度或存储索引（完整规范见 [Provider 最小契约](PROVIDER_PLUGIN_CONTRACT.md)与 [Provider Adapter 契约](PROVIDER_ADAPTER_CONTRACT.md)）。
 - **精确依赖持久化**：新插件 Provider 提交任务前，Core 会将 `pluginDependency` 写入 Task/Attempt 与端点绑定中。若插件缺失或版本变化，Core 会拒绝观察或重提以免误匹配；恢复原精确版本后可继续原任务，历史记录与作品始终可读。
 
 统一依赖对象格式如下：
@@ -130,7 +135,7 @@ const selected = catalog.selectOperations(['example.library.count']);
 ## Web 贡献和生命周期
 
 - **声明与资源固定**：`pages` / `settings` 声明 `{id, version, title, entry, styles?}`，`renderers` 另声明精确 `mediaTypes` 数组。入口须为插件目录内的本地 JS/MJS（样式为 CSS，单文件 ≤8 MiB，插件合计 ≤16 MiB），激活前即由加载器固定字节并打包隔离。
-- **浏览器上下文 `mount(context)`**：模块导出 `mount(context)` 并可返回清理函数（或 Promise）。`context` 提供 `container`（Shadow DOM 隔离样式）、`signal`、`dependency`、`session`、`theme` 与受控 `api`（含 `runs`/`run`/`models`/`audioModels`/`videoModels`/`visionModels`/`artifact`，开启供应商管理时的设置模块额外拥有 `api.providers`，开启业务执行时额外拥有 `api.pluginOperations`）；渲染器另附 `artifact` 对象。
+- **浏览器上下文 `mount(context)`**：模块导出 `mount(context)` 并可返回清理函数（或 Promise）。`context` 提供 `container`（Shadow DOM 隔离样式）、`signal`、`dependency`、`session`（含 `audio`/`music`/`video`/`vision`/`inbox`/`outbox`/`htmlRender` 能力标志）、`theme`、宿主导航 `host`（`openRun` / `openArtifactLineage` / `sendToStudio` / `sendToLocalTool`，仅导航或填充草稿，绝不代为提交）与受控 `api`（含 `runs`/`run`/`runLineage`/`artifacts`/`artifactMeta`/`artifactLineage`/`models`/`audioModels`/`musicModels`/`videoModels`/`visionModels`/`artifact`，开启供应商管理时的设置模块额外拥有 `api.providers`，开启业务执行时额外拥有 `api.pluginOperations`）；渲染器另附 `artifact` 对象。
 - **卸载清理**：切换页面、折叠组件或退出登录时，宿主会触发 `signal` 中止并执行清理函数；插件需自行释放 Blob URL、事件监听与定时器。
 
 通过公开 SDK 装配带有 Web 贡献的独立工作台：

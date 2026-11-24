@@ -5,7 +5,7 @@ const element = (tag, text, className) => {
   return node;
 };
 
-export async function mount({ container, api, session, dependency, signal: parentSignal, theme }) {
+export async function mount({ container, api, host, session, dependency, signal: parentSignal, theme }) {
   const lifetime = new AbortController(), signal = AbortSignal.any([parentSignal, lifetime.signal]);
   const service = api.pluginOperations, urls = new Set();
   const operationId = dependency.pluginId + '.create';
@@ -65,7 +65,18 @@ export async function mount({ container, api, session, dependency, signal: paren
       const url = URL.createObjectURL(blob); urls.add(url);
       const image = element('img'); image.src = url; image.alt = '已保存的灵感对照板';
       const link = element('a', '下载原始 PNG'); link.href = url; link.download = 'iris-board-' + id + '.png';
-      output.replaceChildren(image, link); output.hidden = false; renderedId = operation.id;
+      const extras = [];
+      if (host?.openArtifactLineage) {
+        const lineage = element('button', '查看血缘', 'secondary'); lineage.type = 'button';
+        lineage.addEventListener('click', () => host.openArtifactLineage(id), { signal });
+        extras.push(lineage);
+      }
+      if (host?.sendToStudio && session.operations?.includes('runs.create')) {
+        const send = element('button', '用对照板改图', 'secondary'); send.type = 'button';
+        send.addEventListener('click', () => host.sendToStudio({ mode: 'edit', artifactId: id, label: '对照板 · ' + id.slice(-8) }), { signal });
+        extras.push(send);
+      }
+      output.replaceChildren(image, link, ...extras); output.hidden = false; renderedId = operation.id;
     } else if (['queued', 'running'].includes(operation.state)) {
       clearTimeout(timer); timer = setTimeout(() => { void poll(operation.id); }, 450);
     }

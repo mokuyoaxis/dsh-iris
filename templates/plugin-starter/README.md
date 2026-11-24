@@ -58,6 +58,7 @@ npm exec -- dsh-iris web serve --data-root /absolute/new-private-demo/core \
 
 - **自定义身份**：二次开发前请替换包名、插件 ID（同步更新 `scripts/setup.mjs` 与测试断言），确保页面中引用自己的插件标识。所有浏览器 JS/CSS 资源须声明在清单中并保持自包含。
 - **Core 托管契约**：本业务仅声明 `artifact.read` 与 `artifact.import`，并以 `artifactInputs: ['artifactIds']` 绑定来源图片；Core 负责参数校验、来源授权检查与持久化恢复。如果扩展中使用了后台连接或句柄，请在 `activate` 中通过 `context.onDispose()` 注册清理，并响应 `AbortSignal`。
+- **多模态与零前端自动表单（0.3.3+）**：若自定义业务需要处理音频、视频、纯文本或 JSON 作品，可在清单中声明 `artifactInputTypes`（如 `{ audioId: ['audio'] }`）、`artifactOutputKinds` 与 `ui: { category, summary }`，并可声明只读命令 `artifact.lineage`。即使插件不编写任何前端 `pages` 代码，只要在工作台启用了该业务，宿主也会在 **本地工具 → 扩展业务** 中根据 `inputSchema` 自动渲染 CSP 安全的原生表单；自定义页面也可通过 `context.host`（`openRun` / `openArtifactLineage` / `sendToStudio` / `sendToLocalTool`）与 `api.artifacts` / `api.artifactLineage` / `api.musicModels` 与宿主无缝联动。
 - **版本升级原则**：修改业务语义时同步升级插件/贡献版本；本模板显式锁定 `contact-sheet` `0.1.0` 以防无意跨版本变更。中断的 Operation 会保留为 `interrupted`，不会跨重启或跨版本自动重做。
 - **信任边界**：插件 Node 模块与同源浏览器页面均属于受信任代码（Shadow DOM 用于样式隔离，并非安全沙箱）。
 

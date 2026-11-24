@@ -17,7 +17,7 @@ npm test
 npm run setup -- --directory /absolute/path/to/new-demo
 ```
 
-初始化脚本会使用公开 CLI 创建全新的私有演示目录（业务模板还会导入两张纯色示例 PNG，不依赖任何供应商账号），生成包含绝对路径的 `plugins.json` 启动配置，并打印可直接运行的 `web serve` 命令。你可以先用 `plugins inspect --plugin-config ...` 检查装配摘要，再启动工作台。
+初始化脚本会使用公开 CLI 创建全新的私有演示目录（业务模板还会导入两张纯色示例 PNG，不依赖任何供应商账号），生成包含绝对路径的 `plugins.json` 启动配置，并打印可直接运行的 `web serve` 命令。你可以先用 `plugins inspect --plugin-config ...` 检查装配摘要与诊断信息（包含 Provider 能力、多模态业务及自动表单兼容摘要），再启动工作台。
 
 ## 三层显式控制模型
 
@@ -34,7 +34,7 @@ npm run setup -- --directory /absolute/path/to/new-demo
 ## 公开边界与生命周期规范
 
 - **仅依赖公开导出**：插件代码只需导入 `@mokuyoaxis/dsh-iris/plugins`、`@mokuyoaxis/dsh-iris/contact-sheet` 以及包根 `package.json`（用于定位 CLI），不要直接引用 `lib/` 内部模块，也无需自建执行队列、存储或 MCP 服务。
-- **持久执行与来源校验**：带图片输入的业务应通过 `artifactInputs`（如 `artifactIds`）声明来源字段，由 Core 负责校验输入、权限与持久保存 `Operation` 和输出产物。前端页面则应共享上下文的 API、会话与主题：提交前先生成并保存 UUID、刷新时按原 UUID 查回、卸载时及时清理请求监听与 Blob URL。
+- **持久执行与多模态来源校验**：带作品输入的业务通过 `artifactInputs` 声明来源字段，并可按需声明 `artifactInputTypes`（支持 `image`/`audio`/`video`/`text`/`json`）、`artifactOutputKinds` 与 `ui` 提示；未声明 `artifactInputTypes` 的旧插件默认仅限 ≤8 MiB 静态图片。Core 负责校验输入、权限与持久保存 `Operation` 和输出产物。不编写前端 `pages` 代码的业务也可直接通过工作台「本地工具 → 扩展业务」的宿主自动表单运行；自定义前端页面则可通过 `context.api`（含 `artifacts` / `artifactLineage` / `musicModels` 等）与 `context.host`（`openRun` / `openArtifactLineage` / `sendToStudio` / `sendToLocalTool`）深度集成。
 - **版本语义纪律**：一旦业务的输入/输出或执行语义发生实质变更，请同步提升插件与贡献的版本号。Core 会在每条 `Operation` 中绑定精确版本；缺失或版本不匹配时，历史记录与产物依然可读，但中断操作不会被跨版本自动重做。
 - **资源清理**：在 `activate` 中通过 `context.onDispose` 注册后端资源释放逻辑，并保证在停止所有 Core 服务/宿主之后再释放共享的 `registry`。
 - **信任模型**：插件与页面模块属于受信任的本地代码（Shadow DOM 仅用于样式隔离）。如需了解 Provider 扩展的凭据与网络边界，请参阅 [Provider 最小契约](PROVIDER_PLUGIN_CONTRACT.md)、[插件契约 v0](PLUGINS.md) 与 [启动选择指南](PLUGIN_STARTUP.md)。
