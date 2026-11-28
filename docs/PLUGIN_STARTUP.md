@@ -1,11 +1,11 @@
-# Core 启动与插件启用（0.3.2）
+# Core 启动与插件启用（0.3.3）
 
 通过 `--plugin-config` 启动参数，你可以使用纯 JSON 配置文件显式装载受信任插件、启用持久业务操作并挂载工作台页面，无需手写 Node 启动脚本。
 
 > [!NOTE]
 > - 仅使用内置媒体功能时，请直接参考 [Core 快速开始](CORE_QUICKSTART.md)。
 > - 若要开发和打包自己的独立插件，请参考 [独立插件开发](PLUGIN_DEVELOPMENT.md) 与 [插件契约 v0](PLUGINS.md)。
-> - **命令运行方式**：若通过 `npm install @mokuyoaxis/dsh-iris@0.3.2` 安装在本地项目中，命令不会自动进入全局 `PATH`，请在下方 `dsh-iris` 命令前加上 `npx`（即 `npx dsh-iris ...`）；若在已执行 `npm ci` 的源码仓库中运行，请将 `dsh-iris` 替换为 `node bin/dsh-iris.js`。
+> - **命令运行方式**：若通过 `npm install @mokuyoaxis/dsh-iris@0.3.3` 安装在本地项目中，命令不会自动进入全局 `PATH`，请在下方 `dsh-iris` 命令前加上 `npx`（即 `npx dsh-iris ...`）；若在已执行 `npm ci` 的源码仓库中运行，请将 `dsh-iris` 替换为 `node bin/dsh-iris.js`。
 
 ## 准备配置并启动
 

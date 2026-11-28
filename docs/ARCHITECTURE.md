@@ -1,6 +1,6 @@
 # Iris 架构与边界
 
-本文介绍 **Iris 0.3.2** 的共享 Core、Web 工作台、MCP 网关、插件装配与 DSH 宿主边界（兼容宿主列表见 [兼容矩阵](DSH_COMPATIBILITY.md)，运行要求为 Node.js ≥22.1.0）。
+本文介绍 **Iris 0.3.3** 的共享 Core、Web 工作台、MCP 网关、插件装配与 DSH 宿主边界（兼容宿主列表见 [兼容矩阵](DSH_COMPATIBILITY.md)，运行要求为 Node.js ≥22.1.0）。
 
 ## 当前形态
 

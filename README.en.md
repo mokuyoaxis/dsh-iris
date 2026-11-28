@@ -33,7 +33,7 @@ Iris brings media model providers, creative workflows, and generated outputs int
 Built on a shared Core engine, Iris offers four entry points: a **standalone Web workbench**, a **generic MCP server**, a **headless CLI**, and a **native DSH plugin**. Core manages credentials, tasks, and artifacts, while you decide exactly which capabilities each client can access.
 
 > [!NOTE]
-> The latest published npm release is **Iris 0.3.2** ([release notes](docs/releases/0.3.2.md)), while `main` includes all **Iris 0.3.3** capabilities ([scope & compatibility](docs/BETA_SCOPE.md) · [changelog](CHANGELOG.md)). If you are upgrading from 0.2.7, a prerelease, or 0.3.0–0.3.2, read the [upgrade guide](docs/UPGRADING_0.3.md) first. Before 0.3.3 is published to npm, run directly from source or a local package archive to test the new features.
+> This documentation covers **Iris 0.3.3** ([release notes](docs/releases/0.3.3.md) · [scope & compatibility](docs/BETA_SCOPE.md) · [changelog](CHANGELOG.md)). If you are upgrading from 0.2.7, a prerelease, or 0.3.0–0.3.2, read the [upgrade guide](docs/UPGRADING_0.3.md) first. Before a version is published to npm, run directly from source or a local package archive.
 
 | What you want to do | Recommended entry | Availability |
 |---|---|---|
@@ -66,7 +66,7 @@ The Iris workbench pairs a clean light interface with subtle iris accents, light
 
 ### Current entry-point coverage
 
-| Capability | DSH / standalone CLI | Core Web / MCP (`main` / 0.3.3) |
+| Capability | DSH / standalone CLI (0.3.3) | Core Web / MCP (0.3.3) |
 |---|---|---|
 | Image generation, import, editing, and selection | Available | Available (text-to-image requires a generation-enabled root; Web selection and opt-in MCP `iris_core_select_run`) |
 | Speech synthesis and transcription | Available | Available in v3 / v4 / v5 roots |
@@ -84,7 +84,7 @@ The Iris workbench pairs a clean light interface with subtle iris accents, light
 Initialize a **new private directory** for a fresh 0.3 workbench (older 0.2.x workspaces are not migrated automatically; existing 0.3.0–0.3.2 roots work as-is—back up before writing new 0.3.3 recipes):
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.2
+npm install @mokuyoaxis/dsh-iris@0.3.3
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
@@ -101,7 +101,7 @@ npx dsh-iris web serve \
 ```
 
 > [!TIP]
-> The install command above targets the latest published npm release (`0.3.2`). To run **0.3.3** features from a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. `execution init --vision` initializes a v5 root enabling image, speech/transcription/music, t2v/i2v/s2v video, and vision/OCR/locate/summarize flows.
+> When running from a source checkout (or before npm publication), install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. `execution init --vision` initializes a v5 root enabling image, speech/transcription/music, t2v/i2v/s2v video, and vision/OCR/locate/summarize flows.
 
 1. **Sign in**: Open the **`loginUrl`** printed in your terminal to set an access password, then bookmark the regular address. Devices stay remembered across refreshes and normal restarts.
 2. **Add providers**: Under **模型服务** (Model services), add your connection, sync or enter models, confirm their uses, and pick a policy in **功能模型池** (Function pools). Browsing configuration and model catalogs is always read-only; upstream charges only occur when you start a generation.
@@ -111,10 +111,10 @@ See the [Core quickstart](docs/CORE_QUICKSTART.md) and [Agent Core guide](docs/A
 
 ### DSH plugin
 
-Verify that `dsh --version` matches a supported version in the [compatibility matrix](docs/DSH_COMPATIBILITY.md) (**25 verified versions** in 0.3.3 covering `0.1.2-rc.1` through `0.2.2-rc.5`; 12 in published 0.3.2), with Node.js ≥22.1.0 and `pnpm` on your PATH:
+Verify that `dsh --version` matches one of the **25 verified versions** (`0.1.2-rc.1` through `0.2.2-rc.5`) in the [compatibility matrix](docs/DSH_COMPATIBILITY.md), with Node.js ≥22.1.0 (follow the host Node requirement for DSH `0.2.2-*`) and `pnpm` on your PATH:
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.2
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.3
 dsh web
 ```
 
@@ -134,7 +134,7 @@ See the [user guide](user_guide.md) for full details, or hand the [Agent quickst
 Install directly in any project without DSH:
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.2
+npm install @mokuyoaxis/dsh-iris@0.3.3
 npx dsh-iris --help
 ```
 
@@ -179,7 +179,7 @@ Captured from an Android browser connected to DSH running inside Termux/PRoot De
 | Workbench & access | [Login](docs/WORKBENCH_LOGIN.md) · [Core Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Core Skills](docs/CORE_SKILLS.md) |
 | Models & workflows | [Providers, pools & spectrum](docs/PROVIDER_SETTINGS.md) · [Images / ComfyUI](docs/IMAGE_GENERATION.md) · [Video flows](docs/VIDEO_FLOWS.md) · [Speech / transcription](docs/AUDIO_FLOWS.md) · [Music](docs/MUSIC.md) · [Vision & OCR](docs/VISION_FLOWS.md) · [Task semantics](docs/TASK_SEMANTICS.md) |
 | Extensions | [Plugin contract](docs/PLUGINS.md) · [Startup](docs/PLUGIN_STARTUP.md) · [Panel & themes](docs/PANEL_EXTENSIONS.md) · [Contact sheet](docs/CONTACT_SHEET.md) |
-| Releases & internals | [0.3.2 release notes](docs/releases/0.3.2.md) · [0.3.1 release notes](docs/releases/0.3.1.md) · [0.3.0 release notes](docs/releases/0.3.0.md) · [Upgrade guide](docs/UPGRADING_0.3.md) · [0.2.7 history](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
+| Releases & internals | [0.3.3 release notes](docs/releases/0.3.3.md) · [0.3.2 release notes](docs/releases/0.3.2.md) · [0.3.1 release notes](docs/releases/0.3.1.md) · [0.3.0 release notes](docs/releases/0.3.0.md) · [Upgrade guide](docs/UPGRADING_0.3.md) · [0.2.7 history](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
 
 The DSH package includes [`iris-use`](.dsh/skills/iris-use/SKILL.md), [`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md), and [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md).
 

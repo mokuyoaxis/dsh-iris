@@ -1,6 +1,6 @@
 # 独立视觉 CLI
 
-本页面向 **Iris 0.3.2的传统视觉CLI**。发行状态见[README](../README.md)；准确版本已发行后安装 `npm install @mokuyoaxis/dsh-iris@0.3.2` 并运行 `npx dsh-iris ...`，发布准备期间可使用本地tarball或从源码运行 `node bin/dsh-iris.js ...`。需要Node.js ≥22.1.0、依赖Sharp；从视频文件抽帧还需要PATH中的ffmpeg、ffprobe，复用既有Core帧不需要。新的持久看图/OCR/定位/摘要另见[Core视觉流程](VISION_FLOWS.md)，不自动迁移旧数据根。
+本页面向 **Iris 0.3.3 的传统视觉 CLI**。发行状态见[README](../README.md)；准确版本已发行后安装 `npm install @mokuyoaxis/dsh-iris@0.3.3` 并运行 `npx dsh-iris ...`，发布准备期间可使用本地 tarball 或从源码运行 `node bin/dsh-iris.js ...`。需要 Node.js ≥22.1.0、依赖 Sharp；从视频文件抽帧还需要 PATH 中的 ffmpeg、ffprobe，复用既有 Core 帧不需要。新的持久看图/OCR/定位/摘要另见[Core视觉流程](VISION_FLOWS.md)，不自动迁移旧数据根。
 
 ## 四个命令
 

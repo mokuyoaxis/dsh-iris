@@ -4,7 +4,7 @@ Iris 的定位是本地优先、Agent 可控的多模态创作工作区：让用
 
 ## 当前状态
 
-当前最新正式发行版为 **Iris 0.3.2**，主线已就绪 **Iris 0.3.3** 全部能力（发布说明见 [0.3.2 发行说明](releases/0.3.2.md)、[0.3.1 历史发行](releases/0.3.1.md) 与 [0.3.0 历史发行](releases/0.3.0.md)，范围定义见 [支持范围](BETA_SCOPE.md)，升级指引见 [升级指南](UPGRADING_0.3.md)，历史版本对照保留于 [0.2.7 发行说明](releases/0.2.7.md)）。它以单个 npm 包 `@mokuyoaxis/dsh-iris` 同时提供 **独立 Core Web 工作台**、**通用 MCP（stdio / Streamable HTTP）**、**Headless CLI** 与 **DSH 原生插件**：
+当前版本为 **Iris 0.3.3**（发布说明见 [0.3.3 发行说明](releases/0.3.3.md)、[0.3.2 历史发行](releases/0.3.2.md)、[0.3.1 历史发行](releases/0.3.1.md) 与 [0.3.0 历史发行](releases/0.3.0.md)，范围定义见 [支持范围](BETA_SCOPE.md)，升级指引见 [升级指南](UPGRADING_0.3.md)，历史版本对照保留于 [0.2.7 发行说明](releases/0.2.7.md)）。它以单个 npm 包 `@mokuyoaxis/dsh-iris` 同时提供 **独立 Core Web 工作台**、**通用 MCP（stdio / Streamable HTTP）**、**Headless CLI** 与 **DSH 原生插件**：
 
 - **全链路媒体与视觉能力**：覆盖图片生成、持久图片导入与 Artifact 改图（含模型级图片协议与 DashScope 原生 Qwen 改图）、ComfyUI 工作流与开放标量参数、视频（t2v/i2v/S2V 及工作台本地抽帧）、TTS 语音合成、音频转写、音乐生成，以及看图问答、长图 OCR（含已完成真机复测的保守跨块边界去重 `boundary-overlap/v0`）、目标定位（含工作台 EXIF 精确 SVG 叠框与零计费一键裁剪）与视频多模态摘要（含工作台抽帧创建）。
 - **模型池、凭据与网络/调度治理**：六类功能支持自动池、手动有序名单或停用（宿主默认视觉与新发现目录模型均需显式确认）；支持 DSH 连接引用与环境变量凭据引用（`apiKeyEnv`）、HTTP(S) 代理节点/有序出口池/供应商绑定、进程内网络 Doctor、有界并发调度及六色能力健康光谱。

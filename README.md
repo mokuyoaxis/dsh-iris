@@ -33,7 +33,7 @@ Iris 将媒体模型服务、创作流程与产物管理统一到一个本地工
 围绕同一套 Core 引擎，Iris 提供四种使用方式：**独立 Web 工作台**、**通用 MCP 服务**、**Headless CLI** 以及 **DSH 原生插件**。供应商凭据、任务状态与作品均由 Core 统一托管，客户端按你授予的权限获取能力。
 
 > [!NOTE]
-> 当前已发布的 npm 稳定版为 **Iris 0.3.2**（[发行说明](docs/releases/0.3.2.md)），仓库主线已就绪 **Iris 0.3.3** 全部能力（[支持范围](docs/BETA_SCOPE.md) · [变更记录](CHANGELOG.md)）。若从 0.2.7、预发布版本或 0.3.0–0.3.2 升级，请先阅读[升级指南](docs/UPGRADING_0.3.md)；0.3.3 正式发行前，请直接使用源码或本地打包归档体验新特性。
+> 本文档对应 **Iris 0.3.3**（[发行说明](docs/releases/0.3.3.md) · [支持范围](docs/BETA_SCOPE.md) · [变更记录](CHANGELOG.md)）。若从 0.2.7、预发布版本或 0.3.0–0.3.2 升级，请先阅读[升级指南](docs/UPGRADING_0.3.md)；发布前验证请直接使用源码或本地打包归档。
 
 | 你想做什么 | 推荐入口 | 说明 |
 |---|---|---|
@@ -66,7 +66,7 @@ Iris 工作台采用明快简洁的界面与浅鸢尾配色，支持明暗主题
 
 ### 当前入口覆盖
 
-| 能力 | DSH / 独立 CLI | Core Web / MCP（主线 0.3.3） |
+| 能力 | DSH / 独立 CLI（0.3.3） | Core Web / MCP（0.3.3） |
 |---|---|---|
 | 图片生成、导入、编辑与选定 | 可用 | 可用（文生图需支持生成的执行根；支持 Web 与显式授权 MCP `iris_core_select_run` 选择作品） |
 | 语音合成、音频转写 | 可用 | v3 / v4 / v5 数据根可用 |
@@ -84,7 +84,7 @@ Iris 工作台采用明快简洁的界面与浅鸢尾配色，支持明暗主题
 为保证数据格式隔离，请为 0.3 工作台指定一个**新的私有目录**（已有旧工作区不会自动迁移；从 0.3.0–0.3.2 升级可直接沿用现有数据根，写入 0.3.3 新配方前请先备份）：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.2
+npm install @mokuyoaxis/dsh-iris@0.3.3
 
 IRIS_PREVIEW="$HOME/.iris/preview"
 mkdir -p "$IRIS_PREVIEW"
@@ -101,7 +101,7 @@ npx dsh-iris web serve \
 ```
 
 > [!TIP]
-> 上述安装命令对应当前已发布的 npm 稳定版 `0.3.2`；在源码仓库体验 **0.3.3** 主线能力时，运行 `npm ci` 安装锁定依赖，并将命令中的 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。`execution init --vision` 会初始化 v5 根，一次开启图片、语音/转写/音乐、文生/图生/数字人视频与看图/OCR/定位/摘要流程。
+> 在源码仓库中开发或发布前验证时，运行 `npm ci` 安装锁定依赖，并将命令中的 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。`execution init --vision` 会初始化 v5 根，一次开启图片、语音/转写/音乐、文生/图生/数字人视频与看图/OCR/定位/摘要流程。
 
 1. **首次登录**：在浏览器中打开终端输出的 **`loginUrl`** 设置访问口令，此后直接访问普通地址即可。登录状态默认在当前设备保留，刷新或正常重启服务后可继续使用。
 2. **配置模型服务**：在**模型服务**页面添加供应商、同步或填写模型并确认用途，在**功能模型池**设定策略，即可在**创作**页面生成作品。配置与目录读取均不产生费用，只有发起实际生成或执行才会调用上游服务。
@@ -111,10 +111,10 @@ npx dsh-iris web serve \
 
 ### DSH 插件
 
-确认 `dsh --version` 属于[兼容矩阵](docs/DSH_COMPATIBILITY.md)中的受支持版本（0.3.3 主线已扩展至 **25 个**准确版本，覆盖 `0.1.2-rc.1` 至 `0.2.2-rc.5`；已发布 npm 版 0.3.2 覆盖 12 个版本），且环境满足 Node.js ≥22.1.0 与 `pnpm`：
+确认 `dsh --version` 属于[兼容矩阵](docs/DSH_COMPATIBILITY.md)中的 **25 个**受支持准确版本（覆盖 `0.1.2-rc.1` 至 `0.2.2-rc.5`），且环境满足 Node.js ≥22.1.0（DSH `0.2.2-*` 宿主以宿主 Node 要求为准）与 `pnpm`：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.2
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.3
 dsh web
 ```
 
@@ -134,7 +134,7 @@ dsh web
 无需 DSH，直接在任意项目中安装使用：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.2
+npm install @mokuyoaxis/dsh-iris@0.3.3
 npx dsh-iris --help
 ```
 
@@ -179,7 +179,7 @@ npx dsh-iris --help
 | 工作台与接入 | [工作台登录](docs/WORKBENCH_LOGIN.md) · [Core Web 参考](docs/LOCAL_WEB.md) · [MCP 指南](docs/MCP.md) · [Core Skills](docs/CORE_SKILLS.md) |
 | 模型与业务流程 | [模型服务与健康光谱](docs/PROVIDER_SETTINGS.md) · [图片与 ComfyUI](docs/IMAGE_GENERATION.md) · [视频流程](docs/VIDEO_FLOWS.md) · [语音与转写](docs/AUDIO_FLOWS.md) · [音乐生成](docs/MUSIC.md) · [视觉与 OCR](docs/VISION_FLOWS.md) · [任务语义](docs/TASK_SEMANTICS.md) |
 | 插件与扩展 | [插件契约](docs/PLUGINS.md) · [启动选择](docs/PLUGIN_STARTUP.md) · [Panel 与外观](docs/PANEL_EXTENSIONS.md) · [多图对照板](docs/CONTACT_SHEET.md) |
-| 版本与架构 | [0.3.2 发行说明](docs/releases/0.3.2.md) · [0.3.1 发行说明](docs/releases/0.3.1.md) · [0.3.0 发行说明](docs/releases/0.3.0.md) · [升级指南](docs/UPGRADING_0.3.md) · [0.2.7 历史发行](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构设计](docs/ARCHITECTURE.md) |
+| 版本与架构 | [0.3.3 发行说明](docs/releases/0.3.3.md) · [0.3.2 发行说明](docs/releases/0.3.2.md) · [0.3.1 发行说明](docs/releases/0.3.1.md) · [0.3.0 发行说明](docs/releases/0.3.0.md) · [升级指南](docs/UPGRADING_0.3.md) · [0.2.7 历史发行](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [架构设计](docs/ARCHITECTURE.md) |
 
 DSH 随包附带 [`iris-use`](.dsh/skills/iris-use/SKILL.md)、[`iris-compose-media`](.dsh/skills/iris-compose-media/SKILL.md) 与 [`iris-verify-ui`](.dsh/skills/iris-verify-ui/SKILL.md) 三项 Skill。
 

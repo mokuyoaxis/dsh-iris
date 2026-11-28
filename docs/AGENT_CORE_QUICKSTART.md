@@ -1,6 +1,6 @@
 # Agent Quickstart · Core 与 MCP 接入指导
 
-This page provides a copy-paste prompt and behavioral reference for AI Agents setting up or operating **Iris 0.3** (`0.3.2` published on npm; `0.3.3` on `main`) via the Core workbench and MCP. For DSH plugin or standalone CLI setup, see the [DSH/CLI Agent guide](AGENT_QUICKSTART.md); for manual setup steps, see the [Core quickstart](CORE_QUICKSTART.md).
+This page provides a copy-paste prompt and behavioral reference for AI Agents setting up or operating **Iris 0.3.3** via the Core workbench and MCP. For DSH plugin or standalone CLI setup, see the [DSH/CLI Agent guide](AGENT_QUICKSTART.md); for manual setup steps, see the [Core quickstart](CORE_QUICKSTART.md).
 
 ## Setup prompt · 交给 Agent 的接入指令
 

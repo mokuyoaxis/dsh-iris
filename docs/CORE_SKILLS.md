@@ -7,7 +7,7 @@ Iris 为脱离 DSH 运行的终端与 MCP 场景提供两类宿主无关的 Agen
 
 > [!NOTE]
 > - DSH 原生插件自带的三项 Skill（`iris-use`、`iris-compose-media`、`iris-verify-ui`）继续服务于 DSH 宿主环境，与本页介绍的独立 Skills 互不替代。
-> - **命令运行方式**：在本地项目安装 `@mokuyoaxis/dsh-iris@0.3.2` 后，请使用 `npx dsh-iris ...` 运行 CLI；在已执行 `npm ci` 的源码仓库中，请将 `dsh-iris` 替换为 `node bin/dsh-iris.js`。
+> - **命令运行方式**：在本地项目安装 `@mokuyoaxis/dsh-iris@0.3.3` 后，请使用 `npx dsh-iris ...` 运行 CLI；在已执行 `npm ci` 的源码仓库中，请将 `dsh-iris` 替换为 `node bin/dsh-iris.js`。
 
 ## 显式安装、检查与卸载
 

@@ -19,7 +19,13 @@ Iris与DSH的版本号独立。安装前运行 `dsh --version`，并核对要安
 - `0.1.0` / `0.1.1` 及未列出的 `alpha` / `rc` / 正式版继续不纳入；
 - `0.2.3-alpha.1`（官方 `@deepseek-ai/cordis-plugin-loader` 启动导出不匹配 `EntryValidationError`）与 `0.2.3-alpha.2`（`@deepseek-ai/dsh-host-webserver` 引入默认 fail-closed 的 `WebRoute.auth = 'required'` Peer 认证模型且要求 Node `^24.22.3 || >=26.13.1`，需待完整宿主 Web 认证与无头 `/iris/render` 实机验收后评估）**暂不纳入 0.3.3 兼容声明**。
 
-发布准备期间使用源码或本地候选包，不把版本号当作已发行证据。从 0.3.0 / 0.3.1 / 0.3.2 升级无需迁移数据根（注意写入 0.3.3 新流程后回滚须用升级前备份），详见 [升级指南](UPGRADING_0.3.md)。
+正式版本已发行后可固定安装：
+
+```bash
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.3
+```
+
+发布准备期间使用源码或本地候选包，不把版本号当作已发行证据。从 0.3.0 / 0.3.1 / 0.3.2 升级无需迁移数据根（注意写入 0.3.3 新流程后回滚须用升级前备份），详见 [0.3.3 发行说明](releases/0.3.3.md) 与 [升级指南](UPGRADING_0.3.md)。
 
 ## Iris 0.3.2
 
@@ -103,10 +109,10 @@ alpha.1发布时稳定通道为0.2.7。沿用声明不代表本次alpha重新实
 
 ## 安装与升级
 
-在已验证的准确版本宿主中（`0.3.3` 覆盖上方 **25 个**准确版本，正式发行前请使用源码或本地候选归档；`0.3.2` 覆盖原 12 个准确版本且已在 npm 发行），历史环境也可以继续固定 `0.3.1`、`0.3.0` 或 `0.2.7` 及对应数据根：
+在上方 25 个已验证准确版本的宿主中，正式 0.3.3 已发行后可固定安装该版本（发布准备期间请使用源码或本地候选归档）；历史环境也可以继续固定 `0.3.2`、`0.3.1`、`0.3.0` 或 `0.2.7` 及对应数据根：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.2
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.3
 ```
 
 使用其他profile时替换 `web`。更新后检查服务端装载、刷新Web客户端，并查看Iris工作台的 [宿主诊断](HOST_DOCTOR.md)。alpha.3及之后的DSH改善了插件更新与热加载，但仍以实际装载结果为准。

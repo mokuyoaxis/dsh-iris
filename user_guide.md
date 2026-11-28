@@ -1,20 +1,20 @@
 # dsh-iris 用户指南
 
-本指南面向 **Iris 0.3**（已发布 npm 版本 `0.3.2`，主线 `0.3.3` 已扩充 DSH 兼容范围）的 **DSH 原生插件**与 **独立 CLI** 入口。若你使用独立 Core Web 工作台与通用 MCP，请转至[Core 快速开始](docs/CORE_QUICKSTART.md)。发布说明与版本升级请参阅 [README](README.md)、[0.3 升级指南](docs/UPGRADING_0.3.md)、[0.3.2 发行说明](docs/releases/0.3.2.md) 与 [CHANGELOG](CHANGELOG.md)。
+本指南面向 **Iris 0.3.3** 的 **DSH 原生插件**与 **独立 CLI** 入口。若你使用独立 Core Web 工作台与通用 MCP，请转至[Core 快速开始](docs/CORE_QUICKSTART.md)。发布说明与版本升级请参阅 [README](README.md)、[0.3 升级指南](docs/UPGRADING_0.3.md)、[0.3.3 发行说明](docs/releases/0.3.3.md) 与 [CHANGELOG](CHANGELOG.md)。
 
 ## 安装
 
-安装前请确认环境满足 **Node.js ≥22.1.0**（DSH 宿主要求更高版本时以宿主为准）、PATH 中可用 `pnpm`，且 `dsh --version` 属于[兼容矩阵](docs/DSH_COMPATIBILITY.md)中列出的受支持 DSH 版本（0.3.3 主线覆盖 **25 个**准确版本；已发布 0.3.2 覆盖 12 个版本）。
+安装前请确认环境满足 **Node.js ≥22.1.0**（DSH 宿主要求更高版本时以宿主为准）、PATH 中可用 `pnpm`，且 `dsh --version` 属于[兼容矩阵](docs/DSH_COMPATIBILITY.md)中列出的 **25 个**受支持 DSH 版本（`0.1.2-rc.1` 至 `0.2.2-rc.5`）。
 
-将固定版本加入 DSH 的 Web profile 并启动：
+将固定版本加入 DSH 的 Web profile 并启动（发布前验证请使用源码或本地归档）：
 
 ```bash
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.2
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.3
 dsh web
 ```
 
 > [!IMPORTANT]
-> 安装或市场搜索时请认准完整包名 **`@mokuyoaxis/dsh-iris`**（无 scope 的 `dsh-iris` 是另一款插件）。若只下载本地归档可运行 `npm pack @mokuyoaxis/dsh-iris@0.3.2`。
+> 安装或市场搜索时请认准完整包名 **`@mokuyoaxis/dsh-iris`**（无 scope 的 `dsh-iris` 是另一款插件）。若只下载本地归档可运行 `npm pack @mokuyoaxis/dsh-iris@0.3.3`。
 
 - 浏览器默认打开 `http://127.0.0.1:3080`；若启动日志输出了一次性认证参数，请使用完整 URL 打开。
 - 插件会在下一次启动 DSH 时装载（运行前可通过 `dsh --profile web --dump-config` 确认包含 `@mokuyoaxis/dsh-iris` 与唯一 ID `mokuyoaxis-dsh-iris`，profile 机制见 [DSH 官方文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)）。
@@ -25,7 +25,7 @@ dsh web
 无需 DSH，直接在自己的项目中安装使用：
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.2
+npm install @mokuyoaxis/dsh-iris@0.3.3
 npx dsh-iris --help
 ```
 

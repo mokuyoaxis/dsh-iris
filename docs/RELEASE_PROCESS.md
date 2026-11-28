@@ -23,6 +23,6 @@ GitHub允许[重跑失败或指定任务](https://docs.github.com/en/actions/how
 
 `tests/release-publication.mjs` 使用受控命令和虚拟时间覆盖延迟、超时、认证/网络失败、摘要不符、回执失败与受理未知。`tests/release-publication-cli.mjs` 在POSIX运行实际工作流Shell及prepare/publish/verify CLI，仅替换外部gh/npm命令与本地提交查询；Windows仍运行独立的元数据和发布状态测试。模拟不证明GitHub编排、真实OIDC、npm Token、注册表可见性或平台CI已成功。
 
-候选还需同一源码的完整测试、实际 npm 归档消费者与公共类型、Chromium 九组场景（总览、凭据、视频、调度、视觉、视觉定位、摘要、本地工具、0.3.3 全链路），以及最终提交的 Ubuntu/Windows 最低/当前 Node 22 CI。真实账号/GPU 另列，不拿旧发行或受控服务结果代替。本页流程从 0.3.0-beta.2 使用，历史实发结果见 [beta.2 发行说明](releases/0.3.0-beta.2.md)、[0.3.0 发行说明](releases/0.3.0.md)、[0.3.1 发行说明](releases/0.3.1.md) 与 [0.3.2 发行说明](releases/0.3.2.md)，0.3.3 范围与升级要求见 [支持范围](BETA_SCOPE.md) 与 [升级指南](UPGRADING_0.3.md)。
+候选还需同一源码的完整测试、实际 npm 归档消费者与公共类型、Chromium 九组场景（总览、凭据、视频、调度、视觉、视觉定位、摘要、本地工具、0.3.3 全链路），以及最终提交的 Ubuntu/Windows 最低/当前 Node 22 CI。真实账号/GPU 另列，不拿旧发行或受控服务结果代替。本页流程从 0.3.0-beta.2 使用，历史实发结果见 [beta.2 发行说明](releases/0.3.0-beta.2.md)、[0.3.0 发行说明](releases/0.3.0.md)、[0.3.1 发行说明](releases/0.3.1.md) 与 [0.3.2 发行说明](releases/0.3.2.md)，本轮范围见 [0.3.3 发行说明](releases/0.3.3.md)、[支持范围](BETA_SCOPE.md) 与 [升级指南](UPGRADING_0.3.md)。
 
-0.3.x正式版（含0.3.0、0.3.1与0.3.2）的元数据应为`NPM_DIST_TAG=latest`、`RELEASE_PRERELEASE=false`。本地准备、测试或main推送均不代表已发布；正式tag需绑定通过检查的准确提交。推tag前重新核对远端版本/tag、归档与授权，推tag后核对独立发布确认及同一包的integrity，不把旧版本的渠道/归档当作新版本证据。
+0.3.x 正式版（含 0.3.0、0.3.1、0.3.2 与 0.3.3）的元数据应为 `NPM_DIST_TAG=latest`、`RELEASE_PRERELEASE=false`。本地准备、测试或 main 推送均不代表已发布；正式 tag 需绑定通过检查的准确提交。推 tag 前重新核对远端版本/tag、归档与授权，推 tag 后核对独立发布确认及同一包的 integrity，不把旧版本的渠道/归档当作新版本证据。

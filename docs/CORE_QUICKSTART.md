@@ -1,13 +1,13 @@
 # Core Workbench Quickstart · 从零启动工作台
 
-This guide walks through setting up the **Iris 0.3** standalone Core workbench from scratch (latest published npm release: `0.3.2`; `main` carries all `0.3.3` capabilities). If you are using DSH or the standalone CLI instead, see the [DSH User Guide](../user_guide.md) or [Headless CLI](HEADLESS_CLI.md); if you are upgrading from an older release, check the [upgrade guide](UPGRADING_0.3.md) first.
+This guide walks through setting up the **Iris 0.3.3** standalone Core workbench from scratch. If you are using DSH or the standalone CLI instead, see the [DSH User Guide](../user_guide.md) or [Headless CLI](HEADLESS_CLI.md); if you are upgrading from an older release, check the [upgrade guide](UPGRADING_0.3.md) first.
 
 > [!NOTE]
 > Choose a **new private directory** under your home folder on a filesystem that supports hard links (on Termux/PRoot, use the Linux home directory rather than Android shared storage). Existing workspaces are never modified or migrated automatically.
 
 ## Start a new workspace · 新建工作区
 
-Iris requires **Node.js ≥22.1.0**. Install the published release `@mokuyoaxis/dsh-iris@0.3.2` (or run `npm ci` inside a source checkout for `0.3.3` features and replace `npx dsh-iris` with `node bin/dsh-iris.js`):
+Iris requires **Node.js ≥22.1.0**. Install `@mokuyoaxis/dsh-iris@0.3.3` once published (or run `npm ci` inside a source checkout and replace `npx dsh-iris` with `node bin/dsh-iris.js`):
 
 ```bash
 IRIS_PREVIEW="$HOME/.iris/preview"

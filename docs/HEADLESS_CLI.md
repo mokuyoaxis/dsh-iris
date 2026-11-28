@@ -8,11 +8,11 @@
 ## 安装与入口
 
 ```bash
-npm install @mokuyoaxis/dsh-iris@0.3.2
+npm install @mokuyoaxis/dsh-iris@0.3.3
 npx dsh-iris --help
 ```
 
-项目内安装 `@mokuyoaxis/dsh-iris@0.3.2` 时，`dsh-iris` 不会自动加入全局 `PATH`，因此以下示例统一使用 `npx dsh-iris ...`；从已执行 `npm ci` 的源码仓库直接运行时，将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。要求 **Node.js ≥22.1.0**（若从旧版升级，请先阅读 [升级指南](UPGRADING_0.3.md)）。
+项目内安装 `@mokuyoaxis/dsh-iris@0.3.3` 时，`dsh-iris` 不会自动加入全局 `PATH`，因此以下示例统一使用 `npx dsh-iris ...`；从已执行 `npm ci` 的源码仓库直接运行时，将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。要求 **Node.js ≥22.1.0**（若从旧版升级，请先阅读 [升级指南](UPGRADING_0.3.md)）。
 
 ## 配置查询、网络与离线诊断
 

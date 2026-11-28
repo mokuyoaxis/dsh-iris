@@ -23,7 +23,7 @@ npx dsh-iris web serve --data-root /absolute/new-video-core \
   --allow-connection-management --allow-mcp
 ```
 
-> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.2` 时，`dsh-iris` 不会自动写入全局 `PATH`，请使用 `npx dsh-iris ...`；若在源码仓库中运行，请改用 `node bin/dsh-iris.js ...`。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.3` 时，`dsh-iris` 不会自动写入全局 `PATH`，请使用 `npx dsh-iris ...`；若在源码仓库中运行，请改用 `node bin/dsh-iris.js ...`。
 
 Iris 会按模型协议的 `supportsVideoMode` 声明与已知的 `t2v`/`i2v`/`s2v`/`r2v` 家族规则区分候选，每类固定视频流程只接受明确支持对应模式的模型，拒绝跨模式误配。
 

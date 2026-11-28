@@ -1,4 +1,4 @@
-# 工作台访问口令（0.3.2）
+# 工作台访问口令（0.3.3）
 
 独立 Core Web 工作台（`web serve`）默认采用**单工作区访问口令**登录，无需配置账号、邮箱或手动拷贝 Token 文件。
 
@@ -10,7 +10,7 @@
 npx dsh-iris web serve --data-root /absolute/iris/core --port 3182
 ```
 
-> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.2` 后不会自动写入全局 `PATH`，请通过 `npx dsh-iris ...` 执行 CLI；从已执行 `npm ci` 的源码仓库运行时，请将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.3` 后不会自动写入全局 `PATH`，请通过 `npx dsh-iris ...` 执行 CLI；从已执行 `npm ci` 的源码仓库运行时，请将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。
 
 1. **首次设置**：在浏览器打开终端输出的一次性 `loginUrl`，设置 `8–128` 个字符的访问口令（设置成功后该链接立即失效；若尚未完成设置时重启服务，会重新生成新的设置链接）。
 2. **日常访问**：设置完成后直接收藏并使用普通地址（例如 `http://127.0.0.1:3182`）。默认勾选“记住此设备”可保持登录 30 天，刷新或正常重启服务后无需重新登录；不勾选则仅保留在当前标签页（服务端会话最长 12 小时）。

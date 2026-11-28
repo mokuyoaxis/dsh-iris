@@ -34,11 +34,11 @@ Iris 0.3 将独立 Core 工作台、通用 MCP、持久媒体与视觉流程、�
 ### 原生 DSH 插件 / 独立 CLI
 
 ```bash
-# 原生 DSH 插件（替换为实际使用的 profile）
-dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.2
+# 原生 DSH 插件（替换为实际使用的 profile；发布前请使用源码或本地归档）
+dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.3
 
 # 独立 CLI / Core 项目
-npm install @mokuyoaxis/dsh-iris@0.3.2
+npm install @mokuyoaxis/dsh-iris@0.3.3
 npx dsh-iris --help
 ```
 
@@ -58,7 +58,7 @@ npx dsh-iris --help
 
 ## 从 0.3 预发布版本（alpha / beta）升级
 
-- **数据与契约**：beta.1–beta.3 的 Node.js 要求与持久格式延续至 0.3.x；现有执行根可直接沿用，也不会被自动升格为 v5。声明了精确兼容上限（不包含 `0.3.2`）的第三方插件需要由维护者更新兼容声明后方可使用。
+- **数据与契约**：beta.1–beta.3 的 Node.js 要求与持久格式延续至 0.3.x；现有执行根可直接沿用，也不会被自动升格为 v5。声明了精确兼容上限（不包含 `0.3.3`）的第三方插件需要由维护者更新兼容声明后方可使用。
 - **诊断与恢复改进**：beta.3 之后补充了更清晰的拒绝错误码与只读恢复指引。`root_busy` 表示数据根当前有活动写者（并非已入队），遇到时应先以原 UUID 查回 Operation/Task；使用只读连接恢复历史 Operation 时，请保持 Core 执行服务开启。
 
 ## 升级后验证建议

@@ -1,8 +1,8 @@
-# Core 执行服务与宿主接入（0.3.2）
+# Core 执行服务与宿主接入（0.3.3）
 
 Iris 的 Core 执行服务提供单物理数据根上的队列调度、Operation 持久化、MCP 协议网关（stdio / Streamable HTTP）以及可选的 DSH 宿主共享连接桥。
 
-按初始化的数据根版本，同一套服务依次承载：固定改图（v1+）、[文生图与 ComfyUI](IMAGE_GENERATION.md)（v2+）、[语音合成与音频转写](AUDIO_FLOWS.md)（v3+）、[固定文生视频](VIDEO_FLOWS.md)（v4+）以及[看图问答、长图 OCR、视觉定位与多模态摘要](VISION_FLOWS.md)（v5）。配合独立开关，还可开放 [Web 工作台](LOCAL_WEB.md)与[所有者持久选择](LOCAL_SELECTION.md)。
+按初始化的数据根版本，同一套服务依次承载：固定改图（v1+）、[文生图与 ComfyUI](IMAGE_GENERATION.md)（v2+）、[语音合成、音频转写](AUDIO_FLOWS.md)与[持久音乐](MUSIC.md)（v3+）、[文生/图生/数字人视频](VIDEO_FLOWS.md)（v4+）以及[看图问答、长图 OCR、视觉定位与多模态摘要](VISION_FLOWS.md)（v5）。配合独立开关，还可开放 [Web 工作台](LOCAL_WEB.md)与[所有者持久选择](LOCAL_SELECTION.md)。
 
 ## 显式启动
 
@@ -22,7 +22,7 @@ npx dsh-iris api serve --data-root /absolute/new-core \
   --connections-file /absolute/new-mcp-pair/server-grants.json --allow-mcp
 ```
 
-> 在本地项目安装 `@mokuyoaxis/dsh-iris@0.3.2` 时，`dsh-iris` 不会自动加入全局 `PATH`，请使用 `npx dsh-iris ...`；若从已执行 `npm ci` 的源码仓库运行，请将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。
+> 在本地项目安装 `@mokuyoaxis/dsh-iris@0.3.3` 时，`dsh-iris` 不会自动加入全局 `PATH`，请使用 `npx dsh-iris ...`；若从已执行 `npm ci` 的源码仓库运行，请将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。
 
 - **权限开关分离**：`--allow-execution` 开启创建与有限执行；`--allow-selection` 单独允许所有者保存图片选择；连接管理可使用动态的 `--allow-connection-management --connection-store <dir>`（见[连接中心](LOCAL_WEB.md#显式开启连接中心)）；需要额外媒体协议或有界并发时，可分别追加 `--provider-extension`（[Provider 扩展](PROVIDER_EXTENSIONS.md)）或 `--scheduler-config`（[有界媒体调度](MEDIA_SCHEDULING.md)）。
 - **单根单写者与串行语义**：同一物理数据根只允许一个执行写者（只读工作台可共存）。每次 `flow.continue` 至多执行一轮有限调用（首次提交或观察/补交付原 Task；OCR 按分块计划执行，见[调用预算](VISION_FLOWS.md#ocr-完成度与停止)）。在默认串行模式下，前一个 Operation 返回 `queued`/`running` 后应先等待其结束，再提交下一项。

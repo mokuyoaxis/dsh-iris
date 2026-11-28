@@ -1,10 +1,10 @@
-# Core 视觉流程：看图问答、OCR、视觉定位与多模态摘要（0.3.2）
+# Core 视觉流程：看图问答、OCR、视觉定位与多模态摘要（0.3.3）
 
 Iris 支持在独立 Core 工作台、Headless CLI 与通用 MCP 中创建并执行持久化的 **单图看图问答（`vision/v0`）**、**长图分块 OCR（`ocr/v0`）**、**单图视觉定位（`locate/v0`）** 与 **多模态视频/帧摘要（`summarize/v0`）**，在执行后持久保留来源关联、结构化结果与纯文本摘要。
 
 ## 初始化视觉工作区
 
-看图与 OCR 流程需要初始化在 **v5 数据根** 中（`--vision` 会建立 v5 根，并同时兼容图片、语音/转写与文生视频流程；已有旧根不会自动升级）：
+看图与 OCR 流程需要初始化在 **v5 数据根** 中（`--vision` 会建立 v5 根，并同时兼容图片、语音/转写/音乐与文生/图生/数字人视频流程；已有旧根不会自动升级）：
 
 ```bash
 npx dsh-iris flow init --data-root /absolute/new-vision-core
@@ -15,7 +15,7 @@ npx dsh-iris web serve --data-root /absolute/new-vision-core \
   --allow-connection-management --connection-store /absolute/new-vision-connections --allow-mcp
 ```
 
-> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.2` 后请通过 `npx dsh-iris ...` 调用（全局 `PATH` 不含该命令）；从源码仓库运行请改用 `node bin/dsh-iris.js ...`。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.3` 后请通过 `npx dsh-iris ...` 调用（全局 `PATH` 不含该命令）；从源码仓库运行请改用 `node bin/dsh-iris.js ...`。
 
 - **模型与协议**：工作台从已确认 `vision` 用途及池策略的候选中选取明确的 `provider::model`（当前支持 OpenAI 兼容 Chat Completions 图片输入 SSE 协议，使用供应商的 `baseUrl` 而非生图专用的 `mediaBaseUrl`）。
 - **模型不存在隔离**：当上游明确返回“模型不存在”的 HTTP 404 时，Core 会持久记录该模型在当前连接上的不可用状态，后续请求（包括同一轮 OCR 的后续分块）将停止继续请求该模型，同时保留已完成部分的结果与安全错误摘要（需核对模型 ID 并显式实测后才可恢复）。

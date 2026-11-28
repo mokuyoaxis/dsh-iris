@@ -46,7 +46,7 @@ npx dsh-iris flow list --data-root /absolute/path/to/flow-root
 npx dsh-iris web serve --data-root /absolute/path/to/flow-root --port 4173
 ```
 
-> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.2` 时，`dsh-iris` 不会自动加入全局 `PATH`，请使用 `npx dsh-iris ...`；若从已执行 `npm ci` 的源码仓库运行，请将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。
+> 本地项目安装 `@mokuyoaxis/dsh-iris@0.3.3` 时，`dsh-iris` 不会自动加入全局 `PATH`，请使用 `npx dsh-iris ...`；若从已执行 `npm ci` 的源码仓库运行，请将 `npx dsh-iris` 替换为 `node bin/dsh-iris.js`。
 
 服务默认仅监听 `127.0.0.1`（不指定 `--port` 时使用随机端口），请在浏览器中打开终端输出的完整地址。
 
