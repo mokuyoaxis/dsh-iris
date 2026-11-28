@@ -77,7 +77,7 @@ jobs:
             --notes /tmp/release-notes.md --repo "$GITHUB_REPOSITORY" \
             --output "$RUNNER_TEMP/npm-publication.json"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: iris-release-attempt-${{ github.run_attempt }}
@@ -106,7 +106,7 @@ jobs:
             --manifest-json "$RELEASE_MANIFEST_JSON" \
             --output "$RUNNER_TEMP/npm-verification.json"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: iris-publication-verification-${{ github.run_attempt }}

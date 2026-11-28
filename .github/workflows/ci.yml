@@ -71,7 +71,7 @@ jobs:
             --output "$RUNNER_TEMP/iris-package/verification" \
             --typescript "$RUNNER_TEMP/iris-tools/node_modules/typescript/lib/tsc.js" \
             --browser-executable "$IRIS_VERIFY_CHROMIUM"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: iris-package-verification-${{ github.run_attempt }}
