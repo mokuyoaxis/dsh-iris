@@ -19,19 +19,28 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1689FF.svg?style=flat-square"></a>
 </p>
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo/iris-anniversary-1128-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo/iris-anniversary-1128.svg">
+    <img src="docs/assets/logo/iris-anniversary-1128.svg" width="28" height="28" alt="Iris Nov 28 Anniversary Special Edition Mark (M and Iris)">
+  </picture><br>
+  <sub>Nov 28 Anniversary Special Edition · 2026-11-28 &amp; Iris 0.3.3 only</sub>
+</p>
+
 Iris brings media model providers, creative workflows, and generated outputs into a single local workspace—so Agents can reliably generate, edit, inspect, and reuse images, video, audio, and vision results.
 
 Built on a shared Core engine, Iris offers four entry points: a **standalone Web workbench**, a **generic MCP server**, a **headless CLI**, and a **native DSH plugin**. Core manages credentials, tasks, and artifacts, while you decide exactly which capabilities each client can access.
 
 > [!NOTE]
-> This documentation covers **Iris 0.3.2** ([release notes](docs/releases/0.3.2.md) · [scope & compatibility](docs/BETA_SCOPE.md)). If you are upgrading from 0.2.7, a prerelease, or 0.3.0/0.3.1, read the [upgrade guide](docs/UPGRADING_0.3.md) first. Before a version is published to npm, run directly from source or a local package archive.
+> The latest published npm release is **Iris 0.3.2** ([release notes](docs/releases/0.3.2.md)), while `main` includes all **Iris 0.3.3** capabilities ([scope & compatibility](docs/BETA_SCOPE.md) · [changelog](CHANGELOG.md)). If you are upgrading from 0.2.7, a prerelease, or 0.3.0–0.3.2, read the [upgrade guide](docs/UPGRADING_0.3.md) first. Before 0.3.3 is published to npm, run directly from source or a local package archive to test the new features.
 
 | What you want to do | Recommended entry | Availability |
 |---|---|---|
-| Configure models, create media, and manage works in a browser | [Core quickstart](docs/CORE_QUICKSTART.md) | 0.3.2 standalone workbench |
+| Configure models, create media, and manage works in a browser | [Core quickstart](docs/CORE_QUICKSTART.md) | Standalone workbench for full media & local tools |
 | Share the media workspace with any MCP-compatible Agent | [MCP guide](docs/MCP.md) · [Agent guide](docs/AGENT_CORE_QUICKSTART.md) | stdio and Streamable HTTP |
-| Use media tools and prompt refinement directly inside DSH | [DSH plugin](#dsh-plugin-032) | Native tools and lifecycle |
-| Generate media, inspect tasks, and export artifacts from a terminal | [Standalone CLI](#standalone-cli-032) | No DSH required |
+| Use media tools and prompt refinement directly inside DSH | [DSH plugin](#dsh-plugin) | Native tools and lifecycle |
+| Generate media, inspect tasks, and export artifacts from a terminal | [Standalone CLI](#standalone-cli) | No DSH required |
 
 ## Workbench preview
 
@@ -49,30 +58,30 @@ The Iris workbench pairs a clean light interface with subtle iris accents, light
 
 ## What Iris provides
 
-- **Unified multimodal toolkit**: Supports image generation and editing, ComfyUI workflows, video, music, speech synthesis, audio transcription, single-image vision, and long-image OCR—alongside local utilities for cropping, pixel diffing, video frame extraction, and HTML screenshots.
+- **Unified multimodal toolkit**: Supports image generation and editing, ComfyUI workflows, t2v/i2v/s2v video, durable music, speech synthesis, audio transcription, single-image vision, and long-image OCR—alongside zero-cost local utilities for cropping, pixel diffing, video frame and tail-frame extraction, audio-video muxing, and HTML screenshots.
 - **Per-function model pools**: Configure each of the six capabilities with **automatic selection**, a **manually ordered list**, or **disabled**. Automatic pools only use confirmed, healthy models in a stable order; failover triggers only when a provider clearly rejects acceptance, and existing tasks keep their original model binding.
-- **Auditable, retry-safe creative history**: Core persists every Run, Task, Attempt, and Artifact relation. You can inspect original requests, save selections, and build on past outputs. When acceptance status is uncertain, Iris halts rather than re-submitting a potentially billable call.
+- **Auditable, retry-safe creative history**: Core persists every Run, Task, Attempt, and Artifact relation with read-only lineage views and one-click cross-mode handoffs. You can inspect original requests, save selections, and build on past outputs. When acceptance status is uncertain, Iris halts rather than re-submitting a potentially billable call.
 - **Scoped MCP access**: Each MCP connection defines its own media groups, tool allowlist, and operation scopes (`read`, `create`, `execute`, `stop`), served over stdio or `/mcp` Streamable HTTP against the same Core instance.
-- **Explicit plugin extensions**: Extend Iris with custom provider protocols, durable operations, workbench pages, settings forms, and artifact renderers. The bundled [contact sheet plugin](docs/CONTACT_SHEET.md) shows an end-to-end durable workflow, and you can bootstrap your own from the [plugin starter](docs/PLUGIN_DEVELOPMENT.md) or [Wan Provider template](templates/provider-starter/README.md).
+- **Explicit plugin extensions**: Extend Iris with custom provider protocols, multimodal durable operations, host-owned schema auto-forms, workbench pages, settings forms, and artifact renderers. The bundled [contact sheet plugin](docs/CONTACT_SHEET.md) shows an end-to-end durable workflow, and you can bootstrap your own from the [plugin starter](docs/PLUGIN_DEVELOPMENT.md) or [Wan Provider template](templates/provider-starter/README.md).
 
 ### Current entry-point coverage
 
-| Capability | DSH / standalone CLI (0.3.2) | Core Web / MCP (0.3.2) |
+| Capability | DSH / standalone CLI | Core Web / MCP (`main` / 0.3.3) |
 |---|---|---|
 | Image generation, import, editing, and selection | Available | Available (text-to-image requires a generation-enabled root; Web selection and opt-in MCP `iris_core_select_run`) |
 | Speech synthesis and transcription | Available | Available in v3 / v4 / v5 roots |
-| Text-to-video and frame extraction | Available | [Available in v4 / v5 roots](docs/VIDEO_FLOWS.md) (Web extracts video frames locally and drafts `summarize/v0` runs) |
+| Durable music generation (`music/v0`) | Available | [Available in v3+ roots](docs/MUSIC.md) (strict single submission with `retried-from` retry lineage; one-click handoff to S2V, muxing, or transcription) |
+| Text-to-video, image-to-video (i2v), S2V & frame extraction | Available | [Available in v4 / v5 roots](docs/VIDEO_FLOWS.md) (source frame/audio previews, uniform & tail-frame `mode: "last"` extraction, cross-mode draft handoffs, `T2V`/`I2V`/`S2V` badges & quick filter, and `summarize/v0` drafting) |
 | Single-image vision, long-image OCR, visual grounding & media summary | Available | [Available in v5 roots](docs/VISION_FLOWS.md) (OCR enables conservative `boundary-overlap/v0` deduplication verified by a 4-POST live retest; Web supports interactive visual grounding EXIF overlays/cropping and video-frame summary creation) |
-| Local tools (crop/diff/frames/HTML render), inbox/outbox & lineage | CLI / DSH available | Web provides a zero-cost Local Tools panel (EXIF crop, pixel diff heatmap, opt-in `--browser-executable` HTML render), `--inbox-dir` import, and read-only artifact/Run lineage; MCP provides `local-media`, `html-render`, `inbox`, and controlled `--outbox-dir` (`outbox`) export |
-| Image-to-video, S2V, and music | Available (depends on provider and local tools) | Configurable in services; Web/MCP creation entries pending |
+| Local tools, inbox/outbox & read-only lineage | CLI / DSH available | Web provides a zero-cost Local Tools panel (EXIF crop, pixel diff heatmap, local `ffmpeg` audio-video muxing `media mux`, opt-in `--browser-executable` HTML render, host-owned plugin auto-forms), `--inbox-dir` import, inline `--outbox-dir` export, read-only lineage, and one-click Copy ID; MCP supports `local-media`, `html-render`, `inbox`, and `outbox` |
 | ComfyUI workflows and exposed parameters | Available with a configured workflow | Implemented (live GPU inference pending verification) |
-| Contact-sheet plugin | Uses the Core plugin entry | Available when explicitly enabled |
+| Contact-sheet plugin | Uses the Core plugin entry | Available when explicitly enabled (host auto-form and dedicated workbench page) |
 
 ## Quickstart
 
-### Core workbench (0.3.2)
+### Core workbench
 
-Initialize a **new private directory** for a fresh 0.3 workbench (older 0.2.x workspaces are not migrated automatically; existing 0.3.0 / 0.3.1 roots work as-is):
+Initialize a **new private directory** for a fresh 0.3 workbench (older 0.2.x workspaces are not migrated automatically; existing 0.3.0–0.3.2 roots work as-is—back up before writing new 0.3.3 recipes):
 
 ```bash
 npm install @mokuyoaxis/dsh-iris@0.3.2
@@ -92,7 +101,7 @@ npx dsh-iris web serve \
 ```
 
 > [!TIP]
-> When running from a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. `execution init --vision` initializes a v5 root enabling image, speech/transcription, text-to-video, and vision/OCR/locate/summarize flows.
+> The install command above targets the latest published npm release (`0.3.2`). To run **0.3.3** features from a source checkout, install locked dependencies with `npm ci` and replace `npx dsh-iris` with `node bin/dsh-iris.js`. `execution init --vision` initializes a v5 root enabling image, speech/transcription/music, t2v/i2v/s2v video, and vision/OCR/locate/summarize flows.
 
 1. **Sign in**: Open the **`loginUrl`** printed in your terminal to set an access password, then bookmark the regular address. Devices stay remembered across refreshes and normal restarts.
 2. **Add providers**: Under **模型服务** (Model services), add your connection, sync or enter models, confirm their uses, and pick a policy in **功能模型池** (Function pools). Browsing configuration and model catalogs is always read-only; upstream charges only occur when you start a generation.
@@ -100,9 +109,9 @@ npx dsh-iris web serve \
 
 See the [Core quickstart](docs/CORE_QUICKSTART.md) and [Agent Core guide](docs/AGENT_CORE_QUICKSTART.md) for recovery details and ready-to-use Agent prompts. Plugins are enabled separately via a [startup selection file](docs/PLUGIN_STARTUP.md).
 
-### DSH plugin (0.3.2)
+### DSH plugin
 
-Verify that `dsh --version` matches one of the 12 supported versions in the [compatibility matrix](docs/DSH_COMPATIBILITY.md), with Node.js ≥22.1.0 and `pnpm` on your PATH:
+Verify that `dsh --version` matches a supported version in the [compatibility matrix](docs/DSH_COMPATIBILITY.md) (**25 verified versions** in 0.3.3 covering `0.1.2-rc.1` through `0.2.2-rc.5`; 12 in published 0.3.2), with Node.js ≥22.1.0 and `pnpm` on your PATH:
 
 ```bash
 dsh plugin --profile web add @mokuyoaxis/dsh-iris@0.3.2
@@ -120,7 +129,7 @@ Use Iris to generate retro-rock background music and save it as an audio artifac
 
 See the [user guide](user_guide.md) for full details, or hand the [Agent quickstart prompt](docs/AGENT_QUICKSTART.md) to an Agent for assisted setup. After upgrading, reload the plugin backend and refresh the DSH client.
 
-### Standalone CLI (0.3.2)
+### Standalone CLI
 
 Install directly in any project without DSH:
 
@@ -139,7 +148,7 @@ Pass `--data-root` and `--provider-config` to generate media, inspect tasks, and
 - **Explicit actions, no hidden side effects**: Iris never scans your disk for other clients, modifies external configurations, or silently migrates older data roots. DSH mode can [reference host API-key connections](docs/DSH_PROVIDER_CONNECTIONS.md), and Core supports [environment credential references](docs/PROVIDER_CREDENTIALS.md) (storing only the variable name).
 - **Single-writer leases & bounded scheduling**: Each physical data root allows one active writer at a time while concurrent readers remain safe. Execution is serial by default; when higher throughput is needed, opt into [bounded media scheduling](docs/MEDIA_SCHEDULING.md) to separately cap HTTP concurrency, dispatch rate, and outstanding remote tasks.
 - **Conservative upgrades**: Existing empty configurations and manual pools stay untouched across upgrades, and newly discovered models require explicit approval before entering a pool ([function pools](docs/FUNCTION_MODEL_POOLS.md)). Legacy ai-paint users can run a [one-time explicit import](user_guide.md#从旧工作台显式导入) via `IRIS_IMPORT_WORKBENCH_CONFIG`.
-- **Private storage & runtime prerequisites**: Secrets and auth stores are isolated in private directories (typically `0600` files / `0700` dirs on POSIX). Core requires Node.js ≥22.1.0 and `sharp`; video frame extraction requires `ffmpeg`/`ffprobe`, and HTML screenshots require a supported browser backend. On Termux/PRoot, place data roots on a private Linux filesystem that supports permissions and hard links.
+- **Private storage & runtime prerequisites**: Secrets and auth stores are isolated in private directories (typically `0600` files / `0700` dirs on POSIX). Core requires Node.js ≥22.1.0 and `sharp`; video frame extraction and local audio-video muxing require `ffmpeg`/`ffprobe`, and HTML screenshots require a supported browser backend. On Termux/PRoot, place data roots on a private Linux filesystem that supports permissions and hard links.
 
 ## Real generation & native DSH
 
@@ -168,7 +177,7 @@ Captured from an Android browser connected to DSH running inside Termux/PRoot De
 |---|---|
 | Getting started | [Core quickstart](docs/CORE_QUICKSTART.md) · [Agent Core guide](docs/AGENT_CORE_QUICKSTART.md) · [DSH guide](user_guide.md) · [Headless CLI](docs/HEADLESS_CLI.md) |
 | Workbench & access | [Login](docs/WORKBENCH_LOGIN.md) · [Core Web](docs/LOCAL_WEB.md) · [MCP](docs/MCP.md) · [Core Skills](docs/CORE_SKILLS.md) |
-| Models & workflows | [Providers, pools & spectrum](docs/PROVIDER_SETTINGS.md) · [Images / ComfyUI](docs/IMAGE_GENERATION.md) · [Speech / transcription](docs/AUDIO_FLOWS.md) · [Task semantics](docs/TASK_SEMANTICS.md) |
+| Models & workflows | [Providers, pools & spectrum](docs/PROVIDER_SETTINGS.md) · [Images / ComfyUI](docs/IMAGE_GENERATION.md) · [Video flows](docs/VIDEO_FLOWS.md) · [Speech / transcription](docs/AUDIO_FLOWS.md) · [Music](docs/MUSIC.md) · [Vision & OCR](docs/VISION_FLOWS.md) · [Task semantics](docs/TASK_SEMANTICS.md) |
 | Extensions | [Plugin contract](docs/PLUGINS.md) · [Startup](docs/PLUGIN_STARTUP.md) · [Panel & themes](docs/PANEL_EXTENSIONS.md) · [Contact sheet](docs/CONTACT_SHEET.md) |
 | Releases & internals | [0.3.2 release notes](docs/releases/0.3.2.md) · [0.3.1 release notes](docs/releases/0.3.1.md) · [0.3.0 release notes](docs/releases/0.3.0.md) · [Upgrade guide](docs/UPGRADING_0.3.md) · [0.2.7 history](docs/releases/0.2.7.md) · [CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) |
 

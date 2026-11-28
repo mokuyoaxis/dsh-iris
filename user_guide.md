@@ -1,10 +1,10 @@
 # dsh-iris 用户指南
 
-本指南面向 **Iris 0.3.2** 的 **DSH 原生插件**与 **独立 CLI** 入口。若你使用独立 Core Web 工作台与通用 MCP，请转至[Core 快速开始](docs/CORE_QUICKSTART.md)。发布说明与版本升级请参阅 [README](README.md)、[0.3 升级指南](docs/UPGRADING_0.3.md)、[0.3.2 发行说明](docs/releases/0.3.2.md) 与 [CHANGELOG](CHANGELOG.md)。
+本指南面向 **Iris 0.3**（已发布 npm 版本 `0.3.2`，主线 `0.3.3` 已扩充 DSH 兼容范围）的 **DSH 原生插件**与 **独立 CLI** 入口。若你使用独立 Core Web 工作台与通用 MCP，请转至[Core 快速开始](docs/CORE_QUICKSTART.md)。发布说明与版本升级请参阅 [README](README.md)、[0.3 升级指南](docs/UPGRADING_0.3.md)、[0.3.2 发行说明](docs/releases/0.3.2.md) 与 [CHANGELOG](CHANGELOG.md)。
 
 ## 安装
 
-安装前请确认环境满足 **Node.js ≥22.1.0**、PATH 中可用 `pnpm`，且 `dsh --version` 属于[兼容矩阵](docs/DSH_COMPATIBILITY.md)中列出的 12 个受支持 DSH 版本。
+安装前请确认环境满足 **Node.js ≥22.1.0**（DSH 宿主要求更高版本时以宿主为准）、PATH 中可用 `pnpm`，且 `dsh --version` 属于[兼容矩阵](docs/DSH_COMPATIBILITY.md)中列出的受支持 DSH 版本（0.3.3 主线覆盖 **25 个**准确版本；已发布 0.3.2 覆盖 12 个版本）。
 
 将固定版本加入 DSH 的 Web profile 并启动：
 
