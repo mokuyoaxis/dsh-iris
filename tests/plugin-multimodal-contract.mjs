@@ -291,8 +291,9 @@ try {
 
   // 6. plugins inspect diagnostics!
   const pluginEntry = path.join(root, 'mm-plugin.mjs');
+  const pluginSdkUrl = new URL('../lib/plugins.js', import.meta.url).href;
   fs.writeFileSync(pluginEntry, [
-    "import { definePlugin } from " + JSON.stringify(path.resolve('lib/plugins.js')) + ";",
+    `import { definePlugin } from ${JSON.stringify(pluginSdkUrl)};`,
     "export default definePlugin({ manifest: { contractVersion: 0, id: 'example.diag', version: '1.0.0', compatibility: { min: '0.3.0-alpha.1', maxExclusive: '0.4.0' },",
     "  contributions: { operations: [{ id: 'auto', version: '1.0.0', title: 'Auto Form Op', mode: 'reader', commands: ['artifact.read'], artifactInputs: ['fileId'], artifactInputTypes: { fileId: ['audio', 'text'] }, ui: { category: 'local-tool', summary: 'Zero frontend form' },",
     "    inputSchema: { type: 'object', properties: { fileId: { type: 'string', pattern: '^artifact_[a-f0-9]{24}$' } }, required: ['fileId'], additionalProperties: false } }] } },",

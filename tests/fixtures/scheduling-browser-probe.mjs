@@ -68,6 +68,7 @@ async function verifyRootBusyBrowser({ out, cdp, evaluate, click, wait, result, 
       assignments: { 'image-gen': [FLOW_MODEL] } }), { mode: 0o600 });
     const session = await restart({ dataRoot, providerConfigPath: file, executionPorts: fixture, allowExecution: true,
       scheduling: { schemaVersion: 1, requestsPerSecond: 100, remoteLimit: 4 } });
+    await cdp('Page.navigate', { url: 'about:blank' });
     await cdp('Page.navigate', { url: session.loginUrl }); await wait(loggedIn, 'root-busy owner login');
     await draft();
     const first = await createRootBusyFixture(dataRoot); holders.push(first); first.arm();
